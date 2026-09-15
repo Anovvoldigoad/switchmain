@@ -76,3 +76,10 @@ Important
 P29 is generic in the executable path. It learns custom code strings from IDs above vanilla max 280.
 The literal mtob check exists only as a diagnostic fallback to avoid missing the first fixture event due to hook/log ordering.
 Final architecture must remove fixture-specific behavior.
+
+P29B CI FIX (2026-09-16)
+-------------------------
+The GitHub Actions workflow intentionally does NOT run dkp-pacman.
+The official devkitpro/devkita64 Docker image already contains the Switch toolchain,
+switch-dev/libnx and related build dependencies. Running pacman from CI can fail at
+repository sync (for example HTTP 403 from pkg.devkitpro.org) and is unnecessary.

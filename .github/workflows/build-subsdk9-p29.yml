@@ -12,8 +12,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    # devkitPro menyediakan image ini khusus untuk CI.
-    # JANGAN jalankan dkp-pacman -Syu / -S di workflow.
+    # IMPORTANT:
+    # devkitPro explicitly provides this Docker image for CI.
+    # Do NOT run dkp-pacman -Syu/-S inside the workflow.
+    # The image already contains devkitA64 + switch-dev + libnx.
     container:
       image: devkitpro/devkita64:latest
 
@@ -38,25 +40,25 @@ jobs:
 
           git --version
           python3 --version
-          make --version | head -n 1
+          make --version
 
           test -d "$DEVKITPRO"
           test -d "$DEVKITA64"
           test -d "$DEVKITPRO/libnx"
-
           test -x "$DEVKITA64/bin/aarch64-none-elf-g++"
           test -x "$DEVKITA64/bin/aarch64-none-elf-gcc"
           test -x "$DEVKITA64/bin/aarch64-none-elf-ld"
 
-          "$DEVKITA64/bin/aarch64-none-elf-g++" --version | head -n 2
+          "$DEVKITA64/bin/aarch64-none-elf-g++" --version
 
+          # Common libnx build-rule locations. At least one must exist.
           if [[ -f "$DEVKITPRO/libnx/switch_rules" ]]; then
             echo "Found libnx switch_rules: $DEVKITPRO/libnx/switch_rules"
           elif [[ -f "$DEVKITPRO/libnx/switch_rules.mk" ]]; then
             echo "Found libnx switch_rules.mk: $DEVKITPRO/libnx/switch_rules.mk"
           else
-            echo "ERROR: libnx ada tapi switch build rules tidak ditemukan."
-            find "$DEVKITPRO/libnx" -maxdepth 2 -type f | sort | head -n 100 || true
+            echo "ERROR: libnx is present but switch build rules were not found."
+            find "$DEVKITPRO/libnx" -maxdepth 2 -type f | sort | sed -n '1,100p' || true
             exit 1
           fi
 
@@ -66,16 +68,12 @@ jobs:
           set -euxo pipefail
 
           git clone https://github.com/shadowninja108/exlaunch.git exlaunch
-
           git -C exlaunch checkout --detach 229bbd6
-
           git -C exlaunch submodule sync --recursive
           git -C exlaunch submodule update --init --recursive
 
           ACTUAL="$(git -C exlaunch rev-parse --short=7 HEAD)"
-
           echo "exlaunch commit=$ACTUAL"
-
           test "$ACTUAL" = "229bbd6"
 
       - name: Apply P29 overlay
@@ -84,16 +82,10 @@ jobs:
           set -euxo pipefail
 
           chmod +x prepare_exlaunch.sh
-
           bash ./prepare_exlaunch.sh "$GITHUB_WORKSPACE/exlaunch"
 
           echo "--- Patched program sources ---"
-
-          find "$GITHUB_WORKSPACE/exlaunch/source/program" \
-            -maxdepth 1 \
-            -type f \
-            -printf '%f\n' \
-            | sort
+          find "$GITHUB_WORKSPACE/exlaunch/source/program" -maxdepth 1 -type f -printf '%f\n' | sort
 
       - name: Build subsdk9
         shell: bash
@@ -103,7 +95,6 @@ jobs:
           export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
 
           cd "$GITHUB_WORKSPACE/exlaunch"
-
           make -j2
 
       - name: Collect and verify output
@@ -114,39 +105,22 @@ jobs:
           cd "$GITHUB_WORKSPACE"
 
           echo "--- subsdk9 candidates ---"
-
           find exlaunch -type f -name subsdk9 -ls || true
 
-          OUT="$(find exlaunch \
-            -type f \
-            -name subsdk9 \
-            -size +10k \
-            -print \
-            -quit)"
-
+          OUT="$(find exlaunch -type f -name subsdk9 -size +10k -print -quit)"
           test -n "$OUT"
           test -f "$OUT"
 
-          mkdir -p \
-            artifact/atmosphere/contents/0100FA10190A0000/exefs
+          mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs
+          cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
 
-          cp "$OUT" \
-            artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
-
-          test -s \
-            artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
-
-          stat \
-            artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
-
-          sha256sum \
-            artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9 \
+          test -s artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
+          stat artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
+          sha256sum artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9 \
             | tee artifact/SHA256SUMS.txt
 
           cp README_P29.txt artifact/README_P29.txt
-
-          cp analyze_p29_log.py \
-            artifact/analyze_p29_log.py
+          cp analyze_p29_log.py artifact/analyze_p29_log.py
 
       - name: Upload P29 subsdk9
         uses: actions/upload-artifact@v4
