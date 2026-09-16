@@ -1,0 +1,38 @@
+P37A fresh hardware result / log findings used to design P38A
+Date: 2026-09-16
+
+Hardware result reported by user:
+- Tobi vs Naruto slot 1: after enemy UJ, Tobi still disappears (FAIL).
+- Tobi vs Isshiki: after enemy UJ, Tobi still disappears (FAIL).
+- Tobi vs Naruto Sage slot 5: Tobi does not disappear (PASS control).
+- Tobi StageMove remains functional (PASS).
+
+Therefore P37A O12 visibility shadow is NEGATIVE:
+- O12 / me_SetPlayerVisibility is NOT sufficient/necessary to explain the conditional victim-UJ disappearance.
+- Do not pursue O12 as the current primary root cause.
+
+Fresh log: uzuy_log(18).txt
+Programmatic counts:
+- [NSC:P37A] markers: 993
+- VIS_SHADOW: 43 (the O12 shadow route definitely executed)
+- EVT236: 208
+- STAGE_HANDLE: 6 (3 phase0/phase1 pairs, one per tested StageMove)
+- FIX_CHAR: 6
+- POST_STAGE: 6
+- EVT235_SHOW: 11
+- FILE_OPEN: 128, result=0: 0
+- PROCESS: 128, status=5: 0, readerr=1: 0
+- fingerprint failure: 0
+
+Three custom actor pointers are present across the three matches:
+- 0x3b1c4bb000
+- 0x3ac5aa8000
+- 0x3ac583a000
+
+O12 is shadowed while O14 still executes repeatedly in the same event groups.
+P38A therefore changes only the next live handler relative to P37A:
+- keep O12 shadowed;
+- shadow O14 / me_enable_control;
+- retain O2/O3/O4/O8/O13/O15/O22/O23 behavior;
+- retain vanilla <=280 native fallback;
+- no character-specific gameplay mapping.

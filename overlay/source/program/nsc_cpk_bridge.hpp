@@ -1,5 +1,5 @@
 #pragma once
 
 namespace nsc {
-void InstallP37AVisibilityShadowAB();
+void InstallP38AControl14ShadowAB();
 }

@@ -321,14 +321,14 @@ uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2
     if (!found) {
         char text[31]{};
         CopyEventText(text, event);
-        Logging.Log("[NSC:P37A] ACTION actor=%p target=%p mode=%u text=%s found=0",
+        Logging.Log("[NSC:P38A] ACTION actor=%p target=%p mode=%u text=%s found=0",
                     actor, target, action_mode ? 1u : 0u, text);
         return 1;
     }
 
     char text[31]{};
     CopyEventText(text, event);
-    Logging.Log("[NSC:P37A] ACTION actor=%p target=%p mode=%u text=%s found=1 index=%u",
+    Logging.Log("[NSC:P38A] ACTION actor=%p target=%p mode=%u text=%s found=1 index=%u",
                 actor, target, action_mode ? 1u : 0u, text, index);
 
     using PlayFn = void (*)(void*, int32_t, int32_t, int32_t, int32_t, int32_t, float);
@@ -350,7 +350,7 @@ bool MatchWords(ptrdiff_t offset, const uint32_t (&expected)[N]) {
 void LogFingerprintFail(const char* name, ptrdiff_t offset) {
     const auto base = exl::util::modules::GetTargetStart();
     const auto actual = *reinterpret_cast<const volatile uint32_t*>(base + offset);
-    Logging.Log("[NSC:P37A] fingerprint FAIL %s off=0x%lx word0=%08x", name,
+    Logging.Log("[NSC:P38A] fingerprint FAIL %s off=0x%lx word0=%08x", name,
                 static_cast<unsigned long>(offset), actual);
 }
 
@@ -367,7 +367,7 @@ HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
         CpkPathArg extra{kModCpkPath, 0, 0, 0};
         uint32_t extra_bind_id = 0;
         const uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
-        Logging.Log("[NSC:P37A] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
+        Logging.Log("[NSC:P38A] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
                     kModCpkPath, kModCpkPriority, extra_result, extra_bind_id);
         return original_result;
     }
@@ -378,7 +378,7 @@ HOOK_DEFINE_TRAMPOLINE(CharacodeGetterHook) {
         const char* result = Orig(id);
         if (id > kVanillaMaxCharId && result && *result) TrackCustomCode(id, result);
         if (id >= kFirstCustomCharId && g_char_logs.fetch_add(1, std::memory_order_relaxed) < 96) {
-            Logging.Log("[NSC:P37A] CHAR id=%u result=%p code=%s", id,
+            Logging.Log("[NSC:P38A] CHAR id=%u result=%p code=%s", id,
                         static_cast<const void*>(result), result ? result : "<null>");
         }
         return result;
@@ -392,7 +392,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
         void* result = Orig(manager, path, options);
         if (IsInterestingPath(path) &&
             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:P37A] LOAD_REQ manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:P38A] LOAD_REQ manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -405,7 +405,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
         void* result = Orig(manager, path, options);
         if (IsInterestingPath(path) &&
             g_create_logs.fetch_add(1, std::memory_order_relaxed) < 128) {
-            Logging.Log("[NSC:P37A] LOAD_CREATE manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:P38A] LOAD_CREATE manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -452,14 +452,14 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
         if (overflow) {
             uint32_t expected = 0;
             if (g_status_overflow_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
-                Logging.Log("[NSC:P37A] STATUS_TABLE_OVERFLOW max=%u",
+                Logging.Log("[NSC:P38A] STATUS_TABLE_OVERFLOW max=%u",
                             static_cast<unsigned>(sizeof(g_status_entries) / sizeof(g_status_entries[0])));
             }
         }
 
         if (should_log &&
             g_status_transition_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:P37A] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
+            Logging.Log("[NSC:P38A] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
                         manager, path ? path : "<null>", first ? 1u : 0u, previous, status);
         }
         return status;
@@ -474,7 +474,7 @@ HOOK_DEFINE_TRAMPOLINE(ChunkBinaryHook) {
         void* result = Orig(full_path, key);
         if (IsInterestingChunk(full_path, key) &&
             g_chunk_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:P37A] CHUNK path=%s key=%s result=%p",
+            Logging.Log("[NSC:P38A] CHUNK path=%s key=%s result=%p",
                         full_path ? full_path : "<null>",
                         key ? key : "<null>", result);
         }
@@ -492,7 +492,7 @@ HOOK_DEFINE_TRAMPOLINE(FileOpenHook) {
         const uint32_t result = Orig(request, path, slot);
         if (IsInterestingPath(path) &&
             g_file_open_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:P37A] FILE_OPEN request=%p path=%s slot=%u result=%u",
+            Logging.Log("[NSC:P38A] FILE_OPEN request=%p path=%s slot=%u result=%u",
                         request, path ? path : "<null>", slot, result);
         }
         return result;
@@ -531,14 +531,14 @@ HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
             read_error = *p;
         }
 
-        Logging.Log("[NSC:P37A] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
+        Logging.Log("[NSC:P38A] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
                     path ? path : "<null>", owner, read_context, load_object,
                     load_status, read_error);
     }
 };
 
 
-// P37A: focused stage/cinematic victim-lifecycle trace. These wrappers are
+// P38A: focused stage/cinematic victim-lifecycle trace. These wrappers are
 // read-only: they log native boundaries and return/call Orig unchanged.
 HOOK_DEFINE_TRAMPOLINE(Event235Hook) {
     static uint32_t Callback(void* actor, void* event_ptr) {
@@ -554,7 +554,7 @@ HOOK_DEFINE_TRAMPOLINE(Event235Hook) {
         const uint32_t result = Orig(actor, event_ptr);
         if (valid && char_id > kVanillaMaxCharId &&
             g_event235_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:P37A] EVT235_SHOW actor=%p side=%u char=%u op=%d p2=%d p3=%d ret=%u",
+            Logging.Log("[NSC:P38A] EVT235_SHOW actor=%p side=%u char=%u op=%d p2=%d p3=%d ret=%u",
                         actor, side, char_id, static_cast<int>(op), static_cast<int>(p2),
                         static_cast<int>(p3), result);
         }
@@ -565,9 +565,9 @@ HOOK_DEFINE_TRAMPOLINE(Event235Hook) {
 HOOK_DEFINE_TRAMPOLINE(StageHandleHook) {
     static void Callback(uint32_t stage_id) {
         const uint32_t n = g_stage_handle_logs.fetch_add(1, std::memory_order_relaxed);
-        if (n < 256) Logging.Log("[NSC:P37A] STAGE_HANDLE phase=0 stage=%u", stage_id);
+        if (n < 256) Logging.Log("[NSC:P38A] STAGE_HANDLE phase=0 stage=%u", stage_id);
         Orig(stage_id);
-        if (n < 256) Logging.Log("[NSC:P37A] STAGE_HANDLE phase=1 stage=%u", stage_id);
+        if (n < 256) Logging.Log("[NSC:P38A] STAGE_HANDLE phase=1 stage=%u", stage_id);
     }
 };
 
@@ -577,14 +577,14 @@ HOOK_DEFINE_TRAMPOLINE(FixCharPositionHook) {
         const bool valid = ReadActorIdentity(actor, side, char_id);
         const uint32_t n = g_fix_char_logs.fetch_add(1, std::memory_order_relaxed);
         if (n < 384) {
-            Logging.Log("[NSC:P37A] FIX_CHAR phase=0 actor=%p valid=%u side=%u char=%u",
+            Logging.Log("[NSC:P38A] FIX_CHAR phase=0 actor=%p valid=%u side=%u char=%u",
                         actor, valid ? 1u : 0u, side, char_id);
         }
         Orig(actor);
         if (n < 384) {
             uint32_t side2 = 0xFFFFFFFFu, char2 = 0xFFFFFFFFu;
             const bool valid2 = ReadActorIdentity(actor, side2, char2);
-            Logging.Log("[NSC:P37A] FIX_CHAR phase=1 actor=%p valid=%u side=%u char=%u",
+            Logging.Log("[NSC:P38A] FIX_CHAR phase=1 actor=%p valid=%u side=%u char=%u",
                         actor, valid2 ? 1u : 0u, side2, char2);
         }
     }
@@ -593,13 +593,13 @@ HOOK_DEFINE_TRAMPOLINE(FixCharPositionHook) {
 HOOK_DEFINE_TRAMPOLINE(PostStageHook) {
     static void Callback() {
         const uint32_t n = g_post_stage_logs.fetch_add(1, std::memory_order_relaxed);
-        if (n < 256) Logging.Log("[NSC:P37A] POST_STAGE phase=0");
+        if (n < 256) Logging.Log("[NSC:P38A] POST_STAGE phase=0");
         Orig();
-        if (n < 256) Logging.Log("[NSC:P37A] POST_STAGE phase=1");
+        if (n < 256) Logging.Log("[NSC:P38A] POST_STAGE phase=1");
     }
 };
 
-// P37A: generic MovesetPlus event236 core inherited byte-for-source from P35A.
+// P38A: generic MovesetPlus event236 core inherited byte-for-source from P35A.
 // ME_ENEMY_DISP_OFF, but UltimateStormAPI uses event236 as an extension
 // container with opcode at +0x24. Valid extension opcodes never fall back to
 // native enemy-hide; unported operations are intentionally shadow/no-op.
@@ -628,7 +628,7 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
             g_event236_logs.fetch_add(1, std::memory_order_relaxed) < 768) {
             char text[31]{};
             CopyEventText(text, event);
-            Logging.Log("[NSC:P37A] EVT236 actor=%p side=%u char=%u op=%d p2=%d p3=%d p4bits=%08x text=%s",
+            Logging.Log("[NSC:P38A] EVT236 actor=%p side=%u char=%u op=%d p2=%d p3=%d p4bits=%08x text=%s",
                         actor, side, char_id, static_cast<int>(op), static_cast<int>(p2),
                         static_cast<int>(p3), FloatBits(p4), text);
         }
@@ -664,12 +664,12 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 return 1;
             }
 
-            case 12: { // P37A causal A/B: shadow source me_SetPlayerVisibility only
+            case 12: { // P38A inherited A/B: shadow source me_SetPlayerVisibility only
                 // P34A (all event236 no-op) made victim-UJ restore normal, while
                 // P35A/P36 re-enabled O12/O14/... and conditional disappearance returned.
-                // Do NOT mutate visibility in this build; every other P36 handler remains live.
+                // Do NOT mutate visibility in this build; O14 is independently shadowed below for P38A.
                 if (g_event235_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-                    Logging.Log("[NSC:P37A] VIS_SHADOW actor=%p side=%u char=%u p2=%d",
+                    Logging.Log("[NSC:P38A] VIS_SHADOW actor=%p side=%u char=%u p2=%d",
                                 actor, side, char_id, static_cast<int>(p2));
                 }
                 return 1;
@@ -679,9 +679,14 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 *reinterpret_cast<volatile int32_t*>(reinterpret_cast<uint8_t*>(actor) + 0xF30) = p2;
                 return 1;
 
-            case 14: { // source me_enable_control -- exact historical Switch route
-                using EnableFn = void (*)(int32_t);
-                reinterpret_cast<EnableFn>(exl::util::modules::GetTargetStart() + kEnableControlOffset)(p3);
+            case 14: { // P38A causal A/B: shadow source me_enable_control only
+                // P37A proved O12 visibility is not sufficient/necessary for the
+                // conditional victim-UJ disappearance. Keep O12 shadowed and now
+                // suppress only the next live handler relative to P37A: O14.
+                if (g_event235_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
+                    Logging.Log("[NSC:P38A] CTRL14_SHADOW actor=%p side=%u char=%u p2=%d p3=%d",
+                                actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3));
+                }
                 return 1;
             }
 
@@ -834,12 +839,12 @@ bool InstallTraceHooks() {
 
 } // namespace
 
-void InstallP37AVisibilityShadowAB() {
+void InstallP38AControl14ShadowAB() {
     const bool cpk = InstallCpkBridge();
     const bool trace = InstallTraceHooks();
     const bool lifecycle = InstallLifecycleTrace();
     const bool event236 = InstallEvent236Dispatcher();
-    Logging.Log("[NSC:P37A] READY cpk=%d trace=%d lifecycle=%d event236=%d vis12_shadow=1 evt235=0x%lx evt236=0x%lx stage=0x%lx fix=0x%lx post=0x%lx",
+    Logging.Log("[NSC:P38A] READY cpk=%d trace=%d lifecycle=%d event236=%d vis12_shadow=1 ctrl14_shadow=1 evt235=0x%lx evt236=0x%lx stage=0x%lx fix=0x%lx post=0x%lx",
                 cpk ? 1 : 0, trace ? 1 : 0, lifecycle ? 1 : 0, event236 ? 1 : 0,
                 static_cast<unsigned long>(kEvent235Offset),
                 static_cast<unsigned long>(kEvent236Offset),

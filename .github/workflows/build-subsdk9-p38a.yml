@@ -1,4 +1,4 @@
-name: Build NSC P37A O12 visibility shadow AB
+name: Build NSC P38A O14 control shadow AB
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     paths:
       - "overlay/**"
       - "prepare_exlaunch.sh"
-      - ".github/workflows/build-subsdk9-p37a.yml"
+      - ".github/workflows/build-subsdk9-p38a.yml"
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
       DEVKITPRO: /opt/devkitpro
       DEVKITA64: /opt/devkitpro/devkitA64
     steps:
-      - name: Checkout P37A build kit
+      - name: Checkout P38A build kit
         uses: actions/checkout@v4
 
       - name: Verify preinstalled devkitPro toolchain
@@ -59,7 +59,7 @@ jobs:
           echo "exlaunch commit=$ACTUAL"
           test "$ACTUAL" = "229bbd6"
 
-      - name: Apply P37A overlay
+      - name: Apply P38A overlay
         shell: bash
         run: |
           set -euxo pipefail
@@ -89,18 +89,18 @@ jobs:
           test -s artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
           stat artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
           (cd artifact && sha256sum atmosphere/contents/0100FA10190A0000/exefs/subsdk9 | tee SHA256SUMS.txt)
-          cp README_P37A.txt artifact/README_P37A.txt
-          cp analyze_p37a_log.py artifact/analyze_p37a_log.py
+          cp README_P38A.txt artifact/README_P38A.txt
+          cp analyze_p38a_log.py artifact/analyze_p38a_log.py
           cp P30_MANIFEST_ROW_AUDIT.json artifact/P30_MANIFEST_ROW_AUDIT.json
-          cp P37A_STATIC_AUDIT.txt artifact/P37A_STATIC_AUDIT.txt
+          cp P38A_STATIC_AUDIT.txt artifact/P38A_STATIC_AUDIT.txt
           mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
           sha256sum artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main | tee artifact/RESTORE_MAIN_SHA256.txt
 
-      - name: Upload P37A subsdk9
+      - name: Upload P38A subsdk9
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P37A-o12-visibility-shadow-ab-subsdk9
+          name: NSC-P38A-o14-control-shadow-ab-subsdk9
           path: artifact/
           if-no-files-found: error
           compression-level: 9
