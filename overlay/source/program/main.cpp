@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP40AStateTrace();
+    nsc::InstallP41AEvent121SelfTrace();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P40A state trace exception");
+    EXL_ABORT("NSC P41A Event121 self trace exception");
 }

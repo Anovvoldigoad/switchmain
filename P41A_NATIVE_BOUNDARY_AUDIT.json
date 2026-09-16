@@ -1,0 +1,38 @@
+{
+  "base_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "p41_main_sha256": "407ff7247a2c70941c05eb2cdfbd65a2a25fffc247845274b096ed0b5aee6ae7",
+  "boundaries": {
+    "EVENT13_AWAKE": {
+      "offset": "0x810614",
+      "base_hex": "fe0f1ef8f44f01a914f081523400a072f30300aa006874f8e59cfd977fa212b9",
+      "p41_hex": "fe0f1ef8f44f01a914f081523400a072f30300aa006874f8e59cfd977fa212b9",
+      "unchanged": true
+    },
+    "EVENT121_COND": {
+      "offset": "0x8134f8",
+      "base_hex": "fe57bea9f44f01a9f30301aaa00bfe97800100b4f40300aafb3efd97e00313aa",
+      "p41_hex": "fe57bea9f44f01a9f30301aaa00bfe97800100b4f40300aafb3efd97e00313aa",
+      "unchanged": true
+    },
+    "OUGI_CORE": {
+      "offset": "0x7e0f58",
+      "base_hex": "ff0301d1fe0b00f9f65702a9f44f03a9080040f9f503012af30300aa08e946f9",
+      "p41_hex": "ff0301d1fe0b00f9f65702a9f44f03a9080040f9f503012af30300aa08e946f9",
+      "unchanged": true
+    },
+    "EVENT235": {
+      "offset": "0x8162d4",
+      "base_hex": "fe0f1ff8080040f908e946f900013fd6800000b4080040f908dd45f900013fd6",
+      "p41_hex": "fe0f1ff8080040f908e946f900013fd6800000b4080040f908dd45f900013fd6",
+      "unchanged": true
+    },
+    "EVENT236": {
+      "offset": "0x816300",
+      "base_hex": "fe0f1ff8080040f908e946f900013fd6800000b4080040f908e145f900013fd6",
+      "p41_hex": "fe0f1ff8080040f908e946f900013fd6800000b4080040f908e145f900013fd6",
+      "unchanged": true
+    }
+  },
+  "all_hook_boundaries_unchanged": true,
+  "condition_main_report": "P41A_CONDITION_MAIN_AUDIT.json"
+}

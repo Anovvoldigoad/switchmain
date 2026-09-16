@@ -1,5 +1,5 @@
 #pragma once
 
 namespace nsc {
-void InstallP40AStateTrace();
+void InstallP41AEvent121SelfTrace();
 }

@@ -1,0 +1,35 @@
+P41A STATIC AUDIT — CONDITION517 SPLIT BANK + EVENT121 SELF
+==============================================================
+Parent main SHA256: 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+Generated P41 main SHA256: 407ff7247a2c70941c05eb2cdfbd65a2a25fffc247845274b096ed0b5aee6ae7
+
+P40 runtime evidence:
+- victim-UJ PASS, StageMove PASS, awakening FAIL, Kamui FAIL.
+- EVT13_AWAKE=0, OUGI_CORE=0.
+- SW_MTOB_XH Event121 p2=1 traffic is live.
+
+Condition-main port is derived from the historical hardware-stable R3/R9A native split-bank architecture, not the rejected contiguous-manager redirect.
+Exact included classes of change:
+- 512 -> 517 verified count/name-search immediates;
+- split-bank getter at 0x754A74..0x754A98 with max manager index 516;
+- data segment extends into old BSS only far enough to include native high bank 0x21616C8;
+- BSS shrinks by the same amount so total mapped data+BSS is unchanged;
+- five native condition descriptors + current MTOB names;
+- 36-byte DT_INIT name-pointer relocator only.
+
+Explicitly excluded historical main changes:
+- 0x6CBF74 unrelated legacy delta;
+- 0x7E1404/08 Ougi changes;
+- legacy char enumeration/max patches;
+- 0x887A64 / 0x887B44;
+- old Event236 relocation and 0x12F5FF4 trampoline.
+
+Event121 source parity:
+- native 0x8134F8 targets GetEnemy(actor);
+- UltimateStormAPI event+0x26 == 1 selects SELF;
+- P41 custom SELF branch uses native 0x7630FC / 0x777758 / 0x776014;
+- resolved index <=0 fails closed; no native enemy fallback for a SELF event;
+- p2 !=1 remains Orig; vanilla <=280 remains Orig.
+
+O14 is deliberately P38A shadow. P40 +0x12A24 full parity is not claimed.
+No MTOB->2TOB alias. No donor/281/COND_2DNZ gameplay mapping. No awakening/Ougi force.
