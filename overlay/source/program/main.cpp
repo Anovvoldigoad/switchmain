@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP36LifecycleTrace();
+    nsc::InstallP37AVisibilityShadowAB();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P36 stage victim lifecycle trace exception");
+    EXL_ABORT("NSC P37A O12 visibility shadow A/B exception");
 }

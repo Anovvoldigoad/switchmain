@@ -1,0 +1,30 @@
+P37A STATIC AUDIT
+=================
+parent=P36 compiled/runtime-tested source baseline
+restore_main_sha256=2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+main_changed_vs_P36=False
+CPK_changed=False
+RomFS_changed=False
+character_specific_gameplay_hardcode=False
+vanilla_event236_behavior=unchanged for charID<=280
+custom_event236_guard=281..0xFFF generic
+
+P36 lifecycle fingerprints inherited on the identical restore main:
+EVENT235 off=0x8162D4 match=True words=F81F0FFE F9400008 F946E908 D63F0100 B4000080 F9400008 F945DD08 D63F0100
+STAGE_HANDLE off=0x6E8EB0 match=True words=F81E0FFE A9014FF4 9000D334 F944C694 2A0003F3 F9400280 97FFE41A F000D2C8
+FIX_CHAR off=0x48E40C match=True words=A9BD5FFE A90157F6 A9024FF4 AA0003F3 2A1F03F4 52800028 52848C16 72A00036
+POST_STAGE off=0x48E61C match=True words=A9BF4FFE 2A1F03E0 2A1F03E1 940FC6CA B4000100 52800021 AA0003F3 940BC56F
+EVENT236 off=0x816300 expected=F81F0FFE F9400008 F946E908 D63F0100 B4000080 F9400008 F945E108 D63F0100
+
+ONE gameplay-semantic delta vs P36:
+- custom Event236 opcode 12 no longer calls actor vtable visibility method.
+- opcode 12 returns success as a shadow/no-op and emits VIS_SHADOW.
+- O2/O3/O4/O8/O13/O14/O15/O22/O23 semantics remain source-identical to P36.
+- other unproven custom opcodes remain shadow/no-op as in P36.
+
+host_cpp_syntax_check=PASS
+P36_runtime_log_sha256=b00982d87f216d76ae75d2591ee51e15f6f195b3781fe43b3413e1e080ef53a8
+P36_FILE_OPEN_result0=0
+P36_PROCESS_status5=0
+P36_PROCESS_readerr1=0
+P36_fingerprint_FAIL=0
