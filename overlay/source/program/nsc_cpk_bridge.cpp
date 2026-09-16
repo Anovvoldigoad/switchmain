@@ -42,16 +42,31 @@ std::atomic<uint32_t> g_extra_bind_once{0};
 std::atomic<uint32_t> g_char_logs{0};
 std::atomic<uint32_t> g_request_logs{0};
 std::atomic<uint32_t> g_create_logs{0};
-std::atomic<uint32_t> g_status_logs{0};
+std::atomic<uint32_t> g_status_transition_logs{0};
 std::atomic<uint32_t> g_chunk_logs{0};
+std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
+std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
 uint32_t g_tracked_count = 0;
+
+struct StatusEntry {
+    char path[256];
+    uint32_t last_status;
+};
+StatusEntry g_status_entries[128]{};
+uint32_t g_status_entry_count = 0;
 
 class TrackLock {
 public:
     TrackLock() { while (g_track_lock.test_and_set(std::memory_order_acquire)) {} }
     ~TrackLock() { g_track_lock.clear(std::memory_order_release); }
+};
+
+class StatusLock {
+public:
+    StatusLock() { while (g_status_lock.test_and_set(std::memory_order_acquire)) {} }
+    ~StatusLock() { g_status_lock.clear(std::memory_order_release); }
 };
 
 bool StartsWith(const char* s, const char* prefix) {
@@ -69,6 +84,24 @@ bool BoundedEqual(const char* a, const char* b, size_t limit = 15) {
         if (a[i] == '\0') return true;
     }
     return false;
+}
+
+bool PathEqual(const char* a, const char* b, size_t limit = 255) {
+    if (!a || !b) return false;
+    for (size_t i = 0; i < limit; ++i) {
+        if (a[i] != b[i]) return false;
+        if (a[i] == '\0') return true;
+    }
+    return false;
+}
+
+void CopyPath(char* dst, size_t dst_size, const char* src) {
+    if (!dst || !dst_size) return;
+    size_t i = 0;
+    if (src) {
+        for (; i + 1 < dst_size && src[i]; ++i) dst[i] = src[i];
+    }
+    dst[i] = '\0';
 }
 
 bool BoundedContains(const char* haystack, const char* needle, size_t hay_max = 512, size_t needle_max = 32) {
@@ -109,7 +142,7 @@ bool PathContainsTrackedCustom(const char* path) {
 
 bool IsInterestingPath(const char* path) {
     if (!path || !*path) return false;
-    // P30 intentionally broadens P29: trace every file path containing a discovered
+    // P31 preserves P30: trace every file path containing a discovered
     // custom characode, not just the parent prm_load manifest.
     if (PathContainsTrackedCustom(path)) return true;
     // Fixture fallback only, for ordering before ID281 has been observed.
@@ -138,7 +171,7 @@ bool MatchWords(ptrdiff_t offset, const uint32_t (&expected)[N]) {
 void LogFingerprintFail(const char* name, ptrdiff_t offset) {
     const auto base = exl::util::modules::GetTargetStart();
     const auto actual = *reinterpret_cast<const volatile uint32_t*>(base + offset);
-    Logging.Log("[NSC:P30] fingerprint FAIL %s off=0x%lx word0=%08x", name,
+    Logging.Log("[NSC:P31] fingerprint FAIL %s off=0x%lx word0=%08x", name,
                 static_cast<unsigned long>(offset), actual);
 }
 
@@ -155,7 +188,7 @@ HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
         CpkPathArg extra{kModCpkPath, 0, 0, 0};
         uint32_t extra_bind_id = 0;
         const uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
-        Logging.Log("[NSC:P30] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
+        Logging.Log("[NSC:P31] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
                     kModCpkPath, kModCpkPriority, extra_result, extra_bind_id);
         return original_result;
     }
@@ -166,7 +199,7 @@ HOOK_DEFINE_TRAMPOLINE(CharacodeGetterHook) {
         const char* result = Orig(id);
         if (id > kVanillaMaxCharId && result && *result) TrackCustomCode(id, result);
         if (id >= kFirstCustomCharId && g_char_logs.fetch_add(1, std::memory_order_relaxed) < 96) {
-            Logging.Log("[NSC:P30] CHAR id=%u result=%p code=%s", id,
+            Logging.Log("[NSC:P31] CHAR id=%u result=%p code=%s", id,
                         static_cast<const void*>(result), result ? result : "<null>");
         }
         return result;
@@ -180,7 +213,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
         void* result = Orig(manager, path, options);
         if (IsInterestingPath(path) &&
             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:P30] LOAD_REQ manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:P31] LOAD_REQ manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -193,7 +226,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
         void* result = Orig(manager, path, options);
         if (IsInterestingPath(path) &&
             g_create_logs.fetch_add(1, std::memory_order_relaxed) < 128) {
-            Logging.Log("[NSC:P30] LOAD_CREATE manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:P31] LOAD_CREATE manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -202,13 +235,53 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
 
 // Signature proven by 0x11617CC -> 0x1207EFC: x0=manager, x1=path.
 // 0x1207EFC returns 4 itself when the path is absent from nuccFileLoadList.
+// P31 logs only the first observed status for each custom path and subsequent
+// status transitions. This prevents one repeatedly-polled failure from consuming
+// the entire trace budget before later prm_load children are reached.
 HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
     static uint32_t Callback(void* manager, const char* path) {
         const uint32_t status = Orig(manager, path);
-        if (IsInterestingPath(path) &&
-            g_status_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:P30] LOAD_STATUS manager=%p path=%s status=%u",
-                        manager, path ? path : "<null>", status);
+        if (!IsInterestingPath(path)) return status;
+
+        bool should_log = false;
+        bool first = false;
+        uint32_t previous = 0xFFFFFFFFu;
+        bool overflow = false;
+        {
+            StatusLock lock;
+            uint32_t i = 0;
+            for (; i < g_status_entry_count; ++i) {
+                if (PathEqual(g_status_entries[i].path, path)) break;
+            }
+            if (i < g_status_entry_count) {
+                previous = g_status_entries[i].last_status;
+                if (previous != status) {
+                    g_status_entries[i].last_status = status;
+                    should_log = true;
+                }
+            } else if (g_status_entry_count < (sizeof(g_status_entries) / sizeof(g_status_entries[0]))) {
+                auto& entry = g_status_entries[g_status_entry_count++];
+                CopyPath(entry.path, sizeof(entry.path), path);
+                entry.last_status = status;
+                first = true;
+                should_log = true;
+            } else {
+                overflow = true;
+            }
+        }
+
+        if (overflow) {
+            uint32_t expected = 0;
+            if (g_status_overflow_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
+                Logging.Log("[NSC:P31] STATUS_TABLE_OVERFLOW max=%u",
+                            static_cast<unsigned>(sizeof(g_status_entries) / sizeof(g_status_entries[0])));
+            }
+        }
+
+        if (should_log &&
+            g_status_transition_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
+            Logging.Log("[NSC:P31] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
+                        manager, path ? path : "<null>", first ? 1u : 0u, previous, status);
         }
         return status;
     }
@@ -222,7 +295,7 @@ HOOK_DEFINE_TRAMPOLINE(ChunkBinaryHook) {
         void* result = Orig(full_path, key);
         if (IsInterestingChunk(full_path, key) &&
             g_chunk_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:P30] CHUNK path=%s key=%s result=%p",
+            Logging.Log("[NSC:P31] CHUNK path=%s key=%s result=%p",
                         full_path ? full_path : "<null>",
                         key ? key : "<null>", result);
         }
@@ -292,10 +365,10 @@ bool InstallTraceHooks() {
 
 } // namespace
 
-void InstallP30Trace() {
+void InstallP31Trace() {
     const bool cpk = InstallCpkBridge();
     const bool trace = InstallTraceHooks();
-    Logging.Log("[NSC:P30] READY cpk=%d trace=%d req=0x%lx create=0x%lx status=0x%lx chunk=0x%lx",
+    Logging.Log("[NSC:P31] READY cpk=%d trace=%d req=0x%lx create=0x%lx status=0x%lx chunk=0x%lx",
                 cpk ? 1 : 0, trace ? 1 : 0,
                 static_cast<unsigned long>(kFileLoadRequestOffset),
                 static_cast<unsigned long>(kFileLoadCreateOffset),
