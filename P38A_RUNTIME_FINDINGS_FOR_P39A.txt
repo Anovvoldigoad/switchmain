@@ -1,0 +1,25 @@
+P38A HARDWARE / LOG FINDINGS USED TO DESIGN P39A
+=================================================
+Hardware report:
+- Naruto slot1 enemy UJ: PASS, Tobi does not disappear.
+- Isshiki enemy UJ: PASS.
+- Naruto Sage enemy UJ: PASS.
+- Kakashi enemy UJ with stage-changing cinematic: PASS.
+- Tobi own Kamui still captures/stalls without normal cinematic handoff.
+- Tobi awakening still unavailable.
+
+P38A vs P37A:
+- P37A shadows O12 only and still fails Naruto slot1 + Isshiki.
+- P38A keeps O12 shadowed and additionally shadows O14.
+- This is the only new gameplay delta, so old O14 handling is causally implicated.
+
+Fresh uzuy_log(19):
+- READY confirms P38A cpk=1 trace=1 lifecycle=1 event236=1 vis12_shadow=1 ctrl14_shadow=1.
+- CTRL14_SHADOW count: 233.
+- all O14 p2 values: 0.
+- O14 p3 selector counts:
+  0:20 1:20 2:20 3:20 4:20
+  6:19 10:19 11:19 12:19 13:19 18:19 19:19
+- selector15 count: 0.
+- therefore the current run never asks O14 to enable awakening.
+- no custom FILE_OPEN result=0, PROCESS status=5, or PROCESS readerr=1 found.

@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP38AControl14ShadowAB();
+    nsc::InstallP40AStateTrace();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P38A O14 control shadow A/B exception");
+    EXL_ABORT("NSC P40A state trace exception");
 }

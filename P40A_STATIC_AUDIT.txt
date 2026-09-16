@@ -1,0 +1,40 @@
+P40A STATIC AUDIT
+=================
+Parent gameplay baseline: P39A O14 actor-local parity candidate.
+P40A introduces NO new gameplay mutation relative to P39A.
+
+Inherited gameplay semantics:
+- O14 me_enable_control candidate = actor-local control block +0x12A24, enable=1.
+- O12 visibility stays shadow/no-op.
+- O15 disable_control stays shadow/no-op.
+- O2 StageMove, O3, O4, O8, O13, O22, O23 unchanged.
+- valid unported custom Event236 opcodes shadow/no-op.
+- vanilla charID <=280 remains native; custom route is generic >280 && <0x1000.
+
+New read-only trace boundaries:
+1) Event13 native callback main+0x810614
+   - exact v1.70 relocation slot 0x2077A80 -> addend 0x810614
+   - traces custom actor identity, actor+0x12A0 gate, candidate ctrl15 flag,
+     actor+0x10F80 condition owner, and native return.
+2) Event121 ME_ADD_CONDITION_PARAM main+0x8134F8
+   - exact relocation slot 0x20784A0 -> addend 0x8134F8
+   - traces exact condition event text and parameters after calling native once.
+3) Ougi/UJ state core main+0x7E0F58
+   - unique direct BL callsite in v1.70 text: main+0x488BBC from entry 0x488BAC.
+   - traces mode and actor state +0xEA0/+0xEA4/+0xEA8 and +0x1238 pointer.
+   - the historical 0x7E13E4 and 0x7E1404 sites are inside this function.
+
+Fingerprints are matched against bundled restore main SHA256
+2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
+See P40A_NATIVE_BOUNDARY_AUDIT.json.
+
+Focused Event236 tracing:
+- P40A logs every valid custom opcode 1..29 (cap 2048) so one pure Kamui
+  attempt can be reconstructed without preselecting an opcode.
+
+Decision logic:
+- victim-UJ PASS + CTRL14_DIRECT boolean old/wrote values => P39/P40 O14 parity candidate survives.
+- awakening attempt with no EVT13_AWAKE => failure occurs before native awake-condition event.
+- EVT13_AWAKE present but no relevant EVT121_COND => branch between awake-condition and condition-name path.
+- EVT121_COND with MTOB names that native cannot resolve => next build can implement generic compiler-data alias bridge.
+- Kamui OUGI_CORE + complete EVT236 sequence identifies the exact state/op boundary before any further mutation.

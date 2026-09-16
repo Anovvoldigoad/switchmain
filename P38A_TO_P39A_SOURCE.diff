@@ -1,0 +1,320 @@
+--- /mnt/data/P38KIT/P38A_BUILD_KIT/overlay/source/program/nsc_cpk_bridge.cpp	2026-09-16 09:55:05.000000000 +0000
++++ /mnt/data/P39A_BUILD_KIT/overlay/source/program/nsc_cpk_bridge.cpp	2026-09-16 10:37:31.841844480 +0000
+@@ -31,7 +31,10 @@
+ constexpr ptrdiff_t kHandleStageChangeOffset   = 0x6E8EB0;
+ constexpr ptrdiff_t kFixCharPositionOffset     = 0x48E40C;
+ constexpr ptrdiff_t kPostStageOffset            = 0x48E61C;
+-constexpr ptrdiff_t kEnableControlOffset        = 0x751134;
++// Actor-local MovesetPlus control block recovered for Switch v1.70.
++// PC SC1.70 uses +0x12A34; established PC->Switch player layout shift is -0x10
++// in this region, and historical Switch direct-control helper used +0x12A24.
++constexpr ptrdiff_t kControlBlockOffset         = 0x12A24;
+ constexpr ptrdiff_t kActionPreOffset            = 0x7A8438;
+ constexpr ptrdiff_t kActionEntryLookupOffset    = 0x3F5560;
+ constexpr ptrdiff_t kActionNameCompareOffset    = 0x12F36E0;
+@@ -249,6 +252,76 @@
+     return fn ? fn(actor) : nullptr;
+ }
+ 
++bool ControlRelativeOffset(int16_t control, uint32_t& out) {
++    switch (control) {
++        case 0:  out = 0x00; return true; // PL_ANM_ATK
++        case 19: out = 0x04; return true; // PL_ANM_ATK_FAR / _ANOTHER
++        case 1:  out = 0x08; return true; // Ultimate Jutsu
++        case 2:  out = 0x10; return true; // Jutsus
++        case 3:  out = 0x18; return true; // projectile land/attack
++        case 18: out = 0x1C; return true; // chakra projectile land
++        case 4:  out = 0x20; return true; // grab
++        case 5:  out = 0x24; return true; // substitution
++        case 6:  out = 0x28; return true; // guard
++        case 7:  out = 0x2C; return true; // chakra load
++        case 8:  out = 0x30; return true; // movement + chakra
++        case 9:  out = 0x34; return true; // jump
++        case 10: out = 0x38; return true; // ninja movement
++        case 11: out = 0x3C; return true; // air dash
++        case 12: out = 0x40; return true; // land dash
++        case 13: out = 0x44; return true; // D-pad items
++        case 14: out = 0x48; return true; // leader switch
++        case 15: out = 0x4C; return true; // awakening
++        case 16: out = 0x50; return true; // supports
++        case 17: out = 0x58; return true; // counter attack
++        default: return false;
++    }
++}
++
++struct ControlWriteResult {
++    void* target;
++    bool valid;
++    bool wrote;
++    uint32_t relative;
++    int32_t old_value;
++};
++
++ControlWriteResult EnableControlActorLocal(void* actor, int16_t enemy, int16_t control) {
++    ControlWriteResult r{nullptr, false, false, 0, 0};
++    void* target = GetEventTargetActor(actor, enemy);
++    r.target = target;
++    if (!target) return r;
++
++    uint32_t relative = 0;
++    if (!ControlRelativeOffset(control, relative)) return r;
++    r.valid = true;
++    r.relative = relative;
++
++    auto* field = reinterpret_cast<volatile int32_t*>(
++        reinterpret_cast<uint8_t*>(target) + kControlBlockOffset + relative);
++    const int32_t old = *field;
++    r.old_value = old;
++
++    // Fail closed if this does not look like the expected boolean control block.
++    // This keeps P39A from corrupting an unrelated structure if the candidate
++    // base is wrong on hardware.
++    if (old == 0 || old == 1) {
++        *field = 1;
++        r.wrote = true;
++    }
++
++    // Preserve the literal PC SC1.70 source fall-through for selector 19:
++    // enabling far-attack also reaches case 1 and enables Ultimate Jutsu.
++    if (control == 19) {
++        auto* uj = reinterpret_cast<volatile int32_t*>(
++            reinterpret_cast<uint8_t*>(target) + kControlBlockOffset + 0x08);
++        const int32_t old_uj = *uj;
++        if (old_uj == 0 || old_uj == 1) *uj = 1;
++    }
++
++    return r;
++}
++
+ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
+     const uintptr_t base = exl::util::modules::GetTargetStart();
+     uint32_t stage_crc = 0;
+@@ -321,14 +394,14 @@
+     if (!found) {
+         char text[31]{};
+         CopyEventText(text, event);
+-        Logging.Log("[NSC:P38A] ACTION actor=%p target=%p mode=%u text=%s found=0",
++        Logging.Log("[NSC:P39A] ACTION actor=%p target=%p mode=%u text=%s found=0",
+                     actor, target, action_mode ? 1u : 0u, text);
+         return 1;
+     }
+ 
+     char text[31]{};
+     CopyEventText(text, event);
+-    Logging.Log("[NSC:P38A] ACTION actor=%p target=%p mode=%u text=%s found=1 index=%u",
++    Logging.Log("[NSC:P39A] ACTION actor=%p target=%p mode=%u text=%s found=1 index=%u",
+                 actor, target, action_mode ? 1u : 0u, text, index);
+ 
+     using PlayFn = void (*)(void*, int32_t, int32_t, int32_t, int32_t, int32_t, float);
+@@ -350,7 +423,7 @@
+ void LogFingerprintFail(const char* name, ptrdiff_t offset) {
+     const auto base = exl::util::modules::GetTargetStart();
+     const auto actual = *reinterpret_cast<const volatile uint32_t*>(base + offset);
+-    Logging.Log("[NSC:P38A] fingerprint FAIL %s off=0x%lx word0=%08x", name,
++    Logging.Log("[NSC:P39A] fingerprint FAIL %s off=0x%lx word0=%08x", name,
+                 static_cast<unsigned long>(offset), actual);
+ }
+ 
+@@ -367,7 +440,7 @@
+         CpkPathArg extra{kModCpkPath, 0, 0, 0};
+         uint32_t extra_bind_id = 0;
+         const uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
+-        Logging.Log("[NSC:P38A] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
++        Logging.Log("[NSC:P39A] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
+                     kModCpkPath, kModCpkPriority, extra_result, extra_bind_id);
+         return original_result;
+     }
+@@ -378,7 +451,7 @@
+         const char* result = Orig(id);
+         if (id > kVanillaMaxCharId && result && *result) TrackCustomCode(id, result);
+         if (id >= kFirstCustomCharId && g_char_logs.fetch_add(1, std::memory_order_relaxed) < 96) {
+-            Logging.Log("[NSC:P38A] CHAR id=%u result=%p code=%s", id,
++            Logging.Log("[NSC:P39A] CHAR id=%u result=%p code=%s", id,
+                         static_cast<const void*>(result), result ? result : "<null>");
+         }
+         return result;
+@@ -392,7 +465,7 @@
+         void* result = Orig(manager, path, options);
+         if (IsInterestingPath(path) &&
+             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
+-            Logging.Log("[NSC:P38A] LOAD_REQ manager=%p path=%s options=%p result=%p",
++            Logging.Log("[NSC:P39A] LOAD_REQ manager=%p path=%s options=%p result=%p",
+                         manager, path ? path : "<null>", options, result);
+         }
+         return result;
+@@ -405,7 +478,7 @@
+         void* result = Orig(manager, path, options);
+         if (IsInterestingPath(path) &&
+             g_create_logs.fetch_add(1, std::memory_order_relaxed) < 128) {
+-            Logging.Log("[NSC:P38A] LOAD_CREATE manager=%p path=%s options=%p result=%p",
++            Logging.Log("[NSC:P39A] LOAD_CREATE manager=%p path=%s options=%p result=%p",
+                         manager, path ? path : "<null>", options, result);
+         }
+         return result;
+@@ -452,14 +525,14 @@
+         if (overflow) {
+             uint32_t expected = 0;
+             if (g_status_overflow_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
+-                Logging.Log("[NSC:P38A] STATUS_TABLE_OVERFLOW max=%u",
++                Logging.Log("[NSC:P39A] STATUS_TABLE_OVERFLOW max=%u",
+                             static_cast<unsigned>(sizeof(g_status_entries) / sizeof(g_status_entries[0])));
+             }
+         }
+ 
+         if (should_log &&
+             g_status_transition_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
+-            Logging.Log("[NSC:P38A] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
++            Logging.Log("[NSC:P39A] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
+                         manager, path ? path : "<null>", first ? 1u : 0u, previous, status);
+         }
+         return status;
+@@ -474,7 +547,7 @@
+         void* result = Orig(full_path, key);
+         if (IsInterestingChunk(full_path, key) &&
+             g_chunk_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
+-            Logging.Log("[NSC:P38A] CHUNK path=%s key=%s result=%p",
++            Logging.Log("[NSC:P39A] CHUNK path=%s key=%s result=%p",
+                         full_path ? full_path : "<null>",
+                         key ? key : "<null>", result);
+         }
+@@ -492,7 +565,7 @@
+         const uint32_t result = Orig(request, path, slot);
+         if (IsInterestingPath(path) &&
+             g_file_open_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
+-            Logging.Log("[NSC:P38A] FILE_OPEN request=%p path=%s slot=%u result=%u",
++            Logging.Log("[NSC:P39A] FILE_OPEN request=%p path=%s slot=%u result=%u",
+                         request, path ? path : "<null>", slot, result);
+         }
+         return result;
+@@ -531,14 +604,14 @@
+             read_error = *p;
+         }
+ 
+-        Logging.Log("[NSC:P38A] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
++        Logging.Log("[NSC:P39A] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
+                     path ? path : "<null>", owner, read_context, load_object,
+                     load_status, read_error);
+     }
+ };
+ 
+ 
+-// P38A: focused stage/cinematic victim-lifecycle trace. These wrappers are
++// P39A: focused stage/cinematic victim-lifecycle trace inherited from P36. These wrappers are
+ // read-only: they log native boundaries and return/call Orig unchanged.
+ HOOK_DEFINE_TRAMPOLINE(Event235Hook) {
+     static uint32_t Callback(void* actor, void* event_ptr) {
+@@ -554,7 +627,7 @@
+         const uint32_t result = Orig(actor, event_ptr);
+         if (valid && char_id > kVanillaMaxCharId &&
+             g_event235_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
+-            Logging.Log("[NSC:P38A] EVT235_SHOW actor=%p side=%u char=%u op=%d p2=%d p3=%d ret=%u",
++            Logging.Log("[NSC:P39A] EVT235_SHOW actor=%p side=%u char=%u op=%d p2=%d p3=%d ret=%u",
+                         actor, side, char_id, static_cast<int>(op), static_cast<int>(p2),
+                         static_cast<int>(p3), result);
+         }
+@@ -565,9 +638,9 @@
+ HOOK_DEFINE_TRAMPOLINE(StageHandleHook) {
+     static void Callback(uint32_t stage_id) {
+         const uint32_t n = g_stage_handle_logs.fetch_add(1, std::memory_order_relaxed);
+-        if (n < 256) Logging.Log("[NSC:P38A] STAGE_HANDLE phase=0 stage=%u", stage_id);
++        if (n < 256) Logging.Log("[NSC:P39A] STAGE_HANDLE phase=0 stage=%u", stage_id);
+         Orig(stage_id);
+-        if (n < 256) Logging.Log("[NSC:P38A] STAGE_HANDLE phase=1 stage=%u", stage_id);
++        if (n < 256) Logging.Log("[NSC:P39A] STAGE_HANDLE phase=1 stage=%u", stage_id);
+     }
+ };
+ 
+@@ -577,14 +650,14 @@
+         const bool valid = ReadActorIdentity(actor, side, char_id);
+         const uint32_t n = g_fix_char_logs.fetch_add(1, std::memory_order_relaxed);
+         if (n < 384) {
+-            Logging.Log("[NSC:P38A] FIX_CHAR phase=0 actor=%p valid=%u side=%u char=%u",
++            Logging.Log("[NSC:P39A] FIX_CHAR phase=0 actor=%p valid=%u side=%u char=%u",
+                         actor, valid ? 1u : 0u, side, char_id);
+         }
+         Orig(actor);
+         if (n < 384) {
+             uint32_t side2 = 0xFFFFFFFFu, char2 = 0xFFFFFFFFu;
+             const bool valid2 = ReadActorIdentity(actor, side2, char2);
+-            Logging.Log("[NSC:P38A] FIX_CHAR phase=1 actor=%p valid=%u side=%u char=%u",
++            Logging.Log("[NSC:P39A] FIX_CHAR phase=1 actor=%p valid=%u side=%u char=%u",
+                         actor, valid2 ? 1u : 0u, side2, char2);
+         }
+     }
+@@ -593,13 +666,13 @@
+ HOOK_DEFINE_TRAMPOLINE(PostStageHook) {
+     static void Callback() {
+         const uint32_t n = g_post_stage_logs.fetch_add(1, std::memory_order_relaxed);
+-        if (n < 256) Logging.Log("[NSC:P38A] POST_STAGE phase=0");
++        if (n < 256) Logging.Log("[NSC:P39A] POST_STAGE phase=0");
+         Orig();
+-        if (n < 256) Logging.Log("[NSC:P38A] POST_STAGE phase=1");
++        if (n < 256) Logging.Log("[NSC:P39A] POST_STAGE phase=1");
+     }
+ };
+ 
+-// P38A: generic MovesetPlus event236 core inherited byte-for-source from P35A.
++// P39A: P38A-safe baseline plus actor-local O14 direct-control parity candidate.
+ // ME_ENEMY_DISP_OFF, but UltimateStormAPI uses event236 as an extension
+ // container with opcode at +0x24. Valid extension opcodes never fall back to
+ // native enemy-hide; unported operations are intentionally shadow/no-op.
+@@ -628,7 +701,7 @@
+             g_event236_logs.fetch_add(1, std::memory_order_relaxed) < 768) {
+             char text[31]{};
+             CopyEventText(text, event);
+-            Logging.Log("[NSC:P38A] EVT236 actor=%p side=%u char=%u op=%d p2=%d p3=%d p4bits=%08x text=%s",
++            Logging.Log("[NSC:P39A] EVT236 actor=%p side=%u char=%u op=%d p2=%d p3=%d p4bits=%08x text=%s",
+                         actor, side, char_id, static_cast<int>(op), static_cast<int>(p2),
+                         static_cast<int>(p3), FloatBits(p4), text);
+         }
+@@ -664,12 +737,12 @@
+                 return 1;
+             }
+ 
+-            case 12: { // P38A inherited A/B: shadow source me_SetPlayerVisibility only
++            case 12: { // P39A inherited A/B: shadow source me_SetPlayerVisibility only
+                 // P34A (all event236 no-op) made victim-UJ restore normal, while
+                 // P35A/P36 re-enabled O12/O14/... and conditional disappearance returned.
+-                // Do NOT mutate visibility in this build; O14 is independently shadowed below for P38A.
++                // Do NOT mutate visibility in this build; O14 is independently shadowed below for P39A.
+                 if (g_event235_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
+-                    Logging.Log("[NSC:P38A] VIS_SHADOW actor=%p side=%u char=%u p2=%d",
++                    Logging.Log("[NSC:P39A] VIS_SHADOW actor=%p side=%u char=%u p2=%d",
+                                 actor, side, char_id, static_cast<int>(p2));
+                 }
+                 return 1;
+@@ -679,13 +752,13 @@
+                 *reinterpret_cast<volatile int32_t*>(reinterpret_cast<uint8_t*>(actor) + 0xF30) = p2;
+                 return 1;
+ 
+-            case 14: { // P38A causal A/B: shadow source me_enable_control only
+-                // P37A proved O12 visibility is not sufficient/necessary for the
+-                // conditional victim-UJ disappearance. Keep O12 shadowed and now
+-                // suppress only the next live handler relative to P37A: O14.
++            case 14: { // P39A: actor-local me_enable_control source parity candidate
++                const auto wr = EnableControlActorLocal(actor, p2, p3);
+                 if (g_event235_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
+-                    Logging.Log("[NSC:P38A] CTRL14_SHADOW actor=%p side=%u char=%u p2=%d p3=%d",
+-                                actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3));
++                    Logging.Log("[NSC:P39A] CTRL14_DIRECT actor=%p target=%p side=%u char=%u p2=%d p3=%d rel=%03x old=%d wrote=%u",
++                                actor, wr.target, side, char_id, static_cast<int>(p2),
++                                static_cast<int>(p3), wr.relative, wr.old_value,
++                                wr.wrote ? 1u : 0u);
+                 }
+                 return 1;
+             }
+@@ -839,12 +912,12 @@
+ 
+ } // namespace
+ 
+-void InstallP38AControl14ShadowAB() {
++void InstallP39AControl14DirectAB() {
+     const bool cpk = InstallCpkBridge();
+     const bool trace = InstallTraceHooks();
+     const bool lifecycle = InstallLifecycleTrace();
+     const bool event236 = InstallEvent236Dispatcher();
+-    Logging.Log("[NSC:P38A] READY cpk=%d trace=%d lifecycle=%d event236=%d vis12_shadow=1 ctrl14_shadow=1 evt235=0x%lx evt236=0x%lx stage=0x%lx fix=0x%lx post=0x%lx",
++    Logging.Log("[NSC:P39A] READY cpk=%d trace=%d lifecycle=%d event236=%d vis12_shadow=1 ctrl14_direct=1 control_base=0x12a24 evt235=0x%lx evt236=0x%lx stage=0x%lx fix=0x%lx post=0x%lx",
+                 cpk ? 1 : 0, trace ? 1 : 0, lifecycle ? 1 : 0, event236 ? 1 : 0,
+                 static_cast<unsigned long>(kEvent235Offset),
+                 static_cast<unsigned long>(kEvent236Offset),

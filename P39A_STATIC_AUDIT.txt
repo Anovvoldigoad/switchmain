@@ -1,0 +1,56 @@
+P39A STATIC AUDIT
+=================
+Parent: P38A HARD-PASS diagnostic baseline.
+
+P38A hardware:
+- Naruto slot1 victim-UJ PASS
+- Isshiki victim-UJ PASS
+- Naruto Sage victim-UJ PASS
+- Kakashi stage-cinematic victim-UJ PASS
+- Tobi own Kamui still incomplete
+- Tobi awakening still unavailable
+
+Causal chain:
+- P37A: O12 visibility shadow only -> Naruto slot1 / Isshiki still FAIL.
+- P38A: O12 shadow + O14 shadow -> victim-UJ PASS.
+=> old O14 implementation is causally implicated under this baseline.
+
+Semantic correction:
+OLD P35/P37 O14:
+  main+0x751134(p3)
+  actor ignored
+  p2 ignored
+
+P39A O14:
+  target = self when p2=0; enemy actor when p2=1
+  base = target + 0x12A24
+  field selected by PC MovesetPlus control selector map
+  value written = 1 (enable)
+  fail closed unless existing field value is 0 or 1
+  selector19 preserves PC source fall-through and also enables UJ field +0x08
+
+Evidence for +0x12A24:
+- UltimateStormAPI PC SC1.70 uses +0x12A34.
+- Proven player-layout mappings in this region use PC->Switch -0x10.
+- Historical Switch full-port fp_direct_control independently used +0x12A24.
+- Historical fp_direct_control resolves self/enemy before field access.
+
+Inherited unchanged:
+- O12 shadow/no-op
+- O2 StageMove
+- O3 change_skill
+- O4 change_speed
+- O8 walk_speed
+- O13 dpad animation
+- O15 no-op
+- O22/O23 action routes
+- custom char gate >280 && <0x1000
+- vanilla <=280 native event236
+- P32 resource tracing / P36 lifecycle tracing
+- P33A Sorted=0 external CPK requirement
+
+No Tobi/281 gameplay hardcode introduced.
+
+Expected:
+PASS victim-UJ + CTRL14_DIRECT wrote=1 on boolean fields => actor-local O14 route validated.
+FAIL victim-UJ despite actor-local writes => inspect per-selector behavior/target; do not restore 0x751134.
