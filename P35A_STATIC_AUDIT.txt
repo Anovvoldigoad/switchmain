@@ -1,0 +1,44 @@
+NSC2Switch P35A static audit
+============================
+
+Parent runtime lineage
+- Restore main SHA256: 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+- Main Build ID: 48ECE454B61412B9FB46FAB2BE3F5EF7B2804F39
+- Keep P33A Sorted=0 CPK SHA256: e61bdb5faf60be186828769a1d064c98f0682ed02f39c6b9929eaab8e7ef69b7
+
+Event236 native fingerprint @ main+0x816300
+F81F0FFE F9400008 F946E908 D63F0100 B4000080 F9400008 F945E108 D63F0100
+
+Native table facts
+- event235 slot 0x2078F50 -> 0x8162D4 ME_ENEMY_DISP_ON
+- event236 slot 0x2078F68 -> 0x816300 ME_ENEMY_DISP_OFF
+- event237 slot 0x2078F80 -> 0x81632C harmless success leaf
+
+P34A hardware conclusion
+- enemy visible: PASS
+- enemy hittable: PASS
+- Tobi as victim of enemy UJ: normal
+Therefore native event236 enemy-hide is causally proven for the prior disappearance/hit-state regression.
+
+P35A event236 policy
+- actor/event null or invalid -> exact native Orig
+- vanilla charID <=280 -> exact native Orig
+- custom charID 281..0xFFF + valid opcode 1..29 -> generic MovesetPlus dispatcher
+- known Switch-safe routes: 2,3,4,8,12,13,14,15,22,23
+- other valid opcodes -> shadow/no-op; never native enemy-hide
+- no Tobi/281 character-specific route
+
+Ported native offsets
+- Stage lookup 0xEC8A44
+- Stage specific 0x535F88
+- Stage default 0x53643C
+- HandleStageChange 0x6E8EB0
+- FixCharPosition 0x48E40C
+- PostStage 0x48E61C
+- enable_control 0x751134
+- op23 pre-action 0x7A8438
+- action entry lookup 0x3F5560
+- action name compare 0x12F36E0
+- play action 0x766B8C
+
+Host C++ syntax check: PASS (stubbed exlaunch interfaces; semantic build still requires devkitA64/CI).

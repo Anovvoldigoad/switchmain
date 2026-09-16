@@ -21,6 +21,23 @@ constexpr ptrdiff_t kFileLoadStatusOffset    = 0x1207EFC; // lookup path -> stat
 constexpr ptrdiff_t kChunkBinaryOffset        = 0x3EAE70;  // ccGetChunkBinary(full_path, key)
 constexpr ptrdiff_t kLoadRequestProcessOffset = 0x116F404; // nuccLoadRequest process/open/read path
 constexpr ptrdiff_t kFileOpenOffset           = 0x1170FB0; // low-level file open request; returns 1/0
+constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
+
+// Proven v1.70 native helpers used by the historical generic MovesetPlus event236 port.
+constexpr ptrdiff_t kStageObjectLookupOffset   = 0xEC8A44;
+constexpr ptrdiff_t kStageSpecificOffset       = 0x535F88;
+constexpr ptrdiff_t kStageDefaultOffset        = 0x53643C;
+constexpr ptrdiff_t kHandleStageChangeOffset   = 0x6E8EB0;
+constexpr ptrdiff_t kFixCharPositionOffset     = 0x48E40C;
+constexpr ptrdiff_t kPostStageOffset            = 0x48E61C;
+constexpr ptrdiff_t kEnableControlOffset        = 0x751134;
+constexpr ptrdiff_t kActionPreOffset            = 0x7A8438;
+constexpr ptrdiff_t kActionEntryLookupOffset    = 0x3F5560;
+constexpr ptrdiff_t kActionNameCompareOffset    = 0x12F36E0;
+constexpr ptrdiff_t kPlayActionOffset           = 0x766B8C;
+constexpr ptrdiff_t kStageGlobalOffset          = 0x2143648;
+constexpr ptrdiff_t kStageStateGlobalOffset     = 0x21434C0;
+constexpr ptrdiff_t kStageObjectNameOffset      = 0x1A1E84D;
 
 constexpr uint32_t kVanillaMaxCharId = 280;
 constexpr uint32_t kFirstCustomCharId = 281;
@@ -49,6 +66,7 @@ std::atomic<uint32_t> g_chunk_logs{0};
 std::atomic<uint32_t> g_process_logs{0};
 std::atomic<uint32_t> g_file_open_logs{0};
 std::atomic<uint32_t> g_status_overflow_once{0};
+std::atomic<uint32_t> g_event236_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -146,7 +164,7 @@ bool PathContainsTrackedCustom(const char* path) {
 
 bool IsInterestingPath(const char* path) {
     if (!path || !*path) return false;
-    // P32 preserves P31: trace every file path containing a discovered
+    // P35A preserves P31: trace every file path containing a discovered
     // custom characode, not just the parent prm_load manifest.
     if (PathContainsTrackedCustom(path)) return true;
     // Fixture fallback only, for ordering before ID281 has been observed.
@@ -162,6 +180,118 @@ bool IsInterestingChunk(const char* path, const char* key) {
     return false;
 }
 
+
+uint32_t FloatBits(float value) {
+    union { float f; uint32_t u; } v{value};
+    return v.u;
+}
+
+bool IsFiniteAbsLe16(float value) {
+    return (FloatBits(value) & 0x7FFFFFFFu) <= 0x41800000u; // |value| <= 16.0 and finite
+}
+
+uint32_t Crc30(const uint8_t* text) {
+    uint32_t crc = 0xFFFFFFFFu;
+    constexpr uint32_t poly = 0x04C11DB7u;
+    for (uint32_t i = 0; i < 30; ++i) {
+        const uint8_t c = text[i];
+        if (!c) break;
+        crc ^= static_cast<uint32_t>(c) << 24;
+        for (uint32_t bit = 0; bit < 8; ++bit) {
+            crc = (crc & 0x80000000u) ? ((crc << 1) ^ poly) : (crc << 1);
+        }
+    }
+    return ~crc;
+}
+
+void* GetEventTargetActor(void* actor, int16_t selector) {
+    if (!actor) return nullptr;
+    if (selector == 0) return actor;
+    if (selector != 1) return nullptr;
+    auto** vtable = *reinterpret_cast<void***>(actor);
+    if (!vtable) return nullptr;
+    using GetEnemyFn = void* (*)(void*);
+    auto fn = reinterpret_cast<GetEnemyFn>(vtable[0xDD0 / sizeof(void*)]);
+    return fn ? fn(actor) : nullptr;
+}
+
+uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
+    const uintptr_t base = exl::util::modules::GetTargetStart();
+    uint32_t stage_crc = 0;
+    if (param2 == 0) stage_crc = Crc30(event);
+
+    auto* stage_global = *reinterpret_cast<void**>(base + kStageGlobalOffset);
+    if (!stage_global) return 1;
+    auto* manager = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(stage_global) + 0x60);
+    if (!manager) return 1;
+
+    using LookupFn = void* (*)(void*, const char*);
+    auto lookup = reinterpret_cast<LookupFn>(base + kStageObjectLookupOffset);
+    auto* object = lookup(manager, reinterpret_cast<const char*>(base + kStageObjectNameOffset));
+    if (!object) return 1;
+    auto* object_inner = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(object) + 0x8);
+    if (!object_inner) return 1;
+    auto* stage_context = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(object_inner) + 0x10);
+    if (!stage_context) return 1;
+
+    if (param2 == 0) {
+        using SpecificFn = void (*)(void*, uint32_t);
+        reinterpret_cast<SpecificFn>(base + kStageSpecificOffset)(stage_context, stage_crc);
+    } else {
+        using DefaultFn = void (*)(void*);
+        reinterpret_cast<DefaultFn>(base + kStageDefaultOffset)(stage_context);
+    }
+
+    auto* stage_state_global = *reinterpret_cast<void**>(base + kStageStateGlobalOffset);
+    if (!stage_state_global) return 1;
+    auto* stage_state = *reinterpret_cast<void**>(stage_state_global);
+    if (!stage_state) return 1;
+    const uint32_t stage_id = *reinterpret_cast<volatile uint32_t*>(reinterpret_cast<uint8_t*>(stage_state) + 0x8);
+
+    using HandleFn = void (*)(uint32_t);
+    using ActorFn = void (*)(void*);
+    using VoidFn = void (*)();
+    reinterpret_cast<HandleFn>(base + kHandleStageChangeOffset)(stage_id);
+    reinterpret_cast<ActorFn>(base + kFixCharPositionOffset)(actor);
+    reinterpret_cast<VoidFn>(base + kPostStageOffset)();
+    return 1;
+}
+
+uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2,
+                               int16_t param3, bool action_mode) {
+    const uintptr_t base = exl::util::modules::GetTargetStart();
+    void* target = actor;
+    if (param2 == 1) target = GetEventTargetActor(actor, 1);
+    if (!target || event[0] == 0) return 1;
+
+    if (action_mode) {
+        using PreFn = void (*)(void*, int32_t);
+        reinterpret_cast<PreFn>(base + kActionPreOffset)(target, param3);
+    }
+
+    using EntryFn = void* (*)(uint32_t);
+    using CompareFn = uint32_t (*)(const void*, const void*);
+    auto entry_fn = reinterpret_cast<EntryFn>(base + kActionEntryLookupOffset);
+    auto compare_fn = reinterpret_cast<CompareFn>(base + kActionNameCompareOffset);
+
+    uint32_t index = 0;
+    bool found = false;
+    for (; index < 0x3F1; ++index) {
+        auto* candidate = reinterpret_cast<uint8_t*>(entry_fn(index));
+        if (!candidate) continue;
+        if (compare_fn(candidate, event) == 0 || compare_fn(candidate + 7, event) == 0) {
+            found = true;
+            break;
+        }
+    }
+    if (!found) return 1;
+
+    using PlayFn = void (*)(void*, int32_t, int32_t, int32_t, int32_t, int32_t, float);
+    reinterpret_cast<PlayFn>(base + kPlayActionOffset)(target, static_cast<int32_t>(index),
+                                                       -1, 0, 0, 0, 1.0f);
+    return 1;
+}
+
 template <size_t N>
 bool MatchWords(ptrdiff_t offset, const uint32_t (&expected)[N]) {
     const auto base = exl::util::modules::GetTargetStart();
@@ -175,7 +305,7 @@ bool MatchWords(ptrdiff_t offset, const uint32_t (&expected)[N]) {
 void LogFingerprintFail(const char* name, ptrdiff_t offset) {
     const auto base = exl::util::modules::GetTargetStart();
     const auto actual = *reinterpret_cast<const volatile uint32_t*>(base + offset);
-    Logging.Log("[NSC:P32] fingerprint FAIL %s off=0x%lx word0=%08x", name,
+    Logging.Log("[NSC:P35A] fingerprint FAIL %s off=0x%lx word0=%08x", name,
                 static_cast<unsigned long>(offset), actual);
 }
 
@@ -192,7 +322,7 @@ HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
         CpkPathArg extra{kModCpkPath, 0, 0, 0};
         uint32_t extra_bind_id = 0;
         const uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
-        Logging.Log("[NSC:P32] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
+        Logging.Log("[NSC:P35A] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
                     kModCpkPath, kModCpkPriority, extra_result, extra_bind_id);
         return original_result;
     }
@@ -203,7 +333,7 @@ HOOK_DEFINE_TRAMPOLINE(CharacodeGetterHook) {
         const char* result = Orig(id);
         if (id > kVanillaMaxCharId && result && *result) TrackCustomCode(id, result);
         if (id >= kFirstCustomCharId && g_char_logs.fetch_add(1, std::memory_order_relaxed) < 96) {
-            Logging.Log("[NSC:P32] CHAR id=%u result=%p code=%s", id,
+            Logging.Log("[NSC:P35A] CHAR id=%u result=%p code=%s", id,
                         static_cast<const void*>(result), result ? result : "<null>");
         }
         return result;
@@ -217,7 +347,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
         void* result = Orig(manager, path, options);
         if (IsInterestingPath(path) &&
             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:P32] LOAD_REQ manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:P35A] LOAD_REQ manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -230,7 +360,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
         void* result = Orig(manager, path, options);
         if (IsInterestingPath(path) &&
             g_create_logs.fetch_add(1, std::memory_order_relaxed) < 128) {
-            Logging.Log("[NSC:P32] LOAD_CREATE manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:P35A] LOAD_CREATE manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -239,7 +369,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
 
 // Signature proven by 0x11617CC -> 0x1207EFC: x0=manager, x1=path.
 // 0x1207EFC returns 4 itself when the path is absent from nuccFileLoadList.
-// P32 keeps the first observed status for each custom path and subsequent
+// P35A keeps the first observed status for each custom path and subsequent
 // status transitions. This prevents one repeatedly-polled failure from consuming
 // the entire trace budget before later prm_load children are reached.
 HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
@@ -277,14 +407,14 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
         if (overflow) {
             uint32_t expected = 0;
             if (g_status_overflow_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
-                Logging.Log("[NSC:P32] STATUS_TABLE_OVERFLOW max=%u",
+                Logging.Log("[NSC:P35A] STATUS_TABLE_OVERFLOW max=%u",
                             static_cast<unsigned>(sizeof(g_status_entries) / sizeof(g_status_entries[0])));
             }
         }
 
         if (should_log &&
             g_status_transition_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:P32] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
+            Logging.Log("[NSC:P35A] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
                         manager, path ? path : "<null>", first ? 1u : 0u, previous, status);
         }
         return status;
@@ -299,7 +429,7 @@ HOOK_DEFINE_TRAMPOLINE(ChunkBinaryHook) {
         void* result = Orig(full_path, key);
         if (IsInterestingChunk(full_path, key) &&
             g_chunk_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:P32] CHUNK path=%s key=%s result=%p",
+            Logging.Log("[NSC:P35A] CHUNK path=%s key=%s result=%p",
                         full_path ? full_path : "<null>",
                         key ? key : "<null>", result);
         }
@@ -317,7 +447,7 @@ HOOK_DEFINE_TRAMPOLINE(FileOpenHook) {
         const uint32_t result = Orig(request, path, slot);
         if (IsInterestingPath(path) &&
             g_file_open_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:P32] FILE_OPEN request=%p path=%s slot=%u result=%u",
+            Logging.Log("[NSC:P35A] FILE_OPEN request=%p path=%s slot=%u result=%u",
                         request, path ? path : "<null>", slot, result);
         }
         return result;
@@ -356,11 +486,125 @@ HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
             read_error = *p;
         }
 
-        Logging.Log("[NSC:P32] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
+        Logging.Log("[NSC:P35A] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
                     path ? path : "<null>", owner, read_context, load_object,
                     load_status, read_error);
     }
 };
+
+
+// P35A: generic MovesetPlus event236 core. Native Switch event236 is
+// ME_ENEMY_DISP_OFF, but UltimateStormAPI uses event236 as an extension
+// container with opcode at +0x24. Valid extension opcodes never fall back to
+// native enemy-hide; unported operations are intentionally shadow/no-op.
+HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
+    static uint32_t Callback(void* actor, void* event_ptr) {
+        if (!actor || !event_ptr) return Orig(actor, event_ptr);
+
+        auto* actor_bytes = reinterpret_cast<volatile uint8_t*>(actor);
+        const uint32_t side = *reinterpret_cast<volatile uint32_t*>(actor_bytes + 0xE50);
+        const uint32_t char_id = *reinterpret_cast<volatile uint32_t*>(actor_bytes + 0xE54);
+        auto* event = reinterpret_cast<const uint8_t*>(event_ptr);
+        const int16_t op = *reinterpret_cast<const int16_t*>(event + 0x24);
+        const int16_t p2 = *reinterpret_cast<const int16_t*>(event + 0x26);
+        const int16_t p3 = *reinterpret_cast<const int16_t*>(event + 0x28);
+        const float p4 = *reinterpret_cast<const float*>(event + 0x2C);
+
+        // Fail closed to exact native semantics for vanilla/non-custom actors or
+        // implausible event data. v1.70 vanilla max charID is proven as 280;
+        // custom compiler IDs begin at 281, so this remains generic for future mods.
+        if (side > 1 || char_id <= kVanillaMaxCharId || char_id >= 0x1000 ||
+            op < 1 || op > 29) {
+            return Orig(actor, event_ptr);
+        }
+
+        if (g_event236_logs.fetch_add(1, std::memory_order_relaxed) < 768) {
+            Logging.Log("[NSC:P35A] EVT236 actor=%p side=%u char=%u op=%d p2=%d p3=%d p4bits=%08x",
+                        actor, side, char_id, static_cast<int>(op), static_cast<int>(p2),
+                        static_cast<int>(p3), FloatBits(p4));
+        }
+
+        switch (op) {
+            case 2: // source me_test_switch_stage
+                return HandleStageMove(actor, event, p2);
+
+            case 3: { // source me_change_skill
+                if (p2 < 0 || p2 > 2 || p3 < 0 || p3 > 6) return 1;
+                auto* slot = reinterpret_cast<volatile uint32_t*>(
+                    reinterpret_cast<uint8_t*>(actor) + 0xE68 + static_cast<uint32_t>(p2) * 4);
+                const uint32_t current = *slot;
+                if (current <= 6) *slot = static_cast<uint32_t>(p3);
+                return 1;
+            }
+
+            case 4: { // source me_change_speed
+                if (p2 < 0 || p2 > 1 || !IsFiniteAbsLe16(p4)) return 1;
+                void* target = GetEventTargetActor(actor, p2);
+                if (!target) return 1;
+                auto* speed = reinterpret_cast<volatile float*>(reinterpret_cast<uint8_t*>(target) + 0x214);
+                const float old = *speed;
+                if (IsFiniteAbsLe16(old)) *speed = p4;
+                return 1;
+            }
+
+            case 8: { // source me_change_walk_speed
+                if (!IsFiniteAbsLe16(p4)) return 1;
+                auto* walk = reinterpret_cast<volatile float*>(reinterpret_cast<uint8_t*>(actor) + 0x10D34);
+                const float old = *walk;
+                if (IsFiniteAbsLe16(old)) *walk = p4;
+                return 1;
+            }
+
+            case 12: { // source me_SetPlayerVisibility
+                auto** vtable = *reinterpret_cast<void***>(actor);
+                if (!vtable) return 1;
+                using VisibilityFn = void (*)(void*);
+                const size_t index = (p2 != 0 ? 0xBC8 : 0xBD0) / sizeof(void*);
+                auto fn = reinterpret_cast<VisibilityFn>(vtable[index]);
+                if (fn) fn(actor);
+                return 1;
+            }
+
+            case 13: // source me_enable_dpad_animation
+                *reinterpret_cast<volatile int32_t*>(reinterpret_cast<uint8_t*>(actor) + 0xF30) = p2;
+                return 1;
+
+            case 14: { // source me_enable_control -- exact historical Switch route
+                using EnableFn = void (*)(int32_t);
+                reinterpret_cast<EnableFn>(exl::util::modules::GetTargetStart() + kEnableControlOffset)(p3);
+                return 1;
+            }
+
+            case 15:
+                // Historical safe Switch port intentionally treated disable_control as no-op.
+                return 1;
+
+            case 22: // source me_play_pl_anm
+                return HandleActionAnimation(actor, event, p2, p3, false);
+
+            case 23: // source me_play_action
+                return HandleActionAnimation(actor, event, p2, p3, true);
+
+            default:
+                // Valid MovesetPlus opcode but not yet Switch-proven: shadow/no-op.
+                // Critically, DO NOT call native ME_ENEMY_DISP_OFF here.
+                return 1;
+        }
+    }
+};
+
+bool InstallEvent236Dispatcher() {
+    static constexpr uint32_t kEvent236Expected[] = {
+        0xF81F0FFE, 0xF9400008, 0xF946E908, 0xD63F0100,
+        0xB4000080, 0xF9400008, 0xF945E108, 0xD63F0100,
+    };
+    if (!MatchWords(kEvent236Offset, kEvent236Expected)) {
+        LogFingerprintFail("EVENT236", kEvent236Offset);
+        return false;
+    }
+    Event236Hook::InstallAtOffset(kEvent236Offset);
+    return true;
+}
 
 bool InstallCpkBridge() {
     static constexpr uint32_t kExpected[] = {
@@ -440,16 +684,15 @@ bool InstallTraceHooks() {
 
 } // namespace
 
-void InstallP32Trace() {
+void InstallP35ADispatcher() {
     const bool cpk = InstallCpkBridge();
     const bool trace = InstallTraceHooks();
-    Logging.Log("[NSC:P32] READY cpk=%d trace=%d req=0x%lx create=0x%lx status=0x%lx chunk=0x%lx process=0x%lx open=0x%lx",
-                cpk ? 1 : 0, trace ? 1 : 0,
+    const bool event236 = InstallEvent236Dispatcher();
+    Logging.Log("[NSC:P35A] READY cpk=%d trace=%d event236=%d evt=0x%lx req=0x%lx status=0x%lx open=0x%lx",
+                cpk ? 1 : 0, trace ? 1 : 0, event236 ? 1 : 0,
+                static_cast<unsigned long>(kEvent236Offset),
                 static_cast<unsigned long>(kFileLoadRequestOffset),
-                static_cast<unsigned long>(kFileLoadCreateOffset),
                 static_cast<unsigned long>(kFileLoadStatusOffset),
-                static_cast<unsigned long>(kChunkBinaryOffset),
-                static_cast<unsigned long>(kLoadRequestProcessOffset),
                 static_cast<unsigned long>(kFileOpenOffset));
 }
 

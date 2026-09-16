@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP32Trace();
+    nsc::InstallP35ADispatcher();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P32 file-open vs XFBIN-read trace exception");
+    EXL_ABORT("NSC P35A event236 generic core exception");
 }

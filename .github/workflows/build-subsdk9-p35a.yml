@@ -1,0 +1,105 @@
+name: Build NSC P35A event236 generic core
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "overlay/**"
+      - "prepare_exlaunch.sh"
+      - ".github/workflows/build-subsdk9-p35a.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:latest
+    env:
+      DEVKITPRO: /opt/devkitpro
+      DEVKITA64: /opt/devkitpro/devkitA64
+    steps:
+      - name: Checkout P35A build kit
+        uses: actions/checkout@v4
+
+      - name: Verify preinstalled devkitPro toolchain
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
+          echo "DEVKITPRO=$DEVKITPRO"
+          echo "DEVKITA64=$DEVKITA64"
+          git --version
+          python3 --version
+          make --version
+          test -d "$DEVKITPRO"
+          test -d "$DEVKITA64"
+          test -d "$DEVKITPRO/libnx"
+          test -x "$DEVKITA64/bin/aarch64-none-elf-g++"
+          test -x "$DEVKITA64/bin/aarch64-none-elf-gcc"
+          test -x "$DEVKITA64/bin/aarch64-none-elf-ld"
+          "$DEVKITA64/bin/aarch64-none-elf-g++" --version
+          if [[ -f "$DEVKITPRO/libnx/switch_rules" ]]; then
+            echo "Found libnx switch_rules: $DEVKITPRO/libnx/switch_rules"
+          elif [[ -f "$DEVKITPRO/libnx/switch_rules.mk" ]]; then
+            echo "Found libnx switch_rules.mk: $DEVKITPRO/libnx/switch_rules.mk"
+          else
+            echo "ERROR: libnx build rules not found"
+            find "$DEVKITPRO/libnx" -maxdepth 2 -type f | sort | sed -n '1,100p' || true
+            exit 1
+          fi
+
+      - name: Clone pinned exlaunch
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/shadowninja108/exlaunch.git exlaunch
+          git -C exlaunch checkout --detach 229bbd6
+          git -C exlaunch submodule sync --recursive
+          git -C exlaunch submodule update --init --recursive
+          ACTUAL="$(git -C exlaunch rev-parse --short=7 HEAD)"
+          echo "exlaunch commit=$ACTUAL"
+          test "$ACTUAL" = "229bbd6"
+
+      - name: Apply P35A overlay
+        shell: bash
+        run: |
+          set -euxo pipefail
+          chmod +x prepare_exlaunch.sh
+          bash ./prepare_exlaunch.sh "$GITHUB_WORKSPACE/exlaunch"
+          find "$GITHUB_WORKSPACE/exlaunch/source/program" -maxdepth 1 -type f -printf '%f\n' | sort
+
+      - name: Build subsdk9
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
+          cd "$GITHUB_WORKSPACE/exlaunch"
+          make -j2
+
+      - name: Collect and verify output
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd "$GITHUB_WORKSPACE"
+          find exlaunch -type f -name subsdk9 -ls || true
+          OUT="$(find exlaunch -type f -name subsdk9 -size +10k -print -quit)"
+          test -n "$OUT"
+          test -f "$OUT"
+          mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs
+          cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
+          test -s artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
+          stat artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
+          (cd artifact && sha256sum atmosphere/contents/0100FA10190A0000/exefs/subsdk9 | tee SHA256SUMS.txt)
+          cp README_P35A.txt artifact/README_P35A.txt
+          cp analyze_p35a_log.py artifact/analyze_p35a_log.py
+          cp P30_MANIFEST_ROW_AUDIT.json artifact/P30_MANIFEST_ROW_AUDIT.json
+          mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
+          cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
+          sha256sum artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main | tee artifact/RESTORE_MAIN_SHA256.txt
+
+      - name: Upload P35A subsdk9
+        uses: actions/upload-artifact@v4
+        with:
+          name: NSC-P35A-event236-generic-core-subsdk9
+          path: artifact/
+          if-no-files-found: error
+          compression-level: 9
