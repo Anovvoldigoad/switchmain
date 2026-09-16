@@ -1,5 +1,5 @@
 #pragma once
 
 namespace nsc {
-void InstallP31Trace();
+void InstallP32Trace();
 }

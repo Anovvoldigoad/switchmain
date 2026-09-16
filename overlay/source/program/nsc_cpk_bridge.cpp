@@ -19,6 +19,8 @@ constexpr ptrdiff_t kFileLoadRequestOffset   = 0x1206B4C; // nuccFileLoadList re
 constexpr ptrdiff_t kFileLoadCreateOffset    = 0x1206C9C; // create new nuccFileLoad object
 constexpr ptrdiff_t kFileLoadStatusOffset    = 0x1207EFC; // lookup path -> status, 4 if absent from list
 constexpr ptrdiff_t kChunkBinaryOffset        = 0x3EAE70;  // ccGetChunkBinary(full_path, key)
+constexpr ptrdiff_t kLoadRequestProcessOffset = 0x116F404; // nuccLoadRequest process/open/read path
+constexpr ptrdiff_t kFileOpenOffset           = 0x1170FB0; // low-level file open request; returns 1/0
 
 constexpr uint32_t kVanillaMaxCharId = 280;
 constexpr uint32_t kFirstCustomCharId = 281;
@@ -44,6 +46,8 @@ std::atomic<uint32_t> g_request_logs{0};
 std::atomic<uint32_t> g_create_logs{0};
 std::atomic<uint32_t> g_status_transition_logs{0};
 std::atomic<uint32_t> g_chunk_logs{0};
+std::atomic<uint32_t> g_process_logs{0};
+std::atomic<uint32_t> g_file_open_logs{0};
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
@@ -142,7 +146,7 @@ bool PathContainsTrackedCustom(const char* path) {
 
 bool IsInterestingPath(const char* path) {
     if (!path || !*path) return false;
-    // P31 preserves P30: trace every file path containing a discovered
+    // P32 preserves P31: trace every file path containing a discovered
     // custom characode, not just the parent prm_load manifest.
     if (PathContainsTrackedCustom(path)) return true;
     // Fixture fallback only, for ordering before ID281 has been observed.
@@ -171,7 +175,7 @@ bool MatchWords(ptrdiff_t offset, const uint32_t (&expected)[N]) {
 void LogFingerprintFail(const char* name, ptrdiff_t offset) {
     const auto base = exl::util::modules::GetTargetStart();
     const auto actual = *reinterpret_cast<const volatile uint32_t*>(base + offset);
-    Logging.Log("[NSC:P31] fingerprint FAIL %s off=0x%lx word0=%08x", name,
+    Logging.Log("[NSC:P32] fingerprint FAIL %s off=0x%lx word0=%08x", name,
                 static_cast<unsigned long>(offset), actual);
 }
 
@@ -188,7 +192,7 @@ HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
         CpkPathArg extra{kModCpkPath, 0, 0, 0};
         uint32_t extra_bind_id = 0;
         const uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
-        Logging.Log("[NSC:P31] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
+        Logging.Log("[NSC:P32] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
                     kModCpkPath, kModCpkPriority, extra_result, extra_bind_id);
         return original_result;
     }
@@ -199,7 +203,7 @@ HOOK_DEFINE_TRAMPOLINE(CharacodeGetterHook) {
         const char* result = Orig(id);
         if (id > kVanillaMaxCharId && result && *result) TrackCustomCode(id, result);
         if (id >= kFirstCustomCharId && g_char_logs.fetch_add(1, std::memory_order_relaxed) < 96) {
-            Logging.Log("[NSC:P31] CHAR id=%u result=%p code=%s", id,
+            Logging.Log("[NSC:P32] CHAR id=%u result=%p code=%s", id,
                         static_cast<const void*>(result), result ? result : "<null>");
         }
         return result;
@@ -213,7 +217,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
         void* result = Orig(manager, path, options);
         if (IsInterestingPath(path) &&
             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:P31] LOAD_REQ manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:P32] LOAD_REQ manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -226,7 +230,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
         void* result = Orig(manager, path, options);
         if (IsInterestingPath(path) &&
             g_create_logs.fetch_add(1, std::memory_order_relaxed) < 128) {
-            Logging.Log("[NSC:P31] LOAD_CREATE manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:P32] LOAD_CREATE manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -235,7 +239,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
 
 // Signature proven by 0x11617CC -> 0x1207EFC: x0=manager, x1=path.
 // 0x1207EFC returns 4 itself when the path is absent from nuccFileLoadList.
-// P31 logs only the first observed status for each custom path and subsequent
+// P32 keeps the first observed status for each custom path and subsequent
 // status transitions. This prevents one repeatedly-polled failure from consuming
 // the entire trace budget before later prm_load children are reached.
 HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
@@ -273,14 +277,14 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
         if (overflow) {
             uint32_t expected = 0;
             if (g_status_overflow_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
-                Logging.Log("[NSC:P31] STATUS_TABLE_OVERFLOW max=%u",
+                Logging.Log("[NSC:P32] STATUS_TABLE_OVERFLOW max=%u",
                             static_cast<unsigned>(sizeof(g_status_entries) / sizeof(g_status_entries[0])));
             }
         }
 
         if (should_log &&
             g_status_transition_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:P31] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
+            Logging.Log("[NSC:P32] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
                         manager, path ? path : "<null>", first ? 1u : 0u, previous, status);
         }
         return status;
@@ -295,11 +299,66 @@ HOOK_DEFINE_TRAMPOLINE(ChunkBinaryHook) {
         void* result = Orig(full_path, key);
         if (IsInterestingChunk(full_path, key) &&
             g_chunk_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:P31] CHUNK path=%s key=%s result=%p",
+            Logging.Log("[NSC:P32] CHUNK path=%s key=%s result=%p",
                         full_path ? full_path : "<null>",
                         key ? key : "<null>", result);
         }
         return result;
+    }
+};
+
+// main+0x1170FB0 copies the candidate path into the request and asks the
+// underlying mounted-file provider to open it. Native caller 0x116F4D8 marks
+// the nuccFileLoad object status=5 when this returns 0.
+//
+// x0=request object, x1=path C-string, w2=request/file slot; w0=1 success / 0 fail.
+HOOK_DEFINE_TRAMPOLINE(FileOpenHook) {
+    static uint32_t Callback(void* request, const char* path, uint32_t slot) {
+        const uint32_t result = Orig(request, path, slot);
+        if (IsInterestingPath(path) &&
+            g_file_open_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
+            Logging.Log("[NSC:P32] FILE_OPEN request=%p path=%s slot=%u result=%u",
+                        request, path ? path : "<null>", slot, result);
+        }
+        return result;
+    }
+};
+
+// main+0x116F404 is the native nuccLoadRequest processing routine that owns
+// BOTH proven status=5 branches:
+//   0x116F520 -> status=5 after FILE_OPEN returned 0 ("file could not be opened")
+//   0x116F5C0 -> status=5 after the XFBIN read path reports failure.
+//
+// Proven register contract at the callsite 0x116F29C:
+//   x0=request owner, x1=read context, x2=nuccFileLoad object, x3=path.
+// The caller ignores a return value, so this diagnostic trampoline is void.
+// After native processing returns, we log the load object's state and the
+// read-context error field checked natively at +0x1D8.
+HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
+    static void Callback(void* owner, void* read_context, void* load_object, const char* path) {
+        Orig(owner, read_context, load_object, path);
+
+        if (!IsInterestingPath(path) ||
+            g_process_logs.fetch_add(1, std::memory_order_relaxed) >= 512) {
+            return;
+        }
+
+        uint32_t load_status = 0xFFFFFFFFu;
+        uint32_t read_error = 0xFFFFFFFFu;
+        if (load_object) {
+            const auto* p = reinterpret_cast<const volatile uint32_t*>(
+                reinterpret_cast<const uint8_t*>(load_object) + 0x68);
+            load_status = *p;
+        }
+        if (read_context) {
+            const auto* p = reinterpret_cast<const volatile uint32_t*>(
+                reinterpret_cast<const uint8_t*>(read_context) + 0x1D8);
+            read_error = *p;
+        }
+
+        Logging.Log("[NSC:P32] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
+                    path ? path : "<null>", owner, read_context, load_object,
+                    load_status, read_error);
     }
 };
 
@@ -336,6 +395,14 @@ bool InstallTraceHooks() {
         0xD100C3FF, 0xA90157FE, 0xA9024FF4, 0xAA0003F5,
         0xB000EAC0, 0xF942F000, 0xAA0103F3, 0xAA1503E1,
     };
+    static constexpr uint32_t kProcessExpected[] = {
+        0xA9BC7BFD, 0xA9015FF8, 0xA90257F6, 0xA9034FF4,
+        0xD10A03FF, 0xD0019008, 0xB9807058, 0xAA0003F5,
+    };
+    static constexpr uint32_t kFileOpenExpected[] = {
+        0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x6F00E400,
+        0xAA0003F6, 0xB0007ED7, 0x3C838EC0, 0xB90106C2,
+    };
 
     bool ok = true;
     if (!MatchWords(kCharacodeGetterOffset, kCharExpected)) {
@@ -353,6 +420,12 @@ bool InstallTraceHooks() {
     if (!MatchWords(kChunkBinaryOffset, kChunkExpected)) {
         LogFingerprintFail("CHUNK", kChunkBinaryOffset); ok = false;
     }
+    if (!MatchWords(kLoadRequestProcessOffset, kProcessExpected)) {
+        LogFingerprintFail("PROCESS", kLoadRequestProcessOffset); ok = false;
+    }
+    if (!MatchWords(kFileOpenOffset, kFileOpenExpected)) {
+        LogFingerprintFail("FILE_OPEN", kFileOpenOffset); ok = false;
+    }
     if (!ok) return false;
 
     CharacodeGetterHook::InstallAtOffset(kCharacodeGetterOffset);
@@ -360,20 +433,24 @@ bool InstallTraceHooks() {
     FileLoadCreateHook::InstallAtOffset(kFileLoadCreateOffset);
     FileLoadStatusHook::InstallAtOffset(kFileLoadStatusOffset);
     ChunkBinaryHook::InstallAtOffset(kChunkBinaryOffset);
+    LoadRequestProcessHook::InstallAtOffset(kLoadRequestProcessOffset);
+    FileOpenHook::InstallAtOffset(kFileOpenOffset);
     return true;
 }
 
 } // namespace
 
-void InstallP31Trace() {
+void InstallP32Trace() {
     const bool cpk = InstallCpkBridge();
     const bool trace = InstallTraceHooks();
-    Logging.Log("[NSC:P31] READY cpk=%d trace=%d req=0x%lx create=0x%lx status=0x%lx chunk=0x%lx",
+    Logging.Log("[NSC:P32] READY cpk=%d trace=%d req=0x%lx create=0x%lx status=0x%lx chunk=0x%lx process=0x%lx open=0x%lx",
                 cpk ? 1 : 0, trace ? 1 : 0,
                 static_cast<unsigned long>(kFileLoadRequestOffset),
                 static_cast<unsigned long>(kFileLoadCreateOffset),
                 static_cast<unsigned long>(kFileLoadStatusOffset),
-                static_cast<unsigned long>(kChunkBinaryOffset));
+                static_cast<unsigned long>(kChunkBinaryOffset),
+                static_cast<unsigned long>(kLoadRequestProcessOffset),
+                static_cast<unsigned long>(kFileOpenOffset));
 }
 
 } // namespace nsc
