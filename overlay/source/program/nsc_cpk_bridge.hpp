@@ -1,5 +1,5 @@
 #pragma once
 
 namespace nsc {
-void InstallP43AOugiUnfiltered();
+void InstallP44AOugiFinishIndex();
 }

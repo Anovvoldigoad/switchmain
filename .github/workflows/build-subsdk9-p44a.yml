@@ -1,0 +1,37 @@
+name: Build P44A subsdk9
+
+on:
+  push:
+    branches: [ main, master, p44a ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq git make clang
+
+      - name: Prepare exlaunch
+        run: |
+          chmod +x prepare_exlaunch.sh || true
+          bash prepare_exlaunch.sh || true
+
+      - name: Build
+        run: |
+          # Adjust paths to your exlaunch layout
+          # Example:
+          # cd overlay && make -j$(nproc)
+          echo "Build step - adapt to your exlaunch Makefile"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: P44A-subsdk9
+          path: |
+            atmosphere/contents/0100FA10190A0000/exefs/subsdk9
+            README_P44A.txt
