@@ -26,10 +26,7 @@ constexpr ptrdiff_t kEvent235Offset           = 0x8162D4;  // native ME_ENEMY_DI
 constexpr ptrdiff_t kEvent13Offset            = 0x810614;  // native awakening-condition event callback
 constexpr ptrdiff_t kEvent121Offset           = 0x8134F8;  // native ME_ADD_CONDITION_PARAM callback
 constexpr ptrdiff_t kOugiCoreOffset           = 0x7E0F58;  // native actor/mode UJ state core containing 0x7E13E4/0x7E1404
-// Exact native condition machinery used by v1.70 Event121 at 0x8134F8.
-constexpr ptrdiff_t kConditionInitOffset       = 0x7630FC;
-constexpr ptrdiff_t kConditionResolveOffset    = 0x777758;
-constexpr ptrdiff_t kConditionAddOffset        = 0x776014;
+constexpr ptrdiff_t kOugiCallerOffset         = 0x488BAC;  // unique direct caller of ougi core (BL at 0x488BBC)
 
 // Proven v1.70 native helpers used by the historical generic MovesetPlus event236 port.
 constexpr ptrdiff_t kStageObjectLookupOffset   = 0xEC8A44;
@@ -38,6 +35,10 @@ constexpr ptrdiff_t kStageDefaultOffset        = 0x53643C;
 constexpr ptrdiff_t kHandleStageChangeOffset   = 0x6E8EB0;
 constexpr ptrdiff_t kFixCharPositionOffset     = 0x48E40C;
 constexpr ptrdiff_t kPostStageOffset            = 0x48E61C;
+// Actor-local MovesetPlus control block recovered for Switch v1.70.
+// PC SC1.70 uses +0x12A34; established PC->Switch player layout shift is -0x10
+// in this region, and historical Switch direct-control helper used +0x12A24.
+constexpr ptrdiff_t kControlBlockOffset         = 0x12A24;
 constexpr ptrdiff_t kActionPreOffset            = 0x7A8438;
 constexpr ptrdiff_t kActionEntryLookupOffset    = 0x3F5560;
 constexpr ptrdiff_t kActionNameCompareOffset    = 0x12F36E0;
@@ -47,7 +48,7 @@ constexpr ptrdiff_t kStageStateGlobalOffset     = 0x21434C0;
 constexpr ptrdiff_t kStageObjectNameOffset      = 0x1A1E84D;
 
 constexpr uint32_t kVanillaMaxCharId = 280;
-constexpr uint32_t kFirstCustomCharId = kVanillaMaxCharId + 1;
+constexpr uint32_t kFirstCustomCharId = 281;
 constexpr int kModCpkPriority = 32;
 constexpr const char* kModCpkPath = "sim:data/moddingapi/Tobi_Switch.cpk";
 
@@ -78,12 +79,11 @@ std::atomic<uint32_t> g_event235_logs{0};
 std::atomic<uint32_t> g_stage_handle_logs{0};
 std::atomic<uint32_t> g_fix_char_logs{0};
 std::atomic<uint32_t> g_post_stage_logs{0};
-std::atomic<uint32_t> g_event13_raw_logs{0};
 std::atomic<uint32_t> g_event13_logs{0};
 std::atomic<uint32_t> g_event121_logs{0};
-std::atomic<uint32_t> g_event121_self_logs{0};
-std::atomic<uint32_t> g_ougi_raw_logs{0};
 std::atomic<uint32_t> g_ougi_core_logs{0};
+std::atomic<uint32_t> g_ougi_caller_logs{0};
+std::atomic<uint32_t> g_ctrl_dump_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -184,7 +184,7 @@ bool IsInterestingPath(const char* path) {
     // P35A preserves P31: trace every file path containing a discovered
     // custom characode, not just the parent prm_load manifest.
     if (PathContainsTrackedCustom(path)) return true;
-    // Current-fixture trace fallback only; gameplay routing never depends on it.
+    // Fixture fallback only, for ordering before ID281 has been observed.
     return BoundedContains(path, "mtob", 512, 8);
 }
 
@@ -255,40 +255,73 @@ void* GetEventTargetActor(void* actor, int16_t selector) {
     return fn ? fn(actor) : nullptr;
 }
 
-struct ConditionSelfResult {
-    int32_t resolved;
-    void* handler;
-    bool executed;
+bool ControlRelativeOffset(int16_t control, uint32_t& out) {
+    switch (control) {
+        case 0:  out = 0x00; return true; // PL_ANM_ATK
+        case 19: out = 0x04; return true; // PL_ANM_ATK_FAR / _ANOTHER
+        case 1:  out = 0x08; return true; // Ultimate Jutsu
+        case 2:  out = 0x10; return true; // Jutsus
+        case 3:  out = 0x18; return true; // projectile land/attack
+        case 18: out = 0x1C; return true; // chakra projectile land
+        case 4:  out = 0x20; return true; // grab
+        case 5:  out = 0x24; return true; // substitution
+        case 6:  out = 0x28; return true; // guard
+        case 7:  out = 0x2C; return true; // chakra load
+        case 8:  out = 0x30; return true; // movement + chakra
+        case 9:  out = 0x34; return true; // jump
+        case 10: out = 0x38; return true; // ninja movement
+        case 11: out = 0x3C; return true; // air dash
+        case 12: out = 0x40; return true; // land dash
+        case 13: out = 0x44; return true; // D-pad items
+        case 14: out = 0x48; return true; // leader switch
+        case 15: out = 0x4C; return true; // awakening
+        case 16: out = 0x50; return true; // supports
+        case 17: out = 0x58; return true; // counter attack
+        default: return false;
+    }
+}
+
+struct ControlWriteResult {
+    void* target;
+    bool valid;
+    bool wrote;
+    uint32_t relative;
+    int32_t old_value;
 };
 
-ConditionSelfResult ApplyConditionToSelf(void* actor, const uint8_t* event) {
-    ConditionSelfResult r{-1, nullptr, false};
-    if (!actor || !event) return r;
+ControlWriteResult EnableControlActorLocal(void* actor, int16_t enemy, int16_t control) {
+    ControlWriteResult r{nullptr, false, false, 0, 0};
+    void* target = GetEventTargetActor(actor, enemy);
+    r.target = target;
+    if (!target) return r;
 
-    const uintptr_t base = exl::util::modules::GetTargetStart();
-    using InitEffectFn = void* (*)(void*);
-    using ResolveEffectFn = int32_t (*)(const void*);
-    using ExecuteEffectFn = void (*)(void*, int32_t, int32_t, float);
-    auto init = reinterpret_cast<InitEffectFn>(base + kConditionInitOffset);
-    auto resolve = reinterpret_cast<ResolveEffectFn>(base + kConditionResolveOffset);
-    auto execute = reinterpret_cast<ExecuteEffectFn>(base + kConditionAddOffset);
+    uint32_t relative = 0;
+    if (!ControlRelativeOffset(control, relative)) return r;
+    r.valid = true;
+    r.relative = relative;
 
-    // Match UltimateStormAPI ApplyStatusEffect ordering and the native v1.70
-    // Event121 helper chain, except target SELF is selected for param2==1.
-    (void)init(actor);
-    r.resolved = resolve(event);
+    auto* field = reinterpret_cast<volatile int32_t*>(
+        reinterpret_cast<uint8_t*>(target) + kControlBlockOffset + relative);
+    const int32_t old = *field;
+    r.old_value = old;
 
-    // Fail closed on an invalid/sentinel index. Current v1.70 condition tables
-    // are far below this bound; the headroom keeps the route generic.
-    if (r.resolved <= 0 || r.resolved >= 0x1000) return r;
+    // Fail closed if this does not look like the expected boolean control block.
+    // This keeps P41A from corrupting an unrelated structure if the candidate
+    // base is wrong on hardware.
+    if (old == 0 || old == 1) {
+        *field = 1;
+        r.wrote = true;
+    }
 
-    r.handler = init(actor);
-    if (!r.handler) return r;
+    // Preserve the literal PC SC1.70 source fall-through for selector 19:
+    // enabling far-attack also reaches case 1 and enables Ultimate Jutsu.
+    if (control == 19) {
+        auto* uj = reinterpret_cast<volatile int32_t*>(
+            reinterpret_cast<uint8_t*>(target) + kControlBlockOffset + 0x08);
+        const int32_t old_uj = *uj;
+        if (old_uj == 0 || old_uj == 1) *uj = 1;
+    }
 
-    const int32_t param1 = *reinterpret_cast<const int16_t*>(event + 0x24);
-    const float value = *reinterpret_cast<const float*>(event + 0x2C);
-    execute(r.handler, r.resolved, param1, value);
-    r.executed = true;
     return r;
 }
 
@@ -609,29 +642,30 @@ HOOK_DEFINE_TRAMPOLINE(Event235Hook) {
 // call native Orig exactly once; they do not alias names or force state.
 HOOK_DEFINE_TRAMPOLINE(Event13Hook) {
     static uint32_t Callback(void* actor, void* event_ptr) {
-        if (g_event13_raw_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:P41A] EVT13_RAW actor=%p event=%p", actor, event_ptr);
-        }
-
         uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
         const bool valid = ReadActorIdentity(actor, side, char_id);
         int32_t pre_gate = 0x7FFFFFFF, post_gate = 0x7FFFFFFF;
+        int32_t pre_awake = 0x7FFFFFFF, post_awake = 0x7FFFFFFF;
         void* condition_owner = nullptr;
-        if (actor && valid) {
+        if (actor) {
             auto* b = reinterpret_cast<volatile uint8_t*>(actor);
             pre_gate = *reinterpret_cast<volatile int32_t*>(b + 0x12A0);
+            pre_awake = *reinterpret_cast<volatile int32_t*>(
+                b + kControlBlockOffset + 0x4C);
             condition_owner = *reinterpret_cast<void* volatile*>(b + 0x10F80);
         }
         const uint32_t ret = Orig(actor, event_ptr);
-        if (actor && valid) {
+        if (actor) {
             auto* b = reinterpret_cast<volatile uint8_t*>(actor);
             post_gate = *reinterpret_cast<volatile int32_t*>(b + 0x12A0);
+            post_awake = *reinterpret_cast<volatile int32_t*>(
+                b + kControlBlockOffset + 0x4C);
         }
         if (valid && char_id > kVanillaMaxCharId &&
             g_event13_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:P41A] EVT13_AWAKE actor=%p side=%u char=%u event=%p cond_owner=%p gate=%d->%d ret=%u",
+            Logging.Log("[NSC:P41A] EVT13_AWAKE actor=%p side=%u char=%u event=%p cond_owner=%p gate=%d->%d ctrl15=%d->%d ret=%u",
                         actor, side, char_id, event_ptr, condition_owner,
-                        pre_gate, post_gate, ret);
+                        pre_gate, post_gate, pre_awake, post_awake, ret);
         }
         return ret;
     }
@@ -644,35 +678,18 @@ HOOK_DEFINE_TRAMPOLINE(Event121Hook) {
         char text[31]{};
         int16_t op = 0, p2 = 0, p3 = 0;
         uint32_t p4bits = 0;
-        const uint8_t* event = reinterpret_cast<const uint8_t*>(event_ptr);
-        if (event) {
+        if (event_ptr) {
+            const auto* event = reinterpret_cast<const uint8_t*>(event_ptr);
             CopyEventText(text, event);
             op = *reinterpret_cast<const int16_t*>(event + 0x24);
             p2 = *reinterpret_cast<const int16_t*>(event + 0x26);
             p3 = *reinterpret_cast<const int16_t*>(event + 0x28);
             p4bits = FloatBits(*reinterpret_cast<const float*>(event + 0x2C));
         }
-
-        // UltimateStormAPI ApplyStatusEffect semantics: event+0x26 == 1 targets
-        // SELF. Native Switch Event121 always calls GetEnemy(actor), so custom
-        // actors need this one generic compatibility branch. No condition-name,
-        // character-ID, donor-ID, or Tobi-specific alias is used here.
-        if (valid && char_id > kVanillaMaxCharId && event && p2 == 1) {
-            const auto self = ApplyConditionToSelf(actor, event);
-            if (g_event121_self_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-                Logging.Log("[NSC:P41A] EVT121_SELF actor=%p side=%u char=%u event=%p text=%s op=%d p2=%d p3=%d p4bits=%08x resolved=%d handler=%p executed=%u",
-                            actor, side, char_id, event_ptr, text,
-                            static_cast<int>(op), static_cast<int>(p2),
-                            static_cast<int>(p3), p4bits, self.resolved,
-                            self.handler, self.executed ? 1u : 0u);
-            }
-            return 1;
-        }
-
         const uint32_t ret = Orig(actor, event_ptr);
         if (valid && char_id > kVanillaMaxCharId &&
             g_event121_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:P41A] EVT121_NATIVE actor=%p side=%u char=%u event=%p text=%s op=%d p2=%d p3=%d p4bits=%08x ret=%u",
+            Logging.Log("[NSC:P41A] EVT121_COND actor=%p side=%u char=%u event=%p text=%s op=%d p2=%d p3=%d p4bits=%08x ret=%u",
                         actor, side, char_id, event_ptr, text, static_cast<int>(op),
                         static_cast<int>(p2), static_cast<int>(p3), p4bits, ret);
         }
@@ -682,15 +699,11 @@ HOOK_DEFINE_TRAMPOLINE(Event121Hook) {
 
 HOOK_DEFINE_TRAMPOLINE(OugiCoreHook) {
     static void Callback(void* actor, uint32_t mode) {
-        if (g_ougi_raw_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:P41A] OUGI_RAW actor=%p mode=%u", actor, mode);
-        }
-
         uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
         const bool valid = ReadActorIdentity(actor, side, char_id);
         int32_t ea0_pre = 0x7FFFFFFF, ea4_pre = 0x7FFFFFFF, ea8_pre = 0x7FFFFFFF;
         void* state_ptr_pre = nullptr;
-        if (actor && valid) {
+        if (actor) {
             auto* b = reinterpret_cast<volatile uint8_t*>(actor);
             ea0_pre = *reinterpret_cast<volatile int32_t*>(b + 0xEA0);
             ea4_pre = *reinterpret_cast<volatile int32_t*>(b + 0xEA4);
@@ -713,6 +726,31 @@ HOOK_DEFINE_TRAMPOLINE(OugiCoreHook) {
                         actor, side, char_id, mode, state_ptr_pre, state_ptr_post,
                         ea0_pre, ea0_post, ea4_pre, ea4_post, ea8_pre, ea8_post);
         }
+    }
+};
+
+
+// P41A: unique direct caller of Ougi core. Contract: x0=actor, w1=mode; return ignored.
+// If Kamui never reaches this boundary either, the stuck handoff is upstream of UJ state entry.
+HOOK_DEFINE_TRAMPOLINE(OugiCallerHook) {
+    static void Callback(void* actor, uint32_t mode) {
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const uint32_t n = g_ougi_caller_logs.fetch_add(1, std::memory_order_relaxed);
+        if (valid && char_id > kVanillaMaxCharId && n < 512) {
+            int32_t ea0 = 0x7FFFFFFF, ea4 = 0x7FFFFFFF, ea8 = 0x7FFFFFFF;
+            void* state_ptr = nullptr;
+            if (actor) {
+                auto* b = reinterpret_cast<volatile uint8_t*>(actor);
+                ea0 = *reinterpret_cast<volatile int32_t*>(b + 0xEA0);
+                ea4 = *reinterpret_cast<volatile int32_t*>(b + 0xEA4);
+                ea8 = *reinterpret_cast<volatile int32_t*>(b + 0xEA8);
+                state_ptr = *reinterpret_cast<void* volatile*>(b + 0x1238);
+            }
+            Logging.Log("[NSC:P41A] OUGI_CALLER actor=%p side=%u char=%u mode=%u state=%p ea0=%d ea4=%d ea8=%d",
+                        actor, side, char_id, mode, state_ptr, ea0, ea4, ea8);
+        }
+        Orig(actor, mode);
     }
 };
 
@@ -753,7 +791,7 @@ HOOK_DEFINE_TRAMPOLINE(PostStageHook) {
     }
 };
 
-// P41A: P38A-safe Event236 baseline; O14 stays shadowed while Event121 SELF parity is isolated.
+// P41A: P38A-safe baseline plus actor-local O14 direct-control parity candidate.
 // ME_ENEMY_DISP_OFF, but UltimateStormAPI uses event236 as an extension
 // container with opcode at +0x24. Valid extension opcodes never fall back to
 // native enemy-hide; unported operations are intentionally shadow/no-op.
@@ -772,7 +810,7 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
 
         // Fail closed to exact native semantics for vanilla/non-custom actors or
         // implausible event data. v1.70 vanilla max charID is proven as 280;
-        // custom compiler IDs begin immediately above the proven vanilla maximum.
+        // custom compiler IDs begin at 281, so this remains generic for future mods.
         if (side > 1 || char_id <= kVanillaMaxCharId || char_id >= 0x1000 ||
             op < 1 || op > 29) {
             return Orig(actor, event_ptr);
@@ -821,7 +859,7 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
             case 12: { // P41A inherited A/B: shadow source me_SetPlayerVisibility only
                 // P34A (all event236 no-op) made victim-UJ restore normal, while
                 // P35A/P36 re-enabled O12/O14/... and conditional disappearance returned.
-                // Do NOT mutate visibility in this build; O14 also stays on the P38A-safe shadow baseline.
+                // Do NOT mutate visibility in this build; O14 is independently shadowed below for P39A.
                 if (g_event235_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
                     Logging.Log("[NSC:P41A] VIS_SHADOW actor=%p side=%u char=%u p2=%d",
                                 actor, side, char_id, static_cast<int>(p2));
@@ -833,11 +871,26 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 *reinterpret_cast<volatile int32_t*>(reinterpret_cast<uint8_t*>(actor) + 0xF30) = p2;
                 return 1;
 
-            case 14: { // P41A: revert to P38A-proven safe O14 shadow
-                if (g_event235_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-                    Logging.Log("[NSC:P41A] CTRL14_SHADOW actor=%p side=%u char=%u p2=%d p3=%d",
-                                actor, side, char_id, static_cast<int>(p2),
-                                static_cast<int>(p3));
+            case 14: { // P41A: actor-local me_enable_control source parity candidate
+                const auto wr = EnableControlActorLocal(actor, p2, p3);
+                if (g_event236_logs.load(std::memory_order_relaxed) < 4096) {
+                    Logging.Log("[NSC:P41A] CTRL14_DIRECT actor=%p target=%p side=%u char=%u p2=%d p3=%d rel=%03x old=%d wrote=%u",
+                                actor, wr.target, side, char_id, p2, p3, wr.relative, wr.old_value, wr.wrote ? 1u : 0u);
+                }
+                // P41A: one-shot control-block window dump to locate true boolean flags.
+                // Dumps int32s at actor+0x12900 .. actor+0x12B00 (stride 4) for the first few custom O14 hits.
+                const uint32_t dump_n = g_ctrl_dump_logs.fetch_add(1, std::memory_order_relaxed);
+                if (dump_n < 4 && wr.target) {
+                    auto* base = reinterpret_cast<volatile int32_t*>(
+                        reinterpret_cast<uint8_t*>(wr.target) + 0x12900);
+                    // 128 dwords = 0x200 bytes covering 0x12900..0x12B00
+                    for (int row = 0; row < 16; ++row) {
+                        const int off = row * 8;
+                        Logging.Log("[NSC:P41A] CTRL_DUMP n=%u base+0x%03x: %d %d %d %d %d %d %d %d",
+                                    dump_n, 0x12900 + off * 4,
+                                    base[off+0], base[off+1], base[off+2], base[off+3],
+                                    base[off+4], base[off+5], base[off+6], base[off+7]);
+                    }
                 }
                 return 1;
             }
@@ -886,6 +939,10 @@ bool InstallStateTrace() {
         0xD10103FF, 0xF9000BFE, 0xA90257F6, 0xA9034FF4,
         0xF9400008, 0x2A0103F5, 0xAA0003F3, 0xF946E908,
     };
+    static constexpr uint32_t kOugiCallerExpected[] = {
+        0xF81E0FFE, 0xA9014FF4, 0x2A0103F4, 0xAA0003F3,
+        0x940D60E7, 0x34000094, 0xA9414FF4, 0xF84207FE,
+    };
     bool ok = true;
     if (!MatchWords(kEvent13Offset, kEvent13Expected)) {
         LogFingerprintFail("EVENT13_AWAKE", kEvent13Offset); ok = false;
@@ -896,10 +953,14 @@ bool InstallStateTrace() {
     if (!MatchWords(kOugiCoreOffset, kOugiCoreExpected)) {
         LogFingerprintFail("OUGI_CORE", kOugiCoreOffset); ok = false;
     }
+    if (!MatchWords(kOugiCallerOffset, kOugiCallerExpected)) {
+        LogFingerprintFail("OUGI_CALLER", kOugiCallerOffset); ok = false;
+    }
     if (!ok) return false;
     Event13Hook::InstallAtOffset(kEvent13Offset);
     Event121Hook::InstallAtOffset(kEvent121Offset);
     OugiCoreHook::InstallAtOffset(kOugiCoreOffset);
+    OugiCallerHook::InstallAtOffset(kOugiCallerOffset);
     return true;
 }
 
@@ -1021,17 +1082,18 @@ bool InstallTraceHooks() {
 
 } // namespace
 
-void InstallP41AEvent121SelfTrace() {
+void InstallP41AControlDiag() {
     const bool cpk = InstallCpkBridge();
     const bool trace = InstallTraceHooks();
     const bool lifecycle = InstallLifecycleTrace();
     const bool state_trace = InstallStateTrace();
     const bool event236 = InstallEvent236Dispatcher();
-    Logging.Log("[NSC:P41A] READY cpk=%d trace=%d lifecycle=%d state_trace=%d event236=%d vis12_shadow=1 ctrl14_shadow=1 cond517=1 splitbank=1 evt121_self=1 raw_evt13=1 raw_ougi=1 evt13=0x%lx evt121=0x%lx ougi=0x%lx evt235=0x%lx evt236=0x%lx",
+    Logging.Log("[NSC:P41A] READY cpk=%d trace=%d lifecycle=%d state_trace=%d event236=%d vis12_shadow=1 ctrl14_direct=1 control_base=0x12a24 ctrl_dump=1 ougi_caller=1 evt13=0x%lx evt121=0x%lx ougi=0x%lx ougi_caller=0x%lx evt235=0x%lx evt236=0x%lx",
                 cpk ? 1 : 0, trace ? 1 : 0, lifecycle ? 1 : 0, state_trace ? 1 : 0, event236 ? 1 : 0,
                 static_cast<unsigned long>(kEvent13Offset),
                 static_cast<unsigned long>(kEvent121Offset),
                 static_cast<unsigned long>(kOugiCoreOffset),
+                static_cast<unsigned long>(kOugiCallerOffset),
                 static_cast<unsigned long>(kEvent235Offset),
                 static_cast<unsigned long>(kEvent236Offset));
 }

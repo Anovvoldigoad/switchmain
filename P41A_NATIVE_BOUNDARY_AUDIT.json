@@ -1,38 +1,75 @@
 {
-  "base_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-  "p41_main_sha256": "407ff7247a2c70941c05eb2cdfbd65a2a25fffc247845274b096ed0b5aee6ae7",
+  "main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "text_file_offset": "0x101",
   "boundaries": {
     "EVENT13_AWAKE": {
       "offset": "0x810614",
-      "base_hex": "fe0f1ef8f44f01a914f081523400a072f30300aa006874f8e59cfd977fa212b9",
-      "p41_hex": "fe0f1ef8f44f01a914f081523400a072f30300aa006874f8e59cfd977fa212b9",
-      "unchanged": true
+      "expected_words": [
+        "F81E0FFE",
+        "A9014FF4",
+        "5281F014",
+        "72A00034",
+        "AA0003F3",
+        "F8746800",
+        "97FD9CE5",
+        "B912A27F"
+      ],
+      "match": true
     },
     "EVENT121_COND": {
       "offset": "0x8134f8",
-      "base_hex": "fe57bea9f44f01a9f30301aaa00bfe97800100b4f40300aafb3efd97e00313aa",
-      "p41_hex": "fe57bea9f44f01a9f30301aaa00bfe97800100b4f40300aafb3efd97e00313aa",
-      "unchanged": true
+      "expected_words": [
+        "A9BE57FE",
+        "A9014FF4",
+        "AA0103F3",
+        "97FE0BA0",
+        "B4000180",
+        "AA0003F4",
+        "97FD3EFB",
+        "AA1303E0"
+      ],
+      "match": true
     },
     "OUGI_CORE": {
       "offset": "0x7e0f58",
-      "base_hex": "ff0301d1fe0b00f9f65702a9f44f03a9080040f9f503012af30300aa08e946f9",
-      "p41_hex": "ff0301d1fe0b00f9f65702a9f44f03a9080040f9f503012af30300aa08e946f9",
-      "unchanged": true
+      "expected_words": [
+        "D10103FF",
+        "F9000BFE",
+        "A90257F6",
+        "A9034FF4",
+        "F9400008",
+        "2A0103F5",
+        "AA0003F3",
+        "F946E908"
+      ],
+      "match": true
     },
-    "EVENT235": {
-      "offset": "0x8162d4",
-      "base_hex": "fe0f1ff8080040f908e946f900013fd6800000b4080040f908dd45f900013fd6",
-      "p41_hex": "fe0f1ff8080040f908e946f900013fd6800000b4080040f908dd45f900013fd6",
-      "unchanged": true
-    },
-    "EVENT236": {
-      "offset": "0x816300",
-      "base_hex": "fe0f1ff8080040f908e946f900013fd6800000b4080040f908e145f900013fd6",
-      "p41_hex": "fe0f1ff8080040f908e946f900013fd6800000b4080040f908e145f900013fd6",
-      "unchanged": true
+    "OUGI_CALLER": {
+      "offset": "0x488bac",
+      "expected_words": [
+        "F81E0FFE",
+        "A9014FF4",
+        "2A0103F4",
+        "AA0003F3",
+        "940D60E7",
+        "34000094",
+        "A9414FF4",
+        "F84207FE"
+      ],
+      "match": true
     }
   },
-  "all_hook_boundaries_unchanged": true,
-  "condition_main_report": "P41A_CONDITION_MAIN_AUDIT.json"
+  "ougi_core_callsite": {
+    "target": "0x7E0F58",
+    "direct_bl_count": 1,
+    "callsite": "0x488BBC",
+    "caller_entry": "0x488BAC",
+    "contract": "x0=actor, w1=mode; caller ignores return"
+  },
+  "ctrl_dump": {
+    "window_start": "0x12900",
+    "window_end": "0x12B00",
+    "stride": 4,
+    "max_dumps": 4
+  }
 }

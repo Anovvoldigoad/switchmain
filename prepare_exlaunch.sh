@@ -16,5 +16,5 @@ s,n3=re.subn(r'(?m)^CXX_FLAGS\s*:=.*$', 'CXX_FLAGS := -Wno-non-c-typedef-for-lin
 if (n1,n2,n3)!=(1,1,1): raise SystemExit(f'config patch failed {(n1,n2,n3)}')
 p.write_text(s)
 PY
-echo "[+] P41A Event121 SELF/raw-trace overlay prepared"
+echo "[+] P41A control-diag overlay prepared"
 grep -E '^(LOAD_KIND|PROGRAM_ID|CXX_FLAGS)[[:space:]]*:=' "$EXL/config.mk"
