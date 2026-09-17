@@ -1,5 +1,5 @@
 #pragma once
 
 namespace nsc {
-void InstallP42AKamuiIsolate();
+void InstallP43AOugiUnfiltered();
 }

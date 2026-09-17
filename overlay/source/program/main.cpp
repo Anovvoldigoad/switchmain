@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP42AKamuiIsolate();
+    nsc::InstallP43AOugiUnfiltered();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P42A kamui-isolate exception");
+    EXL_ABORT("NSC P43A ougi-unfiltered exception");
 }

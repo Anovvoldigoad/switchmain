@@ -1,4 +1,4 @@
-name: Build NSC P42A kamui isolate
+name: Build NSC P43A ougi unfiltered log
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     paths:
       - "overlay/**"
       - "prepare_exlaunch.sh"
-      - ".github/workflows/build-subsdk9-p42a.yml"
+      - ".github/workflows/build-subsdk9-p43a.yml"
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
       DEVKITPRO: /opt/devkitpro
       DEVKITA64: /opt/devkitpro/devkitA64
     steps:
-      - name: Checkout P42A build kit
+      - name: Checkout P43A build kit
         uses: actions/checkout@v4
 
       - name: Verify preinstalled devkitPro toolchain
@@ -37,7 +37,7 @@ jobs:
           git -C "$GITHUB_WORKSPACE/exlaunch" submodule update --init --recursive
           test "$(git -C "$GITHUB_WORKSPACE/exlaunch" rev-parse --short HEAD)" = "229bbd6"
 
-      - name: Overlay P42A sources
+      - name: Overlay P43A sources
         shell: bash
         run: |
           set -euxo pipefail
@@ -63,17 +63,17 @@ jobs:
           mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs
           cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
           (cd artifact && sha256sum atmosphere/contents/0100FA10190A0000/exefs/subsdk9 | tee SHA256SUMS.txt)
-          cp README_P42A.txt artifact/README_P42A.txt
-          cp analyze_p42a_log.py artifact/analyze_p42a_log.py
-          cp P42A_STATIC_AUDIT.txt artifact/P42A_STATIC_AUDIT.txt
+          cp README_P43A.txt artifact/README_P43A.txt
+          cp analyze_p43a_log.py artifact/analyze_p43a_log.py
+          cp P43A_STATIC_AUDIT.txt artifact/P43A_STATIC_AUDIT.txt
           mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
           sha256sum artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main | tee artifact/RESTORE_MAIN_SHA256.txt
 
-      - name: Upload P42A subsdk9
+      - name: Upload P43A subsdk9
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P42A-kamui-isolate-subsdk9
+          name: NSC-P43A-ougi-unfiltered-subsdk9
           path: artifact/
           if-no-files-found: error
           compression-level: 9
