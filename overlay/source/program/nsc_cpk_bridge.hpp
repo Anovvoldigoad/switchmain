@@ -1,5 +1,4 @@
 #pragma once
-
 namespace nsc {
-void InstallP44AOugiFinishIndex();
+void InstallP44A();
 }
