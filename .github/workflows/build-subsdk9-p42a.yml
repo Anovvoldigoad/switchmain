@@ -1,4 +1,4 @@
-name: Build NSC P41A control diag
+name: Build NSC P42A kamui isolate
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     paths:
       - "overlay/**"
       - "prepare_exlaunch.sh"
-      - ".github/workflows/build-subsdk9-p41a.yml"
+      - ".github/workflows/build-subsdk9-p42a.yml"
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
       DEVKITPRO: /opt/devkitpro
       DEVKITA64: /opt/devkitpro/devkitA64
     steps:
-      - name: Checkout P41A build kit
+      - name: Checkout P42A build kit
         uses: actions/checkout@v4
 
       - name: Verify preinstalled devkitPro toolchain
@@ -25,14 +25,6 @@ jobs:
         run: |
           set -euxo pipefail
           export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
-          echo "DEVKITPRO=$DEVKITPRO"
-          echo "DEVKITA64=$DEVKITA64"
-          git --version
-          python3 --version
-          make --version
-          test -d "$DEVKITPRO"
-          test -d "$DEVKITA64"
-          test -d "$DEVKITPRO/libnx"
           test -x "$DEVKITA64/bin/aarch64-none-elf-g++"
           "$DEVKITA64/bin/aarch64-none-elf-g++" --version
 
@@ -43,17 +35,15 @@ jobs:
           git clone https://github.com/shadowninja108/exlaunch.git "$GITHUB_WORKSPACE/exlaunch"
           git -C "$GITHUB_WORKSPACE/exlaunch" checkout --detach 229bbd6
           git -C "$GITHUB_WORKSPACE/exlaunch" submodule update --init --recursive
-          git -C "$GITHUB_WORKSPACE/exlaunch" rev-parse --short HEAD
           test "$(git -C "$GITHUB_WORKSPACE/exlaunch" rev-parse --short HEAD)" = "229bbd6"
 
-      - name: Overlay P41A sources
+      - name: Overlay P42A sources
         shell: bash
         run: |
           set -euxo pipefail
           sed -i 's/\r$//' prepare_exlaunch.sh || true
           chmod +x prepare_exlaunch.sh
           bash ./prepare_exlaunch.sh "$GITHUB_WORKSPACE/exlaunch"
-          find "$GITHUB_WORKSPACE/exlaunch/source/program" -maxdepth 1 -type f -printf '%f\n' | sort
 
       - name: Build subsdk9
         shell: bash
@@ -73,18 +63,17 @@ jobs:
           mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs
           cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
           (cd artifact && sha256sum atmosphere/contents/0100FA10190A0000/exefs/subsdk9 | tee SHA256SUMS.txt)
-          cp README_P41A.txt artifact/README_P41A.txt
-          cp analyze_p41a_log.py artifact/analyze_p41a_log.py
-          cp P41A_STATIC_AUDIT.txt artifact/P41A_STATIC_AUDIT.txt
-          cp P41A_NATIVE_BOUNDARY_AUDIT.json artifact/P41A_NATIVE_BOUNDARY_AUDIT.json
+          cp README_P42A.txt artifact/README_P42A.txt
+          cp analyze_p42a_log.py artifact/analyze_p42a_log.py
+          cp P42A_STATIC_AUDIT.txt artifact/P42A_STATIC_AUDIT.txt
           mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
           sha256sum artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main | tee artifact/RESTORE_MAIN_SHA256.txt
 
-      - name: Upload P41A subsdk9
+      - name: Upload P42A subsdk9
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P41A-control-diag-subsdk9
+          name: NSC-P42A-kamui-isolate-subsdk9
           path: artifact/
           if-no-files-found: error
           compression-level: 9

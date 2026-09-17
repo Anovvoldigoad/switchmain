@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP41AControlDiag();
+    nsc::InstallP42AKamuiIsolate();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P41A control-diag exception");
+    EXL_ABORT("NSC P42A kamui-isolate exception");
 }

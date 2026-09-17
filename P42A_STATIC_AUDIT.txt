@@ -1,0 +1,15 @@
+P42A STATIC AUDIT
+=================
+Parent: P41A (control dump + ougi caller)
+P42A gameplay changes vs P41A:
+- O14: EnableControlActorLocal REMOVED from Event236 path; pure shadow
+- OP15/OP17/OP18: explicit shadow + markers
+- CTRL_DUMP runtime path removed
+- All other handlers and native traces unchanged
+
+Locked negatives from P41A:
+- +0x12A24 is not the PC-equivalent boolean control block
+- Kamui does not enter 0x488BAC / 0x7E0F58
+
+Restore main SHA256:
+2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
