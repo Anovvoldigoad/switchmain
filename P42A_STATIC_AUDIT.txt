@@ -13,3 +13,5 @@ Locked negatives from P41A:
 
 Restore main SHA256:
 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+
+Build note: EnableControlActorLocal + ControlRelativeOffset removed so -Werror=unused-function passes under GCC 16.

@@ -83,7 +83,6 @@ std::atomic<uint32_t> g_event13_logs{0};
 std::atomic<uint32_t> g_event121_logs{0};
 std::atomic<uint32_t> g_ougi_core_logs{0};
 std::atomic<uint32_t> g_ougi_caller_logs{0};
-std::atomic<uint32_t> g_ctrl_dump_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -253,76 +252,6 @@ void* GetEventTargetActor(void* actor, int16_t selector) {
     using GetEnemyFn = void* (*)(void*);
     auto fn = reinterpret_cast<GetEnemyFn>(vtable[0xDD0 / sizeof(void*)]);
     return fn ? fn(actor) : nullptr;
-}
-
-bool ControlRelativeOffset(int16_t control, uint32_t& out) {
-    switch (control) {
-        case 0:  out = 0x00; return true; // PL_ANM_ATK
-        case 19: out = 0x04; return true; // PL_ANM_ATK_FAR / _ANOTHER
-        case 1:  out = 0x08; return true; // Ultimate Jutsu
-        case 2:  out = 0x10; return true; // Jutsus
-        case 3:  out = 0x18; return true; // projectile land/attack
-        case 18: out = 0x1C; return true; // chakra projectile land
-        case 4:  out = 0x20; return true; // grab
-        case 5:  out = 0x24; return true; // substitution
-        case 6:  out = 0x28; return true; // guard
-        case 7:  out = 0x2C; return true; // chakra load
-        case 8:  out = 0x30; return true; // movement + chakra
-        case 9:  out = 0x34; return true; // jump
-        case 10: out = 0x38; return true; // ninja movement
-        case 11: out = 0x3C; return true; // air dash
-        case 12: out = 0x40; return true; // land dash
-        case 13: out = 0x44; return true; // D-pad items
-        case 14: out = 0x48; return true; // leader switch
-        case 15: out = 0x4C; return true; // awakening
-        case 16: out = 0x50; return true; // supports
-        case 17: out = 0x58; return true; // counter attack
-        default: return false;
-    }
-}
-
-struct ControlWriteResult {
-    void* target;
-    bool valid;
-    bool wrote;
-    uint32_t relative;
-    int32_t old_value;
-};
-
-ControlWriteResult EnableControlActorLocal(void* actor, int16_t enemy, int16_t control) {
-    ControlWriteResult r{nullptr, false, false, 0, 0};
-    void* target = GetEventTargetActor(actor, enemy);
-    r.target = target;
-    if (!target) return r;
-
-    uint32_t relative = 0;
-    if (!ControlRelativeOffset(control, relative)) return r;
-    r.valid = true;
-    r.relative = relative;
-
-    auto* field = reinterpret_cast<volatile int32_t*>(
-        reinterpret_cast<uint8_t*>(target) + kControlBlockOffset + relative);
-    const int32_t old = *field;
-    r.old_value = old;
-
-    // Fail closed if this does not look like the expected boolean control block.
-    // This keeps P42A from corrupting an unrelated structure if the candidate
-    // base is wrong on hardware.
-    if (old == 0 || old == 1) {
-        *field = 1;
-        r.wrote = true;
-    }
-
-    // Preserve the literal PC SC1.70 source fall-through for selector 19:
-    // enabling far-attack also reaches case 1 and enables Ultimate Jutsu.
-    if (control == 19) {
-        auto* uj = reinterpret_cast<volatile int32_t*>(
-            reinterpret_cast<uint8_t*>(target) + kControlBlockOffset + 0x08);
-        const int32_t old_uj = *uj;
-        if (old_uj == 0 || old_uj == 1) *uj = 1;
-    }
-
-    return r;
 }
 
 uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
