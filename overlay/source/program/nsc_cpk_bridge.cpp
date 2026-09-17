@@ -86,6 +86,7 @@ std::atomic<uint32_t> g_event13_logs{0};
 std::atomic<uint32_t> g_event121_logs{0};
 std::atomic<uint32_t> g_ougi_core_logs{0};
 std::atomic<uint32_t> g_ougi_caller_logs{0};
+std::atomic<uint32_t> g_ougi_finish_create_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -866,9 +867,8 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
 // Fingerprint 8 words @ 0x4726E4:
 //   D102C3FF A9057BFD A9066FFC A90767FA A9085FF8 A90957F6 A90A4FF4 F000AFB3
 HOOK_DEFINE_TRAMPOLINE(OugiFinishCreateHook) {
-    static std::atomic<uint32_t> s_count{0};
     static void Callback(void* this_ptr) {
-        const uint32_t n = s_count.fetch_add(1, std::memory_order_relaxed);
+        const uint32_t n = g_ougi_finish_create_logs.fetch_add(1, std::memory_order_relaxed);
         if (n < 32) {
             Logging.Log("[NSC:P44A] OUGI_FINISH_CREATE this=%p n=%u", this_ptr, n);
         }
