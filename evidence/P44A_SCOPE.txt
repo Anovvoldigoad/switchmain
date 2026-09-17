@@ -1,0 +1,6 @@
+P44A SCOPE (locked before hardware)
+===================================
+- Log-only at OugiFinishParam Create 0x4726E4
+- Gameplay policy = P43A (O14 shadow, ougi-core abandoned)
+- No new live patches
+- After hardware log → R54 checkpoint

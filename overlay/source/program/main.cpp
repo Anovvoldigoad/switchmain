@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP44A();
+    nsc::InstallP44AOugiFinishProbe();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P44A exception");
+    EXL_ABORT("NSC P44A ougi-finish-probe exception");
 }
