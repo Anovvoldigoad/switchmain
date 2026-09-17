@@ -1,5 +1,5 @@
 #pragma once
 
 namespace nsc {
-void InstallP44AOugiFinishProbe();
+void InstallP45ACombatOugiProbe();
 }
