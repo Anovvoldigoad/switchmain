@@ -1,0 +1,5 @@
+P46A SCOPE
+==========
+Log-only PlayAction 0x766B8C (all chars)
+Goal: A/B action indices vanilla UJ vs Tobi Kamui
+Zero gameplay delta

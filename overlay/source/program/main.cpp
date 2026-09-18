@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP45ACombatOugiProbe();
+    nsc::InstallP46APlayActionProbe();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P45A combat-ougi-probe exception");
+    EXL_ABORT("NSC P46A play-action-probe exception");
 }
