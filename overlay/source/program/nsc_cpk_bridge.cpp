@@ -1027,7 +1027,7 @@ HOOK_DEFINE_TRAMPOLINE(ActionRemapProbeHook) {
     }
 };
 
-bool InstallEvent236Dispatcher() {
+[[maybe_unused]] bool InstallEvent236Dispatcher() {
     static constexpr uint32_t kEvent236Expected[] = {
         0xF81F0FFE, 0xF9400008, 0xF946E908, 0xD63F0100,
         0xB4000080, 0xF9400008, 0xF945E108, 0xD63F0100,
@@ -1040,7 +1040,7 @@ bool InstallEvent236Dispatcher() {
     return true;
 }
 
-bool InstallStateTrace() {
+[[maybe_unused]] bool InstallStateTrace() {
     static constexpr uint32_t kEvent13Expected[] = {
         0xF81E0FFE, 0xA9014FF4, 0x5281F014, 0x72A00034,
         0xAA0003F3, 0xF8746800, 0x97FD9CE5, 0xB912A27F,
@@ -1078,7 +1078,7 @@ bool InstallStateTrace() {
     return true;
 }
 
-bool InstallLifecycleTrace() {
+[[maybe_unused]] bool InstallLifecycleTrace() {
     static constexpr uint32_t kEvent235Expected[] = {
         0xF81F0FFE, 0xF9400008, 0xF946E908, 0xD63F0100,
         0xB4000080, 0xF9400008, 0xF945DD08, 0xD63F0100,
@@ -1131,7 +1131,7 @@ bool InstallCpkBridge() {
     return true;
 }
 
-bool InstallTraceHooks() {
+[[maybe_unused]] bool InstallTraceHooks() {
     static constexpr uint32_t kCharExpected[] = {
         0xF000EA68, 0xF9424508, 0xF9760908, 0x2A0003E1, 0xF9409500, 0x1410AC93,
     };

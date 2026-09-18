@@ -22,3 +22,15 @@ P48B active hook sites:
 Decision-site fingerprints retained from audited Switch v1.70 main.
 Active probe callbacks are observational. No actor/action write was added.
 No per-character gameplay branch was added.
+
+R1 COMPILE FIX
+==============
+The stage-1 minimization intentionally stopped calling four historical installers,
+but devkitA64 builds with -Werror and GCC therefore emitted -Wunused-function for:
+  InstallEvent236Dispatcher
+  InstallStateTrace
+  InstallLifecycleTrace
+  InstallTraceHooks
+R1 marks those four definitions [[maybe_unused]]. Their bodies and historical
+source are retained, but none is called by InstallP48BMinimalActionDecisionProbe().
+Active runtime hook count remains exactly 3.

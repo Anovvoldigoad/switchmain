@@ -52,3 +52,9 @@ DO NOT
 - Do not use P48A again.
 - Do not patch 708->710.
 - Do not hardcode char 281.
+
+P48B R1 BUILD FIX
+The first P48B source package could stop at compile time because four intentionally
+inactive historical installer functions triggered GCC -Wunused-function under
+-Werror. R1 marks only those four functions [[maybe_unused]]. This is a compile-only
+fix: active installation remains CpkBind + PlayAction + ActionLookup (3 trampolines).
