@@ -2,7 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EXL="${1:-$ROOT/exlaunch}"
-if [[ ! -d "$EXL" ]]; then echo "[!] Missing exlaunch tree: $EXL"; exit 1; fi
+if [[ ! -d "$EXL" ]]; then echo "[!] Missing exlaunch: $EXL"; exit 1; fi
 cp "$ROOT/overlay/source/program/main.cpp" "$EXL/source/program/main.cpp"
 cp "$ROOT/overlay/source/program/nsc_cpk_bridge.cpp" "$EXL/source/program/nsc_cpk_bridge.cpp"
 cp "$ROOT/overlay/source/program/nsc_cpk_bridge.hpp" "$EXL/source/program/nsc_cpk_bridge.hpp"
@@ -16,5 +16,5 @@ s,n3=re.subn(r'(?m)^CXX_FLAGS\s*:=.*$', 'CXX_FLAGS := -Wno-non-c-typedef-for-lin
 if (n1,n2,n3)!=(1,1,1): raise SystemExit(f'config patch failed {(n1,n2,n3)}')
 p.write_text(s)
 PY
-echo "[+] P47A play-action-ret-probe overlay prepared"
+echo "[+] P48A uj-path-probe overlay prepared"
 grep -E '^(LOAD_KIND|PROGRAM_ID|CXX_FLAGS)[[:space:]]*:=' "$EXL/config.mk"

@@ -1,0 +1,3 @@
+P48A STATIC AUDIT
+Delta: +Membership8800D0 +Membership880150 +Gate769A4C; PlayAction ret retained
+Gameplay: log-only

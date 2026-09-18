@@ -1,5 +1,5 @@
 #pragma once
 
 namespace nsc {
-void InstallP47APlayActionRetProbe();
+void InstallP48AUjPathProbe();
 }
