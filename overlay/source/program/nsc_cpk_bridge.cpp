@@ -34,8 +34,6 @@ constexpr ptrdiff_t kNormalOugiOffset         = 0x6F44A0;  // NORMAL_OUGI combat
 constexpr ptrdiff_t kSpecialOugiFinishOffset  = 0x6F4880;  // SPECIAL_OUGI_FINISH combat action handler (end classifier)
 // P48A: PlayAction ret + membership/gate for 708 vs 710 path
 constexpr ptrdiff_t kPlayActionProbeOffset    = 0x766B8C;  // PlayAction → int32_t ret
-constexpr ptrdiff_t kMembership8800D0Offset   = 0x8800D0;  // list membership (pre-710)
-constexpr ptrdiff_t kMembership880150Offset   = 0x880150;  // list membership variant
 constexpr ptrdiff_t kGate769A4COffset         = 0x769A4C;  // gate before 708 path @7E48EC
 
 // Proven v1.70 native helpers used by the historical generic MovesetPlus event236 port.
@@ -97,7 +95,6 @@ std::atomic<uint32_t> g_ougi_finish_create_logs{0};
 std::atomic<uint32_t> g_normal_ougi_logs{0};
 std::atomic<uint32_t> g_special_ougi_finish_logs{0};
 std::atomic<uint32_t> g_play_action_logs{0};
-std::atomic<uint32_t> g_membership_logs{0};
 std::atomic<uint32_t> g_gate_769_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
@@ -1157,31 +1154,6 @@ bool InstallOugiFinishProbe() {
 }
 
 
-// P48A: membership helper 0x8800D0 — FP: 7100041F 54000148 F000C608 F9424508
-// Returns 0 if list null / not member; non-zero path into 0x71C900
-HOOK_DEFINE_TRAMPOLINE(Membership8800D0Hook) {
-    static uint64_t Callback(uint64_t x0) {
-        const uint64_t ret = Orig(x0);
-        const uint32_t n = g_membership_logs.fetch_add(1, std::memory_order_relaxed);
-        if (n < 256) {
-            Logging.Log("[NSC:P48A] MEMBER8800D0 x0=0x%lx ret=0x%lx n=%u", x0, ret, n);
-        }
-        return ret;
-    }
-};
-
-// P48A: membership helper 0x880150
-HOOK_DEFINE_TRAMPOLINE(Membership880150Hook) {
-    static uint64_t Callback(uint64_t x0, uint64_t x1) {
-        const uint64_t ret = Orig(x0, x1);
-        const uint32_t n = g_membership_logs.fetch_add(1, std::memory_order_relaxed);
-        if (n < 256) {
-            Logging.Log("[NSC:P48A] MEMBER880150 x0=0x%lx x1=0x%lx ret=0x%lx n=%u", x0, x1, ret, n);
-        }
-        return ret;
-    }
-};
-
 // P48A: gate 0x769A4C before 708 path — uses actor+536, field 4708
 // FP: FC1D0FE8 A90157FE A9024FF4 AA0003F3 F9410C00 B4000160
 HOOK_DEFINE_TRAMPOLINE(Gate769A4CHook) {
@@ -1212,36 +1184,19 @@ void InstallP48AUjPathProbe() {
     const bool event236 = InstallEvent236Dispatcher();
     const bool ougi_probe = InstallOugiFinishProbe();
 
-    static constexpr uint32_t kMember8800D0Expected[] = { 0x7100041F, 0x54000148 };
-    static constexpr uint32_t kMember880150Expected[] = { 0x7100041F, 0x54000168 };
+    // Membership 0x8800D0/150 are tiny tail-call stubs — NOT trampoline-safe (relative B breaks).
+    // Only hook full-prologue Gate769A4C (pre-708 path).
     static constexpr uint32_t kGate769Expected[] = { 0xFC1D0FE8, 0xA90157FE };
-    bool member_ok = false, gate_ok = false;
-    if (MatchWords(kMembership8800D0Offset, kMember8800D0Expected)) {
-        Membership8800D0Hook::InstallAtOffset(kMembership8800D0Offset);
-        member_ok = true;
-        Logging.Log("[NSC:P48A] Membership8800D0 OK @ 0x%lx", (unsigned long)kMembership8800D0Offset);
-    } else {
-        LogFingerprintFail("MEMBER8800D0", kMembership8800D0Offset);
-    }
-    if (MatchWords(kMembership880150Offset, kMember880150Expected)) {
-        Membership880150Hook::InstallAtOffset(kMembership880150Offset);
-        Logging.Log("[NSC:P48A] Membership880150 OK @ 0x%lx", (unsigned long)kMembership880150Offset);
-    } else {
-        LogFingerprintFail("MEMBER880150", kMembership880150Offset);
-    }
     if (MatchWords(kGate769A4COffset, kGate769Expected)) {
         Gate769A4CHook::InstallAtOffset(kGate769A4COffset);
-        gate_ok = true;
         Logging.Log("[NSC:P48A] Gate769A4C OK @ 0x%lx", (unsigned long)kGate769A4COffset);
     } else {
         LogFingerprintFail("GATE769A4C", kGate769A4COffset);
     }
-    (void)member_ok; (void)gate_ok;
 
-        Logging.Log("[NSC:P48A] READY cpk=%d trace=%d lifecycle=%d state_trace=%d event236=%d ougi_probe=%d vis12_shadow=1 ctrl14_shadow=1 play_action_ret=0x%lx member=0x%lx gate769=0x%lx normal_ougi=0x%lx special_ougi_finish=0x%lx ougi_finish_create=0x%lx evt236=0x%lx",
+    Logging.Log("[NSC:P48A] READY cpk=%d trace=%d lifecycle=%d state_trace=%d event236=%d ougi_probe=%d vis12_shadow=1 ctrl14_shadow=1 play_action_ret=0x%lx gate769=0x%lx normal_ougi=0x%lx special_ougi_finish=0x%lx ougi_finish_create=0x%lx evt236=0x%lx",
                 cpk ? 1 : 0, trace ? 1 : 0, lifecycle ? 1 : 0, state_trace ? 1 : 0, event236 ? 1 : 0, ougi_probe ? 1 : 0,
                 static_cast<unsigned long>(kPlayActionProbeOffset),
-                static_cast<unsigned long>(kMembership8800D0Offset),
                 static_cast<unsigned long>(kGate769A4COffset),
                 static_cast<unsigned long>(kNormalOugiOffset),
                 static_cast<unsigned long>(kSpecialOugiFinishOffset),

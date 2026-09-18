@@ -1,3 +1,4 @@
-P48A STATIC AUDIT
-Delta: +Membership8800D0 +Membership880150 +Gate769A4C; PlayAction ret retained
-Gameplay: log-only
+P48A STATIC AUDIT (boot-safe)
+- PlayAction ret probe retained
+- Gate769A4C only additional hook
+- Membership 8800D0/150 REMOVED (trampoline-unsafe short stubs)
