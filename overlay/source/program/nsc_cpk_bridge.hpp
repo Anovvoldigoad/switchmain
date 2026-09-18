@@ -1,5 +1,5 @@
 #pragma once
 
 namespace nsc {
-void InstallP48AActionDecisionProbe();
+void InstallP48BMinimalActionDecisionProbe();
 }

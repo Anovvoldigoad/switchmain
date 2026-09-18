@@ -1,4 +1,4 @@
-name: Build NSC P48A action decision probe
+name: Build NSC P48B minimal action decision probe
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     paths:
       - "overlay/**"
       - "prepare_exlaunch.sh"
-      - ".github/workflows/build-subsdk9-p48a.yml"
+      - ".github/workflows/build-subsdk9-p48b.yml"
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
       DEVKITPRO: /opt/devkitpro
       DEVKITA64: /opt/devkitpro/devkitA64
     steps:
-      - name: Checkout P48A build kit
+      - name: Checkout P48B build kit
         uses: actions/checkout@v4
 
       - name: Verify preinstalled devkitPro toolchain
@@ -37,7 +37,7 @@ jobs:
           git -C "$GITHUB_WORKSPACE/exlaunch" submodule update --init --recursive
           test "$(git -C "$GITHUB_WORKSPACE/exlaunch" rev-parse --short HEAD)" = "229bbd6"
 
-      - name: Overlay P48A sources
+      - name: Overlay P48B sources
         shell: bash
         run: |
           set -euxo pipefail
@@ -63,17 +63,17 @@ jobs:
           mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs
           cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
           (cd artifact && sha256sum atmosphere/contents/0100FA10190A0000/exefs/subsdk9 | tee SHA256SUMS.txt)
-          cp README_P48A.txt artifact/README_P48A.txt
-          cp analyze_p48a_log.py artifact/analyze_p48a_log.py
-          cp P48A_STATIC_AUDIT.txt artifact/P48A_STATIC_AUDIT.txt
+          cp README_P48B.txt artifact/README_P48B.txt
+          cp analyze_p48b_log.py artifact/analyze_p48b_log.py
+          cp P48B_STATIC_AUDIT.txt artifact/P48B_STATIC_AUDIT.txt
           mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
           sha256sum artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main | tee artifact/RESTORE_MAIN_SHA256.txt
 
-      - name: Upload P48A subsdk9
+      - name: Upload P48B subsdk9
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P48A-action-decision-probe-subsdk9
+          name: NSC-P48B-action-decision-probe-subsdk9
           path: artifact/
           if-no-files-found: error
           compression-level: 9

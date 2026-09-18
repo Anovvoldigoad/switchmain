@@ -32,9 +32,9 @@ constexpr ptrdiff_t kOugiFinishCreateOffset   = 0x4726E4;  // ccOugiFinishParamM
 // P45A: combat action table handlers (table-dispatched, 0 direct BL callers)
 constexpr ptrdiff_t kNormalOugiOffset         = 0x6F44A0;  // NORMAL_OUGI combat action handler (end classifier)
 constexpr ptrdiff_t kSpecialOugiFinishOffset  = 0x6F4880;  // SPECIAL_OUGI_FINISH combat action handler (end classifier)
-// P48A: action-decision probe — PRE/POST PlayAction plus 707/708 resolver chain
+// P48B: action-decision probe — PRE/POST PlayAction plus 707/708 resolver chain
 constexpr ptrdiff_t kPlayActionProbeOffset    = 0x766B8C;  // PlayAction → int32_t ret
-// P48A: 707->708 decision-chain probes (log-only)
+// P48B: 707->708 decision-chain probes (log-only)
 constexpr ptrdiff_t kActionLookupOffset        = 0x768E84;  // actor,index,flag -> action entry ptr/null
 constexpr ptrdiff_t kActionGateOffset          = 0x769A4C;  // actor -> bool-like completion/timing gate
 constexpr ptrdiff_t kActionRemapOffset         = 0x769B04;  // actor,index -> resolved index
@@ -344,14 +344,14 @@ uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2
     if (!found) {
         char text[31]{};
         CopyEventText(text, event);
-        Logging.Log("[NSC:P48A] ACTION actor=%p target=%p mode=%u text=%s found=0",
+        Logging.Log("[NSC:P48B] ACTION actor=%p target=%p mode=%u text=%s found=0",
                     actor, target, action_mode ? 1u : 0u, text);
         return 1;
     }
 
     char text[31]{};
     CopyEventText(text, event);
-    Logging.Log("[NSC:P48A] ACTION actor=%p target=%p mode=%u text=%s found=1 index=%u",
+    Logging.Log("[NSC:P48B] ACTION actor=%p target=%p mode=%u text=%s found=1 index=%u",
                 actor, target, action_mode ? 1u : 0u, text, index);
 
     using PlayFn = void (*)(void*, int32_t, int32_t, int32_t, int32_t, int32_t, float);
@@ -373,7 +373,7 @@ bool MatchWords(ptrdiff_t offset, const uint32_t (&expected)[N]) {
 void LogFingerprintFail(const char* name, ptrdiff_t offset) {
     const auto base = exl::util::modules::GetTargetStart();
     const auto actual = *reinterpret_cast<const volatile uint32_t*>(base + offset);
-    Logging.Log("[NSC:P48A] fingerprint FAIL %s off=0x%lx word0=%08x", name,
+    Logging.Log("[NSC:P48B] fingerprint FAIL %s off=0x%lx word0=%08x", name,
                 static_cast<unsigned long>(offset), actual);
 }
 
@@ -390,7 +390,7 @@ HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
         CpkPathArg extra{kModCpkPath, 0, 0, 0};
         uint32_t extra_bind_id = 0;
         const uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
-        Logging.Log("[NSC:P48A] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
+        Logging.Log("[NSC:P48B] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
                     kModCpkPath, kModCpkPriority, extra_result, extra_bind_id);
         return original_result;
     }
@@ -401,7 +401,7 @@ HOOK_DEFINE_TRAMPOLINE(CharacodeGetterHook) {
         const char* result = Orig(id);
         if (id > kVanillaMaxCharId && result && *result) TrackCustomCode(id, result);
         if (id >= kFirstCustomCharId && g_char_logs.fetch_add(1, std::memory_order_relaxed) < 96) {
-            Logging.Log("[NSC:P48A] CHAR id=%u result=%p code=%s", id,
+            Logging.Log("[NSC:P48B] CHAR id=%u result=%p code=%s", id,
                         static_cast<const void*>(result), result ? result : "<null>");
         }
         return result;
@@ -415,7 +415,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
         void* result = Orig(manager, path, options);
         if (IsInterestingPath(path) &&
             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:P48A] LOAD_REQ manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:P48B] LOAD_REQ manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -428,7 +428,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
         void* result = Orig(manager, path, options);
         if (IsInterestingPath(path) &&
             g_create_logs.fetch_add(1, std::memory_order_relaxed) < 128) {
-            Logging.Log("[NSC:P48A] LOAD_CREATE manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:P48B] LOAD_CREATE manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -475,14 +475,14 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
         if (overflow) {
             uint32_t expected = 0;
             if (g_status_overflow_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
-                Logging.Log("[NSC:P48A] STATUS_TABLE_OVERFLOW max=%u",
+                Logging.Log("[NSC:P48B] STATUS_TABLE_OVERFLOW max=%u",
                             static_cast<unsigned>(sizeof(g_status_entries) / sizeof(g_status_entries[0])));
             }
         }
 
         if (should_log &&
             g_status_transition_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:P48A] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
+            Logging.Log("[NSC:P48B] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
                         manager, path ? path : "<null>", first ? 1u : 0u, previous, status);
         }
         return status;
@@ -497,7 +497,7 @@ HOOK_DEFINE_TRAMPOLINE(ChunkBinaryHook) {
         void* result = Orig(full_path, key);
         if (IsInterestingChunk(full_path, key) &&
             g_chunk_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:P48A] CHUNK path=%s key=%s result=%p",
+            Logging.Log("[NSC:P48B] CHUNK path=%s key=%s result=%p",
                         full_path ? full_path : "<null>",
                         key ? key : "<null>", result);
         }
@@ -515,7 +515,7 @@ HOOK_DEFINE_TRAMPOLINE(FileOpenHook) {
         const uint32_t result = Orig(request, path, slot);
         if (IsInterestingPath(path) &&
             g_file_open_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:P48A] FILE_OPEN request=%p path=%s slot=%u result=%u",
+            Logging.Log("[NSC:P48B] FILE_OPEN request=%p path=%s slot=%u result=%u",
                         request, path ? path : "<null>", slot, result);
         }
         return result;
@@ -554,7 +554,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
             read_error = *p;
         }
 
-        Logging.Log("[NSC:P48A] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
+        Logging.Log("[NSC:P48B] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
                     path ? path : "<null>", owner, read_context, load_object,
                     load_status, read_error);
     }
@@ -577,7 +577,7 @@ HOOK_DEFINE_TRAMPOLINE(Event235Hook) {
         const uint32_t result = Orig(actor, event_ptr);
         if (valid && char_id > kVanillaMaxCharId &&
             g_event235_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:P48A] EVT235_SHOW actor=%p side=%u char=%u op=%d p2=%d p3=%d ret=%u",
+            Logging.Log("[NSC:P48B] EVT235_SHOW actor=%p side=%u char=%u op=%d p2=%d p3=%d ret=%u",
                         actor, side, char_id, static_cast<int>(op), static_cast<int>(p2),
                         static_cast<int>(p3), result);
         }
@@ -611,7 +611,7 @@ HOOK_DEFINE_TRAMPOLINE(Event13Hook) {
         const uint32_t n = g_event13_logs.fetch_add(1, std::memory_order_relaxed);
         // P43A: unfiltered — log vanilla AND custom
         if (valid && n < 1024) {
-            Logging.Log("[NSC:P48A] EVT13_AWAKE actor=%p side=%u char=%u event=%p cond_owner=%p gate=%d->%d ctrl15=%d->%d ret=%u",
+            Logging.Log("[NSC:P48B] EVT13_AWAKE actor=%p side=%u char=%u event=%p cond_owner=%p gate=%d->%d ctrl15=%d->%d ret=%u",
                         actor, side, char_id, event_ptr, condition_owner,
                         pre_gate, post_gate, pre_awake, post_awake, ret);
         }
@@ -637,7 +637,7 @@ HOOK_DEFINE_TRAMPOLINE(Event121Hook) {
         const uint32_t ret = Orig(actor, event_ptr);
         if (valid && char_id > kVanillaMaxCharId &&
             g_event121_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:P48A] EVT121_COND actor=%p side=%u char=%u event=%p text=%s op=%d p2=%d p3=%d p4bits=%08x ret=%u",
+            Logging.Log("[NSC:P48B] EVT121_COND actor=%p side=%u char=%u event=%p text=%s op=%d p2=%d p3=%d p4bits=%08x ret=%u",
                         actor, side, char_id, event_ptr, text, static_cast<int>(op),
                         static_cast<int>(p2), static_cast<int>(p3), p4bits, ret);
         }
@@ -671,7 +671,7 @@ HOOK_DEFINE_TRAMPOLINE(OugiCoreHook) {
                 ea8_post = *reinterpret_cast<volatile int32_t*>(b + 0xEA8);
                 state_ptr_post = *reinterpret_cast<void* volatile*>(b + 0x1238);
             }
-            Logging.Log("[NSC:P48A] OUGI_CORE actor=%p side=%u char=%u mode=%u state=%p->%p ea0=%d->%d ea4=%d->%d ea8=%d->%d",
+            Logging.Log("[NSC:P48B] OUGI_CORE actor=%p side=%u char=%u mode=%u state=%p->%p ea0=%d->%d ea4=%d->%d ea8=%d->%d",
                         actor, side, char_id, mode, state_ptr_pre, state_ptr_post,
                         ea0_pre, ea0_post, ea4_pre, ea4_post, ea8_pre, ea8_post);
         }
@@ -696,7 +696,7 @@ HOOK_DEFINE_TRAMPOLINE(OugiCallerHook) {
                 ea8 = *reinterpret_cast<volatile int32_t*>(b + 0xEA8);
                 state_ptr = *reinterpret_cast<void* volatile*>(b + 0x1238);
             }
-            Logging.Log("[NSC:P48A] OUGI_CALLER actor=%p side=%u char=%u mode=%u state=%p ea0=%d ea4=%d ea8=%d",
+            Logging.Log("[NSC:P48B] OUGI_CALLER actor=%p side=%u char=%u mode=%u state=%p ea0=%d ea4=%d ea8=%d",
                         actor, side, char_id, mode, state_ptr, ea0, ea4, ea8);
         }
         Orig(actor, mode);
@@ -706,9 +706,9 @@ HOOK_DEFINE_TRAMPOLINE(OugiCallerHook) {
 HOOK_DEFINE_TRAMPOLINE(StageHandleHook) {
     static void Callback(uint32_t stage_id) {
         const uint32_t n = g_stage_handle_logs.fetch_add(1, std::memory_order_relaxed);
-        if (n < 256) Logging.Log("[NSC:P48A] STAGE_HANDLE phase=0 stage=%u", stage_id);
+        if (n < 256) Logging.Log("[NSC:P48B] STAGE_HANDLE phase=0 stage=%u", stage_id);
         Orig(stage_id);
-        if (n < 256) Logging.Log("[NSC:P48A] STAGE_HANDLE phase=1 stage=%u", stage_id);
+        if (n < 256) Logging.Log("[NSC:P48B] STAGE_HANDLE phase=1 stage=%u", stage_id);
     }
 };
 
@@ -718,14 +718,14 @@ HOOK_DEFINE_TRAMPOLINE(FixCharPositionHook) {
         const bool valid = ReadActorIdentity(actor, side, char_id);
         const uint32_t n = g_fix_char_logs.fetch_add(1, std::memory_order_relaxed);
         if (n < 384) {
-            Logging.Log("[NSC:P48A] FIX_CHAR phase=0 actor=%p valid=%u side=%u char=%u",
+            Logging.Log("[NSC:P48B] FIX_CHAR phase=0 actor=%p valid=%u side=%u char=%u",
                         actor, valid ? 1u : 0u, side, char_id);
         }
         Orig(actor);
         if (n < 384) {
             uint32_t side2 = 0xFFFFFFFFu, char2 = 0xFFFFFFFFu;
             const bool valid2 = ReadActorIdentity(actor, side2, char2);
-            Logging.Log("[NSC:P48A] FIX_CHAR phase=1 actor=%p valid=%u side=%u char=%u",
+            Logging.Log("[NSC:P48B] FIX_CHAR phase=1 actor=%p valid=%u side=%u char=%u",
                         actor, valid2 ? 1u : 0u, side2, char2);
         }
     }
@@ -734,9 +734,9 @@ HOOK_DEFINE_TRAMPOLINE(FixCharPositionHook) {
 HOOK_DEFINE_TRAMPOLINE(PostStageHook) {
     static void Callback() {
         const uint32_t n = g_post_stage_logs.fetch_add(1, std::memory_order_relaxed);
-        if (n < 256) Logging.Log("[NSC:P48A] POST_STAGE phase=0");
+        if (n < 256) Logging.Log("[NSC:P48B] POST_STAGE phase=0");
         Orig();
-        if (n < 256) Logging.Log("[NSC:P48A] POST_STAGE phase=1");
+        if (n < 256) Logging.Log("[NSC:P48B] POST_STAGE phase=1");
     }
 };
 
@@ -769,7 +769,7 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
             g_event236_logs.fetch_add(1, std::memory_order_relaxed) < 2048) {
             char text[31]{};
             CopyEventText(text, event);
-            Logging.Log("[NSC:P48A] EVT236 actor=%p side=%u char=%u op=%d p2=%d p3=%d p4bits=%08x text=%s",
+            Logging.Log("[NSC:P48B] EVT236 actor=%p side=%u char=%u op=%d p2=%d p3=%d p4bits=%08x text=%s",
                         actor, side, char_id, static_cast<int>(op), static_cast<int>(p2),
                         static_cast<int>(p3), FloatBits(p4), text);
         }
@@ -810,7 +810,7 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 // P35A/P36 re-enabled O12/O14/... and conditional disappearance returned.
                 // Do NOT mutate visibility in this build; O14 is independently shadowed below for P39A.
                 if (g_event235_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-                    Logging.Log("[NSC:P48A] VIS_SHADOW actor=%p side=%u char=%u p2=%d",
+                    Logging.Log("[NSC:P48B] VIS_SHADOW actor=%p side=%u char=%u p2=%d",
                                 actor, side, char_id, static_cast<int>(p2));
                 }
                 return 1;
@@ -825,7 +825,7 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 // boolean control block. Victim-UJ HARD PASS is from not calling the
                 // broken native O14 route; direct writes were mostly fail-closed no-ops.
                 if (g_event236_logs.load(std::memory_order_relaxed) < 4096) {
-                    Logging.Log("[NSC:P48A] CTRL14_SHADOW actor=%p side=%u char=%u p2=%d p3=%d",
+                    Logging.Log("[NSC:P48B] CTRL14_SHADOW actor=%p side=%u char=%u p2=%d p3=%d",
                                 actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3));
                 }
                 return 1;
@@ -835,7 +835,7 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 // P43A: explicit shadow for me_disable_control / disable path.
                 // Logged for Kamui sequence reconstruction (seen repeatedly around UJ).
                 if (g_event236_logs.load(std::memory_order_relaxed) < 4096) {
-                    Logging.Log("[NSC:P48A] OP15_SHADOW actor=%p side=%u char=%u p2=%d p3=%d",
+                    Logging.Log("[NSC:P48B] OP15_SHADOW actor=%p side=%u char=%u p2=%d p3=%d",
                                 actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3));
                 }
                 return 1;
@@ -845,7 +845,7 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 // P43A: explicit Kamui-candidate shadow. Previously fell through default.
                 // A/B next: only flip this to a proven native/port after sequence evidence.
                 if (g_event236_logs.load(std::memory_order_relaxed) < 4096) {
-                    Logging.Log("[NSC:P48A] OP17_SHADOW actor=%p side=%u char=%u p2=%d p3=%d p4bits=%08x",
+                    Logging.Log("[NSC:P48B] OP17_SHADOW actor=%p side=%u char=%u p2=%d p3=%d p4bits=%08x",
                                 actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3),
                                 FloatBits(p4));
                 }
@@ -855,7 +855,7 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
             case 18: {
                 // P43A: explicit Kamui-candidate shadow. Previously fell through default.
                 if (g_event236_logs.load(std::memory_order_relaxed) < 4096) {
-                    Logging.Log("[NSC:P48A] OP18_SHADOW actor=%p side=%u char=%u p2=%d p3=%d p4bits=%08x",
+                    Logging.Log("[NSC:P48B] OP18_SHADOW actor=%p side=%u char=%u p2=%d p3=%d p4bits=%08x",
                                 actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3),
                                 FloatBits(p4));
                 }
@@ -884,7 +884,7 @@ HOOK_DEFINE_TRAMPOLINE(OugiFinishCreateHook) {
     static void Callback(void* this_ptr) {
         const uint32_t n = g_ougi_finish_create_logs.fetch_add(1, std::memory_order_relaxed);
         if (n < 32) {
-            Logging.Log("[NSC:P48A] OUGI_FINISH_CREATE this=%p n=%u", this_ptr, n);
+            Logging.Log("[NSC:P48B] OUGI_FINISH_CREATE this=%p n=%u", this_ptr, n);
         }
         Orig(this_ptr);
     }
@@ -897,7 +897,7 @@ HOOK_DEFINE_TRAMPOLINE(NormalOugiHook) {
     static uint64_t Callback(uint64_t x0) {
         const uint32_t n = g_normal_ougi_logs.fetch_add(1, std::memory_order_relaxed);
         if (n < 256) {
-            Logging.Log("[NSC:P48A] NORMAL_OUGI x0=%p n=%u", reinterpret_cast<void*>(x0), n);
+            Logging.Log("[NSC:P48B] NORMAL_OUGI x0=%p n=%u", reinterpret_cast<void*>(x0), n);
         }
         return Orig(x0);
     }
@@ -910,13 +910,13 @@ HOOK_DEFINE_TRAMPOLINE(SpecialOugiFinishHook) {
     static uint64_t Callback(uint64_t x0) {
         const uint32_t n = g_special_ougi_finish_logs.fetch_add(1, std::memory_order_relaxed);
         if (n < 256) {
-            Logging.Log("[NSC:P48A] SPECIAL_OUGI_FINISH x0=%p n=%u", reinterpret_cast<void*>(x0), n);
+            Logging.Log("[NSC:P48B] SPECIAL_OUGI_FINISH x0=%p n=%u", reinterpret_cast<void*>(x0), n);
         }
         return Orig(x0);
     }
 };
 
-// P48A: PlayAction — PRE/POST state + return value.
+// P48B: PlayAction — PRE/POST state + return value.
 // Fingerprint @ 0x766B8C:
 //   A9BE57FE A9014FF4 B9529408 2A0403F4 AA0003F3 7100091F 54000080 B9528668
 HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
@@ -952,7 +952,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         const bool cinematic = (index >= 700 && index <= 740) || index == 487 || index == 223 || index == 226;
         const bool sample = (n < 256) || (index >= 200 && n < 1024) || ((n % 64) == 0);
         if (cinematic || sample) {
-            Logging.Log("[NSC:P48A] PLAY_ACTION actor=%p valid=%u side=%u char=%u index=%d ret=%d n=%u a2=%d "
+            Logging.Log("[NSC:P48B] PLAY_ACTION actor=%p valid=%u side=%u char=%u index=%d ret=%d n=%u a2=%d "
                         "pre3668=%u pre4708=%u pre4712=%u pre4740=%u pre4756=%u pre536=%p "
                         "post3668=%u post4708=%u post4712=%u post4740=%u post4756=%u post536=%p",
                         actor, valid ? 1u : 0u, side, char_id, index, ret, n, a2,
@@ -963,7 +963,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
     }
 };
 
-// P48A: action entry lookup / availability resolver.
+// P48B: action entry lookup / availability resolver.
 // Fingerprint @ 0x768E84:
 //   A9BE57FE A9014FF4 B94E5408 2A0203F5 2A0103F3 AA0003F4 7100411F 54000081
 HOOK_DEFINE_TRAMPOLINE(ActionLookupProbeHook) {
@@ -978,14 +978,14 @@ HOOK_DEFINE_TRAMPOLINE(ActionLookupProbeHook) {
         if (actor) post_action = *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
         const bool relevant = (index >= 700 && index <= 740) || (pre_action >= 700 && pre_action <= 740);
         if (relevant || n < 192) {
-            Logging.Log("[NSC:P48A] ACTION_LOOKUP actor=%p valid=%u side=%u char=%u index=%d flag=%d result=%p n=%u pre_action=%u post_action=%u",
+            Logging.Log("[NSC:P48B] ACTION_LOOKUP actor=%p valid=%u side=%u char=%u index=%d flag=%d result=%p n=%u pre_action=%u post_action=%u",
                         actor, valid ? 1u : 0u, side, char_id, index, flag, result, n, pre_action, post_action);
         }
         return result;
     }
 };
 
-// P48A: completion/timing gate used by the 707/708/709 state handler.
+// P48B: completion/timing gate used by the 707/708/709 state handler.
 // Fingerprint @ 0x769A4C:
 //   FC1D0FE8 A90157FE A9024FF4 AA0003F3 F9410C00 B4000160 97F34520 D000CEC8
 HOOK_DEFINE_TRAMPOLINE(ActionGateProbeHook) {
@@ -1000,14 +1000,14 @@ HOOK_DEFINE_TRAMPOLINE(ActionGateProbeHook) {
         if (actor) post_action = *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
         const bool relevant = (pre_action >= 700 && pre_action <= 740) || (post_action >= 700 && post_action <= 740);
         if (relevant || n < 192) {
-            Logging.Log("[NSC:P48A] ACTION_GATE actor=%p valid=%u side=%u char=%u ret=%u n=%u pre_action=%u post_action=%u",
+            Logging.Log("[NSC:P48B] ACTION_GATE actor=%p valid=%u side=%u char=%u ret=%u n=%u pre_action=%u post_action=%u",
                         actor, valid ? 1u : 0u, side, char_id, ret, n, pre_action, post_action);
         }
         return ret;
     }
 };
 
-// P48A: optional index remap called from ActionLookup when flag != 0.
+// P48B: optional index remap called from ActionLookup when flag != 0.
 // Fingerprint @ 0x769B04:
 //   F81D0FFE A90157F6 A9024FF4 510AF028 2A0103F3 7103411F 54000588 AA0003F5
 HOOK_DEFINE_TRAMPOLINE(ActionRemapProbeHook) {
@@ -1020,7 +1020,7 @@ HOOK_DEFINE_TRAMPOLINE(ActionRemapProbeHook) {
         const int32_t resolved = Orig(actor, index);
         const bool relevant = (index >= 700 && index <= 740) || (resolved >= 700 && resolved <= 900) || (action >= 700 && action <= 740);
         if (relevant || n < 192) {
-            Logging.Log("[NSC:P48A] ACTION_REMAP actor=%p valid=%u side=%u char=%u index=%d resolved=%d n=%u action=%u",
+            Logging.Log("[NSC:P48B] ACTION_REMAP actor=%p valid=%u side=%u char=%u index=%d resolved=%d n=%u action=%u",
                         actor, valid ? 1u : 0u, side, char_id, index, resolved, n, action);
         }
         return resolved;
@@ -1196,19 +1196,13 @@ bool InstallTraceHooks() {
 
 } // namespace
 
-bool InstallOugiFinishProbe() {
-    static constexpr uint32_t kOugiFinishCreateExpected[] = {
-        0xD102C3FF, 0xA9057BFD, 0xA9066FFC, 0xA90767FA,
-        0xA9085FF8, 0xA90957F6, 0xA90A4FF4, 0xF000AFB3,
-    };
-    static constexpr uint32_t kNormalOugiExpected[] = {
-        0xF81F0FFE, 0xF000D268, 0xF9424508, 0x2A0003E1,
-        0xF9762500, 0x2A1F03E2, 0x9400B71A, 0x79401808,
-    };
-    static constexpr uint32_t kSpecialOugiFinishExpected[] = {
-        0xF81F0FFE, 0x7100001F, 0x1A9F17E0, 0x94062E11,
-        0xB40000A0, 0x52800081, 0x94037B8E, 0x7100001F,
-    };
+bool InstallActionDecisionProbe() {
+    /*
+     * Stage-1 minimal decision probe:
+     * - PlayAction is already proven boot-safe by P47.
+     * - ActionLookup is the ONE new hook needed to test the 708-availability hypothesis.
+     * Gate/remap hooks remain defined but are deliberately not installed yet.
+     */
     static constexpr uint32_t kPlayActionExpected[] = {
         0xA9BE57FE, 0xA9014FF4, 0xB9529408, 0x2A0403F4,
         0xAA0003F3, 0x7100091F, 0x54000080, 0xB9528668,
@@ -1217,64 +1211,38 @@ bool InstallOugiFinishProbe() {
         0xA9BE57FE, 0xA9014FF4, 0xB94E5408, 0x2A0203F5,
         0x2A0103F3, 0xAA0003F4, 0x7100411F, 0x54000081,
     };
-    static constexpr uint32_t kActionGateExpected[] = {
-        0xFC1D0FE8, 0xA90157FE, 0xA9024FF4, 0xAA0003F3,
-        0xF9410C00, 0xB4000160, 0x97F34520, 0xD000CEC8,
-    };
-    static constexpr uint32_t kActionRemapExpected[] = {
-        0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0x510AF028,
-        0x2A0103F3, 0x7103411F, 0x54000588, 0xAA0003F5,
-    };
+
     bool ok = true;
-    if (!MatchWords(kOugiFinishCreateOffset, kOugiFinishCreateExpected)) {
-        LogFingerprintFail("OUGI_FINISH_CREATE", kOugiFinishCreateOffset); ok = false;
-    }
-    if (!MatchWords(kNormalOugiOffset, kNormalOugiExpected)) {
-        LogFingerprintFail("NORMAL_OUGI", kNormalOugiOffset); ok = false;
-    }
-    if (!MatchWords(kSpecialOugiFinishOffset, kSpecialOugiFinishExpected)) {
-        LogFingerprintFail("SPECIAL_OUGI_FINISH", kSpecialOugiFinishOffset); ok = false;
-    }
     if (!MatchWords(kPlayActionProbeOffset, kPlayActionExpected)) {
         LogFingerprintFail("PLAY_ACTION", kPlayActionProbeOffset); ok = false;
     }
     if (!MatchWords(kActionLookupOffset, kActionLookupExpected)) {
         LogFingerprintFail("ACTION_LOOKUP", kActionLookupOffset); ok = false;
     }
-    if (!MatchWords(kActionGateOffset, kActionGateExpected)) {
-        LogFingerprintFail("ACTION_GATE", kActionGateOffset); ok = false;
-    }
-    if (!MatchWords(kActionRemapOffset, kActionRemapExpected)) {
-        LogFingerprintFail("ACTION_REMAP", kActionRemapOffset); ok = false;
-    }
     if (!ok) return false;
-    OugiFinishCreateHook::InstallAtOffset(kOugiFinishCreateOffset);
-    NormalOugiHook::InstallAtOffset(kNormalOugiOffset);
-    SpecialOugiFinishHook::InstallAtOffset(kSpecialOugiFinishOffset);
+
     PlayActionProbeHook::InstallAtOffset(kPlayActionProbeOffset);
     ActionLookupProbeHook::InstallAtOffset(kActionLookupOffset);
-    ActionGateProbeHook::InstallAtOffset(kActionGateOffset);
-    ActionRemapProbeHook::InstallAtOffset(kActionRemapOffset);
     return true;
 }
 
-void InstallP48AActionDecisionProbe() {
+void InstallP48BMinimalActionDecisionProbe() {
+    /*
+     * P48A installed 24 trampoline hooks and failed during startup with
+     * AllocForTrampoline(). P48B stage-1 intentionally installs only the
+     * proven CPK hook, proven PlayAction hook, and ONE new lookup hook.
+     *
+     * IMPORTANT: all historical trace/event hooks remain defined above only
+     * for source continuity; they are NOT installed here and consume no
+     * trampoline entries.
+     */
     const bool cpk = InstallCpkBridge();
-    const bool trace = InstallTraceHooks();
-    const bool lifecycle = InstallLifecycleTrace();
-    const bool state_trace = InstallStateTrace();
-    const bool event236 = InstallEvent236Dispatcher();
-    const bool ougi_probe = InstallOugiFinishProbe();
-    Logging.Log("[NSC:P48A] READY cpk=%d trace=%d lifecycle=%d state_trace=%d event236=%d ougi_probe=%d vis12_shadow=1 ctrl14_shadow=1 play_action=0x%lx lookup=0x%lx gate=0x%lx remap=0x%lx normal_ougi=0x%lx special_ougi_finish=0x%lx ougi_finish_create=0x%lx evt236=0x%lx",
-                cpk ? 1 : 0, trace ? 1 : 0, lifecycle ? 1 : 0, state_trace ? 1 : 0, event236 ? 1 : 0, ougi_probe ? 1 : 0,
+    const bool decision = InstallActionDecisionProbe();
+    Logging.Log("[NSC:P48B] READY cpk=%d decision=%d installed_trampolines=3 "
+                "play_action=0x%lx lookup=0x%lx",
+                cpk ? 1 : 0, decision ? 1 : 0,
                 static_cast<unsigned long>(kPlayActionProbeOffset),
-                static_cast<unsigned long>(kActionLookupOffset),
-                static_cast<unsigned long>(kActionGateOffset),
-                static_cast<unsigned long>(kActionRemapOffset),
-                static_cast<unsigned long>(kNormalOugiOffset),
-                static_cast<unsigned long>(kSpecialOugiFinishOffset),
-                static_cast<unsigned long>(kOugiFinishCreateOffset),
-                static_cast<unsigned long>(kEvent236Offset));
+                static_cast<unsigned long>(kActionLookupOffset));
 }
 
 } // namespace nsc

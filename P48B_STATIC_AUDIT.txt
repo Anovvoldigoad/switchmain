@@ -1,0 +1,24 @@
+P48B STATIC AUDIT
+=================
+Target Build ID: 48ece454b61412b9fb46fab2be3f5ef7b2804f39
+
+Boot-failure diagnosis from user-supplied Uzuy log:
+  exlaunch initialized normally.
+  Abort at hook_impl.cpp:602.
+  Expression: exl::result
+  Failed: AllocForTrampoline(&rxtrampoline, &rwtrampoline)
+Therefore P48A failure occurs during trampoline installation before gameplay.
+
+Hook count:
+  P47 baseline: 21 InstallAtOffset calls executed.
+  P48A:         24 InstallAtOffset calls executed.
+  P48B:          3 InstallAtOffset calls executed by active install path.
+
+P48B active hook sites:
+  0x473190  CpkBind
+  0x766B8C  PlayAction
+  0x768E84  ActionLookup
+
+Decision-site fingerprints retained from audited Switch v1.70 main.
+Active probe callbacks are observational. No actor/action write was added.
+No per-character gameplay branch was added.
