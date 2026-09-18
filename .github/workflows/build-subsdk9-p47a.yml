@@ -1,4 +1,4 @@
-name: Build NSC P46A play action probe
+name: Build NSC P47A play action ret probe
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     paths:
       - "overlay/**"
       - "prepare_exlaunch.sh"
-      - ".github/workflows/build-subsdk9-p46a.yml"
+      - ".github/workflows/build-subsdk9-p47a.yml"
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
       DEVKITPRO: /opt/devkitpro
       DEVKITA64: /opt/devkitpro/devkitA64
     steps:
-      - name: Checkout P46A build kit
+      - name: Checkout P47A build kit
         uses: actions/checkout@v4
 
       - name: Verify preinstalled devkitPro toolchain
@@ -37,7 +37,7 @@ jobs:
           git -C "$GITHUB_WORKSPACE/exlaunch" submodule update --init --recursive
           test "$(git -C "$GITHUB_WORKSPACE/exlaunch" rev-parse --short HEAD)" = "229bbd6"
 
-      - name: Overlay P46A sources
+      - name: Overlay P47A sources
         shell: bash
         run: |
           set -euxo pipefail
@@ -63,17 +63,17 @@ jobs:
           mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs
           cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
           (cd artifact && sha256sum atmosphere/contents/0100FA10190A0000/exefs/subsdk9 | tee SHA256SUMS.txt)
-          cp README_P46A.txt artifact/README_P46A.txt
-          cp analyze_p46a_log.py artifact/analyze_p46a_log.py
-          cp P46A_STATIC_AUDIT.txt artifact/P46A_STATIC_AUDIT.txt
+          cp README_P47A.txt artifact/README_P47A.txt
+          cp analyze_p47a_log.py artifact/analyze_p47a_log.py
+          cp P47A_STATIC_AUDIT.txt artifact/P47A_STATIC_AUDIT.txt
           mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
           sha256sum artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main | tee artifact/RESTORE_MAIN_SHA256.txt
 
-      - name: Upload P46A subsdk9
+      - name: Upload P47A subsdk9
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P46A-play-action-probe-subsdk9
+          name: NSC-P47A-play-action-ret-probe-subsdk9
           path: artifact/
           if-no-files-found: error
           compression-level: 9
