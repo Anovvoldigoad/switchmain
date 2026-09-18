@@ -1,4 +1,4 @@
-name: Build NSC P48A play action ret probe
+name: Build NSC P48A action decision probe
 
 on:
   workflow_dispatch:
@@ -73,7 +73,7 @@ jobs:
       - name: Upload P48A subsdk9
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P48A-uj-path-probe-subsdk9
+          name: NSC-P48A-action-decision-probe-subsdk9
           path: artifact/
           if-no-files-found: error
           compression-level: 9

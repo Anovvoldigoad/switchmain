@@ -1,2 +1,3 @@
 P48A SCOPE
-Log membership (pre-710) and gate769 (pre-708) during UJ for Tobi vs vanilla A/B
+Log-only PlayAction return value + actor fields at 707/708/710 window
+Goal: identify why 707 fails on Tobi (char 281)

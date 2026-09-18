@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP48AUjPathProbe();
+    nsc::InstallP48AActionDecisionProbe();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P48A uj-path-probe exception");
+    EXL_ABORT("NSC P48A action-decision-probe exception");
 }

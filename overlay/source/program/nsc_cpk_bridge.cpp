@@ -32,9 +32,12 @@ constexpr ptrdiff_t kOugiFinishCreateOffset   = 0x4726E4;  // ccOugiFinishParamM
 // P45A: combat action table handlers (table-dispatched, 0 direct BL callers)
 constexpr ptrdiff_t kNormalOugiOffset         = 0x6F44A0;  // NORMAL_OUGI combat action handler (end classifier)
 constexpr ptrdiff_t kSpecialOugiFinishOffset  = 0x6F4880;  // SPECIAL_OUGI_FINISH combat action handler (end classifier)
-// P48A: PlayAction ret + membership/gate for 708 vs 710 path
+// P48A: action-decision probe — PRE/POST PlayAction plus 707/708 resolver chain
 constexpr ptrdiff_t kPlayActionProbeOffset    = 0x766B8C;  // PlayAction → int32_t ret
-constexpr ptrdiff_t kGate769A4COffset         = 0x769A4C;  // gate before 708 path @7E48EC
+// P48A: 707->708 decision-chain probes (log-only)
+constexpr ptrdiff_t kActionLookupOffset        = 0x768E84;  // actor,index,flag -> action entry ptr/null
+constexpr ptrdiff_t kActionGateOffset          = 0x769A4C;  // actor -> bool-like completion/timing gate
+constexpr ptrdiff_t kActionRemapOffset         = 0x769B04;  // actor,index -> resolved index
 
 // Proven v1.70 native helpers used by the historical generic MovesetPlus event236 port.
 constexpr ptrdiff_t kStageObjectLookupOffset   = 0xEC8A44;
@@ -95,7 +98,9 @@ std::atomic<uint32_t> g_ougi_finish_create_logs{0};
 std::atomic<uint32_t> g_normal_ougi_logs{0};
 std::atomic<uint32_t> g_special_ougi_finish_logs{0};
 std::atomic<uint32_t> g_play_action_logs{0};
-std::atomic<uint32_t> g_gate_769_logs{0};
+std::atomic<uint32_t> g_action_lookup_logs{0};
+std::atomic<uint32_t> g_action_gate_logs{0};
+std::atomic<uint32_t> g_action_remap_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -911,38 +916,114 @@ HOOK_DEFINE_TRAMPOLINE(SpecialOugiFinishHook) {
     }
 };
 
-// P47A: PlayAction — log RETURN VALUE (critical for 707→708 branch).
+// P48A: PlayAction — PRE/POST state + return value.
 // Fingerprint @ 0x766B8C:
 //   A9BE57FE A9014FF4 B9529408 2A0403F4 AA0003F3 7100091F 54000080 B9528668
-// Real signature returns int32_t in W0 (callers CBNZ/CBZ on result).
-// Key actor fields (from PlayAction body): +3668, +4708, +4712, +4740, +4756, +536
 HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
     static int32_t Callback(void* actor, int32_t index, int32_t a2, int32_t a3, int32_t a4, int32_t a5, float rate) {
         const uint32_t n = g_play_action_logs.fetch_add(1, std::memory_order_relaxed);
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        uint32_t pre3668 = 0, pre4708 = 0, pre4712 = 0, pre4740 = 0, pre4756 = 0;
+        uint64_t pre536 = 0;
+        if (actor) {
+            const auto* base = reinterpret_cast<const volatile uint8_t*>(actor);
+            pre3668 = *reinterpret_cast<const volatile uint32_t*>(base + 3668);
+            pre4708 = *reinterpret_cast<const volatile uint32_t*>(base + 4708);
+            pre4712 = *reinterpret_cast<const volatile uint32_t*>(base + 4712);
+            pre4740 = *reinterpret_cast<const volatile uint32_t*>(base + 4740);
+            pre4756 = *reinterpret_cast<const volatile uint32_t*>(base + 4756);
+            pre536  = *reinterpret_cast<const volatile uint64_t*>(base + 536);
+        }
+
         const int32_t ret = Orig(actor, index, a2, a3, a4, a5, rate);
 
-        // Always log cinematic-range indices with return + actor fields
-        const bool cinematic = (index >= 700 && index <= 740) || index == 487 || index == 223 || index == 226
-                               || index == 708 || index == 707 || index == 710;
+        uint32_t post3668 = 0, post4708 = 0, post4712 = 0, post4740 = 0, post4756 = 0;
+        uint64_t post536 = 0;
+        if (actor) {
+            const auto* base = reinterpret_cast<const volatile uint8_t*>(actor);
+            post3668 = *reinterpret_cast<const volatile uint32_t*>(base + 3668);
+            post4708 = *reinterpret_cast<const volatile uint32_t*>(base + 4708);
+            post4712 = *reinterpret_cast<const volatile uint32_t*>(base + 4712);
+            post4740 = *reinterpret_cast<const volatile uint32_t*>(base + 4740);
+            post4756 = *reinterpret_cast<const volatile uint32_t*>(base + 4756);
+            post536  = *reinterpret_cast<const volatile uint64_t*>(base + 536);
+        }
+        const bool cinematic = (index >= 700 && index <= 740) || index == 487 || index == 223 || index == 226;
         const bool sample = (n < 256) || (index >= 200 && n < 1024) || ((n % 64) == 0);
         if (cinematic || sample) {
-            uint32_t f3668 = 0, f4708 = 0, f4712 = 0, f4740 = 0, f4756 = 0;
-            uint64_t f536 = 0;
-            if (actor) {
-                const auto* base = reinterpret_cast<const uint8_t*>(actor);
-                f3668 = *reinterpret_cast<const uint32_t*>(base + 3668);
-                f4708 = *reinterpret_cast<const uint32_t*>(base + 4708);
-                f4712 = *reinterpret_cast<const uint32_t*>(base + 4712);
-                f4740 = *reinterpret_cast<const uint32_t*>(base + 4740);
-                f4756 = *reinterpret_cast<const uint32_t*>(base + 4756);
-                f536  = *reinterpret_cast<const uint64_t*>(base + 536);
-            }
-            Logging.Log("[NSC:P48A] PLAY_ACTION actor=%p index=%d ret=%d n=%u a2=%d "
-                        "f3668=%u f4708=%u f4712=%u f4740=%u f4756=%u f536=%p",
-                        actor, index, ret, n, a2,
-                        f3668, f4708, f4712, f4740, f4756, reinterpret_cast<void*>(f536));
+            Logging.Log("[NSC:P48A] PLAY_ACTION actor=%p valid=%u side=%u char=%u index=%d ret=%d n=%u a2=%d "
+                        "pre3668=%u pre4708=%u pre4712=%u pre4740=%u pre4756=%u pre536=%p "
+                        "post3668=%u post4708=%u post4712=%u post4740=%u post4756=%u post536=%p",
+                        actor, valid ? 1u : 0u, side, char_id, index, ret, n, a2,
+                        pre3668, pre4708, pre4712, pre4740, pre4756, reinterpret_cast<void*>(pre536),
+                        post3668, post4708, post4712, post4740, post4756, reinterpret_cast<void*>(post536));
         }
         return ret;
+    }
+};
+
+// P48A: action entry lookup / availability resolver.
+// Fingerprint @ 0x768E84:
+//   A9BE57FE A9014FF4 B94E5408 2A0203F5 2A0103F3 AA0003F4 7100411F 54000081
+HOOK_DEFINE_TRAMPOLINE(ActionLookupProbeHook) {
+    static void* Callback(void* actor, int32_t index, int32_t flag) {
+        const uint32_t n = g_action_lookup_logs.fetch_add(1, std::memory_order_relaxed);
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        uint32_t pre_action = 0xFFFFFFFFu;
+        if (actor) pre_action = *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
+        void* const result = Orig(actor, index, flag);
+        uint32_t post_action = 0xFFFFFFFFu;
+        if (actor) post_action = *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
+        const bool relevant = (index >= 700 && index <= 740) || (pre_action >= 700 && pre_action <= 740);
+        if (relevant || n < 192) {
+            Logging.Log("[NSC:P48A] ACTION_LOOKUP actor=%p valid=%u side=%u char=%u index=%d flag=%d result=%p n=%u pre_action=%u post_action=%u",
+                        actor, valid ? 1u : 0u, side, char_id, index, flag, result, n, pre_action, post_action);
+        }
+        return result;
+    }
+};
+
+// P48A: completion/timing gate used by the 707/708/709 state handler.
+// Fingerprint @ 0x769A4C:
+//   FC1D0FE8 A90157FE A9024FF4 AA0003F3 F9410C00 B4000160 97F34520 D000CEC8
+HOOK_DEFINE_TRAMPOLINE(ActionGateProbeHook) {
+    static uint32_t Callback(void* actor) {
+        const uint32_t n = g_action_gate_logs.fetch_add(1, std::memory_order_relaxed);
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        uint32_t pre_action = 0xFFFFFFFFu;
+        if (actor) pre_action = *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
+        const uint32_t ret = Orig(actor);
+        uint32_t post_action = 0xFFFFFFFFu;
+        if (actor) post_action = *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
+        const bool relevant = (pre_action >= 700 && pre_action <= 740) || (post_action >= 700 && post_action <= 740);
+        if (relevant || n < 192) {
+            Logging.Log("[NSC:P48A] ACTION_GATE actor=%p valid=%u side=%u char=%u ret=%u n=%u pre_action=%u post_action=%u",
+                        actor, valid ? 1u : 0u, side, char_id, ret, n, pre_action, post_action);
+        }
+        return ret;
+    }
+};
+
+// P48A: optional index remap called from ActionLookup when flag != 0.
+// Fingerprint @ 0x769B04:
+//   F81D0FFE A90157F6 A9024FF4 510AF028 2A0103F3 7103411F 54000588 AA0003F5
+HOOK_DEFINE_TRAMPOLINE(ActionRemapProbeHook) {
+    static int32_t Callback(void* actor, int32_t index) {
+        const uint32_t n = g_action_remap_logs.fetch_add(1, std::memory_order_relaxed);
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        uint32_t action = 0xFFFFFFFFu;
+        if (actor) action = *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
+        const int32_t resolved = Orig(actor, index);
+        const bool relevant = (index >= 700 && index <= 740) || (resolved >= 700 && resolved <= 900) || (action >= 700 && action <= 740);
+        if (relevant || n < 192) {
+            Logging.Log("[NSC:P48A] ACTION_REMAP actor=%p valid=%u side=%u char=%u index=%d resolved=%d n=%u action=%u",
+                        actor, valid ? 1u : 0u, side, char_id, index, resolved, n, action);
+        }
+        return resolved;
     }
 };
 
@@ -1132,6 +1213,18 @@ bool InstallOugiFinishProbe() {
         0xA9BE57FE, 0xA9014FF4, 0xB9529408, 0x2A0403F4,
         0xAA0003F3, 0x7100091F, 0x54000080, 0xB9528668,
     };
+    static constexpr uint32_t kActionLookupExpected[] = {
+        0xA9BE57FE, 0xA9014FF4, 0xB94E5408, 0x2A0203F5,
+        0x2A0103F3, 0xAA0003F4, 0x7100411F, 0x54000081,
+    };
+    static constexpr uint32_t kActionGateExpected[] = {
+        0xFC1D0FE8, 0xA90157FE, 0xA9024FF4, 0xAA0003F3,
+        0xF9410C00, 0xB4000160, 0x97F34520, 0xD000CEC8,
+    };
+    static constexpr uint32_t kActionRemapExpected[] = {
+        0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0x510AF028,
+        0x2A0103F3, 0x7103411F, 0x54000588, 0xAA0003F5,
+    };
     bool ok = true;
     if (!MatchWords(kOugiFinishCreateOffset, kOugiFinishCreateExpected)) {
         LogFingerprintFail("OUGI_FINISH_CREATE", kOugiFinishCreateOffset); ok = false;
@@ -1145,59 +1238,39 @@ bool InstallOugiFinishProbe() {
     if (!MatchWords(kPlayActionProbeOffset, kPlayActionExpected)) {
         LogFingerprintFail("PLAY_ACTION", kPlayActionProbeOffset); ok = false;
     }
+    if (!MatchWords(kActionLookupOffset, kActionLookupExpected)) {
+        LogFingerprintFail("ACTION_LOOKUP", kActionLookupOffset); ok = false;
+    }
+    if (!MatchWords(kActionGateOffset, kActionGateExpected)) {
+        LogFingerprintFail("ACTION_GATE", kActionGateOffset); ok = false;
+    }
+    if (!MatchWords(kActionRemapOffset, kActionRemapExpected)) {
+        LogFingerprintFail("ACTION_REMAP", kActionRemapOffset); ok = false;
+    }
     if (!ok) return false;
     OugiFinishCreateHook::InstallAtOffset(kOugiFinishCreateOffset);
     NormalOugiHook::InstallAtOffset(kNormalOugiOffset);
     SpecialOugiFinishHook::InstallAtOffset(kSpecialOugiFinishOffset);
     PlayActionProbeHook::InstallAtOffset(kPlayActionProbeOffset);
+    ActionLookupProbeHook::InstallAtOffset(kActionLookupOffset);
+    ActionGateProbeHook::InstallAtOffset(kActionGateOffset);
+    ActionRemapProbeHook::InstallAtOffset(kActionRemapOffset);
     return true;
 }
 
-
-// P48A: gate 0x769A4C before 708 path — uses actor+536, field 4708
-// FP: FC1D0FE8 A90157FE A9024FF4 AA0003F3 F9410C00 B4000160
-HOOK_DEFINE_TRAMPOLINE(Gate769A4CHook) {
-    static uint64_t Callback(void* actor) {
-        const uint64_t ret = Orig(actor);
-        const uint32_t n = g_gate_769_logs.fetch_add(1, std::memory_order_relaxed);
-        uint32_t f4708 = 0, f3668 = 0;
-        uint64_t f536 = 0;
-        if (actor) {
-            const auto* b = reinterpret_cast<const uint8_t*>(actor);
-            f4708 = *reinterpret_cast<const uint32_t*>(b + 4708);
-            f3668 = *reinterpret_cast<const uint32_t*>(b + 3668);
-            f536  = *reinterpret_cast<const uint64_t*>(b + 536);
-        }
-        if (n < 128) {
-            Logging.Log("[NSC:P48A] GATE769A4C actor=%p ret=0x%lx n=%u f3668=%u f4708=%u f536=%p",
-                        actor, ret, n, f3668, f4708, reinterpret_cast<void*>(f536));
-        }
-        return ret;
-    }
-};
-
-void InstallP48AUjPathProbe() {
+void InstallP48AActionDecisionProbe() {
     const bool cpk = InstallCpkBridge();
     const bool trace = InstallTraceHooks();
     const bool lifecycle = InstallLifecycleTrace();
     const bool state_trace = InstallStateTrace();
     const bool event236 = InstallEvent236Dispatcher();
     const bool ougi_probe = InstallOugiFinishProbe();
-
-    // Membership 0x8800D0/150 are tiny tail-call stubs — NOT trampoline-safe (relative B breaks).
-    // Only hook full-prologue Gate769A4C (pre-708 path).
-    static constexpr uint32_t kGate769Expected[] = { 0xFC1D0FE8, 0xA90157FE };
-    if (MatchWords(kGate769A4COffset, kGate769Expected)) {
-        Gate769A4CHook::InstallAtOffset(kGate769A4COffset);
-        Logging.Log("[NSC:P48A] Gate769A4C OK @ 0x%lx", (unsigned long)kGate769A4COffset);
-    } else {
-        LogFingerprintFail("GATE769A4C", kGate769A4COffset);
-    }
-
-    Logging.Log("[NSC:P48A] READY cpk=%d trace=%d lifecycle=%d state_trace=%d event236=%d ougi_probe=%d vis12_shadow=1 ctrl14_shadow=1 play_action_ret=0x%lx gate769=0x%lx normal_ougi=0x%lx special_ougi_finish=0x%lx ougi_finish_create=0x%lx evt236=0x%lx",
+    Logging.Log("[NSC:P48A] READY cpk=%d trace=%d lifecycle=%d state_trace=%d event236=%d ougi_probe=%d vis12_shadow=1 ctrl14_shadow=1 play_action=0x%lx lookup=0x%lx gate=0x%lx remap=0x%lx normal_ougi=0x%lx special_ougi_finish=0x%lx ougi_finish_create=0x%lx evt236=0x%lx",
                 cpk ? 1 : 0, trace ? 1 : 0, lifecycle ? 1 : 0, state_trace ? 1 : 0, event236 ? 1 : 0, ougi_probe ? 1 : 0,
                 static_cast<unsigned long>(kPlayActionProbeOffset),
-                static_cast<unsigned long>(kGate769A4COffset),
+                static_cast<unsigned long>(kActionLookupOffset),
+                static_cast<unsigned long>(kActionGateOffset),
+                static_cast<unsigned long>(kActionRemapOffset),
                 static_cast<unsigned long>(kNormalOugiOffset),
                 static_cast<unsigned long>(kSpecialOugiFinishOffset),
                 static_cast<unsigned long>(kOugiFinishCreateOffset),

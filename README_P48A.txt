@@ -1,30 +1,42 @@
-NSC2Switch P48A — UJ PATH PROBE (boot-safe)
+NSC2Switch P48A — 707/708 ACTION-DECISION PROBE (LOG-ONLY)
+Target: Naruto x Boruto Ultimate Ninja Storm Connections Switch v1.70
+Known target Build ID: 48ece454b61412b9fb46fab2be3f5ef7b2804f39
 
-Parent: P47A / R56
-Fix vs first P48A: removed Membership 0x8800D0/0x880150 hooks.
-Those are tiny tail-call stubs (relative B → 0x71C900); trampoline breaks them → no boot.
+PURPOSE
+P47A proved PlayAction(707) returns 1 for both Tobi/custom and working vanilla.
+Static RE then found a separate state-machine path that can transition current action 707 -> 708 through:
+  0x769A4C completion/timing gate
+  0x768E84 action lookup/availability resolver
+  direct vtable+0xF98 setter (bypasses PlayAction wrapper)
+P48A measures that decision chain without changing gameplay state.
 
-Hooks (log-only)
-----------------
-1. PlayAction @ 0x766B8C — ret + actor fields
-2. Gate769A4C @ 0x769A4C — gate before 708 path @ 0x7E48EC
-   FP: FC1D0FE8 A90157FE
+NEW LOG-ONLY HOOKS
+  0x766B8C PlayAction: PRE + POST action state and return value
+  0x768E84 ActionLookup: requested index, flag, pointer/null result, PRE/POST action
+  0x769A4C ActionGate: current action and bool-like return
+  0x769B04 ActionRemap: requested index -> resolved index
 
-READY
------
-play_action_ret=0x766b8c gate769=0x769a4c
+SAFETY / SCOPE
+- No writes to actor/action state in P48A probe code.
+- No Tobi/281 conditional behavior in decision hooks.
+- Existing mod CPK fixture path remains inherited from the prior bridge and is unrelated to the decision-probe logic.
+- All four critical probe hooks are guarded by exact 8-word v1.70 fingerprints before installation.
 
-Log
----
-[NSC:P48A] PLAY_ACTION index=707/708/710 ret=1 f3668=281 ...
-[NSC:P48A] GATE769A4C actor= ret= f3668= f4708= f536=
+TEST MATRIX (minimum)
+A. Tobi/custom character: perform UJ once without extraction trick.
+B. Tobi/custom character: perform UJ once with the known Katon/extract setup if useful for comparison.
+C. Working vanilla control (same vanilla character used for P47/R56 if possible): perform UJ once.
+Capture complete nxlink output from READY through battle/UJ completion or hang.
 
-Hardware
---------
-1. Boot — READY with gate769=0x769a4c
-2. Vanilla UJ + Tobi UJ logs
-3. Compare GATE769 near UJ window (Tobi expected when advancing 707→708)
+DECISIVE EXPECTATION
+Working hypothesis:
+  Tobi:    PlayAction(707)=1; gate(707) eventually=1; lookup(708,flag=1)=NON-NULL; path diverts to 708; 710 chain absent.
+  Vanilla: PlayAction(707)=1; gate(707) eventually=1; lookup(708,flag=1)=NULL; later 710->711->712->713->714->740 occurs.
+This is a hypothesis to test, not baked into the hook behavior.
 
-ZERO gameplay delta.
-Restore main:
-2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+ANALYSIS
+  python3 analyze_p48a_log.py <log.txt>
+
+BUILD
+GitHub workflow uses devkitpro/devkita64 and pinned exlaunch commit 229bbd6, same baseline as P47A.
+Run workflow: Build NSC P48A action decision probe.
