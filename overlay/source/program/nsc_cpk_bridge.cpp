@@ -40,6 +40,11 @@ constexpr ptrdiff_t kActionLookupOffset        = 0x768E84;  // actor,index,flag 
 constexpr ptrdiff_t kActionGateOffset          = 0x769A4C;  // actor -> bool-like completion/timing gate
 constexpr ptrdiff_t kActionRemapOffset         = 0x769B04;  // actor,index -> resolved index
 
+// P52A: pre-UJ decision trace. These boundaries are upstream of PlayAction(700).
+constexpr ptrdiff_t kUjStartWrapperOffset      = 0x488958;  // actor,mode wrapper; direct route to UJ start state
+constexpr ptrdiff_t kUjStartStateOffset        = 0x7E3534;  // mode0 calls PlayAction(700) at 0x7E35E8
+constexpr ptrdiff_t kSpecialTypeCtrlOffset     = 0x646190;  // CtrlAct_PL_ACT_NORMAL_SPTYPE_SPSKILL controller
+
 // P50A: SC 1.70 dynamic condition compatibility port.
 // 0x754A80 is the native 32-byte condition-descriptor getter.  The stock
 // v1.70 getter and its name/hash loops stop at the vanilla 512-entry geometry.
@@ -120,6 +125,9 @@ std::atomic<uint32_t> g_action_gate_logs{0};
 std::atomic<uint32_t> g_action_remap_logs{0};
 std::atomic<uint32_t> g_condition_get_logs{0};
 std::atomic<uint32_t> g_condition_event121_logs{0};
+std::atomic<uint32_t> g_uj_start_wrapper_logs{0};
+std::atomic<uint32_t> g_uj_start_state_logs{0};
+std::atomic<uint32_t> g_special_type_ctrl_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -780,6 +788,113 @@ HOOK_DEFINE_TRAMPOLINE(OugiCallerHook) {
     }
 };
 
+// P52A: first boundary on the UJ-start path. Naruto UJ must hit mode0 here before
+// 0x7E3534 can reach PlayAction(700). Read-only: no return/state modification.
+HOOK_DEFINE_TRAMPOLINE(UjStartWrapperHook) {
+    static void Callback(void* actor, uint32_t mode) {
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const uint32_t n = g_uj_start_wrapper_logs.fetch_add(1, std::memory_order_relaxed);
+        uint32_t action_pre = 0xFFFFFFFFu;
+        int32_t e60_pre = 0x7FFFFFFF, e94_pre = 0x7FFFFFFF, e9c_pre = 0x7FFFFFFF;
+        int32_t ea0_pre = 0x7FFFFFFF, ea4_pre = 0x7FFFFFFF, ea8_pre = 0x7FFFFFFF;
+        if (actor) {
+            auto* b = reinterpret_cast<volatile uint8_t*>(actor);
+            action_pre = *reinterpret_cast<volatile uint32_t*>(b + 4712);
+            e60_pre = *reinterpret_cast<volatile int32_t*>(b + 0xE60);
+            e94_pre = *reinterpret_cast<volatile int32_t*>(b + 0xE94);
+            e9c_pre = *reinterpret_cast<volatile int32_t*>(b + 0xE9C);
+            ea0_pre = *reinterpret_cast<volatile int32_t*>(b + 0xEA0);
+            ea4_pre = *reinterpret_cast<volatile int32_t*>(b + 0xEA4);
+            ea8_pre = *reinterpret_cast<volatile int32_t*>(b + 0xEA8);
+        }
+        if (valid && n < 1024) {
+            Logging.Log("[NSC:P52A] UJ_WRAPPER phase=pre actor=%p side=%u char=%u mode=%u action=%u e60=%d e94=%d e9c=%d ea0=%d ea4=%d ea8=%d n=%u",
+                        actor, side, char_id, mode, action_pre, e60_pre, e94_pre, e9c_pre,
+                        ea0_pre, ea4_pre, ea8_pre, n);
+        }
+        Orig(actor, mode);
+        if (valid && n < 1024 && actor) {
+            auto* b = reinterpret_cast<volatile uint8_t*>(actor);
+            const uint32_t action_post = *reinterpret_cast<volatile uint32_t*>(b + 4712);
+            const int32_t e60_post = *reinterpret_cast<volatile int32_t*>(b + 0xE60);
+            const int32_t e94_post = *reinterpret_cast<volatile int32_t*>(b + 0xE94);
+            const int32_t e9c_post = *reinterpret_cast<volatile int32_t*>(b + 0xE9C);
+            const int32_t ea0_post = *reinterpret_cast<volatile int32_t*>(b + 0xEA0);
+            const int32_t ea4_post = *reinterpret_cast<volatile int32_t*>(b + 0xEA4);
+            const int32_t ea8_post = *reinterpret_cast<volatile int32_t*>(b + 0xEA8);
+            Logging.Log("[NSC:P52A] UJ_WRAPPER phase=post actor=%p side=%u char=%u mode=%u action=%u e60=%d e94=%d e9c=%d ea0=%d ea4=%d ea8=%d n=%u",
+                        actor, side, char_id, mode, action_post, e60_post, e94_post, e9c_post,
+                        ea0_post, ea4_post, ea8_post, n);
+        }
+    }
+};
+
+// P52A: exact state core whose mode0 body calls PlayAction(700). Read-only.
+HOOK_DEFINE_TRAMPOLINE(UjStartStateHook) {
+    static void Callback(void* actor, uint32_t mode) {
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const uint32_t n = g_uj_start_state_logs.fetch_add(1, std::memory_order_relaxed);
+        uint32_t action_pre = 0xFFFFFFFFu;
+        int32_t e60 = 0x7FFFFFFF, e94 = 0x7FFFFFFF, e9c = 0x7FFFFFFF;
+        if (actor) {
+            auto* b = reinterpret_cast<volatile uint8_t*>(actor);
+            action_pre = *reinterpret_cast<volatile uint32_t*>(b + 4712);
+            e60 = *reinterpret_cast<volatile int32_t*>(b + 0xE60);
+            e94 = *reinterpret_cast<volatile int32_t*>(b + 0xE94);
+            e9c = *reinterpret_cast<volatile int32_t*>(b + 0xE9C);
+        }
+        if (valid && n < 1024) {
+            Logging.Log("[NSC:P52A] UJ_STATE phase=pre actor=%p side=%u char=%u mode=%u action=%u e60=%d e94=%d e9c=%d n=%u",
+                        actor, side, char_id, mode, action_pre, e60, e94, e9c, n);
+        }
+        Orig(actor, mode);
+        if (valid && n < 1024 && actor) {
+            auto* b = reinterpret_cast<volatile uint8_t*>(actor);
+            const uint32_t action_post = *reinterpret_cast<volatile uint32_t*>(b + 4712);
+            Logging.Log("[NSC:P52A] UJ_STATE phase=post actor=%p side=%u char=%u mode=%u action=%u n=%u",
+                        actor, side, char_id, mode, action_post, n);
+        }
+    }
+};
+
+// P52A: controller identified by exact xref to
+// "CtrlAct_PL_ACT_NORMAL_SPTYPE_SPSKILL". It selects SPTYPE actions and passes
+// 921..930 (including SPTYPE_ACTION10=930) into the native special-type path.
+// Log first vanilla controls plus every generic custom-ID actor; do not alter behavior.
+HOOK_DEFINE_TRAMPOLINE(SpecialTypeCtrlHook) {
+    static void Callback(void* actor, uint32_t mode) {
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const uint32_t n = g_special_type_ctrl_logs.fetch_add(1, std::memory_order_relaxed);
+        uint32_t action_pre = 0xFFFFFFFFu;
+        int32_t e60_pre = 0x7FFFFFFF, e94_pre = 0x7FFFFFFF, e9c_pre = 0x7FFFFFFF;
+        if (actor) {
+            auto* b = reinterpret_cast<volatile uint8_t*>(actor);
+            action_pre = *reinterpret_cast<volatile uint32_t*>(b + 4712);
+            e60_pre = *reinterpret_cast<volatile int32_t*>(b + 0xE60);
+            e94_pre = *reinterpret_cast<volatile int32_t*>(b + 0xE94);
+            e9c_pre = *reinterpret_cast<volatile int32_t*>(b + 0xE9C);
+        }
+        const bool log_this = valid && (n < 192 || char_id >= kFirstCustomCharId);
+        if (log_this && n < 4096) {
+            Logging.Log("[NSC:P52A] SPTYPE_CTRL phase=pre actor=%p side=%u char=%u mode=%u action=%u e60=%d e94=%d e9c=%d n=%u",
+                        actor, side, char_id, mode, action_pre, e60_pre, e94_pre, e9c_pre, n);
+        }
+        Orig(actor, mode);
+        if (log_this && n < 4096 && actor) {
+            auto* b = reinterpret_cast<volatile uint8_t*>(actor);
+            const uint32_t action_post = *reinterpret_cast<volatile uint32_t*>(b + 4712);
+            const int32_t e60_post = *reinterpret_cast<volatile int32_t*>(b + 0xE60);
+            const int32_t e94_post = *reinterpret_cast<volatile int32_t*>(b + 0xE94);
+            const int32_t e9c_post = *reinterpret_cast<volatile int32_t*>(b + 0xE9C);
+            Logging.Log("[NSC:P52A] SPTYPE_CTRL phase=post actor=%p side=%u char=%u mode=%u action=%u e60=%d e94=%d e9c=%d n=%u",
+                        actor, side, char_id, mode, action_post, e60_post, e94_post, e9c_post, n);
+        }
+    }
+};
+
 HOOK_DEFINE_TRAMPOLINE(StageHandleHook) {
     static void Callback(uint32_t stage_id) {
         const uint32_t n = g_stage_handle_logs.fetch_add(1, std::memory_order_relaxed);
@@ -1268,6 +1383,52 @@ bool InstallCpkBridge() {
     return true;
 }
 
+bool InstallP52PreUjTraceHooks() {
+    static constexpr uint32_t kUjWrapperExpected[] = {
+        0xF81E0FFE, 0xA9014FF4, 0xAA0003F3, 0x34000201,
+        0xAA1303E0, 0x2A0103F4, 0x940D6AF1, 0x71000A9F,
+    };
+    static constexpr uint32_t kUjStateExpected[] = {
+        0xF81C0FFD, 0xA9015FFE, 0xA90257F6, 0xA9034FF4,
+        0xD10943FF, 0x52979D08, 0xAA0003F3, 0x7100083F,
+    };
+    static constexpr uint32_t kSpecialTypeExpected[] = {
+        0xD10203FF, 0xFD001BE8, 0xA90467FE, 0xA9055FF8,
+        0xA90657F6, 0xA9074FF4, 0x7100203F, 0x54007F48,
+    };
+    static constexpr uint32_t kOugiCoreExpected[] = {
+        0xD10103FF, 0xF9000BFE, 0xA90257F6, 0xA9034FF4,
+        0xF9400008, 0x2A0103F5, 0xAA0003F3, 0xF946E908,
+    };
+    static constexpr uint32_t kOugiCallerExpected[] = {
+        0xF81E0FFE, 0xA9014FF4, 0x2A0103F4, 0xAA0003F3,
+        0x940D60E7, 0x34000094, 0xA9414FF4, 0xF84207FE,
+    };
+    bool ok = true;
+    if (!MatchWords(kUjStartWrapperOffset, kUjWrapperExpected)) {
+        LogFingerprintFail("P52_UJ_WRAPPER", kUjStartWrapperOffset); ok = false;
+    }
+    if (!MatchWords(kUjStartStateOffset, kUjStateExpected)) {
+        LogFingerprintFail("P52_UJ_STATE", kUjStartStateOffset); ok = false;
+    }
+    if (!MatchWords(kSpecialTypeCtrlOffset, kSpecialTypeExpected)) {
+        LogFingerprintFail("P52_SPTYPE_CTRL", kSpecialTypeCtrlOffset); ok = false;
+    }
+    if (!MatchWords(kOugiCoreOffset, kOugiCoreExpected)) {
+        LogFingerprintFail("P52_OUGI_CORE", kOugiCoreOffset); ok = false;
+    }
+    if (!MatchWords(kOugiCallerOffset, kOugiCallerExpected)) {
+        LogFingerprintFail("P52_OUGI_CALLER", kOugiCallerOffset); ok = false;
+    }
+    if (!ok) return false;
+    UjStartWrapperHook::InstallAtOffset(kUjStartWrapperOffset);
+    UjStartStateHook::InstallAtOffset(kUjStartStateOffset);
+    SpecialTypeCtrlHook::InstallAtOffset(kSpecialTypeCtrlOffset);
+    OugiCoreHook::InstallAtOffset(kOugiCoreOffset);
+    OugiCallerHook::InstallAtOffset(kOugiCallerOffset);
+    return true;
+}
+
 } // namespace
 
 bool InstallPlayActionProbe() {
@@ -1354,6 +1515,17 @@ void InstallP50AConditionCompat() {
                 condition_compat_generated::kNativeConditionCount,
                 condition_compat_generated::kExtraConditionCount,
                 condition_compat_generated::kTotalConditionCount);
+}
+
+void InstallP52APreUjProbe() {
+    // P52A is deliberately diagnostic. Start from the hardware-proven P50A
+    // functional core, then add five read-only decision/state traces.
+    // Event121 is NOT installed twice. P51A's speculative main NOP is absent.
+    InstallP50AConditionCompat();
+    const bool trace = InstallP52PreUjTraceHooks();
+    Logging.Log("[NSC:P52A] READY inherited_p50=1 preuj_trace=%d added_trampolines=5 total_trampolines=10 "
+                "uj_wrapper=0x488958 uj_state=0x7e3534 sptype_ctrl=0x646190 ougi_caller=0x488bac ougi_core=0x7e0f58",
+                trace ? 1 : 0);
 }
 
 } // namespace nsc

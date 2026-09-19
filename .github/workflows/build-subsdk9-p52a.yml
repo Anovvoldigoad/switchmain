@@ -1,4 +1,4 @@
-name: Build NSC P50A condition compatibility core
+name: Build NSC P52A pre-UJ decision probe
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
       - "condition_compat_manifest.json"
       - "generate_condition_table.py"
       - "prepare_exlaunch.sh"
-      - ".github/workflows/build-subsdk9-p50a.yml"
+      - ".github/workflows/build-subsdk9-p52a.yml"
 
 jobs:
   build:
@@ -19,7 +19,7 @@ jobs:
       DEVKITPRO: /opt/devkitpro
       DEVKITA64: /opt/devkitpro/devkitA64
     steps:
-      - name: Checkout P50A build kit
+      - name: Checkout P52A build kit
         uses: actions/checkout@v4
 
       - name: Verify preinstalled devkitPro toolchain
@@ -36,7 +36,7 @@ jobs:
           set -euxo pipefail
           python3 generate_condition_table.py condition_compat_manifest.json /tmp/condition_compat_generated.hpp
           cmp /tmp/condition_compat_generated.hpp overlay/source/program/condition_compat_generated.hpp
-          python3 verify_p50a_kit.py --pre-build
+          python3 verify_p52a_kit.py --pre-build
 
       - name: Clone pinned exlaunch 229bbd6
         shell: bash
@@ -47,7 +47,7 @@ jobs:
           git -C "$GITHUB_WORKSPACE/exlaunch" submodule update --init --recursive
           test "$(git -C "$GITHUB_WORKSPACE/exlaunch" rev-parse --short HEAD)" = "229bbd6"
 
-      - name: Overlay P50A sources
+      - name: Overlay P52A sources
         shell: bash
         run: |
           set -euxo pipefail
@@ -75,17 +75,17 @@ jobs:
           cp deploy/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
           mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
-          cp README_P50A.txt artifact/README_P50A.txt
-          cp analyze_p50a_log.py artifact/analyze_p50a_log.py
-          cp P50A_STATIC_AUDIT.txt artifact/P50A_STATIC_AUDIT.txt
+          cp README_P52A.txt artifact/README_P52A.txt
+          cp analyze_p52a_log.py artifact/analyze_p52a_log.py
+          cp P52A_STATIC_AUDIT.txt artifact/P52A_STATIC_AUDIT.txt
           cp condition_compat_manifest.json artifact/condition_compat_manifest.json
           cp P50A_MAIN_PATCH_AUDIT.json artifact/P50A_MAIN_PATCH_AUDIT.json
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
 
-      - name: Upload P50A deployment artifact
+      - name: Upload P52A deployment artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P50A-condition-compat-core
+          name: NSC-P52A-pre-uj-decision-probe
           path: artifact/
           if-no-files-found: error
           compression-level: 9

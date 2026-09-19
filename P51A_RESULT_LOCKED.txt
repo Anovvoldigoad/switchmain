@@ -1,0 +1,17 @@
+P51A HARDWARE RESULT — LOCKED
+
+User result:
+- True awakening activates.
+- Tobi awakened UJ still cannot start.
+
+Uploaded log /mnt/data/uzuy_log.txt:
+- P50/P51 inherited PlayAction probe records: 10.
+- All 10 belong to vanilla Naruto char129.
+- Naruto observed sequence includes 700 -> 707 -> 710 -> 711 -> 712 -> 713 -> 714 -> 740, all ret=1.
+- Tobi char281 PlayAction(700) records: 0.
+- Tobi later executes Event236 opcode23 text=SPTYPE_ACTION10, resolved action index=930.
+
+Decision:
+- Reject P51A main+0x7F2A9C NOP as sufficient UJ unlock.
+- Failure is upstream of PlayAction(700) for awakened Tobi.
+- Next build must trace UJ-start wrapper/state and special-type controller without changing gameplay.
