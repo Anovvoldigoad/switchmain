@@ -1,0 +1,49 @@
+P54A DIRECT SETTER PROOF — Switch v1.70 main
+============================================
+
+Owner function 0x2A472C begins:
+  2A472C D10243FF  sub sp,sp,#0x90
+  2A4730 FD0023E8  str d8,[sp,#0x40]
+  2A4734 F90027FE  str x30,[sp,#0x48]
+  ...
+  2A4780 7100243F  cmp w1,#9
+This establishes an actor/mode controller-style entry.
+
+Inside owner 0x2A472C:
+  2A50B8 F9400268  ldr x8,[x19]
+  2A50BC 1E2E1000  fmov s0,#1
+  2A50C0 52800C41  mov w1,#98
+  2A50C4 F947CD08  ldr x8,[x8,#0xF98]
+  2A50C8 12800002  mov w2,#-1
+  2A50CC AA1303E0  mov x0,x19
+  2A50D0 2A1F03E3  mov w3,wzr
+  2A50D4 D63F0100  blr x8
+Therefore action98 is set through the direct virtual action setter and bypasses
+PlayAction(0x766B8C).
+
+Owner function 0x2A51B8 begins:
+  2A51B8 F81D0FFE  str x30,[sp,#-0x30]!
+  2A51BC A90157F6  stp x22,x21,[sp,#0x10]
+  2A51C0 A9024FF4  stp x20,x19,[sp,#0x20]
+  2A51C4 7100203F  cmp w1,#8
+This is also an actor/mode controller-style entry.
+
+Inside owner 0x2A51B8:
+  2A568C F9400268  ldr x8,[x19]
+  2A5690 1E2E1000  fmov s0,#1
+  2A5694 52800C81  mov w1,#100
+  2A5698 F947CD08  ldr x8,[x8,#0xF98]
+  2A569C 12800002  mov w2,#-1
+  2A56A0 AA1303E0  mov x0,x19
+  2A56A4 2A1F03E3  mov w3,wzr
+  2A56A8 D63F0100  blr x8
+Therefore action100 also bypasses PlayAction.
+
+A direct-setter census limited to main 0x2A0000..0x2AFFFF finds only four
+vtable+0xF98 sites:
+  0x2A00C0 action937 (Pain/Tendo-specific debug path)
+  0x2A0180 action938 (Pain/Tendo-specific debug path)
+  0x2A50C4 action98
+  0x2A5698 action100
+The 937/938 functions reference explicit Pain/Tendo debug strings, so P54A
+prioritizes the two generic-looking neighbouring owners 98/100.

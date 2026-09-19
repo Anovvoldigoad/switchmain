@@ -45,6 +45,12 @@ constexpr ptrdiff_t kUjStartWrapperOffset      = 0x488958;  // actor,mode wrappe
 constexpr ptrdiff_t kUjStartStateOffset        = 0x7E3534;  // mode0 calls PlayAction(700) at 0x7E35E8
 constexpr ptrdiff_t kSpecialTypeCtrlOffset     = 0x646190;  // CtrlAct_PL_ACT_NORMAL_SPTYPE_SPSKILL controller
 
+// P54A: direct-jutsu owners in the CtrlAct skill cluster.  These functions
+// bypass PlayAction and call actor vtable+0xF98 directly with action 98/100.
+// Both have the controller ABI (actor, mode) and are read-only probed here.
+constexpr ptrdiff_t kDirectAction98OwnerOffset  = 0x2A472C;
+constexpr ptrdiff_t kDirectAction100OwnerOffset = 0x2A51B8;
+
 // P50A: SC 1.70 dynamic condition compatibility port.
 // 0x754A80 is the native 32-byte condition-descriptor getter.  The stock
 // v1.70 getter and its name/hash loops stop at the vanilla 512-entry geometry.
@@ -128,6 +134,8 @@ std::atomic<uint32_t> g_condition_event121_logs{0};
 std::atomic<uint32_t> g_uj_start_wrapper_logs{0};
 std::atomic<uint32_t> g_uj_start_state_logs{0};
 std::atomic<uint32_t> g_special_type_ctrl_logs{0};
+std::atomic<uint32_t> g_direct98_owner_logs{0};
+std::atomic<uint32_t> g_direct100_owner_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -247,6 +255,22 @@ bool ReadActorIdentity(void* actor, uint32_t& side, uint32_t& char_id) {
     side = *reinterpret_cast<volatile uint32_t*>(b + 0xE50);
     char_id = *reinterpret_cast<volatile uint32_t*>(b + 0xE54);
     return side <= 1 && char_id < 0x1000;
+}
+
+uintptr_t ReadActionSetterTarget(void* actor) {
+    if (!actor) return 0;
+    const uintptr_t vtable = *reinterpret_cast<const volatile uintptr_t*>(actor);
+    if (!vtable) return 0;
+    return *reinterpret_cast<const volatile uintptr_t*>(vtable + 0xF98);
+}
+
+ptrdiff_t MainRelativeOffset(uintptr_t address) {
+    if (!address) return -1;
+    const uintptr_t base = exl::util::modules::GetTargetStart();
+    if (address < base) return -1;
+    const uintptr_t delta = address - base;
+    // main .text is 0x12F5FD0 bytes in the pinned 1.70 executable.
+    return delta < 0x12F5FD0u ? static_cast<ptrdiff_t>(delta) : -1;
 }
 
 void CopyEventText(char (&out)[31], const uint8_t* event) {
@@ -1117,9 +1141,10 @@ HOOK_DEFINE_TRAMPOLINE(SpecialOugiFinishHook) {
 HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
     static int32_t Callback(void* actor, int32_t index, int32_t a2, int32_t a3, int32_t a4, int32_t a5, float rate) {
         const bool ordinary_jutsu = index == 84;
+        const bool direct_cluster_action = index == 98 || index == 100 || index == 937 || index == 938;
         const bool uj = index >= 700 && index <= 740;
         const bool sptype_action10 = index == 930;
-        const bool relevant = ordinary_jutsu || uj || sptype_action10;
+        const bool relevant = ordinary_jutsu || direct_cluster_action || uj || sptype_action10;
         if (!relevant) {
             return Orig(actor, index, a2, a3, a4, a5, rate);
         }
@@ -1127,6 +1152,8 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
         const bool valid = ReadActorIdentity(actor, side, char_id);
         uint32_t pre_action = 0xFFFFFFFFu;
+        const uintptr_t setter_target = ReadActionSetterTarget(actor);
+        const ptrdiff_t setter_off = MainRelativeOffset(setter_target);
         if (actor) {
             pre_action = *reinterpret_cast<const volatile uint32_t*>(
                 reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
@@ -1139,12 +1166,90 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             post_action = *reinterpret_cast<const volatile uint32_t*>(
                 reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
         }
-        const char* route = ordinary_jutsu ? "JUTSU84" : (sptype_action10 ? "SPTYPE930" : "UJ");
+        const char* route = ordinary_jutsu ? "JUTSU84" :
+                            (index == 98 ? "PLAY98" :
+                            (index == 100 ? "PLAY100" :
+                            (index == 937 ? "PLAY937" :
+                            (index == 938 ? "PLAY938" :
+                            (sptype_action10 ? "SPTYPE930" : "UJ")))));
         const uint32_t n = g_play_action_logs.fetch_add(1, std::memory_order_relaxed);
-        Logging.Log("[NSC:P53A] ACTION_ROUTE route=%s actor=%p valid=%u side=%u char=%u index=%d ret=%d n=%u a2=%d pre_action=%u post_action=%u",
+        Logging.Log("[NSC:P54A] ACTION_ROUTE route=%s actor=%p valid=%u side=%u char=%u index=%d ret=%d n=%u a2=%d pre_action=%u post_action=%u setter=%p setter_off=0x%lx",
                     route, actor, valid ? 1u : 0u, side, char_id, index, ret, n, a2,
-                    pre_action, post_action);
+                    pre_action, post_action, reinterpret_cast<void*>(setter_target),
+                    static_cast<unsigned long>(setter_off));
         return ret;
+    }
+};
+
+// P54A: direct-action owner probes.  P53A proved that the visible Tobi jutsu
+// produced by XXA does NOT pass through PlayAction(84/930/700..740).  Static
+// v1.70 RE found two neighbouring controller functions that bypass PlayAction
+// and call actor vtable+0xF98 directly with action 98 and 100 respectively.
+// These entry hooks never change mode, action, actor fields, or return state.
+//
+// Fingerprint @ 0x2A472C:
+//   D10243FF FD0023E8 F90027FE A90567FA A9065FF8 A90757F6 A9084FF4 52848C08
+HOOK_DEFINE_TRAMPOLINE(DirectAction98OwnerHook) {
+    static void Callback(void* actor, uint32_t mode) {
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const uintptr_t setter_target = ReadActionSetterTarget(actor);
+        const ptrdiff_t setter_off = MainRelativeOffset(setter_target);
+        uint32_t pre_action = 0xFFFFFFFFu;
+        int32_t pre_e94 = -1, pre_e9c = -1, pre_ea0 = -1;
+        if (actor) {
+            auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+            pre_action = *reinterpret_cast<const volatile uint32_t*>(b + 4712);
+            pre_e94 = *reinterpret_cast<const volatile int32_t*>(b + 0xE94);
+            pre_e9c = *reinterpret_cast<const volatile int32_t*>(b + 0xE9C);
+            pre_ea0 = *reinterpret_cast<const volatile int32_t*>(b + 0xEA0);
+        }
+        Orig(actor, mode);
+        uint32_t post_action = 0xFFFFFFFFu;
+        if (actor) {
+            post_action = *reinterpret_cast<const volatile uint32_t*>(
+                reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
+        }
+        const uint32_t n = g_direct98_owner_logs.fetch_add(1, std::memory_order_relaxed);
+        if (valid && (char_id >= kFirstCustomCharId || side == 0u) && n < 512) {
+            Logging.Log("[NSC:P54A] DIRECT98_OWNER actor=%p side=%u char=%u mode=%u pre_action=%u post_action=%u e94=%d e9c=%d ea0=%d setter=%p setter_off=0x%lx n=%u",
+                        actor, side, char_id, mode, pre_action, post_action,
+                        pre_e94, pre_e9c, pre_ea0, reinterpret_cast<void*>(setter_target),
+                        static_cast<unsigned long>(setter_off), n);
+        }
+    }
+};
+
+// Fingerprint @ 0x2A51B8:
+//   F81D0FFE A90157F6 A9024FF4 7100203F 54000C48 5280D588 72A00028 F000C469
+HOOK_DEFINE_TRAMPOLINE(DirectAction100OwnerHook) {
+    static void Callback(void* actor, uint32_t mode) {
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const uintptr_t setter_target = ReadActionSetterTarget(actor);
+        const ptrdiff_t setter_off = MainRelativeOffset(setter_target);
+        uint32_t pre_action = 0xFFFFFFFFu;
+        int32_t pre_e94 = -1, pre_e9c = -1, pre_ea0 = -1;
+        if (actor) {
+            auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+            pre_action = *reinterpret_cast<const volatile uint32_t*>(b + 4712);
+            pre_e94 = *reinterpret_cast<const volatile int32_t*>(b + 0xE94);
+            pre_e9c = *reinterpret_cast<const volatile int32_t*>(b + 0xE9C);
+            pre_ea0 = *reinterpret_cast<const volatile int32_t*>(b + 0xEA0);
+        }
+        Orig(actor, mode);
+        uint32_t post_action = 0xFFFFFFFFu;
+        if (actor) {
+            post_action = *reinterpret_cast<const volatile uint32_t*>(
+                reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
+        }
+        const uint32_t n = g_direct100_owner_logs.fetch_add(1, std::memory_order_relaxed);
+        if (valid && (char_id >= kFirstCustomCharId || side == 0u) && n < 512) {
+            Logging.Log("[NSC:P54A] DIRECT100_OWNER actor=%p side=%u char=%u mode=%u pre_action=%u post_action=%u e94=%d e9c=%d ea0=%d setter=%p setter_off=0x%lx n=%u",
+                        actor, side, char_id, mode, pre_action, post_action,
+                        pre_e94, pre_e9c, pre_ea0, reinterpret_cast<void*>(setter_target),
+                        static_cast<unsigned long>(setter_off), n);
+        }
     }
 };
 
@@ -1451,6 +1556,28 @@ bool InstallPlayActionProbe() {
     return true;
 }
 
+bool InstallP54DirectJutsuOwnerProbes() {
+    static constexpr uint32_t kDirect98Expected[] = {
+        0xD10243FF, 0xFD0023E8, 0xF90027FE, 0xA90567FA,
+        0xA9065FF8, 0xA90757F6, 0xA9084FF4, 0x52848C08,
+    };
+    static constexpr uint32_t kDirect100Expected[] = {
+        0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0x7100203F,
+        0x54000C48, 0x5280D588, 0x72A00028, 0xF000C469,
+    };
+    bool ok = true;
+    if (!MatchWords(kDirectAction98OwnerOffset, kDirect98Expected)) {
+        LogFingerprintFail("P54_DIRECT98_OWNER", kDirectAction98OwnerOffset); ok = false;
+    }
+    if (!MatchWords(kDirectAction100OwnerOffset, kDirect100Expected)) {
+        LogFingerprintFail("P54_DIRECT100_OWNER", kDirectAction100OwnerOffset); ok = false;
+    }
+    if (!ok) return false;
+    DirectAction98OwnerHook::InstallAtOffset(kDirectAction98OwnerOffset);
+    DirectAction100OwnerHook::InstallAtOffset(kDirectAction100OwnerOffset);
+    return true;
+}
+
 bool InstallConditionCompat() {
     using namespace condition_compat_generated;
     static constexpr uint32_t kGetterExpected[] = {
@@ -1533,6 +1660,16 @@ void InstallP53AInputPromotionProbe() {
     InstallP50AConditionCompat();
     Logging.Log("[NSC:P53A] READY inherited_p50=1 route_probe=1 added_trampolines=0 total_trampolines=5 "
                 "jutsu_action=84 sptype_action10=930 uj_range=700-740");
+}
+
+void InstallP54ADirectJutsuProbe() {
+    // P54A keeps the hardware-proven P50A five-trampoline functional core and
+    // adds only the two direct-action owner probes proven above.  No gameplay
+    // writes and no character-specific branch are introduced.
+    InstallP50AConditionCompat();
+    const bool direct = InstallP54DirectJutsuOwnerProbes();
+    Logging.Log("[NSC:P54A] READY inherited_p50=1 direct_owner_probe=%d added_trampolines=2 total_trampolines=7 direct98_owner=0x2a472c direct100_owner=0x2a51b8",
+                direct ? 1 : 0);
 }
 
 void InstallP52APreUjProbe() {

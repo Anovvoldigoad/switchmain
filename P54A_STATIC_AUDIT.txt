@@ -1,0 +1,30 @@
+P54A STATIC AUDIT
+=================
+Base: P53A/P50A paired main, Switch SC v1.70.
+
+P53 hardware fact:
+- Naruto XXA reaches PlayAction 700..740.
+- Tobi True Awakening XXA visually executes a jutsu.
+- Tobi produces no P53 ACTION_ROUTE for 84, 930, or 700..740.
+Conclusion: visible awakened jutsu bypasses the assumed PlayAction route.
+
+Direct setter census in main 0x2A0000..0x2AFFFF found four vtable+0xF98 sites:
+- 0x2A00C0 -> action 937
+- 0x2A0180 -> action 938
+- 0x2A50C4 -> action 98
+- 0x2A5698 -> action 100
+
+The latter two belong to neighbouring actor/mode controller functions in the
+same skill cluster:
+- function entry 0x2A472C (mode 0..9) contains direct action98
+- function entry 0x2A51B8 (mode 0..8) contains direct action100
+
+P54A fingerprints:
+0x2A472C:
+  D10243FF FD0023E8 F90027FE A90567FA A9065FF8 A90757F6 A9084FF4 52848C08
+0x2A51B8:
+  F81D0FFE A90157F6 A9024FF4 7100203F 54000C48 5280D588 72A00028 F000C469
+
+Instrumentation is read-only and is installed only after both fingerprints
+match. Active trampoline count is 7, well below the P48A 24-hook allocation
+failure and below the already booted P52A 10-hook diagnostic build.
