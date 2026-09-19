@@ -3,4 +3,5 @@
 namespace nsc {
 void InstallP50AConditionCompat();
 void InstallP52APreUjProbe();
+void InstallP53AInputPromotionProbe();
 }

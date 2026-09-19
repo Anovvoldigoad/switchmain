@@ -1,5 +1,4 @@
-name: Build NSC P52A pre-UJ decision probe
-
+name: Build NSC P53A input-promotion probe
 on:
   workflow_dispatch:
   push:
@@ -8,8 +7,8 @@ on:
       - "condition_compat_manifest.json"
       - "generate_condition_table.py"
       - "prepare_exlaunch.sh"
-      - ".github/workflows/build-subsdk9-p52a.yml"
-
+      - "verify_p53a_kit.py"
+      - ".github/workflows/build-subsdk9-p53a.yml"
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,9 +18,8 @@ jobs:
       DEVKITPRO: /opt/devkitpro
       DEVKITA64: /opt/devkitpro/devkitA64
     steps:
-      - name: Checkout P52A build kit
+      - name: Checkout P53A build kit
         uses: actions/checkout@v4
-
       - name: Verify preinstalled devkitPro toolchain
         shell: bash
         run: |
@@ -29,15 +27,13 @@ jobs:
           export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
           test -x "$DEVKITA64/bin/aarch64-none-elf-g++"
           "$DEVKITA64/bin/aarch64-none-elf-g++" --version
-
-      - name: Regenerate and verify condition payload
+      - name: Verify generated condition payload and P53A invariants
         shell: bash
         run: |
           set -euxo pipefail
           python3 generate_condition_table.py condition_compat_manifest.json /tmp/condition_compat_generated.hpp
           cmp /tmp/condition_compat_generated.hpp overlay/source/program/condition_compat_generated.hpp
-          python3 verify_p52a_kit.py --pre-build
-
+          python3 verify_p53a_kit.py
       - name: Clone pinned exlaunch 229bbd6
         shell: bash
         run: |
@@ -46,15 +42,13 @@ jobs:
           git -C "$GITHUB_WORKSPACE/exlaunch" checkout --detach 229bbd6
           git -C "$GITHUB_WORKSPACE/exlaunch" submodule update --init --recursive
           test "$(git -C "$GITHUB_WORKSPACE/exlaunch" rev-parse --short HEAD)" = "229bbd6"
-
-      - name: Overlay P52A sources
+      - name: Overlay P53A sources
         shell: bash
         run: |
           set -euxo pipefail
           sed -i 's/\r$//' prepare_exlaunch.sh || true
           chmod +x prepare_exlaunch.sh
           bash ./prepare_exlaunch.sh "$GITHUB_WORKSPACE/exlaunch"
-
       - name: Build subsdk9
         shell: bash
         run: |
@@ -62,7 +56,6 @@ jobs:
           export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
           cd "$GITHUB_WORKSPACE/exlaunch"
           make -j2
-
       - name: Collect output
         shell: bash
         run: |
@@ -75,17 +68,12 @@ jobs:
           cp deploy/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
           mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
-          cp README_P52A.txt artifact/README_P52A.txt
-          cp analyze_p52a_log.py artifact/analyze_p52a_log.py
-          cp P52A_STATIC_AUDIT.txt artifact/P52A_STATIC_AUDIT.txt
-          cp condition_compat_manifest.json artifact/condition_compat_manifest.json
-          cp P50A_MAIN_PATCH_AUDIT.json artifact/P50A_MAIN_PATCH_AUDIT.json
+          cp README_P53A.txt P53A_STATIC_AUDIT.txt analyze_p53a_log.py artifact/
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
-
-      - name: Upload P52A deployment artifact
+      - name: Upload P53A deployment artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P52A-pre-uj-decision-probe
+          name: NSC-P53A-input-promotion-probe
           path: artifact/
           if-no-files-found: error
           compression-level: 9

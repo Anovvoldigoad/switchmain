@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP52APreUjProbe();
+    nsc::InstallP53AInputPromotionProbe();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P52A pre-UJ probe exception");
+    EXL_ABORT("NSC P53A input-promotion probe exception");
 }

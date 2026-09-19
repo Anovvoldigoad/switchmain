@@ -1108,12 +1108,18 @@ HOOK_DEFINE_TRAMPOLINE(SpecialOugiFinishHook) {
     }
 };
 
-// P50A: low-perturbation PlayAction probe. Only cinematic UJ-range actions are observed.
+// P53A: zero-extra-trampoline action-route probe. The already-proven PlayAction
+// hook now observes the ordinary jutsu route (84), SPTYPE action10 (930), and
+// the cinematic UJ range (700..740). This distinguishes XXA->UJ from XXA->XA
+// without adding another hook or changing any gameplay decision.
 // Fingerprint @ 0x766B8C:
 //   A9BE57FE A9014FF4 B9529408 2A0403F4 AA0003F3 7100091F 54000080 B9528668
 HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
     static int32_t Callback(void* actor, int32_t index, int32_t a2, int32_t a3, int32_t a4, int32_t a5, float rate) {
-        const bool relevant = index >= 700 && index <= 740;
+        const bool ordinary_jutsu = index == 84;
+        const bool uj = index >= 700 && index <= 740;
+        const bool sptype_action10 = index == 930;
+        const bool relevant = ordinary_jutsu || uj || sptype_action10;
         if (!relevant) {
             return Orig(actor, index, a2, a3, a4, a5, rate);
         }
@@ -1133,9 +1139,10 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             post_action = *reinterpret_cast<const volatile uint32_t*>(
                 reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
         }
+        const char* route = ordinary_jutsu ? "JUTSU84" : (sptype_action10 ? "SPTYPE930" : "UJ");
         const uint32_t n = g_play_action_logs.fetch_add(1, std::memory_order_relaxed);
-        Logging.Log("[NSC:P50A] PLAY_ACTION actor=%p valid=%u side=%u char=%u index=%d ret=%d n=%u a2=%d pre_action=%u post_action=%u",
-                    actor, valid ? 1u : 0u, side, char_id, index, ret, n, a2,
+        Logging.Log("[NSC:P53A] ACTION_ROUTE route=%s actor=%p valid=%u side=%u char=%u index=%d ret=%d n=%u a2=%d pre_action=%u post_action=%u",
+                    route, actor, valid ? 1u : 0u, side, char_id, index, ret, n, a2,
                     pre_action, post_action);
         return ret;
     }
@@ -1515,6 +1522,17 @@ void InstallP50AConditionCompat() {
                 condition_compat_generated::kNativeConditionCount,
                 condition_compat_generated::kExtraConditionCount,
                 condition_compat_generated::kTotalConditionCount);
+}
+
+
+void InstallP53AInputPromotionProbe() {
+    // P53A intentionally returns to the hardware-proven P50A five-trampoline
+    // core. No P52A pre-UJ hooks are installed. The existing PlayAction hook
+    // itself logs action 84 / 930 / 700..740, so there are zero extra
+    // trampolines and zero gameplay writes in this probe.
+    InstallP50AConditionCompat();
+    Logging.Log("[NSC:P53A] READY inherited_p50=1 route_probe=1 added_trampolines=0 total_trampolines=5 "
+                "jutsu_action=84 sptype_action10=930 uj_range=700-740");
 }
 
 void InstallP52APreUjProbe() {
