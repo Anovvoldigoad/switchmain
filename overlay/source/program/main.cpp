@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP56BControlLocator();
+    nsc::InstallP57ACentralSetterTrace();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P56B control-locator exception");
+    EXL_ABORT("NSC P57A central-setter trace exception");
 }

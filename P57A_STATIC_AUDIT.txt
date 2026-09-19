@@ -1,0 +1,11 @@
+P57A STATIC AUDIT
+
+Parent functional core: P50A condition compat.
+P56B result: no stable common PC-style boolean control block; field-write approach rejected.
+New target: main+0x766320, actor vtable+0xF98 central action setter.
+Callback ABI: void(actor, int32 action, int32 a2, int32 a3).
+Evidence: PlayAction caller ignores setter return; setter prologue saves w3,w2,x0,w1.
+Added trampolines: 1. Total active: 6.
+Gameplay writes added: 0.
+Character-specific gameplay branches: 0.
+Logging filter: generic custom >280 && <0x1000; vanilla only action700..740.

@@ -35,6 +35,10 @@ constexpr ptrdiff_t kNormalOugiOffset         = 0x6F44A0;  // NORMAL_OUGI combat
 constexpr ptrdiff_t kSpecialOugiFinishOffset  = 0x6F4880;  // SPECIAL_OUGI_FINISH combat action handler (end classifier)
 // P50A: keep only the proven PRE/POST PlayAction probe for UJ progression
 constexpr ptrdiff_t kPlayActionProbeOffset    = 0x766B8C;  // PlayAction → int32_t ret
+// P57A: central actor action setter behind vtable+0xF98. Runtime P56B
+// proved vanilla UJ PlayAction(700..740) reaches main+0x766320. The PlayAction
+// wrapper calls this as (actor, action, a2, a3) and ignores its return value.
+constexpr ptrdiff_t kCentralActionSetterOffset = 0x766320;
 // Historical decision-chain probes retained in source but not installed by P50A
 constexpr ptrdiff_t kActionLookupOffset        = 0x768E84;  // actor,index,flag -> action entry ptr/null
 constexpr ptrdiff_t kActionGateOffset          = 0x769A4C;  // actor -> bool-like completion/timing gate
@@ -146,6 +150,7 @@ std::atomic<uint32_t> g_direct98_owner_logs{0};
 std::atomic<uint32_t> g_direct100_owner_logs{0};
 std::atomic<uint32_t> g_p56b_vanilla_snapshots{0};
 std::atomic<uint32_t> g_p56b_custom_snapshots{0};
+std::atomic<uint32_t> g_p57_setter_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -1348,6 +1353,67 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
     }
 };
 
+// P57A: central action-setter provenance trace. This is diagnostic only.
+//
+// Runtime provenance:
+//   actor vtable+0xF98 -> main+0x766320 for vanilla UJ action700..740.
+// Static ABI provenance from the first instructions of 0x766320:
+//   mov w20,w3; mov w22,w2; mov x19,x0; mov w21,w1
+// so the entry contract is (actor, action, a2, a3). The PlayAction wrapper
+// does not consume a return value from this call, therefore Callback is void.
+//
+// We log every valid generic custom actor request and only vanilla UJ requests.
+// No action/argument/actor field is modified.
+HOOK_DEFINE_TRAMPOLINE(CentralActionSetterHook) {
+    static void Callback(void* actor, int32_t action, int32_t a2, int32_t a3) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const bool custom = valid && char_id > kVanillaMaxCharId && char_id < 0x1000u;
+        const bool vanilla_uj = valid && char_id <= kVanillaMaxCharId && action >= 700 && action <= 740;
+        const bool log_this = custom || vanilla_uj;
+
+        uint32_t pre_action = 0xFFFFFFFFu;
+        int32_t pre_e94 = 0x7FFFFFFF;
+        if (actor) {
+            const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+            pre_action = *reinterpret_cast<const volatile uint32_t*>(b + 4712);
+            pre_e94 = *reinterpret_cast<const volatile int32_t*>(b + 0xE94);
+        }
+
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        uint32_t call_m8 = 0, call_m4 = 0;
+        if (caller_off >= 8) {
+            const uintptr_t base = exl::util::modules::GetTargetStart();
+            call_m8 = *reinterpret_cast<const volatile uint32_t*>(base + caller_off - 8);
+            call_m4 = *reinterpret_cast<const volatile uint32_t*>(base + caller_off - 4);
+        }
+
+        Orig(actor, action, a2, a3);
+
+        uint32_t post_action = 0xFFFFFFFFu;
+        int32_t post_e94 = 0x7FFFFFFF;
+        if (actor) {
+            const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+            post_action = *reinterpret_cast<const volatile uint32_t*>(b + 4712);
+            post_e94 = *reinterpret_cast<const volatile int32_t*>(b + 0xE94);
+        }
+
+        if (log_this) {
+            const uint32_t n = g_p57_setter_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < 4096) {
+                Logging.Log("[NSC:P57A] SETTER n=%u actor=%p valid=%u side=%u char=%u requested=%d a2=%d a3=%d pre=%u post=%u e94=%d->%d caller_lr=%p caller_main=%u caller_off=0x%lx call_m8=%08x call_m4=%08x",
+                            n, actor, valid ? 1u : 0u, side, char_id, action, a2, a3,
+                            pre_action, post_action, pre_e94, post_e94,
+                            reinterpret_cast<void*>(caller_lr), caller_off >= 0 ? 1u : 0u,
+                            static_cast<unsigned long>(caller_off), call_m8, call_m4);
+            }
+        }
+    }
+};
+
 // P54A: direct-action owner probes.  P53A proved that the visible Tobi jutsu
 // produced by XXA does NOT pass through PlayAction(84/930/700..740).  Static
 // v1.70 RE found two neighbouring controller functions that bypass PlayAction
@@ -1723,6 +1789,23 @@ bool InstallPlayActionProbe() {
     return true;
 }
 
+bool InstallP57CentralSetterTrace() {
+    // Fingerprint the exact v1.70 function entry. These words also prove the
+    // 4-argument ABI used by the callback: prologue then w3/w2/x0/w1 saves.
+    static constexpr uint32_t kSetterExpected[] = {
+        0xD10303FF, 0x6D0523E9, 0xA9067BFD, 0xA9076FFC,
+        0xA90867FA, 0xA9095FF8, 0xA90A57F6, 0xA90B4FF4,
+        0xF9410C08, 0x4EA01C08, 0x2A0303F4, 0x2A0203F6,
+        0xAA0003F3, 0x2A0103F5,
+    };
+    if (!MatchWords(kCentralActionSetterOffset, kSetterExpected)) {
+        LogFingerprintFail("CENTRAL_SETTER", kCentralActionSetterOffset);
+        return false;
+    }
+    CentralActionSetterHook::InstallAtOffset(kCentralActionSetterOffset);
+    return true;
+}
+
 bool InstallP54DirectJutsuOwnerProbes() {
     static constexpr uint32_t kDirect98Expected[] = {
         0xD10243FF, 0xFD0023E8, 0xF90027FE, 0xA90567FA,
@@ -1856,6 +1939,17 @@ void InstallP56BControlLocator() {
     InstallP50AConditionCompat();
     Logging.Log("[NSC:P56B] READY inherited_p50=1 control_locator=1 added_trampolines=0 total_trampolines=5 writes=0 scan_start=0x%x scan_end=0x%x custom_trigger=event236_op14_p2_0_p3_1 vanilla_trigger=play700",
                 kControlScanStart, kControlScanEnd);
+}
+
+void InstallP57ACentralSetterTrace() {
+    // P57A follows the P56B negative result: no common PC-style boolean control
+    // block was located, so no actor field is guessed or written. Keep the
+    // stable P50 functional core and add exactly one read-only central setter
+    // hook to recover the actual custom action and its caller.
+    InstallP50AConditionCompat();
+    const bool setter = InstallP57CentralSetterTrace();
+    Logging.Log("[NSC:P57A] READY inherited_p50=1 central_setter=%d added_trampolines=1 total_trampolines=6 writes=0 setter=0x766320 generic_custom_trace=1",
+                setter ? 1 : 0);
 }
 
 void InstallP52APreUjProbe() {
