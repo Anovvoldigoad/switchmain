@@ -264,6 +264,32 @@ uintptr_t ReadActionSetterTarget(void* actor) {
     return *reinterpret_cast<const volatile uintptr_t*>(vtable + 0xF98);
 }
 
+struct P55ActorState {
+    uint32_t action = 0xFFFFFFFFu;
+    int32_t e60 = 0x7FFFFFFF;
+    int32_t e94 = 0x7FFFFFFF;
+    int32_t e9c = 0x7FFFFFFF;
+    int32_t ea0 = 0x7FFFFFFF;
+    uint32_t skill0 = 0xFFFFFFFFu;
+    uint32_t skill1 = 0xFFFFFFFFu;
+    uint32_t skill2 = 0xFFFFFFFFu;
+};
+
+P55ActorState ReadP55ActorState(void* actor) {
+    P55ActorState st{};
+    if (!actor) return st;
+    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+    st.action = *reinterpret_cast<const volatile uint32_t*>(b + 4712);
+    st.e60 = *reinterpret_cast<const volatile int32_t*>(b + 0xE60);
+    st.e94 = *reinterpret_cast<const volatile int32_t*>(b + 0xE94);
+    st.e9c = *reinterpret_cast<const volatile int32_t*>(b + 0xE9C);
+    st.ea0 = *reinterpret_cast<const volatile int32_t*>(b + 0xEA0);
+    st.skill0 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE68);
+    st.skill1 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE6C);
+    st.skill2 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE70);
+    return st;
+}
+
 ptrdiff_t MainRelativeOffset(uintptr_t address) {
     if (!address) return -1;
     const uintptr_t base = exl::util::modules::GetTargetStart();
@@ -715,6 +741,7 @@ HOOK_DEFINE_TRAMPOLINE(Event121Hook) {
         // the parity route.  The condition lookup itself remains fully generic.
         if (valid && char_id > kVanillaMaxCharId && char_id < 0x1000u &&
             event_ptr && p2 == 1) {
+            const P55ActorState p55_pre = ReadP55ActorState(actor);
             const uintptr_t base = exl::util::modules::GetTargetStart();
             using OwnerFn = void* (*)(void*);
             using ResolveFn = uint32_t (*)(const char*);
@@ -745,6 +772,14 @@ HOOK_DEFINE_TRAMPOLINE(Event121Hook) {
                             actor, side, char_id, text, static_cast<int>(op),
                             static_cast<int>(p2), static_cast<int>(p3), p4bits, resolved,
                             owner, executed, apply_ret);
+                const P55ActorState p55_post = ReadP55ActorState(actor);
+                Logging.Log("[NSC:P55A] STATE121 actor=%p side=%u char=%u text=%s resolved=%u executed=%u action=%u->%u e60=%d->%d e94=%d->%d e9c=%d->%d ea0=%d->%d skills=%u/%u/%u->%u/%u/%u",
+                            actor, side, char_id, text, resolved, executed,
+                            p55_pre.action, p55_post.action,
+                            p55_pre.e60, p55_post.e60, p55_pre.e94, p55_post.e94,
+                            p55_pre.e9c, p55_post.e9c, p55_pre.ea0, p55_post.ea0,
+                            p55_pre.skill0, p55_pre.skill1, p55_pre.skill2,
+                            p55_post.skill0, p55_post.skill1, p55_post.skill2);
             }
             // Event callbacks conventionally report handled=1.
             return 1;
@@ -972,6 +1007,7 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
         const int16_t p2 = *reinterpret_cast<const int16_t*>(event + 0x26);
         const int16_t p3 = *reinterpret_cast<const int16_t*>(event + 0x28);
         const float p4 = *reinterpret_cast<const float*>(event + 0x2C);
+        const P55ActorState p55_pre = ReadP55ActorState(actor);
 
         // Fail closed to exact native semantics for vanilla/non-custom actors or
         // implausible event data. v1.70 vanilla max charID is proven as 280;
@@ -988,6 +1024,13 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
             Logging.Log("[NSC:P50A] EVT236 actor=%p side=%u char=%u op=%d p2=%d p3=%d p4bits=%08x text=%s",
                         actor, side, char_id, static_cast<int>(op), static_cast<int>(p2),
                         static_cast<int>(p3), FloatBits(p4), text);
+            if (op == 3 || op == 8 || op == 13 || op == 22 || op == 23) {
+                Logging.Log("[NSC:P55A] STATE236 phase=pre actor=%p side=%u char=%u op=%d p2=%d p3=%d action=%u e60=%d e94=%d e9c=%d ea0=%d skills=%u/%u/%u",
+                            actor, side, char_id, static_cast<int>(op), static_cast<int>(p2),
+                            static_cast<int>(p3), p55_pre.action, p55_pre.e60, p55_pre.e94,
+                            p55_pre.e9c, p55_pre.ea0, p55_pre.skill0, p55_pre.skill1,
+                            p55_pre.skill2);
+            }
         }
 
         switch (op) {
@@ -1000,6 +1043,12 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                     reinterpret_cast<uint8_t*>(actor) + 0xE68 + static_cast<uint32_t>(p2) * 4);
                 const uint32_t current = *slot;
                 if (current <= 6) *slot = static_cast<uint32_t>(p3);
+                const P55ActorState p55_post = ReadP55ActorState(actor);
+                Logging.Log("[NSC:P55A] SKILL_WRITE actor=%p side=%u char=%u slot=%d requested=%d old=%u new=%u action=%u e60=%d e94=%d e9c=%d ea0=%d skills=%u/%u/%u",
+                            actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3),
+                            current, *slot, p55_post.action, p55_post.e60, p55_post.e94,
+                            p55_post.e9c, p55_post.ea0, p55_post.skill0, p55_post.skill1,
+                            p55_post.skill2);
                 return 1;
             }
 
@@ -1173,7 +1222,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
                             (index == 938 ? "PLAY938" :
                             (sptype_action10 ? "SPTYPE930" : "UJ")))));
         const uint32_t n = g_play_action_logs.fetch_add(1, std::memory_order_relaxed);
-        Logging.Log("[NSC:P54A] ACTION_ROUTE route=%s actor=%p valid=%u side=%u char=%u index=%d ret=%d n=%u a2=%d pre_action=%u post_action=%u setter=%p setter_off=0x%lx",
+        Logging.Log("[NSC:P55A] ACTION_ROUTE route=%s actor=%p valid=%u side=%u char=%u index=%d ret=%d n=%u a2=%d pre_action=%u post_action=%u setter=%p setter_off=0x%lx",
                     route, actor, valid ? 1u : 0u, side, char_id, index, ret, n, a2,
                     pre_action, post_action, reinterpret_cast<void*>(setter_target),
                     static_cast<unsigned long>(setter_off));
@@ -1670,6 +1719,14 @@ void InstallP54ADirectJutsuProbe() {
     const bool direct = InstallP54DirectJutsuOwnerProbes();
     Logging.Log("[NSC:P54A] READY inherited_p50=1 direct_owner_probe=%d added_trampolines=2 total_trampolines=7 direct98_owner=0x2a472c direct100_owner=0x2a51b8",
                 direct ? 1 : 0);
+}
+
+void InstallP55AStateSampler() {
+    // P55A removes the eliminated P54 direct-owner probes and returns to the
+    // five-trampoline P50 functional core. State is sampled only inside the
+    // already-installed Event236/Event121/PlayAction callbacks: zero extra hooks.
+    InstallP50AConditionCompat();
+    Logging.Log("[NSC:P55A] READY inherited_p50=1 state_sampler=1 added_trampolines=0 total_trampolines=5 sample_event236=1 sample_event121=1 sample_playaction=1");
 }
 
 void InstallP52APreUjProbe() {

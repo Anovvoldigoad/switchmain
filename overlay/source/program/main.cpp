@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP54ADirectJutsuProbe();
+    nsc::InstallP55AStateSampler();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P54A direct-jutsu probe exception");
+    EXL_ABORT("NSC P55A state-sampler exception");
 }

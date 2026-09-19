@@ -1,4 +1,4 @@
-name: Build NSC P54A direct-jutsu owner probe
+name: Build NSC P55A zero-extra-hook state sampler
 on:
   workflow_dispatch:
   push:
@@ -7,8 +7,8 @@ on:
       - "condition_compat_manifest.json"
       - "generate_condition_table.py"
       - "prepare_exlaunch.sh"
-      - "verify_p54a_kit.py"
-      - ".github/workflows/build-subsdk9-p54a.yml"
+      - "verify_p55a_kit.py"
+      - ".github/workflows/build-subsdk9-p55a.yml"
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,7 +18,7 @@ jobs:
       DEVKITPRO: /opt/devkitpro
       DEVKITA64: /opt/devkitpro/devkitA64
     steps:
-      - name: Checkout P54A build kit
+      - name: Checkout P55A build kit
         uses: actions/checkout@v4
       - name: Verify preinstalled devkitPro toolchain
         shell: bash
@@ -27,13 +27,13 @@ jobs:
           export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
           test -x "$DEVKITA64/bin/aarch64-none-elf-g++"
           "$DEVKITA64/bin/aarch64-none-elf-g++" --version
-      - name: Verify generated condition payload and P54A invariants
+      - name: Verify generated condition payload and P55A invariants
         shell: bash
         run: |
           set -euxo pipefail
           python3 generate_condition_table.py condition_compat_manifest.json /tmp/condition_compat_generated.hpp
           cmp /tmp/condition_compat_generated.hpp overlay/source/program/condition_compat_generated.hpp
-          python3 verify_p54a_kit.py
+          python3 verify_p55a_kit.py
       - name: Clone pinned exlaunch 229bbd6
         shell: bash
         run: |
@@ -42,7 +42,7 @@ jobs:
           git -C "$GITHUB_WORKSPACE/exlaunch" checkout --detach 229bbd6
           git -C "$GITHUB_WORKSPACE/exlaunch" submodule update --init --recursive
           test "$(git -C "$GITHUB_WORKSPACE/exlaunch" rev-parse --short HEAD)" = "229bbd6"
-      - name: Overlay P54A sources
+      - name: Overlay P55A sources
         shell: bash
         run: |
           set -euxo pipefail
@@ -68,12 +68,12 @@ jobs:
           cp deploy/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
           mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
-          cp README_P54A.txt P54A_STATIC_AUDIT.txt analyze_p54a_log.py artifact/
+          cp README_P55A.txt P55A_STATIC_AUDIT.txt analyze_p55a_log.py artifact/
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
-      - name: Upload P54A deployment artifact
+      - name: Upload P55A deployment artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P54A-direct-jutsu-owner-probe
+          name: NSC-P55A-state-sampler
           path: artifact/
           if-no-files-found: error
           compression-level: 9
