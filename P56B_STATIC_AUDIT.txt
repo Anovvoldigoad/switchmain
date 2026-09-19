@@ -1,0 +1,27 @@
+P56B STATIC AUDIT
+=================
+Parent: P55A/P50A stable core.
+
+Correction:
+- P55 action74/77 samples are event-callback-correlated only, not XXA-correlated.
+- P56A writer chase is withdrawn.
+
+Source-grounded observation:
+- PC SC1.70 me_enable_control selector1 = UJ, selector2 = Jutsus.
+- Custom Tobi Event236 emits op14 selector1/2.
+- P50A shadows op14.
+
+Rejected historical address:
+- Switch candidate actor+0x12A24 produced P40 values UJ=58, Jutsu=26.
+- Therefore P56B performs no write to +0x12A24 or any scanned candidate.
+
+P56B runtime delta:
+- 0 new trampolines.
+- 0 gameplay writes.
+- bounded read-only candidate scan 0x12800..0x12B20, max mapped read +0x12B78.
+- trigger A: custom Event236 op14 p2=0 p3=1.
+- trigger B: vanilla PlayAction index700.
+
+Interpretation is intentionally conservative: candidate scores are evidence for
+layout location only; no field becomes writable until cross-snapshot + static
+xref validation succeeds.

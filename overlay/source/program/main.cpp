@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP55AStateSampler();
+    nsc::InstallP56BControlLocator();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P55A state-sampler exception");
+    EXL_ABORT("NSC P56B control-locator exception");
 }

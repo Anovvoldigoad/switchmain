@@ -1,0 +1,6 @@
+P56B_VERIFY=PASS
+active_trampolines=5
+added_trampolines=0
+gameplay_writes_added=0
+scan=0x12800..0x12B20; max_field=0x12B78
+rejected_base_0x12A24_write=ABSENT

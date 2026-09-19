@@ -74,10 +74,18 @@ constexpr ptrdiff_t kStageDefaultOffset        = 0x53643C;
 constexpr ptrdiff_t kHandleStageChangeOffset   = 0x6E8EB0;
 constexpr ptrdiff_t kFixCharPositionOffset     = 0x48E40C;
 constexpr ptrdiff_t kPostStageOffset            = 0x48E61C;
-// Actor-local MovesetPlus control block recovered for Switch v1.70.
-// PC SC1.70 uses +0x12A34; established PC->Switch player layout shift is -0x10
-// in this region, and historical Switch direct-control helper used +0x12A24.
-constexpr ptrdiff_t kControlBlockOffset         = 0x12A24;
+// Historical control-block candidate ONLY. Hardware P40 rejected +0x12A24
+// as the PC-style boolean control block (selector1/UJ read 58, selector2/Jutsu
+// read 26). It is retained only by inactive legacy Event13 diagnostics. P56B
+// never writes this address and locates the real Switch layout read-only.
+constexpr ptrdiff_t kRejectedControlBlockOffset = 0x12A24;
+
+// P56B read-only control-layout locator. The scan is bounded to memory already
+// proven inside the actor object: the upper bound plus max source-relative
+// field 0x58 lands exactly at +0x12B78, an independently recovered Switch
+// D-pad-region boundary. No candidate is ever written.
+constexpr uint32_t kControlScanStart = 0x12800;
+constexpr uint32_t kControlScanEnd   = 0x12B20;
 constexpr ptrdiff_t kActionPreOffset            = 0x7A8438;
 constexpr ptrdiff_t kActionEntryLookupOffset    = 0x3F5560;
 constexpr ptrdiff_t kActionNameCompareOffset    = 0x12F36E0;
@@ -136,6 +144,8 @@ std::atomic<uint32_t> g_uj_start_state_logs{0};
 std::atomic<uint32_t> g_special_type_ctrl_logs{0};
 std::atomic<uint32_t> g_direct98_owner_logs{0};
 std::atomic<uint32_t> g_direct100_owner_logs{0};
+std::atomic<uint32_t> g_p56b_vanilla_snapshots{0};
+std::atomic<uint32_t> g_p56b_custom_snapshots{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -297,6 +307,102 @@ ptrdiff_t MainRelativeOffset(uintptr_t address) {
     const uintptr_t delta = address - base;
     // main .text is 0x12F5FD0 bytes in the pinned 1.70 executable.
     return delta < 0x12F5FD0u ? static_cast<ptrdiff_t>(delta) : -1;
+}
+
+
+struct P56BControlCandidate {
+    uint32_t base = 0;
+    uint32_t rank = 0;
+    uint8_t boolean_count = 0;
+    uint8_t ones = 0;
+};
+
+constexpr uint32_t kP56BControlRel[] = {
+    0x00, // attack
+    0x04, // far attack
+    0x08, // Ultimate Jutsu
+    0x10, // Jutsus
+    0x18, // projectile
+    0x1C, // chakra projectile
+    0x20, // grab
+    0x24, // substitution
+    0x28, // guard
+    0x2C, // chakra load
+    0x30, // movement/chakra
+    0x34, // jump
+    0x38, // ninja movement
+    0x3C, // air dash
+    0x40, // land dash
+    0x44, // D-pad items
+    0x48, // leader switch
+    0x4C, // awakening
+    0x50, // supports
+    0x58, // counter attack
+};
+
+int32_t ReadActorI32At(const void* actor, uint32_t off) {
+    if (!actor) return 0x7FFFFFFF;
+    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+    return *reinterpret_cast<const volatile int32_t*>(b + off);
+}
+
+void InsertP56BCandidate(P56BControlCandidate (&top)[8], const P56BControlCandidate& c) {
+    for (size_t i = 0; i < 8; ++i) {
+        if (c.rank <= top[i].rank) continue;
+        for (size_t j = 7; j > i; --j) top[j] = top[j - 1];
+        top[i] = c;
+        break;
+    }
+}
+
+void LogP56BControlSnapshot(void* actor, const char* tag, uint32_t side, uint32_t char_id, uint32_t seq) {
+    if (!actor) return;
+    P56BControlCandidate top[8]{};
+    for (uint32_t base = kControlScanStart; base <= kControlScanEnd; base += 4) {
+        uint8_t bools = 0;
+        uint8_t ones = 0;
+        for (uint32_t rel : kP56BControlRel) {
+            const int32_t v = ReadActorI32At(actor, base + rel);
+            if (v == 0 || v == 1) {
+                ++bools;
+                if (v == 1) ++ones;
+            }
+        }
+        // Pure zero padding is intentionally de-prioritized. A real enabled
+        // control block should expose at least some 1-valued controls.
+        const uint32_t rank = static_cast<uint32_t>(bools) * 16u +
+                              static_cast<uint32_t>(ones) * 4u;
+        P56BControlCandidate candidate{};
+        candidate.base = base;
+        candidate.rank = rank;
+        candidate.boolean_count = bools;
+        candidate.ones = ones;
+        InsertP56BCandidate(top, candidate);
+    }
+
+    Logging.Log("[NSC:P56B] CONTROL_SNAPSHOT tag=%s seq=%u actor=%p side=%u char=%u scan=0x%x-0x%x hist12a24=%d/%d/%d/%d",
+                tag, seq, actor, side, char_id, kControlScanStart, kControlScanEnd,
+                ReadActorI32At(actor, 0x12A24), ReadActorI32At(actor, 0x12A28),
+                ReadActorI32At(actor, 0x12A2C), ReadActorI32At(actor, 0x12A34));
+
+    for (uint32_t i = 0; i < 8; ++i) {
+        const auto& c = top[i];
+        if (!c.rank) continue;
+        Logging.Log("[NSC:P56B] CONTROL_CAND tag=%s seq=%u rank=%u base=0x%x bool=%u ones=%u atk=%d far=%d uj=%d jutsu=%d guard=%d chakra=%d move=%d dpad=%d awake=%d support=%d counter=%d",
+                    tag, seq, c.rank, c.base, static_cast<unsigned>(c.boolean_count),
+                    static_cast<unsigned>(c.ones),
+                    ReadActorI32At(actor, c.base + 0x00),
+                    ReadActorI32At(actor, c.base + 0x04),
+                    ReadActorI32At(actor, c.base + 0x08),
+                    ReadActorI32At(actor, c.base + 0x10),
+                    ReadActorI32At(actor, c.base + 0x28),
+                    ReadActorI32At(actor, c.base + 0x2C),
+                    ReadActorI32At(actor, c.base + 0x30),
+                    ReadActorI32At(actor, c.base + 0x44),
+                    ReadActorI32At(actor, c.base + 0x4C),
+                    ReadActorI32At(actor, c.base + 0x50),
+                    ReadActorI32At(actor, c.base + 0x58));
+    }
 }
 
 void CopyEventText(char (&out)[31], const uint8_t* event) {
@@ -675,7 +781,7 @@ HOOK_DEFINE_TRAMPOLINE(Event13Hook) {
             auto* b = reinterpret_cast<volatile uint8_t*>(actor);
             pre_gate = *reinterpret_cast<volatile int32_t*>(b + 0x12A0);
             pre_awake = *reinterpret_cast<volatile int32_t*>(
-                b + kControlBlockOffset + 0x4C);
+                b + kRejectedControlBlockOffset + 0x4C);
             condition_owner = *reinterpret_cast<void* volatile*>(b + 0x10F80);
         }
         const uint32_t ret = Orig(actor, event_ptr);
@@ -683,7 +789,7 @@ HOOK_DEFINE_TRAMPOLINE(Event13Hook) {
             auto* b = reinterpret_cast<volatile uint8_t*>(actor);
             post_gate = *reinterpret_cast<volatile int32_t*>(b + 0x12A0);
             post_awake = *reinterpret_cast<volatile int32_t*>(
-                b + kControlBlockOffset + 0x4C);
+                b + kRejectedControlBlockOffset + 0x4C);
         }
         const uint32_t n = g_event13_logs.fetch_add(1, std::memory_order_relaxed);
         // P43A: unfiltered — log vanilla AND custom
@@ -1086,6 +1192,14 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 return 1;
 
             case 14: {
+                // P56B: source-grounded locator trigger. UltimateStormAPI's
+                // me_enable_control uses p2=self/enemy and p3=control selector;
+                // selector 1 is Ultimate Jutsu. Snapshot BEFORE the P50 shadow
+                // so this is the untouched Switch state when the mod requests UJ enable.
+                if (p2 == 0 && p3 == 1) {
+                    const uint32_t seq = g_p56b_custom_snapshots.fetch_add(1, std::memory_order_relaxed);
+                    if (seq < 3) LogP56BControlSnapshot(actor, "CUSTOM_O14_UJ_ENABLE", side, char_id, seq);
+                }
                 // P43A: pure shadow. P41A CTRL_DUMP rejected +0x12A24 as PC-style
                 // boolean control block. Victim-UJ HARD PASS is from not calling the
                 // broken native O14 route; direct writes were mostly fail-closed no-ops.
@@ -1200,6 +1314,10 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
 
         uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
         const bool valid = ReadActorIdentity(actor, side, char_id);
+        if (index == 700 && valid && char_id <= kVanillaMaxCharId) {
+            const uint32_t seq = g_p56b_vanilla_snapshots.fetch_add(1, std::memory_order_relaxed);
+            if (seq < 2) LogP56BControlSnapshot(actor, "VANILLA_PLAY700", side, char_id, seq);
+        }
         uint32_t pre_action = 0xFFFFFFFFu;
         const uintptr_t setter_target = ReadActionSetterTarget(actor);
         const ptrdiff_t setter_off = MainRelativeOffset(setter_target);
@@ -1727,6 +1845,17 @@ void InstallP55AStateSampler() {
     // already-installed Event236/Event121/PlayAction callbacks: zero extra hooks.
     InstallP50AConditionCompat();
     Logging.Log("[NSC:P55A] READY inherited_p50=1 state_sampler=1 added_trampolines=0 total_trampolines=5 sample_event236=1 sample_event121=1 sample_playaction=1");
+}
+
+
+void InstallP56BControlLocator() {
+    // P56B corrects the unsupported P55->74/77 causal leap. It adds ZERO
+    // trampolines and ZERO gameplay writes. The existing P50 Event236 hook
+    // snapshots custom selector1 (UJ-enable request); the existing PlayAction
+    // hook snapshots vanilla at proven UJ entry 700. The bounded scan is read-only.
+    InstallP50AConditionCompat();
+    Logging.Log("[NSC:P56B] READY inherited_p50=1 control_locator=1 added_trampolines=0 total_trampolines=5 writes=0 scan_start=0x%x scan_end=0x%x custom_trigger=event236_op14_p2_0_p3_1 vanilla_trigger=play700",
+                kControlScanStart, kControlScanEnd);
 }
 
 void InstallP52APreUjProbe() {
