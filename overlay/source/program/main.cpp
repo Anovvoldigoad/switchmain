@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP48CFunctionalDecisionProbe();
+    nsc::InstallP50AConditionCompat();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P48C functional decision probe exception");
+    EXL_ABORT("NSC P50A condition compat exception");
 }

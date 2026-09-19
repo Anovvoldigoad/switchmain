@@ -1,0 +1,16 @@
+{
+  "format": "NSC2SwitchConditionCompatManifestV1",
+  "native_condition_count": 512,
+  "entries": [
+    {"name":"SW_MTOB_XH",    "field08":513, "field0C":1,  "field10":8, "field14":5, "field18":5, "field1C":0},
+    {"name":"SW_MTOB_ST",    "field08":0,   "field0C":10, "field10":7, "field14":5, "field18":5, "field1C":0},
+    {"name":"YXNQ_MTOB",     "field08":513, "field0C":1,  "field10":9, "field14":5, "field18":5, "field1C":0},
+    {"name":"SW_MTOB_BREAK", "field08":0,   "field0C":0,  "field10":0, "field14":5, "field18":5, "field1C":0},
+    {"name":"WC_MTOB_BREAK", "field08":0,   "field0C":0,  "field10":3, "field14":5, "field18":5, "field1C":0}
+  ],
+  "provenance": {
+    "layout": "32-byte native condition-manager descriptors recovered from historical hardware-stable Switch split-bank build",
+    "names": "current production Tobi conditionprmManager namespace; no 2TOB alias",
+    "architecture": "generic generated table; gameplay code contains no character-ID branch"
+  }
+}

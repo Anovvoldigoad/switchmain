@@ -1,0 +1,59 @@
+{
+  "format": "NSC2Switch_P50A_INPUT_AUDIT_V1",
+  "uploads": {
+    "170_ExeFS.zip": {
+      "size": 28192954,
+      "sha256": "a0561b04f8a94365195fff21efacfa6755586feb1bfa69cf58b9d04ba5933359",
+      "entries": 7,
+      "zip_crc": "PASS"
+    },
+    "BASE GAME EXEFS.zip": {
+      "size": 32328084,
+      "sha256": "e79e194f100099024dbc5633e50e0dbda3994da05cb903ff2484087f21e5b7f5",
+      "entries": 9,
+      "zip_crc": "PASS"
+    },
+    "CC2_NSC_Decrypt_Termux_v1.zip": {
+      "size": 6103,
+      "sha256": "c31bb7fb841693428fe0f180ca0ae81c78b361b3176346d29055309a6bafb6c0",
+      "entries": 4,
+      "zip_crc": "PASS"
+    },
+    "NSC_P12_BASE_PARAMS.zip": {
+      "size": 4603071,
+      "sha256": "445af0c4e09c751cdead96acaa815265cd1382d884119d776b8a47adb0638447",
+      "entries": 53,
+      "zip_crc": "PASS"
+    },
+    "NSC_P12_UPDATE170_PARAMS.zip": {
+      "size": 4442501,
+      "sha256": "c54caf07f0a92b2c88cf96bd6de0f1fb65238486e48442a375cfba1837da8022",
+      "entries": 43,
+      "zip_crc": "PASS"
+    }
+  },
+  "base_main": {
+    "size": 16693186,
+    "sha256": "53e99c7b9fdbd52939a2dc15322db1d17c8553223a5189a03d806c5b2bcda159",
+    "build_id": "bd9e5250a8e00d42516623a2f10c444c96e4913b"
+  },
+  "update170_main": {
+    "size": 17275305,
+    "sha256": "01a0557acd4fd8ae54a2c13e4cc70de62cf32091dbfff40f407321bac312af44",
+    "build_id": "48ece454b61412b9fb46fab2be3f5ef7b2804f39"
+  },
+  "condition_getter_differential": {
+    "base": {
+      "va": "0x700B10",
+      "bound_instruction": "cmp w8,#0x1F1",
+      "meaning": "base executable has older/smaller condition descriptor geometry"
+    },
+    "update170": {
+      "va": "0x754A80",
+      "bound_instruction": "cmp w8,#0x1FE",
+      "meaning": "1.70 expands native geometry; this version-specific change is analogous to the known SC 1.70 condition-lookup compatibility mismatch"
+    },
+    "update170_name_hash_loop_count": 512,
+    "current_merged_total_count": 517
+  }
+}
