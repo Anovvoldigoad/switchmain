@@ -1,0 +1,7 @@
+P48C scope:
+- Restore the proven P47 Event236 compatibility behavior that P48B accidentally removed.
+- Keep CPK bridge.
+- Keep PlayAction observation but only for indices 700..740.
+- Add ActionLookup observation only for indices 700..740.
+- Four active trampoline hooks total.
+- No Tobi-specific charID branch; custom handling remains generic for IDs >280.
