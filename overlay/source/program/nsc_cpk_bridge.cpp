@@ -39,6 +39,13 @@ constexpr ptrdiff_t kPlayActionProbeOffset    = 0x766B8C;  // PlayAction → int
 // proved vanilla UJ PlayAction(700..740) reaches main+0x766320. The PlayAction
 // wrapper calls this as (actor, action, a2, a3) and ignores its return value.
 constexpr ptrdiff_t kCentralActionSetterOffset = 0x766320;
+// P59A: virtual action-mode dispatch family. 0x7B4680 is the canonical
+// thunk that loads actor->vtable+0xE40 and BRs to the class implementation.
+// The wrong-jutsu P58 runtime path executes inside the base implementation
+// beginning at 0x7B468C and reaches PlayAction through 0x7B4B2C.
+constexpr ptrdiff_t kActionModeDispatchThunkOffset = 0x7B4680;
+constexpr ptrdiff_t kActionModeBaseOffset          = 0x7B468C;
+constexpr ptrdiff_t kActionModeVtableSlotOffset    = 0xE40;
 // Historical decision-chain probes retained in source but not installed by P50A
 constexpr ptrdiff_t kActionLookupOffset        = 0x768E84;  // actor,index,flag -> action entry ptr/null
 constexpr ptrdiff_t kActionGateOffset          = 0x769A4C;  // actor -> bool-like completion/timing gate
@@ -151,7 +158,8 @@ std::atomic<uint32_t> g_direct100_owner_logs{0};
 std::atomic<uint32_t> g_p56b_vanilla_snapshots{0};
 std::atomic<uint32_t> g_p56b_custom_snapshots{0};
 std::atomic<uint32_t> g_p57_setter_logs{0};
-std::atomic<uint32_t> g_p58_play_call_logs{0};
+std::atomic<uint32_t> g_p59_play_call_logs{0};
+std::atomic<uint32_t> g_p59_dispatch_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -278,6 +286,13 @@ uintptr_t ReadActionSetterTarget(void* actor) {
     const uintptr_t vtable = *reinterpret_cast<const volatile uintptr_t*>(actor);
     if (!vtable) return 0;
     return *reinterpret_cast<const volatile uintptr_t*>(vtable + 0xF98);
+}
+
+uintptr_t ReadActionModeSlotTarget(void* actor) {
+    if (!actor) return 0;
+    const uintptr_t vtable = *reinterpret_cast<const volatile uintptr_t*>(actor);
+    if (!vtable) return 0;
+    return *reinterpret_cast<const volatile uintptr_t*>(vtable + kActionModeVtableSlotOffset);
 }
 
 struct P55ActorState {
@@ -1319,8 +1334,10 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
         const bool valid = ReadActorIdentity(actor, side, char_id);
         const bool custom = valid && char_id > kVanillaMaxCharId && char_id < 0x1000u;
-        const bool vanilla_uj_start = valid && char_id <= kVanillaMaxCharId && index == 700;
-        const bool p58_log = custom || vanilla_uj_start;
+        // P59A removes P58's vanilla-only-700 blind spot: log every player-side
+        // PlayAction plus every custom actor PlayAction. This is read-only and
+        // uses the existing P50 PlayAction trampoline, so it adds no hook.
+        const bool p59_log = valid && (side == 0u || custom);
 
         const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
         uint32_t call_m8 = 0, call_m4 = 0;
@@ -1357,10 +1374,10 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
                 reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
         }
 
-        if (p58_log) {
-            const uint32_t n = g_p58_play_call_logs.fetch_add(1, std::memory_order_relaxed);
+        if (p59_log) {
+            const uint32_t n = g_p59_play_call_logs.fetch_add(1, std::memory_order_relaxed);
             if (n < 8192) {
-                Logging.Log("[NSC:P58A] PLAY_CALL n=%u actor=%p valid=%u side=%u char=%u index=%d a2=%d a3=%d a4=%d a5=%d pre=%u post=%u ret=%d caller_lr=%p caller_main=%u caller_off=0x%lx callsite_off=0x%lx call_m8=%08x call_m4=%08x setter=%p setter_off=0x%lx",
+                Logging.Log("[NSC:P59A] PLAY_CALL n=%u actor=%p valid=%u side=%u char=%u index=%d a2=%d a3=%d a4=%d a5=%d pre=%u post=%u ret=%d caller_lr=%p caller_main=%u caller_off=0x%lx callsite_off=0x%lx call_m8=%08x call_m4=%08x setter=%p setter_off=0x%lx",
                             n, actor, valid ? 1u : 0u, side, char_id, index,
                             a2, a3, a4, a5, pre_action, post_action, ret,
                             reinterpret_cast<void*>(caller_lr), caller_off >= 0 ? 1u : 0u,
@@ -1390,16 +1407,71 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         return ret;
     }
 };
-// P57A: central action-setter provenance trace. This is diagnostic only.
+// P59A: base action-mode implementation trace. P58 proved the wrong-jutsu
+// PlayAction(445) callsite is 0x7B4B2C, which lies inside this function.
+// This entry probe captures the missing provenance level: incoming mode (w1),
+// caller LR, and the actor's current virtual +0xE40 implementation.
 //
-// Runtime provenance:
-//   actor vtable+0xF98 -> main+0x766320 for vanilla UJ action700..740.
-// Static ABI provenance from the first instructions of 0x766320:
-//   mov w20,w3; mov w22,w2; mov x19,x0; mov w21,w1
-// so the entry contract is (actor, action, a2, a3). The PlayAction wrapper
-// does not consume a return value from this call, therefore Callback is void.
-//
-// We log every valid generic custom actor request and only vanilla UJ requests.
+// IMPORTANT: X30 is captured before ANY helper call. The native function has
+// ABI (actor, mode) and returns no defined value; its epilogue restores state
+// and RETs without constructing w0. This hook is diagnostic and performs zero
+// gameplay writes.
+HOOK_DEFINE_TRAMPOLINE(ActionModeBaseHook) {
+    static void Callback(void* actor, uint32_t mode) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const bool log_this = valid && (side == 0u || char_id >= kFirstCustomCharId);
+
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        uint32_t call_m8 = 0, call_m4 = 0;
+        if (caller_off >= 8) {
+            const uintptr_t base = exl::util::modules::GetTargetStart();
+            call_m8 = *reinterpret_cast<const volatile uint32_t*>(base + caller_off - 8);
+            call_m4 = *reinterpret_cast<const volatile uint32_t*>(base + caller_off - 4);
+        }
+
+        uintptr_t vtable = 0;
+        if (actor) vtable = *reinterpret_cast<const volatile uintptr_t*>(actor);
+        const uintptr_t slot_target = ReadActionModeSlotTarget(actor);
+        const ptrdiff_t slot_off = MainRelativeOffset(slot_target);
+        uint32_t slot_word0 = 0;
+        if (slot_off >= 0) {
+            slot_word0 = *reinterpret_cast<const volatile uint32_t*>(slot_target);
+        }
+
+        const P55ActorState pre = ReadP55ActorState(actor);
+        Orig(actor, mode);
+        const P55ActorState post = ReadP55ActorState(actor);
+
+        if (log_this) {
+            const uint32_t n = g_p59_dispatch_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < 4096) {
+                Logging.Log("[NSC:P59A] MODE_BASE n=%u actor=%p valid=%u side=%u char=%u mode=%u caller_lr=%p caller_main=%u caller_off=0x%lx callsite_off=0x%lx call_m8=%08x call_m4=%08x vtable=%p slot_e40=%p slot_main=%u slot_off=0x%lx slot_word0=%08x base_impl=%u action=%u->%u e60=%d->%d e94=%d->%d e9c=%d->%d ea0=%d->%d skills=%u/%u/%u->%u/%u/%u",
+                            n, actor, valid ? 1u : 0u, side, char_id, mode,
+                            reinterpret_cast<void*>(caller_lr), caller_off >= 0 ? 1u : 0u,
+                            static_cast<unsigned long>(caller_off),
+                            static_cast<unsigned long>(caller_off >= 4 ? caller_off - 4 : -1),
+                            call_m8, call_m4, reinterpret_cast<void*>(vtable),
+                            reinterpret_cast<void*>(slot_target), slot_off >= 0 ? 1u : 0u,
+                            static_cast<unsigned long>(slot_off), slot_word0,
+                            slot_off == kActionModeBaseOffset ? 1u : 0u,
+                            pre.action, post.action, pre.e60, post.e60, pre.e94, post.e94,
+                            pre.e9c, post.e9c, pre.ea0, post.ea0,
+                            pre.skill0, pre.skill1, pre.skill2,
+                            post.skill0, post.skill1, post.skill2);
+            }
+        }
+    }
+};
+
+// P57A central action-setter provenance cross-check. Runtime provenance:
+// actor vtable+0xF98 -> main+0x766320 for vanilla UJ action700..740. Static
+// ABI provenance saves w3/w2/x0/w1 as (actor, action, a2, a3). The PlayAction
+// wrapper does not consume a return value from this call, so Callback is void.
+// We log every valid generic custom actor request and vanilla UJ requests.
 // No action/argument/actor field is modified.
 HOOK_DEFINE_TRAMPOLINE(CentralActionSetterHook) {
     static void Callback(void* actor, int32_t action, int32_t a2, int32_t a3) {
@@ -1843,6 +1915,30 @@ bool InstallP57CentralSetterTrace() {
     return true;
 }
 
+bool InstallP59ActionModeBaseTrace() {
+    // Canonical virtual thunk: ldr x8,[x0] ; ldr x2,[x8,#0xE40] ; br x2
+    static constexpr uint32_t kThunkExpected[] = {
+        0xF9400008, 0xF9472102, 0xD61F0040,
+    };
+    // Base implementation prologue at 0x7B468C. This exact fingerprint is from
+    // the paired Switch 1.70 P50 main contained in this kit.
+    static constexpr uint32_t kBaseExpected[] = {
+        0xD10243FF, 0xFD001BE8, 0xF9001FFE, 0xA9046FFC,
+        0xA90567FA, 0xA9065FF8, 0xA90757F6, 0xA9084FF4,
+        0x7100203F, 0x54008648,
+    };
+    bool ok = true;
+    if (!MatchWords(kActionModeDispatchThunkOffset, kThunkExpected)) {
+        LogFingerprintFail("P59_MODE_THUNK", kActionModeDispatchThunkOffset); ok = false;
+    }
+    if (!MatchWords(kActionModeBaseOffset, kBaseExpected)) {
+        LogFingerprintFail("P59_MODE_BASE", kActionModeBaseOffset); ok = false;
+    }
+    if (!ok) return false;
+    ActionModeBaseHook::InstallAtOffset(kActionModeBaseOffset);
+    return true;
+}
+
 bool InstallP54DirectJutsuOwnerProbes() {
     static constexpr uint32_t kDirect98Expected[] = {
         0xD10243FF, 0xFD0023E8, 0xF90027FE, 0xA90567FA,
@@ -2000,6 +2096,19 @@ void InstallP58APlayActionCallerTrace() {
     const bool setter = InstallP57CentralSetterTrace();
     Logging.Log("[NSC:P58A] READY inherited_p50=1 play_caller_trace=1 central_setter=%d added_over_p57=0 total_trampolines=6 writes=0 custom_all_play_calls=1 vanilla700_control=1",
                 setter ? 1 : 0);
+}
+
+void InstallP59AActionModeDispatchTrace() {
+    // P59A keeps the P50 functional core and P57 central-setter cross-check,
+    // then adds exactly one read-only trampoline at the proven base action-mode
+    // implementation. The existing PlayAction hook is broadened to all
+    // player-side calls so Naruto XA is visible as a control without adding a
+    // hook. No gameplay field/action/argument is modified.
+    InstallP50AConditionCompat();
+    const bool setter = InstallP57CentralSetterTrace();
+    const bool mode = InstallP59ActionModeBaseTrace();
+    Logging.Log("[NSC:P59A] READY inherited_p50=1 central_setter=%d mode_base=%d added_over_p58=1 total_trampolines=7 writes=0 mode_base_off=0x7b468c mode_thunk_off=0x7b4680 vslot=0xe40 player_all_play_calls=1 generic_custom=1",
+                setter ? 1 : 0, mode ? 1 : 0);
 }
 
 void InstallP52APreUjProbe() {

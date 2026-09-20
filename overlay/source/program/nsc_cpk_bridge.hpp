@@ -9,4 +9,5 @@ void InstallP55AStateSampler();
 void InstallP56BControlLocator();
 void InstallP57ACentralSetterTrace();
 void InstallP58APlayActionCallerTrace();
+void InstallP59AActionModeDispatchTrace();
 }
