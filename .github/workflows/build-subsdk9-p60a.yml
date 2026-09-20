@@ -1,4 +1,4 @@
-name: Build NSC P59A Action Mode Dispatch Trace
+name: Build NSC P60A Native UJ Control Port
 on:
   workflow_dispatch:
   push:
@@ -7,11 +7,14 @@ on:
       - "condition_compat_manifest.json"
       - "generate_condition_table.py"
       - "prepare_exlaunch.sh"
-      - "verify_p59a_kit.py"
-      - "analyze_p59a_log.py"
-      - "README_P59A.txt"
-      - "P59A_STATIC_AUDIT.txt"
-      - ".github/workflows/build-subsdk9-p59a.yml"
+      - "verify_p60a_kit.py"
+      - "analyze_p60a_log.py"
+      - "README_P60A.txt"
+      - "P60A_STATIC_AUDIT.txt"
+      - "NATIVE_CONTROL_AUDIT.txt"
+      - "P59_HARDWARE_RESULT_LOCKED.txt"
+      - "R69_CHECKPOINT.md"
+      - ".github/workflows/build-subsdk9-p60a.yml"
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,7 +24,7 @@ jobs:
       DEVKITPRO: /opt/devkitpro
       DEVKITA64: /opt/devkitpro/devkitA64
     steps:
-      - name: Checkout P59A build kit
+      - name: Checkout P60A build kit
         uses: actions/checkout@v4
       - name: Verify preinstalled devkitPro toolchain
         shell: bash
@@ -30,13 +33,13 @@ jobs:
           export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
           test -x "$DEVKITA64/bin/aarch64-none-elf-g++"
           "$DEVKITA64/bin/aarch64-none-elf-g++" --version
-      - name: Verify generated condition payload and P59A invariants
+      - name: Verify generated condition payload and P60A invariants
         shell: bash
         run: |
           set -euxo pipefail
           python3 generate_condition_table.py condition_compat_manifest.json /tmp/condition_compat_generated.hpp
           cmp /tmp/condition_compat_generated.hpp overlay/source/program/condition_compat_generated.hpp
-          python3 verify_p59a_kit.py
+          python3 verify_p60a_kit.py
       - name: Clone pinned exlaunch 229bbd6
         shell: bash
         run: |
@@ -45,7 +48,7 @@ jobs:
           git -C "$GITHUB_WORKSPACE/exlaunch" checkout --detach 229bbd6
           git -C "$GITHUB_WORKSPACE/exlaunch" submodule update --init --recursive
           test "$(git -C "$GITHUB_WORKSPACE/exlaunch" rev-parse --short HEAD)" = "229bbd6"
-      - name: Overlay P59A sources
+      - name: Overlay P60A sources
         shell: bash
         run: |
           set -euxo pipefail
@@ -59,21 +62,22 @@ jobs:
           export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
           cd "$GITHUB_WORKSPACE/exlaunch"
           make -j2
-      - name: Collect P59A deployment artifact
+      - name: Collect P60A deployment artifact
         shell: bash
         run: |
           set -euxo pipefail
           cd "$GITHUB_WORKSPACE"
           OUT="exlaunch/deploy/subsdk9"
-          ELF="exlaunch/p59a_final.elf"
+          ELF="exlaunch/p60a_final.elf"
           test -s "$OUT"
           test -s "$ELF"
 
           # IMPORTANT: subsdk9 is an NSO and its segments may be compressed, so
           # grepping the final NSO for rodata strings is not a valid linkage test.
           # exlaunch ELF_EXTRACT gives us the final linked, uncompressed ELF.
-          # Verify all P59A markers there, then independently validate the NSO.
-          grep -aFq '[NSC:P59A] READY' "$ELF"
+          # Verify all P60A markers there, then independently validate the NSO.
+          grep -aFq '[NSC:P60A] READY' "$ELF"
+          grep -aFq '[NSC:P60A] CTRL14_UJ_PORT' "$ELF"
           grep -aFq '[NSC:P59A] MODE_BASE' "$ELF"
           grep -aFq '[NSC:P59A] PLAY_CALL' "$ELF"
 
@@ -88,14 +92,14 @@ jobs:
               raise SystemExit(f"bad subsdk9 magic: {nso[:4]!r}")
           if elf[:4] != b"\x7fELF":
               raise SystemExit(f"bad extracted ELF magic: {elf[:4]!r}")
-          print(f"P59A_LINK_VERIFY=PASS nso_size={len(nso)} elf_size={len(elf)}")
+          print(f"P60A_LINK_VERIFY=PASS nso_size={len(nso)} elf_size={len(elf)}")
           PY
           mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs
           cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
           cp deploy/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
           mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
-          cp README_P59A.txt P59A_STATIC_AUDIT.txt P58_HARDWARE_RESULT_LOCKED.txt R68_CHECKPOINT.md analyze_p59a_log.py artifact/
+          cp README_P60A.txt P60A_STATIC_AUDIT.txt P59_HARDWARE_RESULT_LOCKED.txt NATIVE_CONTROL_AUDIT.txt R69_CHECKPOINT.md analyze_p60a_log.py artifact/
           {
             echo 'exlaunch_commit=229bbd6'
             echo -n 'exlaunch_full_commit='; git -C exlaunch rev-parse HEAD
@@ -105,10 +109,10 @@ jobs:
             echo -n 'paired_main_sha256='; sha256sum deploy/atmosphere/contents/0100FA10190A0000/exefs/main | awk '{print $1}'
           } > artifact/BUILD_TOOLCHAIN.txt
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
-      - name: Upload P59A deployment artifact
+      - name: Upload P60A deployment artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P59A-action-mode-dispatch-trace
+          name: NSC-P60A-native-uj-control-port
           path: artifact/
           if-no-files-found: error
           compression-level: 9

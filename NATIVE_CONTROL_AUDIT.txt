@@ -1,0 +1,55 @@
+P60A NATIVE CONTROL AUDIT — Switch v1.70 paired P50 main
+
+PROVEN BINARY API
+-----------------
+Native control getter: main+0x7C6280
+- For ordinary selectors it returns *(control_object + 0x428 + selector*4).
+- Exact core words at +0x7C62C0:
+  add x8,x20,w19,sxtw #2
+  ldr w0,[x8,#0x428]
+
+Native control-enable setter: main+0x7C65B0
+  0x7C65B0 add x8,x0,w1,sxtw #2
+  0x7C65B4 mov w9,#1
+  0x7C65B8 str w9,[x8,#0x428]
+  0x7C65BC ret
+
+Native callers pass control_object = actor + 0x228. Therefore the underlying
+slot storage is actor + 0x650 + selector*4, but P60A deliberately calls the
+native setter instead of direct-writing that storage.
+
+PROVEN UJ LINK
+--------------
+The native combat/UJ router at main+0xC7928 calls getter selector 8:
+  mov x0,x20
+  mov w1,#8
+  bl 0x7C6280
+  cbnz w0,0xC7958
+
+At 0xC795C the same route selects state 0x87 (135), and at 0xC79BC..C79C4
+passes that state through virtual slot +0xDF0.
+
+Native state-related code also enables selector 8 through 0x7C65B0, including:
+- 0x3B4218: add control_object,+0x228; mov w1,#8; bl 0x7C65B0
+- 0x3B4350: add control_object,+0x228; mov w1,#8; bl 0x7C65B0
+Those regions explicitly inspect e94 against 0x87/related UJ states.
+
+SOURCE-TO-NATIVE TRANSLATION USED BY P60A
+-----------------------------------------
+UltimateStormAPI/MovesetPlus Event236 op14 is me_enable_control.
+In the existing port source, p2 is self/enemy and p3 selector 1 is identified as
+Ultimate Jutsu. P60A translates ONLY:
+
+  op14 p2=0 p3=1  -> NativeEnableControl(actor+0x228, selector 8)
+
+All other op14 selectors remain shadowed. op15 remains shadowed. No PC-style
++0x12A24 control layout is used.
+
+WHAT P60A DOES NOT DO
+---------------------
+- no char==281 branch
+- no 445->700 rewrite
+- no e94=0x87 write
+- no UJ PlayAction force
+- no patch to 0x7B468C / 0x7A8350 / 0xC79C4
+- no guessed mapping for awakening or any selector other than source UJ selector 1
