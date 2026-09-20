@@ -151,6 +151,7 @@ std::atomic<uint32_t> g_direct100_owner_logs{0};
 std::atomic<uint32_t> g_p56b_vanilla_snapshots{0};
 std::atomic<uint32_t> g_p56b_custom_snapshots{0};
 std::atomic<uint32_t> g_p57_setter_logs{0};
+std::atomic<uint32_t> g_p58_play_call_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -1308,21 +1309,38 @@ HOOK_DEFINE_TRAMPOLINE(SpecialOugiFinishHook) {
 //   A9BE57FE A9014FF4 B9529408 2A0403F4 AA0003F3 7100091F 54000080 B9528668
 HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
     static int32_t Callback(void* actor, int32_t index, int32_t a2, int32_t a3, int32_t a4, int32_t a5, float rate) {
+        // P58A: X30 MUST be captured before any helper/function call. Because the
+        // entry trampoline branches to Callback rather than calling it, this is
+        // the return address established by the native BL/BLR that entered
+        // PlayAction. This is the missing provenance level P57A could not see.
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const bool custom = valid && char_id > kVanillaMaxCharId && char_id < 0x1000u;
+        const bool vanilla_uj_start = valid && char_id <= kVanillaMaxCharId && index == 700;
+        const bool p58_log = custom || vanilla_uj_start;
+
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        uint32_t call_m8 = 0, call_m4 = 0;
+        if (caller_off >= 8) {
+            const uintptr_t base = exl::util::modules::GetTargetStart();
+            call_m8 = *reinterpret_cast<const volatile uint32_t*>(base + caller_off - 8);
+            call_m4 = *reinterpret_cast<const volatile uint32_t*>(base + caller_off - 4);
+        }
+
         const bool ordinary_jutsu = index == 84;
         const bool direct_cluster_action = index == 98 || index == 100 || index == 937 || index == 938;
         const bool uj = index >= 700 && index <= 740;
         const bool sptype_action10 = index == 930;
-        const bool relevant = ordinary_jutsu || direct_cluster_action || uj || sptype_action10;
-        if (!relevant) {
-            return Orig(actor, index, a2, a3, a4, a5, rate);
-        }
+        const bool legacy_relevant = ordinary_jutsu || direct_cluster_action || uj || sptype_action10;
 
-        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
-        const bool valid = ReadActorIdentity(actor, side, char_id);
         if (index == 700 && valid && char_id <= kVanillaMaxCharId) {
             const uint32_t seq = g_p56b_vanilla_snapshots.fetch_add(1, std::memory_order_relaxed);
             if (seq < 2) LogP56BControlSnapshot(actor, "VANILLA_PLAY700", side, char_id, seq);
         }
+
         uint32_t pre_action = 0xFFFFFFFFu;
         const uintptr_t setter_target = ReadActionSetterTarget(actor);
         const ptrdiff_t setter_off = MainRelativeOffset(setter_target);
@@ -1338,21 +1356,40 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             post_action = *reinterpret_cast<const volatile uint32_t*>(
                 reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
         }
-        const char* route = ordinary_jutsu ? "JUTSU84" :
-                            (index == 98 ? "PLAY98" :
-                            (index == 100 ? "PLAY100" :
-                            (index == 937 ? "PLAY937" :
-                            (index == 938 ? "PLAY938" :
-                            (sptype_action10 ? "SPTYPE930" : "UJ")))));
-        const uint32_t n = g_play_action_logs.fetch_add(1, std::memory_order_relaxed);
-        Logging.Log("[NSC:P55A] ACTION_ROUTE route=%s actor=%p valid=%u side=%u char=%u index=%d ret=%d n=%u a2=%d pre_action=%u post_action=%u setter=%p setter_off=0x%lx",
-                    route, actor, valid ? 1u : 0u, side, char_id, index, ret, n, a2,
-                    pre_action, post_action, reinterpret_cast<void*>(setter_target),
-                    static_cast<unsigned long>(setter_off));
+
+        if (p58_log) {
+            const uint32_t n = g_p58_play_call_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < 8192) {
+                Logging.Log("[NSC:P58A] PLAY_CALL n=%u actor=%p valid=%u side=%u char=%u index=%d a2=%d a3=%d a4=%d a5=%d pre=%u post=%u ret=%d caller_lr=%p caller_main=%u caller_off=0x%lx callsite_off=0x%lx call_m8=%08x call_m4=%08x setter=%p setter_off=0x%lx",
+                            n, actor, valid ? 1u : 0u, side, char_id, index,
+                            a2, a3, a4, a5, pre_action, post_action, ret,
+                            reinterpret_cast<void*>(caller_lr), caller_off >= 0 ? 1u : 0u,
+                            static_cast<unsigned long>(caller_off),
+                            static_cast<unsigned long>(caller_off >= 4 ? caller_off - 4 : -1),
+                            call_m8, call_m4, reinterpret_cast<void*>(setter_target),
+                            static_cast<unsigned long>(setter_off));
+            }
+        }
+
+        // Preserve the older route marker only for its original narrow set so
+        // historical Naruto/UJ comparisons remain readable. P58A correctness
+        // does NOT depend on this marker; PLAY_CALL is the decisive record.
+        if (legacy_relevant) {
+            const char* route = ordinary_jutsu ? "JUTSU84" :
+                                (index == 98 ? "PLAY98" :
+                                (index == 100 ? "PLAY100" :
+                                (index == 937 ? "PLAY937" :
+                                (index == 938 ? "PLAY938" :
+                                (sptype_action10 ? "SPTYPE930" : "UJ")))));
+            const uint32_t n = g_play_action_logs.fetch_add(1, std::memory_order_relaxed);
+            Logging.Log("[NSC:P55A] ACTION_ROUTE route=%s actor=%p valid=%u side=%u char=%u index=%d ret=%d n=%u a2=%d pre_action=%u post_action=%u setter=%p setter_off=0x%lx",
+                        route, actor, valid ? 1u : 0u, side, char_id, index, ret, n, a2,
+                        pre_action, post_action, reinterpret_cast<void*>(setter_target),
+                        static_cast<unsigned long>(setter_off));
+        }
         return ret;
     }
 };
-
 // P57A: central action-setter provenance trace. This is diagnostic only.
 //
 // Runtime provenance:
@@ -1949,6 +1986,19 @@ void InstallP57ACentralSetterTrace() {
     InstallP50AConditionCompat();
     const bool setter = InstallP57CentralSetterTrace();
     Logging.Log("[NSC:P57A] READY inherited_p50=1 central_setter=%d added_trampolines=1 total_trampolines=6 writes=0 setter=0x766320 generic_custom_trace=1",
+                setter ? 1 : 0);
+}
+
+
+void InstallP58APlayActionCallerTrace() {
+    // P57A proved the visible wrong-jutsu cycle requests action 445 through the
+    // central setter, but its LR only identifies PlayAction's internal BLR at
+    // 0x766BD0. P58A captures X30 at PlayAction entry itself. No new trampoline
+    // is needed because PlayAction is already one of the five P50 hooks; the
+    // only extra hook remains P57's central setter for cross-checking.
+    InstallP50AConditionCompat();
+    const bool setter = InstallP57CentralSetterTrace();
+    Logging.Log("[NSC:P58A] READY inherited_p50=1 play_caller_trace=1 central_setter=%d added_over_p57=0 total_trampolines=6 writes=0 custom_all_play_calls=1 vanilla700_control=1",
                 setter ? 1 : 0);
 }
 

@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP57ACentralSetterTrace();
+    nsc::InstallP58APlayActionCallerTrace();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P57A central-setter trace exception");
+    EXL_ABORT("NSC P58A PlayAction-caller trace exception");
 }

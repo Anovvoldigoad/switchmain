@@ -1,4 +1,4 @@
-name: Build NSC P57A central setter trace
+name: Build NSC P58A PlayAction caller trace
 on:
   workflow_dispatch:
   push:
@@ -7,8 +7,8 @@ on:
       - "condition_compat_manifest.json"
       - "generate_condition_table.py"
       - "prepare_exlaunch.sh"
-      - "verify_p57a_kit.py"
-      - ".github/workflows/build-subsdk9-p57a.yml"
+      - "verify_p58a_kit.py"
+      - ".github/workflows/build-subsdk9-p58a.yml"
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,7 +18,7 @@ jobs:
       DEVKITPRO: /opt/devkitpro
       DEVKITA64: /opt/devkitpro/devkitA64
     steps:
-      - name: Checkout P57A build kit
+      - name: Checkout P58A build kit
         uses: actions/checkout@v4
       - name: Verify preinstalled devkitPro toolchain
         shell: bash
@@ -27,13 +27,13 @@ jobs:
           export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
           test -x "$DEVKITA64/bin/aarch64-none-elf-g++"
           "$DEVKITA64/bin/aarch64-none-elf-g++" --version
-      - name: Verify generated condition payload and P57A invariants
+      - name: Verify generated condition payload and P58A invariants
         shell: bash
         run: |
           set -euxo pipefail
           python3 generate_condition_table.py condition_compat_manifest.json /tmp/condition_compat_generated.hpp
           cmp /tmp/condition_compat_generated.hpp overlay/source/program/condition_compat_generated.hpp
-          python3 verify_p57a_kit.py
+          python3 verify_p58a_kit.py
       - name: Clone pinned exlaunch 229bbd6
         shell: bash
         run: |
@@ -42,7 +42,7 @@ jobs:
           git -C "$GITHUB_WORKSPACE/exlaunch" checkout --detach 229bbd6
           git -C "$GITHUB_WORKSPACE/exlaunch" submodule update --init --recursive
           test "$(git -C "$GITHUB_WORKSPACE/exlaunch" rev-parse --short HEAD)" = "229bbd6"
-      - name: Overlay P57A sources
+      - name: Overlay P58A sources
         shell: bash
         run: |
           set -euxo pipefail
@@ -68,12 +68,12 @@ jobs:
           cp deploy/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
           mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
-          cp README_P57A.txt P57A_STATIC_AUDIT.txt analyze_p57a_log.py artifact/
+          cp README_P58A.txt P58A_STATIC_AUDIT.txt P57_HARDWARE_RESULT_LOCKED.txt analyze_p58a_log.py artifact/
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
-      - name: Upload P57A deployment artifact
+      - name: Upload P58A deployment artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P57A-central-setter-trace
+          name: NSC-P58A-playaction-caller-trace
           path: artifact/
           if-no-files-found: error
           compression-level: 9
