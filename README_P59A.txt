@@ -62,3 +62,13 @@ compared at the same PlayAction and mode-dispatch layers.
 DO NOT PATCH YET
 P59 is the final provenance measurement at this layer. Do not rewrite 445, force 700, unshadow
 Event236 op14, or hardcode char281 from this build.
+
+R68B CI VERIFICATION FIX
+------------------------
+The final subsdk9 is an NSO whose segments may be compressed. Therefore raw
+`grep -a` against subsdk9 is NOT a valid proof that log-marker strings were
+linked. R68B sets exlaunch `ELF_EXTRACT := $(PWD)/p59a_final.elf`, verifies
+P59A READY/MODE_BASE/PLAY_CALL in that final linked ELF, and separately checks
+that deploy/subsdk9 is a nontrivial NSO0 image. No runtime/hook/gameplay logic
+changed from P59A; this is build-verification-only.
+

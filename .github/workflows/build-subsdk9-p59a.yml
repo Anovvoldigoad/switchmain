@@ -64,12 +64,32 @@ jobs:
         run: |
           set -euxo pipefail
           cd "$GITHUB_WORKSPACE"
-          OUT="$(find exlaunch -type f -name subsdk9 -size +10k -print -quit)"
-          test -n "$OUT"
-          # Reject a stale/wrong binary even if make returned success.
-          grep -aFq '[NSC:P59A] READY' "$OUT"
-          grep -aFq '[NSC:P59A] MODE_BASE' "$OUT"
-          grep -aFq '[NSC:P59A] PLAY_CALL' "$OUT"
+          OUT="exlaunch/deploy/subsdk9"
+          ELF="exlaunch/p59a_final.elf"
+          test -s "$OUT"
+          test -s "$ELF"
+
+          # IMPORTANT: subsdk9 is an NSO and its segments may be compressed, so
+          # grepping the final NSO for rodata strings is not a valid linkage test.
+          # exlaunch ELF_EXTRACT gives us the final linked, uncompressed ELF.
+          # Verify all P59A markers there, then independently validate the NSO.
+          grep -aFq '[NSC:P59A] READY' "$ELF"
+          grep -aFq '[NSC:P59A] MODE_BASE' "$ELF"
+          grep -aFq '[NSC:P59A] PLAY_CALL' "$ELF"
+
+          python3 - "$OUT" "$ELF" <<'PY'
+          from pathlib import Path
+          import sys
+          nso = Path(sys.argv[1]).read_bytes()
+          elf = Path(sys.argv[2]).read_bytes()
+          if len(nso) <= 10_000:
+              raise SystemExit(f"subsdk9 too small: {len(nso)} bytes")
+          if nso[:4] != b"NSO0":
+              raise SystemExit(f"bad subsdk9 magic: {nso[:4]!r}")
+          if elf[:4] != b"\x7fELF":
+              raise SystemExit(f"bad extracted ELF magic: {elf[:4]!r}")
+          print(f"P59A_LINK_VERIFY=PASS nso_size={len(nso)} elf_size={len(elf)}")
+          PY
           mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs
           cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
           cp deploy/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
@@ -81,6 +101,7 @@ jobs:
             echo -n 'exlaunch_full_commit='; git -C exlaunch rev-parse HEAD
             echo -n 'compiler='; "$DEVKITA64/bin/aarch64-none-elf-g++" --version | head -1
             echo -n 'subsdk9_sha256='; sha256sum "$OUT" | awk '{print $1}'
+            echo -n 'linked_elf_sha256='; sha256sum "$ELF" | awk '{print $1}'
             echo -n 'paired_main_sha256='; sha256sum deploy/atmosphere/contents/0100FA10190A0000/exefs/main | awk '{print $1}'
           } > artifact/BUILD_TOOLCHAIN.txt
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)

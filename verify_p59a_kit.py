@@ -6,6 +6,8 @@ root=Path(__file__).resolve().parent
 cpp=(root/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
 main_cpp=(root/'overlay/source/program/main.cpp').read_text()
 hpp=(root/'overlay/source/program/nsc_cpk_bridge.hpp').read_text()
+workflow=(root/'.github/workflows/build-subsdk9-p59a.yml').read_text()
+prepare=(root/'prepare_exlaunch.sh').read_text()
 deploy=root/'deploy/atmosphere/contents/0100FA10190A0000/exefs/main'
 restore=root/'restore/atmosphere/contents/0100FA10190A0000/exefs/main'
 
@@ -46,6 +48,10 @@ ck('play_all_side0','const bool p59_log = valid && (side == 0u || custom);' in c
 ck('slot_e40_read','vtable + kActionModeVtableSlotOffset' in cpp and 'kActionModeVtableSlotOffset    = 0xE40' in cpp)
 ck('ready_7','total_trampolines=7 writes=0' in cpp)
 ck('central_setter_retained','InstallP57CentralSetterTrace();' in cpp)
+ck('ci_elf_extract', 'ELF_EXTRACT := $(PWD)/p59a_final.elf' in prepare)
+ck('ci_checks_linked_elf', "grep -aFq '[NSC:P59A] READY' \"$ELF\"" in workflow and "grep -aFq '[NSC:P59A] MODE_BASE' \"$ELF\"" in workflow and "grep -aFq '[NSC:P59A] PLAY_CALL' \"$ELF\"" in workflow)
+ck('ci_no_raw_nso_marker_grep', "grep -aFq '[NSC:P59A] READY' \"$OUT\"" not in workflow)
+ck('ci_nso_magic_check', "nso[:4] != b\"NSO0\"" in workflow)
 ck('no_char281_gameplay_if',not re.search(r'if\s*\([^\n]*char_id\s*==\s*281',cpp))
 ck('no_445_700_rewrite',not re.search(r'index\s*==\s*445[^\n]{0,120}(700|=\s*700)',cpp))
 ck('no_event236_unshadow','CTRL14_SHADOW' in cpp)
