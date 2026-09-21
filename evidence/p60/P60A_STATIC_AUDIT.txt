@@ -1,0 +1,20 @@
+P60A STATIC AUDIT
+
+Purpose: minimal causal A/B for the root-level UJ control translation discovered after P59.
+
+Functional mutation added:
+- Event236 op14, custom actor, p2=0, p3=1 only.
+- Calls native Switch v1.70 control-enable function main+0x7C65B0 with control_object=actor+0x228 and selector=8.
+
+Runtime verification:
+- before/after native selector8 read via main+0x7C6280.
+- marker: [NSC:P60A] CTRL14_UJ_PORT
+- P59 PLAY_CALL/MODE_BASE traces retained.
+
+Safety:
+- exact getter/setter fingerprints required before port is enabled.
+- other op14 selectors remain shadowed.
+- op15/17/18 remain shadowed.
+- no visibility behavior changed.
+- no action rewrite/state write.
+- active trampoline count remains 7; native control API is called, not hooked.

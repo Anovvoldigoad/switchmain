@@ -53,6 +53,16 @@ constexpr ptrdiff_t kNativeControlGetterOffset       = 0x7C6280;
 constexpr ptrdiff_t kNativeControlEnableOffset       = 0x7C65B0;
 constexpr ptrdiff_t kNativeControlObjectOffset       = 0x228;
 constexpr int32_t   kNativeUltimateJutsuSelector     = 8;
+// P61A: exact native UJ eligibility virtual implementation and the only
+// router callsite this compatibility port may override. P60 hardware proved
+// selector8 alone is downstream/insufficient; main+0xC7870 calls vtable+0xF58
+// first and branches away from UJ when it returns zero. Both Kakashi and Tobi
+// resolve +0xF58 to this same implementation in the P59/P60 runtime evidence.
+constexpr ptrdiff_t kUjEligibilityGateOffset          = 0x7D3138;
+constexpr ptrdiff_t kUjRouterGateCallsiteOffset       = 0xC7870;
+constexpr ptrdiff_t kUjRouterGateReturnOffset         = 0xC7874;
+constexpr ptrdiff_t kUjEligibilityLocalFlagOffset     = 0x10F40;
+constexpr size_t    kP61TrackedActorSlots             = 16;
 // Historical decision-chain probes retained in source but not installed by P50A
 constexpr ptrdiff_t kActionLookupOffset        = 0x768E84;  // actor,index,flag -> action entry ptr/null
 constexpr ptrdiff_t kActionGateOffset          = 0x769A4C;  // actor -> bool-like completion/timing gate
@@ -169,6 +179,9 @@ std::atomic<uint32_t> g_p59_play_call_logs{0};
 std::atomic<uint32_t> g_p59_dispatch_logs{0};
 std::atomic<uint32_t> g_p60_control_port_logs{0};
 std::atomic<bool> g_p60_native_uj_control_ready{false};
+std::atomic<bool> g_p61_uj_gate_ready{false};
+std::atomic<uint32_t> g_p61_gate_logs{0};
+std::atomic<uintptr_t> g_p61_uj_enabled_actors[kP61TrackedActorSlots]{};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -329,6 +342,39 @@ bool EnableNativeUltimateJutsuControl(void* actor, uint32_t side, uint32_t char_
                     static_cast<unsigned long>(kNativeControlEnableOffset));
     }
     return after != 0;
+}
+
+void MarkP61UjEnabled(void* actor) {
+    if (!actor) return;
+    const uintptr_t value = reinterpret_cast<uintptr_t>(actor);
+    for (size_t i = 0; i < kP61TrackedActorSlots; ++i) {
+        if (g_p61_uj_enabled_actors[i].load(std::memory_order_relaxed) == value) return;
+    }
+    for (size_t i = 0; i < kP61TrackedActorSlots; ++i) {
+        uintptr_t expected = 0;
+        if (g_p61_uj_enabled_actors[i].compare_exchange_strong(
+                expected, value, std::memory_order_relaxed, std::memory_order_relaxed)) return;
+    }
+    // Fail closed if the tiny compatibility registry is unexpectedly full.
+}
+
+void ClearP61UjEnabled(void* actor) {
+    if (!actor) return;
+    const uintptr_t value = reinterpret_cast<uintptr_t>(actor);
+    for (size_t i = 0; i < kP61TrackedActorSlots; ++i) {
+        uintptr_t expected = value;
+        g_p61_uj_enabled_actors[i].compare_exchange_strong(
+            expected, 0, std::memory_order_relaxed, std::memory_order_relaxed);
+    }
+}
+
+bool IsP61UjEnabled(void* actor) {
+    if (!actor) return false;
+    const uintptr_t value = reinterpret_cast<uintptr_t>(actor);
+    for (size_t i = 0; i < kP61TrackedActorSlots; ++i) {
+        if (g_p61_uj_enabled_actors[i].load(std::memory_order_relaxed) == value) return true;
+    }
+    return false;
 }
 
 struct P55ActorState {
@@ -1258,6 +1304,10 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 // the rejected PC-style +0x12A24 layout and avoids any action/state force.
                 if (p2 == 0 && p3 == 1 &&
                     g_p60_native_uj_control_ready.load(std::memory_order_relaxed)) {
+                    // P61A records the source semantic explicitly. The later F58
+                    // compatibility gate is never opened for a custom actor that
+                    // did not receive this exact MovesetPlus UJ-enable request.
+                    MarkP61UjEnabled(actor);
                     const bool enabled = EnableNativeUltimateJutsuControl(actor, side, char_id);
                     if (!enabled && g_event236_logs.load(std::memory_order_relaxed) < 4096) {
                         Logging.Log("[NSC:P60A] CTRL14_UJ_PORT_FAIL actor=%p side=%u char=%u",
@@ -1274,6 +1324,10 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
             }
 
             case 15: {
+                // P61A may clear only its private compatibility registry for an
+                // exact self/UJ disable. Native gameplay disable remains shadowed,
+                // preserving the victim-UJ disappearance fix.
+                if (p2 == 0 && p3 == 1) ClearP61UjEnabled(actor);
                 // P43A: explicit shadow for me_disable_control / disable path.
                 // Logged for Kamui sequence reconstruction (seen repeatedly around UJ).
                 if (g_event236_logs.load(std::memory_order_relaxed) < 4096) {
@@ -1449,6 +1503,60 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         return ret;
     }
 };
+// P61A: compatibility port for the exact UJ eligibility virtual method used
+// by the native router at main+0xC7870. P60 hardware proved native selector8 is
+// not sufficient because this F58 gate runs first. Preserve every native TRUE.
+// Override only a native FALSE for a generic custom actor that explicitly
+// received MovesetPlus self/UJ-enable, only with w1==0, and only when X30 proves
+// the call originated from the exact UJ-router BLR. The downstream native
+// router still chooses state 0x87 and PlayAction(700); this hook never writes an
+// action or state.
+HOOK_DEFINE_TRAMPOLINE(UjEligibilityGateHook) {
+    static uint32_t Callback(void* actor, uint32_t mode, uint32_t context) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        const uint32_t orig = Orig(actor, mode, context);
+        if (orig != 0) return orig;
+
+        const bool custom = valid && char_id > kVanillaMaxCharId && char_id < 0x1000u;
+        const bool exact_router = caller_off == kUjRouterGateReturnOffset;
+        const bool source_enabled = IsP61UjEnabled(actor);
+        const bool ready = g_p61_uj_gate_ready.load(std::memory_order_relaxed) &&
+                           g_p60_native_uj_control_ready.load(std::memory_order_relaxed);
+
+        if (!(ready && custom && exact_router && mode == 0u && source_enabled)) {
+            return orig;
+        }
+
+        // Refresh the already-proven downstream native slot8 immediately before
+        // handing control back to the router. This does not choose action/state;
+        // it only preserves the source enable semantic that P60 observed being
+        // reset between event execution and input routing.
+        const bool slot8 = EnableNativeUltimateJutsuControl(actor, side, char_id);
+        if (!slot8) return orig;
+
+        int32_t local_flag = 0;
+        if (actor) {
+            auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+            local_flag = *reinterpret_cast<const volatile int32_t*>(
+                b + kUjEligibilityLocalFlagOffset);
+        }
+
+        const uint32_t n = g_p61_gate_logs.fetch_add(1, std::memory_order_relaxed);
+        if (n < 256) {
+            Logging.Log("[NSC:P61A] UJ_GATE_COMPAT n=%u actor=%p side=%u char=%u mode=%u context=%u orig=%u override=1 caller_off=0x%lx exact_router=1 mp_uj_enabled=1 native_slot8=1 local_10f40=%d gate_off=0x%lx",
+                        n, actor, side, char_id, mode, context, orig,
+                        static_cast<unsigned long>(caller_off), local_flag,
+                        static_cast<unsigned long>(kUjEligibilityGateOffset));
+        }
+        return 1;
+    }
+};
+
 // P59A: base action-mode implementation trace. P58 proved the wrong-jutsu
 // PlayAction(445) callsite is 0x7B4B2C, which lies inside this function.
 // This entry probe captures the missing provenance level: incoming mode (w1),
@@ -1961,6 +2069,32 @@ bool VerifyP60NativeUjControlPort() {
     return ok;
 }
 
+bool InstallP61UjEligibilityGateCompat() {
+    // Exact F58 implementation entry used by both Kakashi and Tobi in P59/P60
+    // runtime evidence. Also fingerprint the exact native UJ-router virtual
+    // call and its return address so the runtime LR guard cannot silently drift.
+    static constexpr uint32_t kGateExpected[] = {
+        0xFC1C0FE8, 0xA9015FFE, 0xA90257F6, 0xA9034FF4,
+        0x5281E808, 0x72A00028, 0xB8686808, 0x2A010108,
+        0x340000C8,
+    };
+    static constexpr uint32_t kRouterExpected[] = {
+        0xF9400268, 0xAA1303E0, 0x2A1F03E1, 0xF947AD08,
+        0xD63F0100, 0x34000340,
+    };
+    bool ok = true;
+    if (!MatchWords(kUjEligibilityGateOffset, kGateExpected)) {
+        LogFingerprintFail("P61_UJ_F58_GATE", kUjEligibilityGateOffset); ok = false;
+    }
+    if (!MatchWords(kUjRouterGateCallsiteOffset - 0x10, kRouterExpected)) {
+        LogFingerprintFail("P61_UJ_ROUTER_CALL", kUjRouterGateCallsiteOffset - 0x10); ok = false;
+    }
+    g_p61_uj_gate_ready.store(ok, std::memory_order_relaxed);
+    if (!ok) return false;
+    UjEligibilityGateHook::InstallAtOffset(kUjEligibilityGateOffset);
+    return true;
+}
+
 bool InstallP57CentralSetterTrace() {
     // Fingerprint the exact v1.70 function entry. These words also prove the
     // 4-argument ABI used by the callback: prologue then w3/w2/x0/w1 saves.
@@ -2187,6 +2321,22 @@ void InstallP60ANativeUjControlPort() {
     const bool mode = InstallP59ActionModeBaseTrace();
     Logging.Log("[NSC:P60A] READY inherited_p59=1 native_uj_control=%d central_setter=%d mode_base=%d total_trampolines=7 functional_delta=event236_op14_p2_0_p3_1_to_native_slot8 native_get=0x7c6280 native_enable=0x7c65b0 writes=control_slot_only no_action_force=1 no_state_force=1 op15_shadow=1",
                 native_control ? 1 : 0, setter ? 1 : 0, mode ? 1 : 0);
+}
+
+void InstallP61AUjEligibilityGateCompat() {
+    // P60 hardware result is locked: selector8 was successfully enabled 62x
+    // yet custom PlayAction(700) remained zero. The binary explains why: the
+    // F58 eligibility gate at 0x7D3138 executes first. P61 adds one guarded
+    // compatibility trampoline there while retaining the P60 native slot8 port
+    // and all P59 provenance. No action/state is forced.
+    const bool native_control = VerifyP60NativeUjControlPort();
+    const bool uj_gate = InstallP61UjEligibilityGateCompat();
+    InstallP50AConditionCompat();
+    const bool setter = InstallP57CentralSetterTrace();
+    const bool mode = InstallP59ActionModeBaseTrace();
+    Logging.Log("[NSC:P61A] READY inherited_p60=1 native_uj_control=%d uj_f58_gate=%d central_setter=%d mode_base=%d total_trampolines=8 functional_delta=guarded_f58_compat exact_router_lr=0x%x no_action_force=1 no_state_force=1 victim_shadows_retained=1",
+                native_control ? 1 : 0, uj_gate ? 1 : 0, setter ? 1 : 0, mode ? 1 : 0,
+                static_cast<unsigned int>(kUjRouterGateReturnOffset));
 }
 
 void InstallP52APreUjProbe() {

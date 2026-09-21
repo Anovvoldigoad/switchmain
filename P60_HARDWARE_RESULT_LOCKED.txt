@@ -1,0 +1,37 @@
+P60A HARDWARE RESULT — LOCKED
+============================
+Input artifact: NSC-P60A-native-uj-control-port.zip
+Input log: uzuy_log.txt
+
+Artifact/runtime validation:
+- Paired P50 main retained.
+- P60A READY present; native getter=0x7C6280, native enable=0x7C65B0.
+- Event236 op14 self/UJ source mapping executed in hardware.
+
+Decisive P60 result:
+- CTRL14_UJ_PORT events: 62.
+- Every recorded port event: native selector8 before=0 -> after=1.
+- Custom char281 PlayAction(700): 0.
+- Custom char281 PlayAction(445): 4 in this full multi-match log.
+- Therefore selector8 is proven writable and source op14/p3=1 reaches the port,
+  but selector8 alone is NOT sufficient to unlock the custom UJ route.
+
+Binary explanation recovered after P60:
+- Native UJ router calls actor vtable+0xF58 at main+0xC7870 first.
+- Return address after that BLR is main+0xC7874.
+- If F58 returns 0, router branches away before the selector8/state0x87 path.
+- Both Kakashi and Tobi runtime vtables resolve +0xF58 to main+0x7D3138.
+- main+0x7D3138 is therefore the shared native UJ eligibility implementation.
+- The first w1==0 check reads actor+0x10F40 and can return false immediately;
+  the function contains further native availability/state/resource gates.
+
+Victim-UJ regression status:
+- In the final hardware match, side1 char281 traversed the victim-UJ sequence and
+  repeatedly recovered to action74; final observed custom PlayAction is 77->74.
+- User independently confirmed Tobi remained visible/playable.
+- Keep Event236 visibility/control disable shadows; do not re-enable native op12/op15 blindly.
+
+Decision:
+- RETIRE P60 selector8-only hypothesis as root cause.
+- P61 may preserve selector8 as downstream source-semantic support, but must target
+  the earlier F58 gate with strict custom/source/caller guards.
