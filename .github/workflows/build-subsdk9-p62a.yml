@@ -1,4 +1,4 @@
-name: Build NSC P61A UJ Eligibility Gate Compat
+name: Build NSC P62A Persistent UJ Control Getter
 on:
   workflow_dispatch:
   push:
@@ -7,13 +7,13 @@ on:
       - "condition_compat_manifest.json"
       - "generate_condition_table.py"
       - "prepare_exlaunch.sh"
-      - "verify_p61a_kit.py"
-      - "analyze_p61a_log.py"
-      - "README_P61A.txt"
-      - "P61A_STATIC_AUDIT.txt"
-      - "P60_HARDWARE_RESULT_LOCKED.txt"
-      - "R70_CHECKPOINT.md"
-      - ".github/workflows/build-subsdk9-p61a.yml"
+      - "verify_p62a_kit.py"
+      - "analyze_p62a_log.py"
+      - "README_P62A.txt"
+      - "P62A_STATIC_AUDIT.txt"
+      - "P61_HARDWARE_RESULT_LOCKED.txt"
+      - "R71_CHECKPOINT.md"
+      - ".github/workflows/build-subsdk9-p62a.yml"
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,7 +23,7 @@ jobs:
       DEVKITPRO: /opt/devkitpro
       DEVKITA64: /opt/devkitpro/devkitA64
     steps:
-      - name: Checkout P61A build kit
+      - name: Checkout P62A build kit
         uses: actions/checkout@v4
       - name: Verify preinstalled devkitPro toolchain
         shell: bash
@@ -32,13 +32,13 @@ jobs:
           export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
           test -x "$DEVKITA64/bin/aarch64-none-elf-g++"
           "$DEVKITA64/bin/aarch64-none-elf-g++" --version
-      - name: Verify generated payload and P61A invariants
+      - name: Verify generated payload and P62A invariants
         shell: bash
         run: |
           set -euxo pipefail
           python3 generate_condition_table.py condition_compat_manifest.json /tmp/condition_compat_generated.hpp
           cmp /tmp/condition_compat_generated.hpp overlay/source/program/condition_compat_generated.hpp
-          python3 verify_p61a_kit.py
+          python3 verify_p62a_kit.py
       - name: Clone pinned exlaunch 229bbd6
         shell: bash
         run: |
@@ -47,7 +47,7 @@ jobs:
           git -C "$GITHUB_WORKSPACE/exlaunch" checkout --detach 229bbd6
           git -C "$GITHUB_WORKSPACE/exlaunch" submodule update --init --recursive
           test "$(git -C "$GITHUB_WORKSPACE/exlaunch" rev-parse --short HEAD)" = "229bbd6"
-      - name: Overlay P61A sources
+      - name: Overlay P62A sources
         shell: bash
         run: |
           set -euxo pipefail
@@ -61,19 +61,23 @@ jobs:
           export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
           cd "$GITHUB_WORKSPACE/exlaunch"
           make -j2
-      - name: Collect P61A deployment artifact
+      - name: Collect P62A deployment artifact
         shell: bash
         run: |
           set -euxo pipefail
           cd "$GITHUB_WORKSPACE"
           OUT="exlaunch/deploy/subsdk9"
-          ELF="exlaunch/p61a_final.elf"
+          ELF="exlaunch/p62a_final.elf"
           test -s "$OUT"
           test -s "$ELF"
-          grep -aFq '[NSC:P61A] READY' "$ELF"
-          grep -aFq '[NSC:P61A] UJ_GATE_COMPAT' "$ELF"
+          grep -aFq '[NSC:P62A] READY' "$ELF"
+          grep -aFq '[NSC:P62A] CTRL_GET_UJ_PERSIST' "$ELF"
           grep -aFq '[NSC:P60A] CTRL14_UJ_PORT' "$ELF"
           grep -aFq '[NSC:P59A] PLAY_CALL' "$ELF"
+          if grep -aFq '[NSC:P61A] UJ_GATE_COMPAT' "$ELF"; then
+            echo 'obsolete P61 F58 override marker linked unexpectedly' >&2
+            exit 1
+          fi
           python3 - "$OUT" "$ELF" <<'PY'
           from pathlib import Path
           import sys
@@ -81,14 +85,14 @@ jobs:
           if len(nso)<=10_000: raise SystemExit(f"subsdk9 too small: {len(nso)}")
           if nso[:4] != b"NSO0": raise SystemExit(f"bad subsdk9 magic: {nso[:4]!r}")
           if elf[:4] != b"\x7fELF": raise SystemExit(f"bad ELF magic: {elf[:4]!r}")
-          print(f"P61A_LINK_VERIFY=PASS nso_size={len(nso)} elf_size={len(elf)}")
+          print(f"P62A_LINK_VERIFY=PASS nso_size={len(nso)} elf_size={len(elf)}")
           PY
           mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs
           cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
           cp deploy/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
           mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
-          cp README_P61A.txt P61A_STATIC_AUDIT.txt P60_HARDWARE_RESULT_LOCKED.txt R70_CHECKPOINT.md analyze_p61a_log.py artifact/
+          cp README_P62A.txt P62A_STATIC_AUDIT.txt P61_HARDWARE_RESULT_LOCKED.txt R71_CHECKPOINT.md analyze_p62a_log.py artifact/
           {
             echo 'exlaunch_commit=229bbd6'
             echo -n 'exlaunch_full_commit='; git -C exlaunch rev-parse HEAD
@@ -98,10 +102,10 @@ jobs:
             echo -n 'paired_main_sha256='; sha256sum deploy/atmosphere/contents/0100FA10190A0000/exefs/main | awk '{print $1}'
           } > artifact/BUILD_TOOLCHAIN.txt
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
-      - name: Upload P61A deployment artifact
+      - name: Upload P62A deployment artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P61A-uj-eligibility-gate-compat
+          name: NSC-P62A-persistent-uj-control-getter
           path: artifact/
           if-no-files-found: error
           compression-level: 9

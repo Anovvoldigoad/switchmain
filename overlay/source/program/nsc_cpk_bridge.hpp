@@ -11,5 +11,5 @@ void InstallP57ACentralSetterTrace();
 void InstallP58APlayActionCallerTrace();
 void InstallP59AActionModeDispatchTrace();
 void InstallP60ANativeUjControlPort();
-void InstallP61AUjEligibilityGateCompat();
+void InstallP62APersistentUjControlGetter();
 }

@@ -1,0 +1,20 @@
+P61A HARDWARE RESULT — LOCKED 2026-09-21
+
+Input artifact: NSC-P61A-uj-eligibility-gate-compat
+Input log: uzuy_log(9).txt
+Artifact checksums/manifests validated before analysis.
+
+Runtime result:
+- P61A READY present; F58 hook installed.
+- P60 source UJ-enable -> native slot8 port remained active.
+- P61 guarded F58 override events: 0.
+- Custom PlayAction(700): 0.
+- Custom PlayAction(445): 3 (Tobi XA + two XXA test sequence remained ordinary jutsu).
+- User-confirmed victim-UJ test remained safe: Tobi did not disappear.
+
+Locked conclusion:
+P61A did not affect the failing XXA route. The F58 false->true override approach is rejected.
+Do not revive the exact-LR F58 compatibility patch and do not force state 0x87/action700.
+
+New evidence-backed direction:
+P60/P61 logs repeatedly show source op14 p3=1 and one-shot native selector8 writes, yet the backing slot is observed as zero again on later source events. Source enable_control is stateful, so P62 virtualizes only native selector8 reads for the exact custom actor whose source UJ-enable semantic is active, until a matching source disable clears the registry. Native eligibility/state/action logic remains untouched.

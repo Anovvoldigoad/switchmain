@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP61AUjEligibilityGateCompat();
+    nsc::InstallP62APersistentUjControlGetter();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P61A UJ eligibility gate compat exception");
+    EXL_ABORT("NSC P62A persistent UJ control getter exception");
 }

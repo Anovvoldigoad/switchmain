@@ -1,0 +1,12 @@
+P62A LOCAL VALIDATION
+
+verify_p62a_kit.py: PASS
+prepare_exlaunch.sh bash syntax: PASS
+Python scripts py_compile: PASS
+GitHub Actions YAML parse: PASS
+condition_compat_generated.hpp regeneration/cmp: PASS
+analyze_p62a_log.py synthetic PASS path: PASS
+analyze_p62a_log.py synthetic upstream-no-getter path: PASS
+analyze_p62a_log.py on P61 hardware log: BUILD_NOT_ACTIVE (correct): PASS
+
+Compiler note: devkitA64 is not installed in this execution environment, so subsdk9 is intentionally not prebuilt or binary-patched. GitHub Actions uses devkitpro/devkita64 and verifies P62 markers in the linked ELF before accepting the NSO artifact.
