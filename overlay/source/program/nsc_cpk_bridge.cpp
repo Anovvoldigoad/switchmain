@@ -46,19 +46,20 @@ constexpr ptrdiff_t kCentralActionSetterOffset = 0x766320;
 constexpr ptrdiff_t kActionModeDispatchThunkOffset = 0x7B4680;
 constexpr ptrdiff_t kActionModeBaseOffset          = 0x7B468C;
 constexpr ptrdiff_t kActionModeVtableSlotOffset    = 0xE40;
-// P60A: proven Switch-native control API used by the UJ router.
-// Getter reads control_object+0x428+selector*4; enable setter writes 1 there.
-// Hardware P59 + static v1.70 audit ties native selector 8 to UJ state 0x87.
-constexpr ptrdiff_t kNativeControlGetterOffset       = 0x7C6280;
-constexpr ptrdiff_t kNativeControlEnableOffset       = 0x7C65B0;
-constexpr ptrdiff_t kNativeControlObjectOffset       = 0x228;
-constexpr int32_t   kNativeUltimateJutsuSelector     = 8;
-// P62A: persistent semantic bridge for MovesetPlus UJ enable_control.
-// P60 hardware proved the native backing slot is reset between event execution
-// and routing; therefore the source enable semantic must be observed at the
-// native getter until the matching source disable arrives. No action/state gate
-// is bypassed.
-constexpr size_t    kP62TrackedActorSlots             = 16;
+// P63A read-only UJ-router first-divergence trace. These are native v1.70
+// boundaries in the router sequence: F58 eligibility -> post-F58 helper ->
+// native control getter -> downstream state request. No return value is changed.
+constexpr ptrdiff_t kUjEligibilityGateOffset       = 0x7D3138;
+constexpr ptrdiff_t kUjPostGateHelperOffset        = 0x7D2DE4;
+constexpr ptrdiff_t kNativeControlGetterOffset     = 0x7C6280;
+constexpr ptrdiff_t kUjRouterStartOffset           = 0xC7600;
+constexpr ptrdiff_t kUjRouterEndOffset             = 0xC81A4;
+constexpr ptrdiff_t kUjRouterGateReturnOffset      = 0xC7874;
+constexpr ptrdiff_t kUjRouterPostGateReturnOffset  = 0xC7884;
+constexpr ptrdiff_t kUjRouterGet0ReturnOffset      = 0xC7648;
+constexpr ptrdiff_t kUjRouterGet8FirstReturnOffset = 0xC7934;
+constexpr ptrdiff_t kUjRouterGet40ReturnOffset     = 0xC7980;
+constexpr ptrdiff_t kUjRouterGet8SecondReturnOffset= 0xC79B0;
 // Historical decision-chain probes retained in source but not installed by P50A
 constexpr ptrdiff_t kActionLookupOffset        = 0x768E84;  // actor,index,flag -> action entry ptr/null
 constexpr ptrdiff_t kActionGateOffset          = 0x769A4C;  // actor -> bool-like completion/timing gate
@@ -173,11 +174,6 @@ std::atomic<uint32_t> g_p56b_custom_snapshots{0};
 std::atomic<uint32_t> g_p57_setter_logs{0};
 std::atomic<uint32_t> g_p59_play_call_logs{0};
 std::atomic<uint32_t> g_p59_dispatch_logs{0};
-std::atomic<uint32_t> g_p60_control_port_logs{0};
-std::atomic<bool> g_p60_native_uj_control_ready{false};
-std::atomic<bool> g_p62_native_getter_ready{false};
-std::atomic<uint32_t> g_p62_getter_logs{0};
-std::atomic<uintptr_t> g_p62_uj_enabled_actors[kP62TrackedActorSlots]{};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -311,66 +307,6 @@ uintptr_t ReadActionModeSlotTarget(void* actor) {
     const uintptr_t vtable = *reinterpret_cast<const volatile uintptr_t*>(actor);
     if (!vtable) return 0;
     return *reinterpret_cast<const volatile uintptr_t*>(vtable + kActionModeVtableSlotOffset);
-}
-
-int32_t ReadNativeControl(void* actor, int32_t selector) {
-    if (!actor || selector < 0) return -1;
-    const uintptr_t base = exl::util::modules::GetTargetStart();
-    using GetterFn = int32_t(*)(void*, int32_t);
-    auto getter = reinterpret_cast<GetterFn>(base + kNativeControlGetterOffset);
-    auto* control_object = reinterpret_cast<uint8_t*>(actor) + kNativeControlObjectOffset;
-    return getter(control_object, selector);
-}
-
-bool EnableNativeUltimateJutsuControl(void* actor, uint32_t side, uint32_t char_id) {
-    if (!actor || !g_p60_native_uj_control_ready.load(std::memory_order_relaxed)) return false;
-    const uintptr_t base = exl::util::modules::GetTargetStart();
-    using EnableFn = void(*)(void*, int32_t);
-    auto enable = reinterpret_cast<EnableFn>(base + kNativeControlEnableOffset);
-    auto* control_object = reinterpret_cast<uint8_t*>(actor) + kNativeControlObjectOffset;
-    const int32_t before = ReadNativeControl(actor, kNativeUltimateJutsuSelector);
-    enable(control_object, kNativeUltimateJutsuSelector);
-    const int32_t after = ReadNativeControl(actor, kNativeUltimateJutsuSelector);
-    const uint32_t n = g_p60_control_port_logs.fetch_add(1, std::memory_order_relaxed);
-    if (n < 256) {
-        Logging.Log("[NSC:P60A] CTRL14_UJ_PORT actor=%p side=%u char=%u mp_selector=1 native_selector=%d before=%d after=%d setter_off=0x%lx",
-                    actor, side, char_id, kNativeUltimateJutsuSelector, before, after,
-                    static_cast<unsigned long>(kNativeControlEnableOffset));
-    }
-    return after != 0;
-}
-
-void MarkP62UjEnabled(void* actor) {
-    if (!actor) return;
-    const uintptr_t value = reinterpret_cast<uintptr_t>(actor);
-    for (size_t i = 0; i < kP62TrackedActorSlots; ++i) {
-        if (g_p62_uj_enabled_actors[i].load(std::memory_order_relaxed) == value) return;
-    }
-    for (size_t i = 0; i < kP62TrackedActorSlots; ++i) {
-        uintptr_t expected = 0;
-        if (g_p62_uj_enabled_actors[i].compare_exchange_strong(
-                expected, value, std::memory_order_relaxed, std::memory_order_relaxed)) return;
-    }
-    // Fail closed if the tiny compatibility registry is unexpectedly full.
-}
-
-void ClearP62UjEnabled(void* actor) {
-    if (!actor) return;
-    const uintptr_t value = reinterpret_cast<uintptr_t>(actor);
-    for (size_t i = 0; i < kP62TrackedActorSlots; ++i) {
-        uintptr_t expected = value;
-        g_p62_uj_enabled_actors[i].compare_exchange_strong(
-            expected, 0, std::memory_order_relaxed, std::memory_order_relaxed);
-    }
-}
-
-bool IsP62UjEnabled(void* actor) {
-    if (!actor) return false;
-    const uintptr_t value = reinterpret_cast<uintptr_t>(actor);
-    for (size_t i = 0; i < kP62TrackedActorSlots; ++i) {
-        if (g_p62_uj_enabled_actors[i].load(std::memory_order_relaxed) == value) return true;
-    }
-    return false;
 }
 
 struct P55ActorState {
@@ -1291,40 +1227,25 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 return 1;
 
             case 14: {
-                // P60A root-port A/B. UltimateStormAPI me_enable_control uses
-                // p2=self/enemy and p3=control selector; source selector 1 is UJ.
-                // Switch v1.70 native UJ routing reads selector 8 through 0x7C6280,
-                // and native code enables that selector through 0x7C65B0.
-                // Port ONLY self/UJ here. Every other selector remains shadowed until
-                // its native mapping is independently proven. This intentionally avoids
-                // the rejected PC-style +0x12A24 layout and avoids any action/state force.
-                if (p2 == 0 && p3 == 1 &&
-                    g_p60_native_uj_control_ready.load(std::memory_order_relaxed)) {
-                    // P62A keeps the source semantic stateful. P60's native setter
-                    // is still called once so the real backing storage is aligned,
-                    // then the registry keeps selector8 logically enabled through
-                    // the native getter even if the game clears that storage later.
-                    const bool enabled = EnableNativeUltimateJutsuControl(actor, side, char_id);
-                    MarkP62UjEnabled(actor);
-                    if (!enabled && g_event236_logs.load(std::memory_order_relaxed) < 4096) {
-                        Logging.Log("[NSC:P60A] CTRL14_UJ_PORT_FAIL actor=%p side=%u char=%u",
-                                    actor, side, char_id);
-                    }
-                    return 1;
+                // P56B: source-grounded locator trigger. UltimateStormAPI's
+                // me_enable_control uses p2=self/enemy and p3=control selector;
+                // selector 1 is Ultimate Jutsu. Snapshot BEFORE the P50 shadow
+                // so this is the untouched Switch state when the mod requests UJ enable.
+                if (p2 == 0 && p3 == 1) {
+                    const uint32_t seq = g_p56b_custom_snapshots.fetch_add(1, std::memory_order_relaxed);
+                    if (seq < 3) LogP56BControlSnapshot(actor, "CUSTOM_O14_UJ_ENABLE", side, char_id, seq);
                 }
+                // P43A: pure shadow. P41A CTRL_DUMP rejected +0x12A24 as PC-style
+                // boolean control block. Victim-UJ HARD PASS is from not calling the
+                // broken native O14 route; direct writes were mostly fail-closed no-ops.
                 if (g_event236_logs.load(std::memory_order_relaxed) < 4096) {
-                    Logging.Log("[NSC:P60A] CTRL14_SHADOW actor=%p side=%u char=%u p2=%d p3=%d native_uj_ready=%u",
-                                actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3),
-                                g_p60_native_uj_control_ready.load(std::memory_order_relaxed) ? 1u : 0u);
+                    Logging.Log("[NSC:P50A] CTRL14_SHADOW actor=%p side=%u char=%u p2=%d p3=%d",
+                                actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3));
                 }
                 return 1;
             }
 
             case 15: {
-                // P62A clears only its private persistent-UJ semantic for the exact
-                // source self/UJ disable. Native gameplay disable remains shadowed,
-                // preserving the victim-UJ disappearance fix.
-                if (p2 == 0 && p3 == 1) ClearP62UjEnabled(actor);
                 // P43A: explicit shadow for me_disable_control / disable path.
                 // Logged for Kamui sequence reconstruction (seen repeatedly around UJ).
                 if (g_event236_logs.load(std::memory_order_relaxed) < 4096) {
@@ -1410,6 +1331,10 @@ HOOK_DEFINE_TRAMPOLINE(SpecialOugiFinishHook) {
 };
 
 // P53A: zero-extra-trampoline action-route probe. The already-proven PlayAction
+std::atomic<uint32_t> g_p63_f58_logs{0};
+std::atomic<uint32_t> g_p63_post_gate_logs{0};
+std::atomic<uint32_t> g_p63_control_get_logs{0};
+
 // hook now observes the ordinary jutsu route (84), SPTYPE action10 (930), and
 // the cinematic UJ range (700..740). This distinguishes XXA->UJ from XXA->XA
 // without adding another hook or changing any gameplay decision.
@@ -1500,41 +1425,93 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         return ret;
     }
 };
-// P62A: persistent semantic bridge at the proven Switch-native control getter.
-// Source me_enable_control(UJ) is stateful; P60 hardware showed the native backing
-// selector8 repeatedly returns to zero before later routing. Instead of forcing
-// eligibility, state, or action, preserve the source semantic at the API read:
-// if native selector8 is currently zero for the exact control-object belonging
-// to a generic custom actor that received source UJ-enable, report enabled.
-// Every non-zero native result, every vanilla actor, every other selector, and
-// every untracked object is returned unchanged.
-HOOK_DEFINE_TRAMPOLINE(NativeControlGetterCompatHook) {
-    static int32_t Callback(void* control_object, int32_t selector) {
-        // Capture native caller provenance before Orig/helper calls clobber X30.
+// P63A: pure read-only trace of the native +0xF58 eligibility implementation.
+// The result is always returned unchanged. Logging is limited to player-side or
+// generic custom actors and captures the exact native caller before Orig().
+HOOK_DEFINE_TRAMPOLINE(P63UjEligibilityTraceHook) {
+    static uint32_t Callback(void* actor, uint32_t mode, uint32_t context) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
-
-        const int32_t raw = Orig(control_object, selector);
-        if (raw != 0 || selector != kNativeUltimateJutsuSelector || !control_object ||
-            !g_p62_native_getter_ready.load(std::memory_order_relaxed)) {
-            return raw;
-        }
-
-        auto* actor = reinterpret_cast<uint8_t*>(control_object) - kNativeControlObjectOffset;
         uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
         const bool valid = ReadActorIdentity(actor, side, char_id);
-        const bool custom = valid && char_id > kVanillaMaxCharId && char_id < 0x1000u;
-        const bool source_enabled = custom && IsP62UjEnabled(actor);
-        if (!source_enabled) return raw;
-
-        const uint32_t n = g_p62_getter_logs.fetch_add(1, std::memory_order_relaxed);
-        if (n < 512) {
-            const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
-            Logging.Log("[NSC:P62A] CTRL_GET_UJ_PERSIST n=%u control=%p actor=%p side=%u char=%u selector=%d raw=%d returned=1 caller_off=0x%lx source_enabled=1",
-                        n, control_object, actor, side, char_id, selector, raw,
-                        static_cast<unsigned long>(caller_off));
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        int32_t local_10f40 = 0;
+        int32_t e94 = -1;
+        uint32_t action = 0xFFFFFFFFu;
+        if (actor) {
+            auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+            local_10f40 = *reinterpret_cast<const volatile int32_t*>(b + 0x10F40);
+            e94 = *reinterpret_cast<const volatile int32_t*>(b + 0xE94);
+            action = *reinterpret_cast<const volatile uint32_t*>(b + 0xE60);
         }
-        return 1;
+        const uint32_t ret = Orig(actor, mode, context);
+        const bool custom = valid && char_id > kVanillaMaxCharId && char_id < 0x1000u;
+        if (valid && (side == 0u || custom)) {
+            const uint32_t n = g_p63_f58_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < 512) {
+                Logging.Log("[NSC:P63A] UJ_F58 n=%u actor=%p side=%u char=%u mode=%u context=%u ret=%u caller_off=0x%lx exact_router=%u local_10f40=%d e94=%d action=%u",
+                            n, actor, side, char_id, mode, context, ret,
+                            static_cast<unsigned long>(caller_off),
+                            caller_off == kUjRouterGateReturnOffset ? 1u : 0u,
+                            local_10f40, e94, action);
+            }
+        }
+        return ret;
+    }
+};
+
+// P63A: trace the helper immediately after F58 in the native UJ router.
+// ABI is (actor, mode)->bool-like. Return value is preserved exactly.
+HOOK_DEFINE_TRAMPOLINE(P63UjPostGateHelperTraceHook) {
+    static uint32_t Callback(void* actor, uint32_t mode) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        const uint32_t ret = Orig(actor, mode);
+        const bool custom = valid && char_id > kVanillaMaxCharId && char_id < 0x1000u;
+        if (valid && (side == 0u || custom)) {
+            const uint32_t n = g_p63_post_gate_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < 512) {
+                Logging.Log("[NSC:P63A] UJ_POST_GATE n=%u actor=%p side=%u char=%u mode=%u ret=%u caller_off=0x%lx exact_router=%u",
+                            n, actor, side, char_id, mode, ret,
+                            static_cast<unsigned long>(caller_off),
+                            caller_off == kUjRouterPostGateReturnOffset ? 1u : 0u);
+            }
+        }
+        return ret;
+    }
+};
+
+// P63A: native control getter trace ONLY. x0 is actor+0x228 in the combat
+// router, so actor identity is recovered by subtracting 0x228. No selector is
+// rewritten and Orig() result is returned untouched. Router caller offsets let
+// one run prove whether XXA ever reaches selector 0/8/40 checks.
+HOOK_DEFINE_TRAMPOLINE(P63NativeControlGetterTraceHook) {
+    static uint32_t Callback(void* control_object, int32_t selector) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        void* actor = control_object ? reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(control_object) - 0x228u) : nullptr;
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const uint32_t ret = Orig(control_object, selector);
+        const bool custom = valid && char_id > kVanillaMaxCharId && char_id < 0x1000u;
+        const bool in_uj_router = caller_off >= kUjRouterStartOffset && caller_off <= (kUjRouterEndOffset + 4);
+        if (valid && in_uj_router && (side == 0u || custom)) {
+            const uint32_t n = g_p63_control_get_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < 1024) {
+                Logging.Log("[NSC:P63A] UJ_CTRL_GET n=%u actor=%p side=%u char=%u selector=%d ret=%u caller_off=0x%lx tag=%s",
+                            n, actor, side, char_id, selector, ret,
+                            static_cast<unsigned long>(caller_off),
+                            caller_off == kUjRouterGet0ReturnOffset ? "PRE0" :
+                            caller_off == kUjRouterGet8FirstReturnOffset ? "UJ8_A" :
+                            caller_off == kUjRouterGet40ReturnOffset ? "SEL40" :
+                            caller_off == kUjRouterGet8SecondReturnOffset ? "UJ8_B" : "ROUTER_OTHER");
+            }
+        }
+        return ret;
     }
 };
 
@@ -2029,51 +2006,6 @@ bool InstallPlayActionProbe() {
     return true;
 }
 
-bool VerifyP60NativeUjControlPort() {
-    // Exact v1.70 fingerprints. Getter: prologue + selector special-case entry.
-    // Enable: add indexed slot; mov 1; str to +0x428; ret.
-    static constexpr uint32_t kGetterExpected[] = {
-        0xF81E0FFE, 0xA9014FF4, 0x2A0103F3, 0xAA0003F4,
-        0x71004C3F, 0x54000161,
-    };
-    static constexpr uint32_t kEnableExpected[] = {
-        0x8B21C808, 0x52800029, 0xB9042909, 0xD65F03C0,
-    };
-    bool ok = true;
-    if (!MatchWords(kNativeControlGetterOffset, kGetterExpected)) {
-        LogFingerprintFail("P60_CONTROL_GET", kNativeControlGetterOffset); ok = false;
-    }
-    if (!MatchWords(kNativeControlEnableOffset, kEnableExpected)) {
-        LogFingerprintFail("P60_CONTROL_ENABLE", kNativeControlEnableOffset); ok = false;
-    }
-    g_p60_native_uj_control_ready.store(ok, std::memory_order_relaxed);
-    return ok;
-}
-
-bool InstallP62PersistentUjControlGetter() {
-    // Fingerprint the exact v1.70 getter entry plus the generic indexed load.
-    // The hook virtualizes only source-enabled custom selector8 reads; it does
-    // not modify the backing storage, eligibility gate, state, or action.
-    static constexpr uint32_t kGetterExpected[] = {
-        0xF81E0FFE, 0xA9014FF4, 0x2A0103F3, 0xAA0003F4,
-        0x71004C3F, 0x54000161,
-    };
-    static constexpr uint32_t kGenericLoadExpected[] = {
-        0x8B33CA88, 0xB9442900,
-    };
-    bool ok = true;
-    if (!MatchWords(kNativeControlGetterOffset, kGetterExpected)) {
-        LogFingerprintFail("P62_CONTROL_GET_ENTRY", kNativeControlGetterOffset); ok = false;
-    }
-    if (!MatchWords(kNativeControlGetterOffset + 0x40, kGenericLoadExpected)) {
-        LogFingerprintFail("P62_CONTROL_GET_LOAD", kNativeControlGetterOffset + 0x40); ok = false;
-    }
-    g_p62_native_getter_ready.store(ok, std::memory_order_relaxed);
-    if (!ok) return false;
-    NativeControlGetterCompatHook::InstallAtOffset(kNativeControlGetterOffset);
-    return true;
-}
-
 bool InstallP57CentralSetterTrace() {
     // Fingerprint the exact v1.70 function entry. These words also prove the
     // 4-argument ABI used by the callback: prologue then w3/w2/x0/w1 saves.
@@ -2134,6 +2066,49 @@ bool InstallP54DirectJutsuOwnerProbes() {
     if (!ok) return false;
     DirectAction98OwnerHook::InstallAtOffset(kDirectAction98OwnerOffset);
     DirectAction100OwnerHook::InstallAtOffset(kDirectAction100OwnerOffset);
+    return true;
+}
+
+bool InstallP63UjRouterTrace() {
+    static constexpr uint32_t kF58Expected[] = {
+        0xFC1C0FE8, 0xA9015FFE, 0xA90257F6, 0xA9034FF4,
+        0x5281E808, 0x72A00028, 0xB8686808, 0x2A010108, 0x340000C8,
+    };
+    static constexpr uint32_t kPostGateExpected[] = {
+        0xF81E0FFE, 0xA9014FF4, 0xF9400008, 0x2A0103F4,
+        0xAA0003F3, 0xF946E508, 0xD63F0100, 0x34000320,
+    };
+    static constexpr uint32_t kGetterExpected[] = {
+        0xF81E0FFE, 0xA9014FF4, 0x2A0103F3, 0xAA0003F4,
+        0x71004C3F, 0x54000161,
+    };
+    static constexpr uint32_t kRouterF58Expected[] = {
+        0xF9400268, 0xAA1303E0, 0x2A1F03E1, 0xF947AD08,
+        0xD63F0100, 0x34000340, 0xAA1303E0, 0x2A1F03E1,
+    };
+    static constexpr uint32_t kRouterStateExpected[] = {
+        0x2A1F03F9, 0x528010F5,
+    };
+    bool ok = true;
+    if (!MatchWords(kUjEligibilityGateOffset, kF58Expected)) {
+        LogFingerprintFail("P63_F58", kUjEligibilityGateOffset); ok = false;
+    }
+    if (!MatchWords(kUjPostGateHelperOffset, kPostGateExpected)) {
+        LogFingerprintFail("P63_POST_GATE", kUjPostGateHelperOffset); ok = false;
+    }
+    if (!MatchWords(kNativeControlGetterOffset, kGetterExpected)) {
+        LogFingerprintFail("P63_CONTROL_GET", kNativeControlGetterOffset); ok = false;
+    }
+    if (!MatchWords(0xC7860, kRouterF58Expected)) {
+        LogFingerprintFail("P63_ROUTER_F58", 0xC7860); ok = false;
+    }
+    if (!MatchWords(0xC7958, kRouterStateExpected)) {
+        LogFingerprintFail("P63_ROUTER_STATE87", 0xC7958); ok = false;
+    }
+    if (!ok) return false;
+    P63UjEligibilityTraceHook::InstallAtOffset(kUjEligibilityGateOffset);
+    P63UjPostGateHelperTraceHook::InstallAtOffset(kUjPostGateHelperOffset);
+    P63NativeControlGetterTraceHook::InstallAtOffset(kNativeControlGetterOffset);
     return true;
 }
 
@@ -2203,12 +2178,11 @@ void InstallP50AConditionCompat() {
     const bool cond = InstallConditionCompat();
     Logging.Log("[NSC:P50A] READY cpk=%d event236=%d play=%d cond=%d installed_trampolines=5 "
                 "condition_native=%u condition_extra=%u condition_total=%u "
-                "event121_self=1 vis12_shadow=1 ctrl14_uj_native=%u ctrl14_other_shadow=1 op15_shadow=1 op17_shadow=1 op18_shadow=1",
+                "event121_self=1 vis12_shadow=1 ctrl14_shadow=1 op15_shadow=1 op17_shadow=1 op18_shadow=1",
                 cpk ? 1 : 0, event236 ? 1 : 0, play ? 1 : 0, cond ? 1 : 0,
                 condition_compat_generated::kNativeConditionCount,
                 condition_compat_generated::kExtraConditionCount,
-                condition_compat_generated::kTotalConditionCount,
-                g_p60_native_uj_control_ready.load(std::memory_order_relaxed) ? 1u : 0u);
+                condition_compat_generated::kTotalConditionCount);
 }
 
 
@@ -2288,33 +2262,16 @@ void InstallP59AActionModeDispatchTrace() {
                 setter ? 1 : 0, mode ? 1 : 0);
 }
 
-void InstallP60ANativeUjControlPort() {
-    // P60A is the first functional root-port A/B after P59 proved custom XXA
-    // collapses to ordinary-jutsu state 0x4D. Verify the native control API
-    // BEFORE installing Event236 so the callback fails closed if fingerprints
-    // do not match. Keep P59 diagnostics to prove whether the route changes to
-    // UJ state/action without forcing action 700 or state 0x87.
-    const bool native_control = VerifyP60NativeUjControlPort();
+void InstallP63AUjRouterFirstDivergenceTrace() {
+    // Clean rollback to P59 functional behavior: NO P60 selector8 write,
+    // NO P61 F58 override, NO P62 getter override. Add only three read-only
+    // traces at the native UJ decision chain. Total: P50(5)+P57(1)+P59(1)+P63(3)=10.
     InstallP50AConditionCompat();
     const bool setter = InstallP57CentralSetterTrace();
     const bool mode = InstallP59ActionModeBaseTrace();
-    Logging.Log("[NSC:P60A] READY inherited_p59=1 native_uj_control=%d central_setter=%d mode_base=%d total_trampolines=7 functional_delta=event236_op14_p2_0_p3_1_to_native_slot8 native_get=0x7c6280 native_enable=0x7c65b0 writes=control_slot_only no_action_force=1 no_state_force=1 op15_shadow=1",
-                native_control ? 1 : 0, setter ? 1 : 0, mode ? 1 : 0);
-}
-
-void InstallP62APersistentUjControlGetter() {
-    // Hardware P60/P61 locked the failure mode: source UJ-enable is observed
-    // and one-shot native selector8 writes succeed, yet custom UJ remains 445;
-    // P61's F58 override never fired. Preserve the source enable semantic at
-    // the exact native getter instead. Native eligibility/chakra/state/action
-    // logic remains authoritative.
-    const bool native_control = VerifyP60NativeUjControlPort();
-    const bool getter = native_control && InstallP62PersistentUjControlGetter();
-    InstallP50AConditionCompat();
-    const bool setter = InstallP57CentralSetterTrace();
-    const bool mode = InstallP59ActionModeBaseTrace();
-    Logging.Log("[NSC:P62A] READY inherited_p60=1 native_uj_control=%d persistent_uj_getter=%d f58_override=0 central_setter=%d mode_base=%d total_trampolines=8 functional_delta=persistent_source_uj_enable_at_native_selector8_getter no_action_force=1 no_state_force=1 victim_shadows_retained=1",
-                native_control ? 1 : 0, getter ? 1 : 0, setter ? 1 : 0, mode ? 1 : 0);
+    const bool ujtrace = InstallP63UjRouterTrace();
+    Logging.Log("[NSC:P63A] READY clean_p59_base=1 central_setter=%d mode_base=%d uj_router_trace=%d total_trampolines=10 writes=0 p60_removed=1 p61_removed=1 p62_removed=1 f58=0x7d3138 post_gate=0x7d2de4 ctrl_get=0x7c6280",
+                setter ? 1 : 0, mode ? 1 : 0, ujtrace ? 1 : 0);
 }
 
 void InstallP52APreUjProbe() {

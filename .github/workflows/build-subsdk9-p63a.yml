@@ -1,0 +1,71 @@
+name: Build NSC P63A UJ Router First Divergence Trace
+on: [workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:latest
+    env:
+      DEVKITPRO: /opt/devkitpro
+      DEVKITA64: /opt/devkitpro/devkitA64
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify kit
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 generate_condition_table.py condition_compat_manifest.json /tmp/condition_compat_generated.hpp
+          cmp /tmp/condition_compat_generated.hpp overlay/source/program/condition_compat_generated.hpp
+          python3 verify_p63a_kit.py
+      - name: Clone pinned exlaunch
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone https://github.com/shadowninja108/exlaunch.git "$GITHUB_WORKSPACE/exlaunch"
+          git -C "$GITHUB_WORKSPACE/exlaunch" checkout --detach 229bbd6
+          git -C "$GITHUB_WORKSPACE/exlaunch" submodule update --init --recursive
+      - name: Overlay sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+          chmod +x prepare_exlaunch.sh
+          bash ./prepare_exlaunch.sh "$GITHUB_WORKSPACE/exlaunch"
+          sed -i 's#ELF_EXTRACT := .*#ELF_EXTRACT := $(PWD)/p63a_final.elf#' "$GITHUB_WORKSPACE/exlaunch/config.mk"
+      - name: Build
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
+          cd "$GITHUB_WORKSPACE/exlaunch"
+          make -j2
+      - name: Collect artifact
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd "$GITHUB_WORKSPACE"
+          OUT=exlaunch/deploy/subsdk9
+          ELF=exlaunch/p63a_final.elf
+          test -s "$OUT"; test -s "$ELF"
+          grep -aFq '[NSC:P63A] READY' "$ELF"
+          grep -aFq '[NSC:P63A] UJ_F58' "$ELF"
+          grep -aFq '[NSC:P63A] UJ_POST_GATE' "$ELF"
+          grep -aFq '[NSC:P63A] UJ_CTRL_GET' "$ELF"
+          python3 - "$OUT" <<'PY'
+          from pathlib import Path
+          import sys
+          b=Path(sys.argv[1]).read_bytes()
+          assert len(b)>10000 and b[:4]==b'NSO0'
+          print('P63A_LINK_VERIFY=PASS')
+          PY
+          mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs
+          cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
+          cp deploy/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
+          mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
+          cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
+          cp README_P63A.txt P63A_STATIC_AUDIT.txt R72_CHECKPOINT.md analyze_p63a_log.py artifact/
+          (cd artifact && find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NSC-P63A-uj-router-first-divergence-trace
+          path: artifact/
+          compression-level: 9
