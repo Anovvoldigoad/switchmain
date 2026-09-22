@@ -50,6 +50,9 @@ constexpr ptrdiff_t kActionModeVtableSlotOffset    = 0xE40;
 // boundaries in the router sequence: F58 eligibility -> post-F58 helper ->
 // native control getter -> downstream state request. No return value is changed.
 constexpr ptrdiff_t kUjEligibilityGateOffset       = 0x7D3138;
+// P65A: runtime-proven player UJ path. P63 hardware captured
+// F58 return LR main+0x7F46B8 on a real vanilla UJ attempt.
+constexpr ptrdiff_t kP65ActivePlayerUjCallerReturnOffset = 0x7F46B8;
 constexpr ptrdiff_t kUjPostGateHelperOffset        = 0x7D2DE4;
 constexpr ptrdiff_t kNativeControlGetterOffset     = 0x7C6280;
 // P64F: static-proven semantic UJ consumer. This helper contains the
@@ -186,6 +189,7 @@ std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_p64_semantic_updates{0};
 std::atomic<uint32_t> g_p64_semantic_gate_logs{0};
+std::atomic<uint32_t> g_p65_active_uj_gate_logs{0};
 std::atomic_flag g_p64_semantic_lock = ATOMIC_FLAG_INIT;
 
 struct P64SemanticControlEntry {
@@ -1542,6 +1546,76 @@ HOOK_DEFINE_TRAMPOLINE(P64SemanticUjConsumerHook) {
     }
 };
 
+
+// P65A: functional bridge at the runtime-proven player UJ F58 call.
+//
+// P64F proved Event236 selector1 reaches our semantic state, but its
+// 0x7ABE9C consumer was not entered during the real player-input path.
+// P63 hardware instead observed native F58 being called with LR
+// main+0x7F46B8 during a real vanilla UJ attempt.
+//
+// Contract:
+//   * native true always wins;
+//   * semantic override is allowed ONLY for LR 0x7F46B8;
+//   * semantic state belongs to the same actor;
+//   * no action number, state 0x87, control selector or char ID is forced.
+//
+// The paired main additionally carries the source-parity awakening-UJ
+// prerequisite at 0x7F2A9C (STR S0,[SP,#0x1C] -> NOP).
+HOOK_DEFINE_TRAMPOLINE(P65ActiveUjEligibilityBridgeHook) {
+    static uint32_t Callback(void* actor, uint32_t mode, uint32_t context) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        const uint32_t native = Orig(actor, mode, context);
+
+        const bool exact_active =
+            caller_off == kP65ActivePlayerUjCallerReturnOffset;
+
+        const bool semantic =
+            exact_active && P64QuerySemanticUltimateJutsu(actor);
+
+        const uint32_t out =
+            (native != 0u || semantic) ? 1u : 0u;
+
+        uint32_t side = 0xFFFFFFFFu;
+        uint32_t char_id = 0xFFFFFFFFu;
+        const bool valid =
+            ReadActorIdentity(actor, side, char_id);
+
+        const bool custom =
+            valid &&
+            char_id > kVanillaMaxCharId &&
+            char_id < 0x1000u;
+
+        // Logging is diagnostic only; mutation is the exact_active+semantic
+        // return overlay above.
+        if (valid && (exact_active || custom)) {
+            const uint32_t n =
+                g_p65_active_uj_gate_logs.fetch_add(
+                    1, std::memory_order_relaxed);
+
+            if (n < 512) {
+                Logging.Log(
+                    "[NSC:P65A] UJ_ACTIVE_GATE "
+                    "n=%u actor=%p side=%u char=%u "
+                    "caller_off=0x%lx mode=%u context=%u "
+                    "native=%u semantic=%u ret=%u",
+                    n, actor, side, char_id,
+                    static_cast<unsigned long>(caller_off),
+                    mode, context,
+                    native,
+                    semantic ? 1u : 0u,
+                    out
+                );
+            }
+        }
+
+        return out;
+    }
+};
+
 // P63A: pure read-only trace of the native +0xF58 eligibility implementation.
 // The result is always returned unchanged. Logging is limited to player-side or
 // generic custom actors and captures the exact native caller before Orig().
@@ -2218,6 +2292,28 @@ bool InstallP64SemanticUjBridge() {
     return true;
 }
 
+
+bool InstallP65ActiveUjEligibilityBridge() {
+    static constexpr uint32_t kF58Expected[] = {
+        0xFC1C0FE8, 0xA9015FFE, 0xA90257F6, 0xA9034FF4,
+        0x5281E808, 0x72A00028, 0xB8686808, 0x2A010108,
+        0x340000C8,
+    };
+
+    if (!MatchWords(kUjEligibilityGateOffset, kF58Expected)) {
+        LogFingerprintFail(
+            "P65_ACTIVE_UJ_F58",
+            kUjEligibilityGateOffset
+        );
+        return false;
+    }
+
+    P65ActiveUjEligibilityBridgeHook::InstallAtOffset(
+        kUjEligibilityGateOffset
+    );
+    return true;
+}
+
 bool InstallP63UjRouterTrace() {
     static constexpr uint32_t kF58Expected[] = {
         0xFC1C0FE8, 0xA9015FFE, 0xA90257F6, 0xA9034FF4,
@@ -2435,6 +2531,50 @@ void InstallP64FUjSemanticBridge() {
     const bool sem = InstallP64SemanticUjBridge();
     Logging.Log("[NSC:P64F] READY clean_p63_base=1 semantic_bridge=%d central_setter=%d mode_base=%d uj_router_trace=%d total_trampolines=11 gameplay_mutation=semantic_gate_only consumer=0x7abe9c selector1_call=0x7abf30 no_force87=1 no_force700=1 no_char281=1",
                 sem ? 1 : 0, setter ? 1 : 0, mode ? 1 : 0, ujtrace ? 1 : 0);
+}
+
+
+void InstallP65ASourceParityActiveUjBridge() {
+    // Functional P65A:
+    //   P50 victim-safe/event/condition core
+    //   + P57 central setter diagnostics
+    //   + P59 action-mode diagnostics
+    //   + semantic-conditioned override at the runtime-proven F58 caller.
+    //
+    // P64's 0x7ABE9C consumer is deliberately NOT installed.
+    // P63 F58 trace is replaced by the P65 functional hook at the same entry.
+    //
+    // Paired main carries:
+    //   0x7F2A9C BD001FE0 -> D503201F
+    // which is independently static-proven as the strongest Switch
+    // structural homolog of the PC SC1.70 awakening-UJ prerequisite.
+
+    InstallP50AConditionCompat();
+
+    const bool setter =
+        InstallP57CentralSetterTrace();
+
+    const bool mode =
+        InstallP59ActionModeBaseTrace();
+
+    const bool active_uj =
+        InstallP65ActiveUjEligibilityBridge();
+
+    Logging.Log(
+        "[NSC:P65A] READY "
+        "clean_p64_semantic_state=1 "
+        "p64_consumer_7abe9c_installed=0 "
+        "active_f58_bridge=%d "
+        "active_caller=0x7f46b8 "
+        "main_prereq=0x7f2a9c_nop "
+        "central_setter=%d mode_base=%d "
+        "victim_safe_p50=1 "
+        "no_force87=1 no_force700=1 "
+        "no_selector8=1 no_char281_branch=1",
+        active_uj ? 1 : 0,
+        setter ? 1 : 0,
+        mode ? 1 : 0
+    );
 }
 
 void InstallP52APreUjProbe() {
