@@ -19,4 +19,5 @@ void InstallP76AForkRuntimeProbe();
 void InstallP77AAcceptanceProbe();
 void InstallP78ASemanticAltRouteProbe();
 void InstallP79ADualSubpredicateProbe();
+void InstallP80BDeepConditionTrace();
 }
