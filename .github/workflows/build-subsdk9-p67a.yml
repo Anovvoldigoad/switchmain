@@ -2,7 +2,6 @@ name: Build NSC P67A Active Selector1 Consumer Bridge
 
 on:
   workflow_dispatch:
-  push:
 
 permissions:
   contents: read
