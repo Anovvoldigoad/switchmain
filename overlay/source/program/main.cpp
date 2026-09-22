@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP67AActiveSelector1ConsumerBridge();
+    nsc::InstallP76AForkRuntimeProbe();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P67A active selector1 consumer bridge exception");
+    EXL_ABORT("NSC P76A fork runtime probe exception");
 }

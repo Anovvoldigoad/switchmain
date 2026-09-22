@@ -15,4 +15,5 @@ void InstallP64FUjSemanticBridge();
 void InstallP65ASourceParityActiveUjBridge();
 void InstallP66AVirtualUjSemanticBridge();
 void InstallP67AActiveSelector1ConsumerBridge();
+void InstallP76AForkRuntimeProbe();
 }
