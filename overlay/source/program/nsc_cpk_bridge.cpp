@@ -1,4 +1,5 @@
 #include "nsc_cpk_bridge.hpp"
+#include "p81_ougi_awake_ids.hpp"
 #include "condition_compat_generated.hpp"
 
 #include "lib.hpp"
@@ -169,6 +170,26 @@ constexpr ptrdiff_t kP80BConditionGetterOffset =
 
 constexpr ptrdiff_t kP80BActorCollectionOffset =
     0x10F80;
+
+// P81A — data-driven OugiAwakening policy bridge.
+//
+// Exact UJ decision:
+//   0x7F4588 BLR virtual+0x1288
+//   LR = 0x7F458C
+//
+// Resolved vfunc for proven actor vtable:
+//   main+0x7EAC34
+//
+// Native result is always evaluated first.
+constexpr ptrdiff_t kP81UjPolicyParentOffset =
+    0x7EAC34;
+
+constexpr ptrdiff_t kP81UjPolicyCallerReturnOffset =
+    0x7F458C;
+
+std::atomic<uint32_t> g_p81_policy_seq{0};
+
+
 
 std::atomic<uintptr_t> g_p80b_actor{0};
 std::atomic<uintptr_t> g_p80b_collection{0};
@@ -1957,6 +1978,124 @@ HOOK_DEFINE_TRAMPOLINE(P76UjCorridorHook) {
 // No per-frame B-return logging here.
 // It only exposes actor + collection to the nested 0x777388 query.
 // -----------------------------------------------------------------------------
+
+
+HOOK_DEFINE_TRAMPOLINE(P81OugiAwakeningPolicyHook) {
+    static uint32_t Callback(void* actor) {
+        const uintptr_t caller_lr =
+            reinterpret_cast<uintptr_t>(
+                __builtin_return_address(0));
+
+        const ptrdiff_t caller_off =
+            MainRelativeOffset(caller_lr);
+
+        // Native result FIRST.
+        const uint32_t native_ret =
+            Orig(actor);
+
+        // Exact UJ-decision caller only.
+        if (
+            caller_off
+            != kP81UjPolicyCallerReturnOffset
+        ) {
+            return native_ret;
+        }
+
+        uint32_t side =
+            0xFFFFFFFFu;
+
+        uint32_t char_id =
+            0xFFFFFFFFu;
+
+        const bool valid =
+            ReadActorIdentity(
+                actor,
+                side,
+                char_id);
+
+        const bool semantic =
+            actor
+            && P64QuerySemanticUltimateJutsu(
+                actor);
+
+        const bool member =
+            valid
+            && p81_data::
+                ContainsOugiAwakeningId(
+                    char_id);
+
+        uint32_t e94 =
+            0xFFFFFFFFu;
+
+        uint32_t e9c =
+            0xFFFFFFFFu;
+
+        if (actor) {
+            const auto* b =
+                reinterpret_cast<
+                    const volatile uint8_t*>(
+                    actor);
+
+            e94 =
+                *reinterpret_cast<
+                    const volatile uint32_t*>(
+                    b + 0xE94);
+
+            e9c =
+                *reinterpret_cast<
+                    const volatile uint32_t*>(
+                    b + 0xE9C);
+        }
+
+        // +0x1288:
+        //
+        // nonzero -> ALT corridor
+        // zero    -> native UJ corridor
+        //
+        // Membership grants only the OugiAwakening
+        // exception. Nothing downstream is forced.
+        const bool allow =
+            native_ret != 0
+            && semantic
+            && member;
+
+        const uint32_t policy_ret =
+            allow
+            ? 0u
+            : native_ret;
+
+        const uint32_t seq =
+            g_p81_policy_seq.fetch_add(
+                1,
+                std::memory_order_relaxed);
+
+        Logging.Log(
+            "[NSC:P81A] POLICY "
+            "seq=%u actor=%p "
+            "valid=%u side=%u char=%u "
+            "member=%u semantic=%u "
+            "native=%u policy=%u allow=%u "
+            "caller_off=0x%lx "
+            "e94=%u e9c=%u",
+            seq,
+            actor,
+            valid ? 1u : 0u,
+            side,
+            char_id,
+            member ? 1u : 0u,
+            semantic ? 1u : 0u,
+            native_ret,
+            policy_ret,
+            allow ? 1u : 0u,
+            static_cast<unsigned long>(
+                caller_off),
+            e94,
+            e9c);
+
+        return policy_ret;
+    }
+};
+
 
 HOOK_DEFINE_TRAMPOLINE(P80BContextHook) {
     static uint32_t Callback(void* actor) {
@@ -4580,6 +4719,71 @@ void InstallP79ADualSubpredicateProbe() {
             kP79PredicateBCallerReturnOffset));
 }
 
+
+
+
+void InstallP81AOugiAwakeningPolicyBridge() {
+    // P50/P67 compatibility + P77 native UJ acceptance.
+    InstallP77AAcceptanceProbe();
+
+    static constexpr uint32_t
+        kParentExpected[] = {
+            0xA9BF4FFE,
+            0xAA0003F3,
+            0x9400000D,
+            0x34000080,
+            0x52800020,
+            0xA8C14FFE,
+            0xD65F03C0,
+            0xF9400268,
+        };
+
+    bool ok = true;
+
+    if (!MatchWords(
+            kP81UjPolicyParentOffset,
+            kParentExpected)) {
+        LogFingerprintFail(
+            "P81_UJ_POLICY_PARENT",
+            kP81UjPolicyParentOffset);
+
+        ok = false;
+    }
+
+    if (ok) {
+        P81OugiAwakeningPolicyHook::
+            InstallAtOffset(
+                kP81UjPolicyParentOffset);
+    }
+
+    Logging.Log(
+        "[NSC:P81A] READY "
+        "baseline_p77=1 "
+        "probe_ok=%u "
+        "parent=0x%lx "
+        "caller_return=0x%lx "
+        "ougi_ids=%lu "
+        "ougi_sha=%s "
+        "exact_uj_call_only=1 "
+        "native_first=1 "
+        "p80_query_installed=0 "
+        "p79_probe_installed=0 "
+        "p78_probe_installed=0 "
+        "no_condition_mutation=1 "
+        "no_force87=1 "
+        "no_force700=1 "
+        "no_char281_branch=1",
+        ok ? 1u : 0u,
+        static_cast<unsigned long>(
+            kP81UjPolicyParentOffset),
+        static_cast<unsigned long>(
+            kP81UjPolicyCallerReturnOffset),
+        static_cast<unsigned long>(
+            p81_data::
+                kOugiAwakeningIdCount),
+        p81_data::
+            kOugiAwakeningSourceSha256);
+}
 
 
 void InstallP80BDeepConditionTrace() {

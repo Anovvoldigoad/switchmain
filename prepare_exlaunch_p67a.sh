@@ -6,6 +6,7 @@ if [[ ! -d "$EXL" ]]; then echo "[!] Missing exlaunch tree: $EXL"; exit 1; fi
 cp "$ROOT/overlay/source/program/main.cpp" "$EXL/source/program/main.cpp"
 cp "$ROOT/overlay/source/program/nsc_cpk_bridge.cpp" "$EXL/source/program/nsc_cpk_bridge.cpp"
 cp "$ROOT/overlay/source/program/nsc_cpk_bridge.hpp" "$EXL/source/program/nsc_cpk_bridge.hpp"
+cp "$ROOT/overlay/source/program/p81_ougi_awake_ids.hpp" "$EXL/source/program/p81_ougi_awake_ids.hpp"
 cp "$ROOT/overlay/source/program/condition_compat_generated.hpp" "$EXL/source/program/condition_compat_generated.hpp"
 python3 - "$EXL/config.mk" <<'PY'
 from pathlib import Path

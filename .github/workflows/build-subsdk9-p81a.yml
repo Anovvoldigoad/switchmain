@@ -1,6 +1,9 @@
-name: Build NSC P80B Deep Condition Trace
+name: Build NSC P81A OugiAwakening Policy Bridge
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -26,7 +29,7 @@ jobs:
         run: |
           set -euxo pipefail
 
-          test -f verify_p80b_kit.py
+          test -f verify_p81a_kit.py
           test -f prepare_exlaunch_p67a.sh
           test -f overlay/source/program/nsc_cpk_bridge.cpp
           test -f overlay/source/program/main.cpp
@@ -72,7 +75,7 @@ jobs:
             /tmp/condition_compat_generated.hpp \
             overlay/source/program/condition_compat_generated.hpp
 
-          python3 verify_p80b_kit.py
+          python3 verify_p81a_kit.py
 
       - name: Clone pinned exlaunch
         shell: bash
@@ -122,7 +125,7 @@ jobs:
           cd "$GITHUB_WORKSPACE/exlaunch"
           make -j2
 
-      - name: Collect P80B
+      - name: Collect P81A
         shell: bash
         run: |
           set -euxo pipefail
@@ -135,7 +138,7 @@ jobs:
           test -s "$OUT"
           test -s "$ELF"
 
-          grep -aFq '[NSC:P80B] READY' "$ELF"
+          grep -aFq '[NSC:P81A] READY' "$ELF"
           grep -aFq '[NSC:P77A] READY' "$ELF"
           grep -aFq '[NSC:P67A] READY' "$ELF"
           grep -aFq '[NSC:P64F] UJ_SEM_GATE' "$ELF"
@@ -151,7 +154,7 @@ jobs:
           assert len(b) > 10000
           assert b[:4] == b'NSO0'
 
-          print("P80B_NSO_VERIFY=PASS")
+          print("P81A_NSO_VERIFY=PASS")
           PY2
 
           rm -rf artifact
@@ -174,7 +177,7 @@ jobs:
             artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
 
           cp \
-            README_P80B.txt \
+            README_P81A.txt \
             artifact/
 
           (
@@ -196,9 +199,9 @@ jobs:
             sha256sum -c SHA256SUMS.txt
           )
 
-      - name: Upload P80B artifact
+      - name: Upload P81A artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P80B-deep-condition-trace
+          name: NSC-P81A-ougi-awakening-policy-bridge
           path: artifact/
           compression-level: 9
