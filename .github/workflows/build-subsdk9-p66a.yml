@@ -1,7 +1,8 @@
-name: Build NSC P65A Source-Parity Active UJ Bridge
+name: Build NSC P66A Virtual UJ Semantic Bridge
 
 on:
   workflow_dispatch:
+  push:
 
 permissions:
   contents: read
@@ -9,6 +10,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     container:
       image: devkitpro/devkita64:latest
 
@@ -17,25 +19,29 @@ jobs:
       DEVKITA64: /opt/devkitpro/devkitA64
 
     steps:
-      - name: Checkout P65A build kit
+      - name: Checkout P66A
         uses: actions/checkout@v4
 
       - name: Verify repository layout
         shell: bash
         run: |
           set -euxo pipefail
-          test -f .github/workflows/build-subsdk9-p65a.yml
-          test -f make_p65a.py
-          test -f prepare_exlaunch_p65a.sh
+
+          test -f .github/workflows/build-subsdk9-p66a.yml
+          test -f prepare_exlaunch_p66a.sh
+          test -f verify_p66a_kit.py
           test -f overlay/source/program/nsc_cpk_bridge.cpp
+          test -f overlay/source/program/main.cpp
           test -f deploy/atmosphere/contents/0100FA10190A0000/exefs/main
           test -f restore/atmosphere/contents/0100FA10190A0000/exefs/main
 
-      - name: Verify devkitPro and Python
+      - name: Verify toolchain
         shell: bash
         run: |
           set -euxo pipefail
+
           export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
+
           test -x "$DEVKITA64/bin/aarch64-none-elf-g++"
           "$DEVKITA64/bin/aarch64-none-elf-g++" --version
           python3 --version
@@ -54,10 +60,11 @@ jobs:
 
           python3 -c 'import lz4.block; print("PYTHON_LZ4=PASS")'
 
-      - name: Verify P65A source and paired main
+      - name: Verify P66A source and paired main
         shell: bash
         run: |
           set -euxo pipefail
+
           python3 generate_condition_table.py \
             condition_compat_manifest.json \
             /tmp/condition_compat_generated.hpp
@@ -66,12 +73,13 @@ jobs:
             /tmp/condition_compat_generated.hpp \
             overlay/source/program/condition_compat_generated.hpp
 
-          python3 make_p65a.py --verify-only
+          python3 verify_p66a_kit.py
 
       - name: Clone pinned exlaunch
         shell: bash
         run: |
           set -euxo pipefail
+
           git clone \
             https://github.com/shadowninja108/exlaunch.git \
             "$GITHUB_WORKSPACE/exlaunch"
@@ -83,45 +91,50 @@ jobs:
             submodule update --init --recursive
 
           test "$(
-            git -C "$GITHUB_WORKSPACE/exlaunch" rev-parse --short HEAD
+            git -C "$GITHUB_WORKSPACE/exlaunch" \
+              rev-parse --short HEAD
           )" = "229bbd6"
 
-      - name: Overlay P65A sources
+      - name: Overlay P66A
         shell: bash
         run: |
           set -euxo pipefail
-          sed -i 's/\r$//' prepare_exlaunch_p65a.sh || true
-          chmod +x prepare_exlaunch_p65a.sh
 
-          bash ./prepare_exlaunch_p65a.sh \
+          sed -i 's/\r$//' prepare_exlaunch_p66a.sh || true
+          chmod +x prepare_exlaunch_p66a.sh
+
+          bash ./prepare_exlaunch_p66a.sh \
             "$GITHUB_WORKSPACE/exlaunch"
 
           grep -F \
-            'ELF_EXTRACT := $(PWD)/p65a_final.elf' \
+            'ELF_EXTRACT := $(PWD)/p66a_final.elf' \
             "$GITHUB_WORKSPACE/exlaunch/config.mk"
 
       - name: Build subsdk9
         shell: bash
         run: |
           set -euxo pipefail
+
           export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
+
           cd "$GITHUB_WORKSPACE/exlaunch"
           make -j2
 
-      - name: Verify linked P65A and collect artifact
+      - name: Verify linked P66A and collect artifact
         shell: bash
         run: |
           set -euxo pipefail
+
           cd "$GITHUB_WORKSPACE"
 
           OUT="exlaunch/deploy/subsdk9"
-          ELF="exlaunch/p65a_final.elf"
+          ELF="exlaunch/p66a_final.elf"
 
           test -s "$OUT"
           test -s "$ELF"
 
-          grep -aFq '[NSC:P65A] READY' "$ELF"
-          grep -aFq '[NSC:P65A] UJ_ACTIVE_GATE' "$ELF"
+          grep -aFq '[NSC:P66A] READY' "$ELF"
+          grep -aFq '[NSC:P66A] UJ_VCALL_GATE' "$ELF"
           grep -aFq '[NSC:P64F] UJ_SEM_SET' "$ELF"
           grep -aFq '[NSC:P50A] READY' "$ELF"
           grep -aFq '[NSC:P59A] PLAY_CALL' "$ELF"
@@ -130,16 +143,16 @@ jobs:
           from pathlib import Path
           import sys
 
-          p = Path(sys.argv[1])
-          b = p.read_bytes()
+          b = Path(sys.argv[1]).read_bytes()
 
-          assert len(b) > 10000, len(b)
-          assert b[:4] == b'NSO0', b[:4]
+          assert len(b) > 10000
+          assert b[:4] == b'NSO0'
 
-          print("P65A_NSO_VERIFY=PASS")
+          print("P66A_NSO_VERIFY=PASS")
           PY2
 
           rm -rf artifact
+
           mkdir -p \
             artifact/atmosphere/contents/0100FA10190A0000/exefs
 
@@ -158,9 +171,9 @@ jobs:
             artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
 
           cp \
-            README_P65A.txt \
-            P65A_STATIC_AUDIT.txt \
-            R74_P65A_CHECKPOINT.md \
+            README_P66A.txt \
+            P66A_STATIC_AUDIT.txt \
+            R75_P66A_CHECKPOINT.md \
             artifact/
 
           (
@@ -173,9 +186,9 @@ jobs:
 
           sha256sum "$OUT" "$ELF"
 
-      - name: Upload P65A artifact
+      - name: Upload P66A artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P65A-source-parity-active-uj-bridge
+          name: NSC-P66A-virtual-uj-semantic-bridge
           path: artifact/
           compression-level: 9

@@ -53,6 +53,11 @@ constexpr ptrdiff_t kUjEligibilityGateOffset       = 0x7D3138;
 // P65A: runtime-proven player UJ path. P63 hardware captured
 // F58 return LR main+0x7F46B8 on a real vanilla UJ attempt.
 constexpr ptrdiff_t kP65ActivePlayerUjCallerReturnOffset = 0x7F46B8;
+// P66A: actual runtime UJ consumer boundary. The game loads actor->vtable+0xF58
+// into X8 and performs BLR X8 at main+0x7F46B4. P66 hooks this callsite,
+// not one concrete virtual implementation.
+constexpr ptrdiff_t kP66ActiveUjVirtualCallOffset = 0x7F46B4;
+constexpr ptrdiff_t kP66ActiveUjResultGateOffset = 0x7F46B8;
 constexpr ptrdiff_t kUjPostGateHelperOffset        = 0x7D2DE4;
 constexpr ptrdiff_t kNativeControlGetterOffset     = 0x7C6280;
 // P64F: static-proven semantic UJ consumer. This helper contains the
@@ -190,6 +195,7 @@ std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_p64_semantic_updates{0};
 std::atomic<uint32_t> g_p64_semantic_gate_logs{0};
 std::atomic<uint32_t> g_p65_active_uj_gate_logs{0};
+std::atomic<uint32_t> g_p66_virtual_uj_gate_logs{0};
 std::atomic_flag g_p64_semantic_lock = ATOMIC_FLAG_INIT;
 
 struct P64SemanticControlEntry {
@@ -1547,6 +1553,131 @@ HOOK_DEFINE_TRAMPOLINE(P64SemanticUjConsumerHook) {
 };
 
 
+
+// P66A: generic semantic overlay at the actual actor-specific virtual UJ call.
+//
+// Static v1.70 proof:
+//
+//   0x7F46A4  LDR X8,[X19]
+//   0x7F46A8  MOV X0,X19
+//   0x7F46AC  MOV W1,WZR
+//   0x7F46B0  LDR X8,[X8,#0xF58]
+//   0x7F46B4  BLR X8
+//   0x7F46B8  CBZ W0,0x7F4738
+//
+// P65 hooked one concrete F58 implementation (0x7D3138). That is
+// insufficient for polymorphic/custom actors because the game dispatches
+// through actor->vtable+0xF58.
+//
+// This inline hook replaces ONLY the BLR instruction. It explicitly calls
+// the actor's ORIGINAL virtual implementation from X8, then ORs the native
+// result with the source-derived MovesetPlus selector1 semantic.
+//
+// No character ID is special-cased and the following native CBZ remains
+// untouched.
+HOOK_DEFINE_INLINE(P66ActiveUjVirtualCallHook) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        using VirtualUjFn =
+            uint32_t (*)(void*, uint32_t, uint32_t);
+
+        void* actor =
+            reinterpret_cast<void*>(ctx->X[0]);
+
+        const uint32_t mode =
+            ctx->W[1];
+
+        const uint32_t context =
+            ctx->W[2];
+
+        const uintptr_t virtual_target =
+            static_cast<uintptr_t>(ctx->X[8]);
+
+        uint32_t native = 0u;
+
+        if (virtual_target != 0u) {
+            auto fn =
+                reinterpret_cast<VirtualUjFn>(
+                    virtual_target
+                );
+
+            native = fn(
+                actor,
+                mode,
+                context
+            );
+        }
+
+        const bool semantic =
+            P64QuerySemanticUltimateJutsu(actor);
+
+        const uint32_t out =
+            (native != 0u || semantic)
+                ? 1u
+                : 0u;
+
+        // The original BLR would return its result in W0.
+        // Since the inline hook replaces BLR, reproduce that ABI result.
+        ctx->W[0] = out;
+
+        uint32_t side = 0xFFFFFFFFu;
+        uint32_t char_id = 0xFFFFFFFFu;
+
+        const bool valid =
+            ReadActorIdentity(
+                actor,
+                side,
+                char_id
+            );
+
+        if (valid) {
+            const uint32_t n =
+                g_p66_virtual_uj_gate_logs.fetch_add(
+                    1,
+                    std::memory_order_relaxed
+                );
+
+            // Keep enough vanilla control samples while guaranteeing
+            // semantic/custom calls remain visible in logs.
+            if (
+                n < 256u &&
+                (
+                    semantic ||
+                    native != 0u ||
+                    char_id > kVanillaMaxCharId
+                )
+            ) {
+                const ptrdiff_t impl_off =
+                    MainRelativeOffset(
+                        virtual_target
+                    );
+
+                Logging.Log(
+                    "[NSC:P66A] UJ_VCALL_GATE "
+                    "n=%u actor=%p side=%u char=%u "
+                    "impl=%p impl_off=0x%lx "
+                    "mode=%u context=%u "
+                    "native=%u semantic=%u ret=%u",
+                    n,
+                    actor,
+                    side,
+                    char_id,
+                    reinterpret_cast<void*>(
+                        virtual_target
+                    ),
+                    static_cast<unsigned long>(
+                        impl_off
+                    ),
+                    mode,
+                    context,
+                    native,
+                    semantic ? 1u : 0u,
+                    out
+                );
+            }
+        }
+    }
+};
+
 // P65A: functional bridge at the runtime-proven player UJ F58 call.
 //
 // P64F proved Event236 selector1 reaches our semantic state, but its
@@ -2293,6 +2424,46 @@ bool InstallP64SemanticUjBridge() {
 }
 
 
+
+bool InstallP66ActiveUjVirtualCallBridge() {
+    // Strict fingerprint over the complete actor-vtable dispatch window:
+    //
+    // 7F46A4 LDR X8,[X19]
+    // 7F46A8 MOV X0,X19
+    // 7F46AC MOV W1,WZR
+    // 7F46B0 LDR X8,[X8,#0xF58]
+    // 7F46B4 BLR X8
+    // 7F46B8 CBZ W0,7F4738
+    // 7F46BC MOV X0,X19
+    // 7F46C0 MOV W1,WZR
+    // 7F46C4 BL  7D2DE4
+    static constexpr uint32_t kExpected[] = {
+        0xF9400268,
+        0xAA1303E0,
+        0x2A1F03E1,
+        0xF947AD08,
+        0xD63F0100,
+        0x34000400,
+        0xAA1303E0,
+        0x2A1F03E1,
+        0x97FF79C8,
+    };
+
+    if (!MatchWords(0x7F46A4, kExpected)) {
+        LogFingerprintFail(
+            "P66_UJ_VIRTUAL_CALL",
+            0x7F46A4
+        );
+        return false;
+    }
+
+    P66ActiveUjVirtualCallHook::InstallAtOffset(
+        kP66ActiveUjVirtualCallOffset
+    );
+
+    return true;
+}
+
 bool InstallP65ActiveUjEligibilityBridge() {
     static constexpr uint32_t kF58Expected[] = {
         0xFC1C0FE8, 0xA9015FFE, 0xA90257F6, 0xA9034FF4,
@@ -2533,6 +2704,57 @@ void InstallP64FUjSemanticBridge() {
                 sem ? 1 : 0, setter ? 1 : 0, mode ? 1 : 0, ujtrace ? 1 : 0);
 }
 
+
+
+void InstallP66AVirtualUjSemanticBridge() {
+    // Functional P66A:
+    //
+    // - P50 victim-safe Event236/condition/CPK core remains intact.
+    // - Event236 selector1 still populates P64 semantic UJ state.
+    // - P65's concrete 0x7D3138 trampoline is NOT installed.
+    // - P64's inactive 0x7ABE9C semantic consumer is NOT installed.
+    // - P63 F58 tracer is NOT installed.
+    //
+    // Instead, the actual polymorphic callsite at main+0x7F46B4 is
+    // intercepted. The actor-specific native vtable+0xF58 implementation
+    // is called first, and only its boolean result is ORed with selector1.
+    //
+    // The paired main keeps the source-parity prerequisite:
+    // 0x7F2A9C BD001FE0 -> D503201F.
+
+    InstallP50AConditionCompat();
+
+    const bool setter =
+        InstallP57CentralSetterTrace();
+
+    const bool mode =
+        InstallP59ActionModeBaseTrace();
+
+    const bool uj_vcall =
+        InstallP66ActiveUjVirtualCallBridge();
+
+    Logging.Log(
+        "[NSC:P66A] READY "
+        "victim_safe_p50=1 "
+        "semantic_selector1=1 "
+        "virtual_uj_bridge=%d "
+        "virtual_call=0x7f46b4 "
+        "result_gate=0x7f46b8 "
+        "slot=0xf58 "
+        "main_prereq=0x7f2a9c_nop "
+        "p65_concrete_f58_installed=0 "
+        "p64_7abe9c_installed=0 "
+        "central_setter=%d "
+        "mode_base=%d "
+        "no_force87=1 "
+        "no_force700=1 "
+        "no_selector8=1 "
+        "no_char281_branch=1",
+        uj_vcall ? 1 : 0,
+        setter ? 1 : 0,
+        mode ? 1 : 0
+    );
+}
 
 void InstallP65ASourceParityActiveUjBridge() {
     // Functional P65A:

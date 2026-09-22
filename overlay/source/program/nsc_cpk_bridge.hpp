@@ -13,4 +13,5 @@ void InstallP59AActionModeDispatchTrace();
 void InstallP63AUjRouterFirstDivergenceTrace();
 void InstallP64FUjSemanticBridge();
 void InstallP65ASourceParityActiveUjBridge();
+void InstallP66AVirtualUjSemanticBridge();
 }
