@@ -85,6 +85,7 @@ constexpr ptrdiff_t kP77UjAcceptanceOffset =
     0x8B2B70;
 
 constexpr ptrdiff_t kP77UjCallerReturnOffset =
+    0x7F4648;
 
 // P78A:
 // Semantic-enabled ALT-route runtime probe.
@@ -105,8 +106,6 @@ constexpr ptrdiff_t kP78AltRouteOffset =
 
 constexpr ptrdiff_t kP78AltCallerReturnOffset =
     0x7F4598;
-
-    0x7F4648;
 
 
 constexpr ptrdiff_t kUjSemanticCaller0ReturnOffset = 0xC76C4;
