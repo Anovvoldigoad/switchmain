@@ -2398,6 +2398,8 @@ bool InstallP54DirectJutsuOwnerProbes() {
 }
 
 
+bool InstallP64SemanticUjBridge();
+
 bool InstallP67ActiveSelector1ConsumerBridge() {
     // Active player input consumer:
     //
