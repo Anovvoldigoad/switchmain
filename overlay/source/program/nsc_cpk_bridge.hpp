@@ -11,4 +11,5 @@ void InstallP57ACentralSetterTrace();
 void InstallP58APlayActionCallerTrace();
 void InstallP59AActionModeDispatchTrace();
 void InstallP63AUjRouterFirstDivergenceTrace();
+void InstallP64FUjSemanticBridge();
 }

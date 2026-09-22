@@ -1,0 +1,63 @@
+P64F STATIC AUDIT — NSC Switch 1.70
+
+Target main Build ID:
+48ece454b61412b9fb46fab2be3f5ef7b2804f39
+
+Parent lineage:
+P50 victim-UJ safety + condition compatibility
++ P57 central setter diagnostics
++ P59 action-mode diagnostics
++ P63 UJ router diagnostics
+- P60 selector8 writer
+- P61 F58 forced return
+- P62 persistent getter override
+
+NEW STATIC PROOF USED BY P64F
+
+1) Native control getter:
+   main+0x7C6280
+
+2) Native helper main+0x7ABE9C contains a selector1 query:
+   0x7ABF28  ADD X0,X19,#0x228
+   0x7ABF2C  MOV W1,#1
+   0x7ABF30  BL  0x7C6280
+   0x7ABF34  CMP W0,#0
+
+3) The same helper is directly called by the native UJ router family:
+   0xC76C0 -> 0x7ABE9C, return 0xC76C4
+   0xC76EC -> 0x7ABE9C, return 0xC76F0
+   0xC78D0 -> 0x7ABE9C, return 0xC78D4
+
+4) Downstream native UJ route remains untouched:
+   F58 call family around 0xC7870
+   state 0x87 literal at 0xC795C
+   state request through vtable+0xDF0 around 0xC79C0
+
+P64F FUNCTIONAL DELTA
+
+- Event236 op14 selector1 stores "Ultimate Jutsu enabled" in an exlaunch
+  per-actor semantic table instead of discarding the semantic entirely.
+- Event236 op15 selector1 clears that semantic.
+- Native Event236 O14/O15 gameplay paths remain shadowed to preserve the
+  hardware-proven victim-UJ safety behavior.
+- main+0x7ABE9C is hooked. Native return is preserved when true. If native
+  returns false, the result is promoted to true ONLY when:
+    a) caller is exactly one of the three proven UJ-router callers above; and
+    b) the same actor has semantic selector1 enabled.
+
+NOT DONE BY P64F
+
+- no char==281 gameplay special case
+- no actor+0x12A24/0x12A3C blind write
+- no selector8 getter/setter override
+- no F58 force-true
+- no E94/state 0x87 write
+- no PlayAction445->700 rewrite
+- no direct PlayAction700 force
+- no OugiAwakeningParam override yet
+
+Evidence classification:
+- selector1 == Ultimate Jutsu: SOURCE-PROVEN from UltimateStormAPI.
+- main+0x7ABE9C selector1 query: PROVEN STATIC Switch 1.70.
+- direct calls from C76C0/C76EC/C78D0: PROVEN STATIC Switch 1.70.
+- P64F semantic promotion fixing Tobi XXA: EXPERIMENTAL until hardware test.

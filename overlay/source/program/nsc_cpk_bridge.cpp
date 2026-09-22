@@ -52,6 +52,14 @@ constexpr ptrdiff_t kActionModeVtableSlotOffset    = 0xE40;
 constexpr ptrdiff_t kUjEligibilityGateOffset       = 0x7D3138;
 constexpr ptrdiff_t kUjPostGateHelperOffset        = 0x7D2DE4;
 constexpr ptrdiff_t kNativeControlGetterOffset     = 0x7C6280;
+// P64F: static-proven semantic UJ consumer. This helper contains the
+// native control getter selector1 call at 0x7ABF30 and is called directly
+// from the native UJ router at 0xC76C0/0xC76EC/0xC78D0. P64F overlays
+// ONLY this helper's return when a MovesetPlus selector1 semantic latch is set.
+constexpr ptrdiff_t kUjSemanticConsumerOffset      = 0x7ABE9C;
+constexpr ptrdiff_t kUjSemanticCaller0ReturnOffset = 0xC76C4;
+constexpr ptrdiff_t kUjSemanticCaller1ReturnOffset = 0xC76F0;
+constexpr ptrdiff_t kUjSemanticCaller2ReturnOffset = 0xC78D4;
 constexpr ptrdiff_t kUjRouterStartOffset           = 0xC7600;
 constexpr ptrdiff_t kUjRouterEndOffset             = 0xC81A4;
 constexpr ptrdiff_t kUjRouterGateReturnOffset      = 0xC7874;
@@ -176,6 +184,23 @@ std::atomic<uint32_t> g_p59_play_call_logs{0};
 std::atomic<uint32_t> g_p59_dispatch_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
+std::atomic<uint32_t> g_p64_semantic_updates{0};
+std::atomic<uint32_t> g_p64_semantic_gate_logs{0};
+std::atomic_flag g_p64_semantic_lock = ATOMIC_FLAG_INIT;
+
+struct P64SemanticControlEntry {
+    void* actor = nullptr;
+    uint32_t char_id = 0xFFFFFFFFu;
+    uint32_t enabled_mask = 0;
+};
+P64SemanticControlEntry g_p64_semantic_controls[32]{};
+constexpr uint32_t kP64SemanticUltimateJutsuBit = (1u << 1);
+
+class P64SemanticLock {
+public:
+    P64SemanticLock() { while (g_p64_semantic_lock.test_and_set(std::memory_order_acquire)) {} }
+    ~P64SemanticLock() { g_p64_semantic_lock.clear(std::memory_order_release); }
+};
 TrackedCode g_tracked[32]{};
 uint32_t g_tracked_count = 0;
 
@@ -293,6 +318,41 @@ bool ReadActorIdentity(void* actor, uint32_t& side, uint32_t& char_id) {
     side = *reinterpret_cast<volatile uint32_t*>(b + 0xE50);
     char_id = *reinterpret_cast<volatile uint32_t*>(b + 0xE54);
     return side <= 1 && char_id < 0x1000;
+}
+
+void P64SetSemanticUltimateJutsu(void* actor, bool enabled) {
+    uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+    if (!ReadActorIdentity(actor, side, char_id)) return;
+    P64SemanticLock lock;
+    P64SemanticControlEntry* empty = nullptr;
+    for (auto& e : g_p64_semantic_controls) {
+        if (e.actor == actor) {
+            if (e.char_id != char_id) {
+                e.char_id = char_id;
+                e.enabled_mask = 0;
+            }
+            if (enabled) e.enabled_mask |= kP64SemanticUltimateJutsuBit;
+            else e.enabled_mask &= ~kP64SemanticUltimateJutsuBit;
+            return;
+        }
+        if (!e.actor && !empty) empty = &e;
+    }
+    if (!empty) return;
+    empty->actor = actor;
+    empty->char_id = char_id;
+    empty->enabled_mask = enabled ? kP64SemanticUltimateJutsuBit : 0u;
+}
+
+bool P64QuerySemanticUltimateJutsu(void* actor) {
+    uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+    if (!ReadActorIdentity(actor, side, char_id)) return false;
+    P64SemanticLock lock;
+    for (auto& e : g_p64_semantic_controls) {
+        if (e.actor != actor) continue;
+        if (e.char_id != char_id) return false;
+        return (e.enabled_mask & kP64SemanticUltimateJutsuBit) != 0;
+    }
+    return false;
 }
 
 uintptr_t ReadActionSetterTarget(void* actor) {
@@ -1227,17 +1287,28 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 return 1;
 
             case 14: {
-                // P56B: source-grounded locator trigger. UltimateStormAPI's
-                // me_enable_control uses p2=self/enemy and p3=control selector;
-                // selector 1 is Ultimate Jutsu. Snapshot BEFORE the P50 shadow
-                // so this is the untouched Switch state when the mod requests UJ enable.
+                // P64F functional semantic bridge: preserve victim-safe shadowing of
+                // the broken native Event236 O14 implementation, but do NOT discard
+                // MovesetPlus selector1 anymore. Store the source semantic in exlaunch
+                // state and let the proven native UJ consumer query it later.
+                if (p3 == 1) {
+                    void* target = GetEventTargetActor(actor, p2);
+                    if (target) {
+                        P64SetSemanticUltimateJutsu(target, true);
+                        const uint32_t n = g_p64_semantic_updates.fetch_add(1, std::memory_order_relaxed);
+                        if (n < 256) {
+                            uint32_t tside = 0xFFFFFFFFu, tchar = 0xFFFFFFFFu;
+                            ReadActorIdentity(target, tside, tchar);
+                            Logging.Log("[NSC:P64F] UJ_SEM_SET n=%u actor=%p target=%p side=%u char=%u p2=%d enabled=1",
+                                        n, actor, target, tside, tchar, static_cast<int>(p2));
+                        }
+                    }
+                }
+                // Keep the old P56B snapshot as a diagnostic cross-check only.
                 if (p2 == 0 && p3 == 1) {
                     const uint32_t seq = g_p56b_custom_snapshots.fetch_add(1, std::memory_order_relaxed);
                     if (seq < 3) LogP56BControlSnapshot(actor, "CUSTOM_O14_UJ_ENABLE", side, char_id, seq);
                 }
-                // P43A: pure shadow. P41A CTRL_DUMP rejected +0x12A24 as PC-style
-                // boolean control block. Victim-UJ HARD PASS is from not calling the
-                // broken native O14 route; direct writes were mostly fail-closed no-ops.
                 if (g_event236_logs.load(std::memory_order_relaxed) < 4096) {
                     Logging.Log("[NSC:P50A] CTRL14_SHADOW actor=%p side=%u char=%u p2=%d p3=%d",
                                 actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3));
@@ -1246,8 +1317,21 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
             }
 
             case 15: {
-                // P43A: explicit shadow for me_disable_control / disable path.
-                // Logged for Kamui sequence reconstruction (seen repeatedly around UJ).
+                // P64F source-semantic disable path for selector1. Native O15 remains
+                // shadowed for victim safety; only the exlaunch semantic latch changes.
+                if (p3 == 1) {
+                    void* target = GetEventTargetActor(actor, p2);
+                    if (target) {
+                        P64SetSemanticUltimateJutsu(target, false);
+                        const uint32_t n = g_p64_semantic_updates.fetch_add(1, std::memory_order_relaxed);
+                        if (n < 256) {
+                            uint32_t tside = 0xFFFFFFFFu, tchar = 0xFFFFFFFFu;
+                            ReadActorIdentity(target, tside, tchar);
+                            Logging.Log("[NSC:P64F] UJ_SEM_SET n=%u actor=%p target=%p side=%u char=%u p2=%d enabled=0",
+                                        n, actor, target, tside, tchar, static_cast<int>(p2));
+                        }
+                    }
+                }
                 if (g_event236_logs.load(std::memory_order_relaxed) < 4096) {
                     Logging.Log("[NSC:P50A] OP15_SHADOW actor=%p side=%u char=%u p2=%d p3=%d",
                                 actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3));
@@ -1425,6 +1509,39 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         return ret;
     }
 };
+// P64F-A: functional, source-guided UJ semantic bridge.
+// Static v1.70 proof:
+//   main+0x7ABE9C contains native control getter selector1 at +0x94 (call 0x7ABF30).
+//   It is called directly by the UJ router at 0xC76C0, 0xC76EC and 0xC78D0.
+// The native result always wins. Only when native returns false, the caller is
+// one of those exact UJ-router sites, and MovesetPlus selector1 was enabled for
+// the SAME actor do we supply true. No action/state value is forced.
+HOOK_DEFINE_TRAMPOLINE(P64SemanticUjConsumerHook) {
+    static uint32_t Callback(void* actor) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        const uint32_t native = Orig(actor);
+        const bool exact_router = caller_off == kUjSemanticCaller0ReturnOffset ||
+                                  caller_off == kUjSemanticCaller1ReturnOffset ||
+                                  caller_off == kUjSemanticCaller2ReturnOffset;
+        const bool semantic = exact_router && P64QuerySemanticUltimateJutsu(actor);
+        const uint32_t out = (native != 0u || semantic) ? 1u : 0u;
+
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        if (valid && exact_router && (semantic || native == 0u)) {
+            const uint32_t n = g_p64_semantic_gate_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < 512) {
+                Logging.Log("[NSC:P64F] UJ_SEM_GATE n=%u actor=%p side=%u char=%u caller_off=0x%lx native=%u semantic=%u ret=%u",
+                            n, actor, side, char_id, static_cast<unsigned long>(caller_off),
+                            native, semantic ? 1u : 0u, out);
+            }
+        }
+        return out;
+    }
+};
+
 // P63A: pure read-only trace of the native +0xF58 eligibility implementation.
 // The result is always returned unchanged. Logging is limited to player-side or
 // generic custom actors and captures the exact native caller before Orig().
@@ -2069,6 +2186,38 @@ bool InstallP54DirectJutsuOwnerProbes() {
     return true;
 }
 
+bool InstallP64SemanticUjBridge() {
+    static constexpr uint32_t kConsumerExpected[] = {
+        0xF81E0FFE, 0xA9014FF4, 0xB94E9408, 0x51002908,
+        0xAA0003F3, 0x7100091F, 0x54000188, 0x5280D288,
+    };
+    static constexpr uint32_t kSelector1CallExpected[] = {
+        0x9108A260, 0x52800021, 0x940068D4, 0x7100001F,
+    };
+    static constexpr uint32_t kRouterCall0Expected[] = {0x941B91F7, 0x35000180};
+    static constexpr uint32_t kRouterCall1Expected[] = {0x941B91EC, 0x34000160};
+    static constexpr uint32_t kRouterCall2Expected[] = {0x941B9173, 0x35FFF100};
+    bool ok = true;
+    if (!MatchWords(kUjSemanticConsumerOffset, kConsumerExpected)) {
+        LogFingerprintFail("P64_UJ_SEM_CONSUMER", kUjSemanticConsumerOffset); ok = false;
+    }
+    if (!MatchWords(0x7ABF28, kSelector1CallExpected)) {
+        LogFingerprintFail("P64_UJ_SEM_SELECTOR1", 0x7ABF28); ok = false;
+    }
+    if (!MatchWords(0xC76C0, kRouterCall0Expected)) {
+        LogFingerprintFail("P64_UJ_SEM_CALL0", 0xC76C0); ok = false;
+    }
+    if (!MatchWords(0xC76EC, kRouterCall1Expected)) {
+        LogFingerprintFail("P64_UJ_SEM_CALL1", 0xC76EC); ok = false;
+    }
+    if (!MatchWords(0xC78D0, kRouterCall2Expected)) {
+        LogFingerprintFail("P64_UJ_SEM_CALL2", 0xC78D0); ok = false;
+    }
+    if (!ok) return false;
+    P64SemanticUjConsumerHook::InstallAtOffset(kUjSemanticConsumerOffset);
+    return true;
+}
+
 bool InstallP63UjRouterTrace() {
     static constexpr uint32_t kF58Expected[] = {
         0xFC1C0FE8, 0xA9015FFE, 0xA90257F6, 0xA9034FF4,
@@ -2272,6 +2421,20 @@ void InstallP63AUjRouterFirstDivergenceTrace() {
     const bool ujtrace = InstallP63UjRouterTrace();
     Logging.Log("[NSC:P63A] READY clean_p59_base=1 central_setter=%d mode_base=%d uj_router_trace=%d total_trampolines=10 writes=0 p60_removed=1 p61_removed=1 p62_removed=1 f58=0x7d3138 post_gate=0x7d2de4 ctrl_get=0x7c6280",
                 setter ? 1 : 0, mode ? 1 : 0, ujtrace ? 1 : 0);
+}
+
+void InstallP64FUjSemanticBridge() {
+    // Functional A/B build: clean P63 lineage plus one semantic gameplay mutation.
+    // Event236 selector1 is retained in exlaunch state; the proven native selector1
+    // consumer at 0x7ABE9C is allowed to return true only at its exact UJ-router
+    // callers. No state/action/actor field/native control getter is rewritten.
+    InstallP50AConditionCompat();
+    const bool setter = InstallP57CentralSetterTrace();
+    const bool mode = InstallP59ActionModeBaseTrace();
+    const bool ujtrace = InstallP63UjRouterTrace();
+    const bool sem = InstallP64SemanticUjBridge();
+    Logging.Log("[NSC:P64F] READY clean_p63_base=1 semantic_bridge=%d central_setter=%d mode_base=%d uj_router_trace=%d total_trampolines=11 gameplay_mutation=semantic_gate_only consumer=0x7abe9c selector1_call=0x7abf30 no_force87=1 no_force700=1 no_char281=1",
+                sem ? 1 : 0, setter ? 1 : 0, mode ? 1 : 0, ujtrace ? 1 : 0);
 }
 
 void InstallP52APreUjProbe() {

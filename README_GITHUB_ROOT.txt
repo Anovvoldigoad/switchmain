@@ -1,19 +1,23 @@
-R72B P63A GITHUB REPOSITORY ROOT PACKAGE
-========================================
+R73 P64F UJ SEMANTIC BRIDGE — GITHUB REPOSITORY ROOT PACKAGE
+=============================================================
 
-IMPORTANT:
-Extract the CONTENTS of this ZIP directly into the root of your GitHub repository.
-After extraction the repository must contain exactly:
+Extract the CONTENTS of this ZIP directly into the root of the GitHub repository.
+After extraction the repository must contain:
 
-  .github/workflows/build-subsdk9-p63a.yml
+  .github/workflows/build-subsdk9-p64f.yml
   overlay/source/program/...
   deploy/...
   restore/...
   prepare_exlaunch.sh
-  verify_p63a_kit.py
+  verify_p64f_kit.py
+  README_P64F.txt
+  P64F_STATIC_AUDIT.txt
 
-There must NOT be an extra P63A_UJ_ROUTER_FIRST_DIVERGENCE_TRACE_BUILD_KIT/ directory above .github.
+Do not put an extra wrapper directory above .github.
 
 Workflow triggers:
 - automatically on every push
-- manually via Actions -> Build NSC P63A UJ Router First Divergence Trace -> Run workflow
+- manually via Actions -> Build NSC P64F UJ Semantic Bridge -> Run workflow
+
+Expected uploaded artifact:
+  NSC-P64F-uj-semantic-bridge
