@@ -68,6 +68,11 @@ constexpr ptrdiff_t kUjSemanticConsumerOffset      = 0x7ABE9C;
 constexpr ptrdiff_t kUjSemanticCaller0ReturnOffset = 0xC76C4;
 constexpr ptrdiff_t kUjSemanticCaller1ReturnOffset = 0xC76F0;
 constexpr ptrdiff_t kUjSemanticCaller2ReturnOffset = 0xC78D4;
+// P67A: direct active-player input caller of the same selector1 consumer.
+// main+0x7F4728 MOV X0,X19
+// main+0x7F472C BL  main+0x7ABE9C
+// return LR = main+0x7F4730
+constexpr ptrdiff_t kUjSemanticActivePlayerReturnOffset = 0x7F4730;
 constexpr ptrdiff_t kUjRouterStartOffset           = 0xC7600;
 constexpr ptrdiff_t kUjRouterEndOffset             = 0xC81A4;
 constexpr ptrdiff_t kUjRouterGateReturnOffset      = 0xC7874;
@@ -1534,7 +1539,8 @@ HOOK_DEFINE_TRAMPOLINE(P64SemanticUjConsumerHook) {
         const uint32_t native = Orig(actor);
         const bool exact_router = caller_off == kUjSemanticCaller0ReturnOffset ||
                                   caller_off == kUjSemanticCaller1ReturnOffset ||
-                                  caller_off == kUjSemanticCaller2ReturnOffset;
+                                  caller_off == kUjSemanticCaller2ReturnOffset ||
+                                  caller_off == kUjSemanticActivePlayerReturnOffset;
         const bool semantic = exact_router && P64QuerySemanticUltimateJutsu(actor);
         const uint32_t out = (native != 0u || semantic) ? 1u : 0u;
 
@@ -2391,6 +2397,35 @@ bool InstallP54DirectJutsuOwnerProbes() {
     return true;
 }
 
+
+bool InstallP67ActiveSelector1ConsumerBridge() {
+    // Active player input consumer:
+    //
+    // 0x7F4728  MOV X0,X19
+    // 0x7F472C  BL  0x7ABE9C
+    // 0x7F4730  CBNZ W0,0x7F44F8
+    // 0x7F4734  B 0x7F4520
+    //
+    // 0x7ABE9C is independently proven to query native
+    // control selector1 through 0x7C6280.
+    static constexpr uint32_t kActiveExpected[] = {
+        0xAA1303E0,
+        0x97FEDDDC,
+        0x35FFEE40,
+        0x17FFFF7B,
+    };
+
+    if (!MatchWords(0x7F4728, kActiveExpected)) {
+        LogFingerprintFail(
+            "P67_ACTIVE_SELECTOR1_CONSUMER",
+            0x7F4728
+        );
+        return false;
+    }
+
+    return InstallP64SemanticUjBridge();
+}
+
 bool InstallP64SemanticUjBridge() {
     static constexpr uint32_t kConsumerExpected[] = {
         0xF81E0FFE, 0xA9014FF4, 0xB94E9408, 0x51002908,
@@ -2705,6 +2740,64 @@ void InstallP64FUjSemanticBridge() {
 }
 
 
+
+
+void InstallP67AActiveSelector1ConsumerBridge() {
+    // P67A architecture:
+    //
+    // Event236 / MovesetPlus selector1
+    //        ↓
+    // P64 per-actor semantic state
+    //        ↓
+    // active input call @ main+0x7F472C
+    //        ↓
+    // native helper main+0x7ABE9C
+    //        ↓
+    // native control getter selector1
+    //
+    // Native return is ALWAYS preserved:
+    //   out = native || semantic
+    //
+    // Semantic overlay is allowed only at exact proven callers,
+    // now including active player LR main+0x7F4730.
+    //
+    // P65 concrete F58 hook: NOT installed.
+    // P66 BLR inline hook: NOT installed.
+
+    InstallP50AConditionCompat();
+
+    const bool setter =
+        InstallP57CentralSetterTrace();
+
+    const bool mode =
+        InstallP59ActionModeBaseTrace();
+
+    const bool semantic =
+        InstallP67ActiveSelector1ConsumerBridge();
+
+    Logging.Log(
+        "[NSC:P67A] READY "
+        "victim_safe_p50=1 "
+        "semantic_selector1=1 "
+        "selector1_consumer=%d "
+        "consumer=0x7abe9c "
+        "active_call=0x7f472c "
+        "active_return=0x7f4730 "
+        "native_selector1_call=0x7abf30 "
+        "main_prereq=0x7f2a9c_nop "
+        "p65_f58_installed=0 "
+        "p66_inline_vcall_installed=0 "
+        "no_force87=1 "
+        "no_force700=1 "
+        "no_selector8=1 "
+        "no_char281_branch=1 "
+        "central_setter=%d "
+        "mode_base=%d",
+        semantic ? 1 : 0,
+        setter ? 1 : 0,
+        mode ? 1 : 0
+    );
+}
 
 void InstallP66AVirtualUjSemanticBridge() {
     // Functional P66A:
