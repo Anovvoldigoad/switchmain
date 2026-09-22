@@ -17,4 +17,5 @@ void InstallP66AVirtualUjSemanticBridge();
 void InstallP67AActiveSelector1ConsumerBridge();
 void InstallP76AForkRuntimeProbe();
 void InstallP77AAcceptanceProbe();
+void InstallP78ASemanticAltRouteProbe();
 }
