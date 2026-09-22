@@ -18,4 +18,5 @@ void InstallP67AActiveSelector1ConsumerBridge();
 void InstallP76AForkRuntimeProbe();
 void InstallP77AAcceptanceProbe();
 void InstallP78ASemanticAltRouteProbe();
+void InstallP79ADualSubpredicateProbe();
 }

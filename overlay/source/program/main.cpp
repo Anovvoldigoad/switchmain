@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP78ASemanticAltRouteProbe();
+    nsc::InstallP79ADualSubpredicateProbe();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P78A semantic ALT route probe exception");
+    EXL_ABORT("NSC P79A dual subpredicate probe exception");
 }
