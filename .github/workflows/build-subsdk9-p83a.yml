@@ -1,7 +1,6 @@
 name: Build NSC P83A Slot1928 Ougi Policy Bridge
 
 on:
-  push:
     branches:
       - main
   workflow_dispatch:
