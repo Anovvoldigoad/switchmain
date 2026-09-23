@@ -19,14 +19,15 @@ HOOK_DEFINE_TRAMPOLINE(P88BHelperHook){static uint32_t Callback(void* actor){uin
 static bool InstallP88BInternal(){static constexpr uint32_t sig[]={0xA9BE57FE,0xA9014FF4,0x9108A014,0xAA0003F3};if(!MatchWords(kP88BHelper,sig)){LogFingerprintFail("P88B_HELP",kP88BHelper);return false;}P88BHelperHook::InstallAtOffset(kP88BHelper);return true;}
 } // anonymous P88B
 
-void InstallP88BBootSafeUJHelperProbe(){InstallP87AActiveProducerProbe();const bool ok=InstallP88BInternal();Logging.Log("[NSC:P88B] READY baseline_p87=1 helper_only=1 probe=%d readonly=1 preserve_orig=1 no_shared_control_hooks=1 no_bda4_write=1 no_bdc8_write=1 no_force_return=1 no_force_f58=1 no_force87=1 no_force700=1 no_action445_rewrite=1 no_selector8=1 no_char281_branch=1 limit=%u",ok?1:0,kP88BLimit);}
+void InstallP88BBootSafeUJHelperProbe(){InstallP85AF58IntentProbe();const bool ok=InstallP88BInternal();Logging.Log("[NSC:P88B] READY baseline_p85=1 helper_only=1 probe=%d readonly=1 preserve_orig=1 no_shared_control_hooks=1 no_bda4_write=1 no_bdc8_write=1 no_force_return=1 no_force_f58=1 no_force87=1 no_force700=1 no_action445_rewrite=1 no_selector8=1 no_char281_branch=1 limit=%u",ok?1:0,kP88BLimit);}
 
 '''
 c=c[:end]+block+c[end:]
 needle='void InstallP87AActiveProducerProbe();'
 if needle not in h: raise SystemExit('P87 header declaration not found')
 h=h.replace(needle,needle+'\nvoid InstallP88BBootSafeUJHelperProbe();',1)
-old='nsc::InstallP87AActiveProducerProbe();'
-if old not in m: raise SystemExit('P87 main install call not found')
-m=m.replace(old,'nsc::InstallP88BBootSafeUJHelperProbe();',1)
+parents=['nsc::InstallP88AWideUJAdmissionTrace();','nsc::InstallP87AActiveProducerProbe();']
+hits=[x for x in parents if x in m]
+if len(hits)!=1: raise SystemExit(f'expected exactly one active P87/P88A parent install call, found {hits}')
+m=m.replace(hits[0],'nsc::InstallP88BBootSafeUJHelperProbe();',1)
 cp.write_text(c);hp.write_text(h);mp.write_text(m);print('P88B_SOURCE_PATCH=PASS')
