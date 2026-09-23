@@ -1,7 +1,9 @@
-name: Build NSC P85A F58 Intent Probe
+name: Build NSC P86A BDA4 BDC8 Producer Probe
 
 on:
   workflow_dispatch:
+  push:
+
 permissions:
   contents: read
 
@@ -14,16 +16,16 @@ jobs:
       DEVKITPRO: /opt/devkitpro
       DEVKITA64: /opt/devkitpro/devkitA64
     steps:
-      - name: Checkout P85A source
+      - name: Checkout P86A source
         uses: actions/checkout@v4
 
       - name: Verify repository layout
         shell: bash
         run: |
           set -euxo pipefail
-          test -f .github/workflows/build-subsdk9-p85a.yml
+          test -f .github/workflows/build-subsdk9-p86a.yml
           test -f prepare_exlaunch_p67a.sh
-          test -f verify_p85a_source.py
+          test -f verify_p86a_source.py
           test -f overlay/source/program/main.cpp
           test -f overlay/source/program/nsc_cpk_bridge.cpp
           test -f overlay/source/program/nsc_cpk_bridge.hpp
@@ -41,13 +43,13 @@ jobs:
           command -v git
           command -v python3
 
-      - name: Verify generated tables, P85A source, and paired main
+      - name: Verify generated tables, P86A source, and paired main
         shell: bash
         run: |
           set -euxo pipefail
           python3 generate_condition_table.py condition_compat_manifest.json /tmp/condition_compat_generated.hpp
           cmp /tmp/condition_compat_generated.hpp overlay/source/program/condition_compat_generated.hpp
-          python3 verify_p85a_source.py
+          python3 verify_p86a_source.py
           printf '%s  %s\n' \
             '1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0' \
             'deploy/atmosphere/contents/0100FA10190A0000/exefs/main' | sha256sum -c -
@@ -64,7 +66,7 @@ jobs:
           git -C "$GITHUB_WORKSPACE/exlaunch" submodule update --init --recursive
           test "$(git -C "$GITHUB_WORKSPACE/exlaunch" rev-parse --short HEAD)" = "229bbd6"
 
-      - name: Overlay active P85A source lineage
+      - name: Overlay active P86A source lineage
         shell: bash
         run: |
           set -euxo pipefail
@@ -72,8 +74,8 @@ jobs:
           chmod +x prepare_exlaunch_p67a.sh
           bash ./prepare_exlaunch_p67a.sh "$GITHUB_WORKSPACE/exlaunch"
           grep -F 'ELF_EXTRACT := $(PWD)/p67a_final.elf' "$GITHUB_WORKSPACE/exlaunch/config.mk"
-          grep -Fq 'InstallP85AF58IntentProbe' "$GITHUB_WORKSPACE/exlaunch/source/program/main.cpp"
-          grep -Fq '[NSC:P85A] READY' "$GITHUB_WORKSPACE/exlaunch/source/program/nsc_cpk_bridge.cpp"
+          grep -Fq 'InstallP86ABda4Bdc8ProducerProbe' "$GITHUB_WORKSPACE/exlaunch/source/program/main.cpp"
+          grep -Fq '[NSC:P86A] READY' "$GITHUB_WORKSPACE/exlaunch/source/program/nsc_cpk_bridge.cpp"
 
       - name: Build subsdk9
         shell: bash
@@ -83,7 +85,7 @@ jobs:
           cd "$GITHUB_WORKSPACE/exlaunch"
           make -j2
 
-      - name: Verify linked P85A and collect artifact
+      - name: Verify linked P86A and collect artifact
         shell: bash
         run: |
           set -euxo pipefail
@@ -93,10 +95,11 @@ jobs:
           test -s "$OUT"
           test -s "$ELF"
 
+          grep -aFq '[NSC:P86A] READY' "$ELF"
+          grep -aFq '[NSC:P86A] STATE' "$ELF"
+          grep -aFq '[NSC:P86A] INPUT_PRED' "$ELF"
+          grep -aFq '[NSC:P86A] ACTOR_PRED' "$ELF"
           grep -aFq '[NSC:P85A] READY' "$ELF"
-          grep -aFq '[NSC:P85A] F58' "$ELF"
-          grep -aFq '[NSC:P85A] INPUT' "$ELF"
-          grep -aFq '[NSC:P85A] MAP' "$ELF"
           grep -aFq '[NSC:P84A] READY' "$ELF"
           grep -aFq '[NSC:P81A] READY' "$ELF"
           grep -aFq '[NSC:P50A] READY' "$ELF"
@@ -108,7 +111,7 @@ jobs:
           b = p.read_bytes()
           assert len(b) > 10000, len(b)
           assert b[:4] == b'NSO0', b[:4]
-          print('P85A_NSO_VERIFY=PASS')
+          print('P86A_NSO_VERIFY=PASS')
           PY
 
           rm -rf artifact
@@ -117,13 +120,13 @@ jobs:
           cp deploy/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
           mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
-          cp README_P85A.txt analyze_p85a_log.py verify_p85a_source.py artifact/
+          cp README_P86A.txt analyze_p86a_log.py verify_p86a_source.py P86_STATIC_AUDIT.txt artifact/
           (cd artifact && find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
           sha256sum "$OUT" "$ELF"
 
-      - name: Upload P85A artifact
+      - name: Upload P86A artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P85A-f58-intent-probe
+          name: NSC-P86A-bda4-bdc8-producer-probe
           path: artifact/
           compression-level: 9

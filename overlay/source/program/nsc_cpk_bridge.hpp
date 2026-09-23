@@ -25,4 +25,5 @@ void InstallP82ADownstreamCorridorProbe();
 void InstallP83ASlot1928PolicyBridge();
 void InstallP84AIntentDiscriminator();
 void InstallP85AF58IntentProbe();
+void InstallP86ABda4Bdc8ProducerProbe();
 }
