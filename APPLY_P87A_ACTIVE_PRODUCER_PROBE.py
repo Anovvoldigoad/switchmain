@@ -4,8 +4,11 @@ R=Path.cwd(); cp=R/'overlay/source/program/nsc_cpk_bridge.cpp'; hp=R/'overlay/so
 c=cp.read_text(); h=hp.read_text(); m=mp.read_text()
 if '[NSC:P87A]' in c: raise SystemExit('P87A already applied')
 if 'void InstallP86ABda4Bdc8ProducerProbe()' not in c: raise SystemExit('requires current P86A source')
-anchor='\n} // namespace\n\nvoid InstallP86ABda4Bdc8ProducerProbe()'; pos=c.find(anchor)
-if pos<0: raise SystemExit('P86A anonymous namespace anchor not found')
+marker='void InstallP86ABda4Bdc8ProducerProbe()'
+func_pos=c.find(marker)
+if func_pos<0: raise SystemExit('P86A installer not found')
+pos=c.rfind('\n}', 0, func_pos)
+if pos<0: raise SystemExit('P86A anonymous namespace close not found')
 block=r'''
 
 // P87A corrected active producer probe — read only.

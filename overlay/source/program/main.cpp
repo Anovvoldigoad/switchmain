@@ -5,7 +5,7 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP86ABda4Bdc8ProducerProbe();
+    nsc::InstallP87AActiveProducerProbe();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
