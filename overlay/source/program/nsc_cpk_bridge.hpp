@@ -23,4 +23,6 @@ void InstallP80BDeepConditionTrace();
 void InstallP81AOugiAwakeningPolicyBridge();
 void InstallP82ADownstreamCorridorProbe();
 void InstallP83ASlot1928PolicyBridge();
+void InstallP84AIntentDiscriminator();
+void InstallP85AF58IntentProbe();
 }

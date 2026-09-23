@@ -5,7 +5,7 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP83ASlot1928PolicyBridge();
+    nsc::InstallP85AF58IntentProbe();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
