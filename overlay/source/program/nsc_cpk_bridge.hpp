@@ -27,4 +27,5 @@ void InstallP84AIntentDiscriminator();
 void InstallP85AF58IntentProbe();
 void InstallP86ABda4Bdc8ProducerProbe();
 void InstallP87AActiveProducerProbe();
+void InstallP88AWideUJAdmissionTrace();
 }
