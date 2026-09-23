@@ -1,0 +1,191 @@
+
+
+// ============================================================================
+// P86A — read-only BDA4/BDC8 producer/state-machine probe.
+// Parent: P85A read-only F58 probe.
+//
+// P85 runtime proved the decisive split is already present before F58:
+//   vanilla XA : BDC8=1 -> F58=0
+//   vanilla UJ : BDC8=2 -> F58=1
+//   custom XA/XXA: BDC8=1 -> F58=0
+// Static 1.70 disassembly proves main+0x11F080 owns the BDA4/BDC8 state
+// machine and writes BDC8=1/2/3 at 0x11F25C/0x11F384/0x11F494.
+// P86A observes that producer and its two exact phase-1/phase-3 predicates.
+// It NEVER changes BDA4, BDC8, input masks, predicate returns, action, or state.
+// ============================================================================
+namespace {
+
+constexpr ptrdiff_t kP86StateMachineOffset = 0x11F080;
+constexpr ptrdiff_t kP86InputPredicateOffset = 0x7C6074;
+constexpr ptrdiff_t kP86ActorPredicateOffset = 0x7E24EC;
+constexpr ptrdiff_t kP86InputPhase1Return = 0x11F22C;
+constexpr ptrdiff_t kP86InputPhase3Return = 0x11F338;
+constexpr ptrdiff_t kP86ActorPhase1Return = 0x11F23C;
+constexpr ptrdiff_t kP86ActorPhase3Return = 0x11F348;
+
+struct P86StateSnapshot {
+    uint32_t bda4, bda8, bdac, bdb0, bdb4, bdb8, bdc0, bdc8, bdcc;
+    uint32_t e94, e98, e9c, state106f4;
+    uint32_t i404, i408, m5a0;
+    uint32_t sel2, sel3, sel6, sel8, sel36, sel39, sel40;
+};
+
+static P86StateSnapshot P86ReadState(void* actor) {
+    P86StateSnapshot s{};
+    if (!actor) return s;
+    auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+    auto* c = b + 0x228;
+    auto rw = [](const volatile uint8_t* p, ptrdiff_t off) -> uint32_t {
+        return *reinterpret_cast<const volatile uint32_t*>(p + off);
+    };
+    s.bda4 = rw(b, 0xBDA4); s.bda8 = rw(b, 0xBDA8); s.bdac = rw(b, 0xBDAC);
+    s.bdb0 = rw(b, 0xBDB0); s.bdb4 = rw(b, 0xBDB4); s.bdb8 = rw(b, 0xBDB8);
+    s.bdc0 = rw(b, 0xBDC0); s.bdc8 = rw(b, 0xBDC8); s.bdcc = rw(b, 0xBDCC);
+    s.e94 = rw(b, 0xE94); s.e98 = rw(b, 0xE98); s.e9c = rw(b, 0xE9C);
+    s.state106f4 = rw(b, 0x106F4);
+    s.i404 = rw(c, 0x404); s.i408 = rw(c, 0x408); s.m5a0 = rw(c, 0x5A0);
+    // main+0x7C6280 is a selector getter for control+0x428 + selector*4
+    // (selector 19 has extra handling, not used here). Read raw slots only;
+    // do not call the native getter from instrumentation.
+    s.sel2 = rw(c, 0x428 + 2*4); s.sel3 = rw(c, 0x428 + 3*4);
+    s.sel6 = rw(c, 0x428 + 6*4); s.sel8 = rw(c, 0x428 + 8*4);
+    s.sel36 = rw(c, 0x428 + 36*4); s.sel39 = rw(c, 0x428 + 39*4);
+    s.sel40 = rw(c, 0x428 + 40*4);
+    return s;
+}
+
+static std::atomic<uint32_t> g_p86_state_seq{0};
+static std::atomic<uint32_t> g_p86_input_seq{0};
+static std::atomic<uint32_t> g_p86_actor_pred_seq{0};
+
+HOOK_DEFINE_TRAMPOLINE(P86Bda4Bdc8StateHook) {
+    static uintptr_t Callback(void* actor) {
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const P86StateSnapshot pre = valid ? P86ReadState(actor) : P86StateSnapshot{};
+
+        // Preserve native call/result exactly. This function is treated as an
+        // opaque native update; x0 after Orig() is returned unchanged.
+        const uintptr_t ret = Orig(actor);
+
+        if (valid && side == 0u) {
+            const P86StateSnapshot post = P86ReadState(actor);
+            const bool changed = pre.bda4 != post.bda4 || pre.bdc8 != post.bdc8 ||
+                                 pre.bda8 != post.bda8 || pre.i404 != post.i404 ||
+                                 pre.i408 != post.i408;
+            const bool producer_window = pre.bda4 >= 2u || post.bda4 >= 2u ||
+                                         pre.bdc8 >= 2u || post.bdc8 >= 2u;
+            if (changed || producer_window) {
+                const uint32_t seq = g_p86_state_seq.fetch_add(1, std::memory_order_relaxed);
+                Logging.Log("[NSC:P86A] STATE seq=%u actor=%p side=%u char=%u phase=%u->%u prev=%u->%u bdc8=%u->%u bdcc=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u s106f4=%u->%u i404=%08x->%08x i408=%08x->%08x m5a0=%08x hit404=%u->%u hit408=%u->%u",
+                            seq, actor, side, char_id,
+                            pre.bda4, post.bda4, pre.bda8, post.bda8,
+                            pre.bdc8, post.bdc8, pre.bdcc, post.bdcc,
+                            pre.e94, post.e94, pre.e98, post.e98, pre.e9c, post.e9c,
+                            pre.state106f4, post.state106f4,
+                            pre.i404, post.i404, pre.i408, post.i408, pre.m5a0,
+                            (pre.i404 & pre.m5a0) ? 1u : 0u,
+                            (post.i404 & post.m5a0) ? 1u : 0u,
+                            (pre.i408 & pre.m5a0) ? 1u : 0u,
+                            (post.i408 & post.m5a0) ? 1u : 0u);
+                Logging.Log("[NSC:P86A] CTRL seq=%u sel2=%u->%u sel3=%u->%u sel6=%u->%u sel8=%u->%u sel36=%u->%u sel39=%u->%u sel40=%u->%u bdb0=%u->%u bdb4=%u->%u bdb8=%u->%u bdc0=%u->%u",
+                            seq,
+                            pre.sel2,post.sel2, pre.sel3,post.sel3, pre.sel6,post.sel6,
+                            pre.sel8,post.sel8, pre.sel36,post.sel36, pre.sel39,post.sel39,
+                            pre.sel40,post.sel40, pre.bdb0,post.bdb0, pre.bdb4,post.bdb4,
+                            pre.bdb8,post.bdb8, pre.bdc0,post.bdc0);
+            }
+        }
+        return ret;
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(P86InputPredicateHook) {
+    static uint32_t Callback(void* control) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+
+        void* actor = control ? reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(control) - 0x228) : nullptr;
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const P86StateSnapshot pre = valid ? P86ReadState(actor) : P86StateSnapshot{};
+
+        const uint32_t ret = Orig(control);
+        if (valid && side == 0u &&
+            (caller_off == kP86InputPhase1Return || caller_off == kP86InputPhase3Return)) {
+            const uint32_t seq = g_p86_input_seq.fetch_add(1, std::memory_order_relaxed);
+            Logging.Log("[NSC:P86A] INPUT_PRED seq=%u actor=%p side=%u char=%u caller=0x%lx stage=%u phase=%u bdc8=%u ret=%u i404=%08x i408=%08x map5a0=%08x hit404=%u hit408=%u sel2=%u sel3=%u sel6=%u sel8=%u sel36=%u sel39=%u sel40=%u",
+                        seq, actor, side, char_id, static_cast<unsigned long>(caller_off),
+                        caller_off == kP86InputPhase1Return ? 1u : 3u,
+                        pre.bda4, pre.bdc8, ret, pre.i404, pre.i408, pre.m5a0,
+                        (pre.i404 & pre.m5a0) ? 1u : 0u,
+                        (pre.i408 & pre.m5a0) ? 1u : 0u,
+                        pre.sel2, pre.sel3, pre.sel6, pre.sel8, pre.sel36, pre.sel39, pre.sel40);
+        }
+        return ret;
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(P86ActorPredicateHook) {
+    static uint32_t Callback(void* actor) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const P86StateSnapshot pre = valid ? P86ReadState(actor) : P86StateSnapshot{};
+        const uint32_t ret = Orig(actor);
+        if (valid && side == 0u &&
+            (caller_off == kP86ActorPhase1Return || caller_off == kP86ActorPhase3Return)) {
+            const uint32_t seq = g_p86_actor_pred_seq.fetch_add(1, std::memory_order_relaxed);
+            Logging.Log("[NSC:P86A] ACTOR_PRED seq=%u actor=%p side=%u char=%u caller=0x%lx stage=%u phase=%u bdc8=%u ret=%u e94=%u e98=%u e9c=%u s106f4=%u",
+                        seq, actor, side, char_id, static_cast<unsigned long>(caller_off),
+                        caller_off == kP86ActorPhase1Return ? 1u : 3u,
+                        pre.bda4, pre.bdc8, ret, pre.e94, pre.e98, pre.e9c, pre.state106f4);
+        }
+        return ret;
+    }
+};
+
+static bool InstallP86ProducerProbeHooks() {
+    static constexpr uint32_t kStateExpected[] = {
+        0xF81B0FFE, 0xA90167FA, 0xA9025FF8, 0xA90357F6,
+        0xA9044FF4, 0x5297B488, 0x9108A014, 0xAA0003F3,
+    };
+    static constexpr uint32_t kInputExpected[] = {
+        0xB945A008, 0xB9440409, 0x6A08013F, 0x1A9F07E0, 0xD65F03C0,
+    };
+    static constexpr uint32_t kActorExpected[] = {
+        0xF81F0FFE, 0xF9400008, 0xF94C7508, 0xD63F0100,
+        0x7100041F, 0x1A9F17E0, 0xF84107FE, 0xD65F03C0,
+    };
+    static constexpr uint32_t kInputCall1[] = {0xAA1403E0, 0x941A9B93};
+    static constexpr uint32_t kInputCall3[] = {0xAA1403E0, 0x941A9B50};
+    static constexpr uint32_t kActorCall1[] = {0xAA1303E0, 0x941B0CAD};
+    static constexpr uint32_t kActorCall3[] = {0xAA1303E0, 0x941B0C6A};
+
+    bool ok = true;
+    if (!MatchWords(kP86StateMachineOffset, kStateExpected)) { LogFingerprintFail("P86_STATE", kP86StateMachineOffset); ok = false; }
+    if (!MatchWords(kP86InputPredicateOffset, kInputExpected)) { LogFingerprintFail("P86_INPUT_PRED", kP86InputPredicateOffset); ok = false; }
+    if (!MatchWords(kP86ActorPredicateOffset, kActorExpected)) { LogFingerprintFail("P86_ACTOR_PRED", kP86ActorPredicateOffset); ok = false; }
+    if (!MatchWords(0x11F224, kInputCall1)) { LogFingerprintFail("P86_INPUT_CALL1", 0x11F224); ok = false; }
+    if (!MatchWords(0x11F330, kInputCall3)) { LogFingerprintFail("P86_INPUT_CALL3", 0x11F330); ok = false; }
+    if (!MatchWords(0x11F234, kActorCall1)) { LogFingerprintFail("P86_ACTOR_CALL1", 0x11F234); ok = false; }
+    if (!MatchWords(0x11F340, kActorCall3)) { LogFingerprintFail("P86_ACTOR_CALL3", 0x11F340); ok = false; }
+    if (!ok) return false;
+
+    P86Bda4Bdc8StateHook::InstallAtOffset(kP86StateMachineOffset);
+    P86InputPredicateHook::InstallAtOffset(kP86InputPredicateOffset);
+    P86ActorPredicateHook::InstallAtOffset(kP86ActorPredicateOffset);
+    return true;
+}
+
+} // anonymous namespace — P86A
+
+void InstallP86ABda4Bdc8ProducerProbe() {
+    InstallP85AF58IntentProbe();
+    const bool producer = InstallP86ProducerProbeHooks();
+    Logging.Log("[NSC:P86A] READY baseline_p85=1 producer_probe=%d state=0x11f080 input_pred=0x7c6074 actor_pred=0x7e24ec readonly=1 preserve_orig=1 no_bda4_write=1 no_bdc8_write=1 no_force_return=1 no_force87=1 no_force700=1 no_action445_rewrite=1 no_selector8=1 no_char281_branch=1",
+                producer ? 1 : 0);
+}

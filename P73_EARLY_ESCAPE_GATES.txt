@@ -1,0 +1,125 @@
+===== P73 TARGET =====
+Build ID: 48ece454b61412b9fb46fab2be3f5ef7b2804f39
+
+===== A) ACTIVE CLASSIFIER EARLY ESCAPE CORRIDOR =====
+0x007F45C0: lsl      w9, w9, w8                            
+0x007F45C4: mov      w10, #0x48010000                      
+0x007F45C8: tst      w9, w10                               
+0x007F45CC: b.ne     #0x7f45e0                             
+0x007F45D0: cmp      w8, #0xe3                             
+0x007F45D4: b.eq     #0x7f45e0                             
+0x007F45D8: cmp      w8, #0x69                             
+0x007F45DC: b.ne     #0x7f45f0                             
+0x007F45E0: ldr      x0, [x19, #0x1238]                    
+0x007F45E4: cbz      x0, #0x7f45f0                         
+0x007F45E8: bl       #0x805bc4                             
+0x007F45EC: cbnz     w0, #0x7f4f10                         
+0x007F45F0: mov      x0, x20                               
+0x007F45F4: bl       #0x7c553c                                <<< GATE A CALL
+0x007F45F8: cbnz     w0, #0x7f490c                            <<< GATE A RESULT -> 0x7F490C
+0x007F45FC: ldr      x0, [x22, #8]                         
+0x007F4600: ldr      x8, [x0]                              
+0x007F4604: ldr      x8, [x8, #0x30]                       
+0x007F4608: blr      x8                                    
+0x007F460C: cbz      w0, #0x7f4840                         
+0x007F4610: mov      x0, x20                               
+0x007F4614: mov      w1, wzr                               
+0x007F4618: bl       #0x7c6260                             
+0x007F461C: mov      w21, w0                               
+0x007F4620: mov      x0, x20                               
+0x007F4624: bl       #0x7c5fc0                             
+0x007F4628: cbz      w0, #0x7f4630                         
+0x007F462C: tbnz     w21, #0xf, #0x7f4900                  
+0x007F4630: mov      x0, x20                               
+0x007F4634: bl       #0x7c5fc0                                <<< GATE B CALL
+0x007F4638: cbnz     w0, #0x7f48e8                            <<< GATE B RESULT
+0x007F463C: b        #0x7f490c                                <<< ESCAPE -> 0x7F490C
+0x007F4640: mov      x0, x19                               
+
+===== B) HELPER 0x7C553C =====
+0x007C553C: ldr      w0, [x0, #0x6a8]                      
+0x007C5540: ret                                            
+0x007C5544: sub      sp, sp, #0x90                         
+0x007C5548: stp      x30, x25, [sp, #0x50]                 
+0x007C554C: stp      x24, x23, [sp, #0x60]                 
+0x007C5550: stp      x22, x21, [sp, #0x70]                 
+0x007C5554: stp      x20, x19, [sp, #0x80]                 
+0x007C5558: adrp     x8, #0x1b28000                        
+0x007C555C: adrp     x9, #0x1b29000                        
+0x007C5560: ldr      q0, [x8, #0xbe0]                      
+0x007C5564: ldr      q1, [x9, #0x4a0]                      
+0x007C5568: add      x10, sp, #0x20                        
+0x007C556C: add      x21, x10, #0x18                       
+0x007C5570: mov      x20, x0                               
+0x007C5574: mov      x0, x21                               
+0x007C5578: str      xzr, [sp, #0x20]                      
+0x007C557C: mov      x19, x1                               
+0x007C5580: stp      xzr, xzr, [sp, #0x28]                 
+0x007C5584: stp      q0, q1, [sp]                          
+0x007C5588: bl       #0x116b698                            
+0x007C558C: adrp     x8, #0x214b000                        
+0x007C5590: ldr      x8, [x8, #0xc98]                      
+0x007C5594: add      x8, x8, #0x10                         
+0x007C5598: mov      x0, x21                               
+0x007C559C: str      x8, [sp, #0x38]                       
+0x007C55A0: bl       #0x116b6e8                            
+0x007C55A4: bl       #0x116d3c0                            
+0x007C55A8: ldr      x2, [sp, #0x40]                       
+0x007C55AC: adrp     x3, #0x1a34000                        
+0x007C55B0: add      x3, x3, #0xcea                        
+0x007C55B4: mov      w4, #0x63                             
+0x007C55B8: mov      w0, #4                                
+0x007C55BC: mov      w1, #0x20                             
+
+===== C) HELPER 0x7C5FC0 =====
+0x007C5FC0: ldr      w8, [x0, #0x598]                      
+0x007C5FC4: ldr      w9, [x0, #0x404]                      
+0x007C5FC8: tst      w9, w8                                
+0x007C5FCC: cset     w0, ne                                
+0x007C5FD0: ret                                            
+0x007C5FD4: ldr      w8, [x0, #0x598]                      
+0x007C5FD8: ldr      w9, [x0, #0x408]                      
+0x007C5FDC: tst      w9, w8                                
+0x007C5FE0: cset     w0, ne                                
+0x007C5FE4: ret                                            
+0x007C5FE8: ldr      w8, [x0, #0x598]                      
+0x007C5FEC: ldr      w9, [x0, #0x40c]                      
+0x007C5FF0: tst      w9, w8                                
+0x007C5FF4: cset     w0, ne                                
+0x007C5FF8: ret                                            
+0x007C5FFC: ldr      w8, [x0, #0x59c]                      
+0x007C6000: ldr      w9, [x0, #0x404]                      
+0x007C6004: tst      w9, w8                                
+0x007C6008: cset     w0, ne                                
+0x007C600C: ret                                            
+0x007C6010: ldr      w8, [x0, #0x59c]                      
+0x007C6014: ldr      w9, [x0, #0x408]                      
+0x007C6018: tst      w9, w8                                
+0x007C601C: cset     w0, ne                                
+
+===== D) DIRECT CALLER COUNT =====
+target=0x007C553C direct_callers=0
+target=0x007C5FC0 direct_callers=1
+  caller=0x00734518
+
+===== E) ACTIVE CALL ARGUMENT SUMMARY =====
+
+--- CALL 0x007F45F4 ---
+0x007F45E0: ldr      x0, [x19, #0x1238]                    
+0x007F45E4: cbz      x0, #0x7f45f0                         
+0x007F45E8: bl       #0x805bc4                             
+0x007F45EC: cbnz     w0, #0x7f4f10                         
+0x007F45F0: mov      x0, x20                               
+0x007F45F4: bl       #0x7c553c                                <<< CALL
+0x007F45F8: cbnz     w0, #0x7f490c                         
+
+--- CALL 0x007F4634 ---
+0x007F4620: mov      x0, x20                               
+0x007F4624: bl       #0x7c5fc0                             
+0x007F4628: cbz      w0, #0x7f4630                         
+0x007F462C: tbnz     w21, #0xf, #0x7f4900                  
+0x007F4630: mov      x0, x20                               
+0x007F4634: bl       #0x7c5fc0                                <<< CALL
+0x007F4638: cbnz     w0, #0x7f48e8                         
+
+P73_EARLY_ESCAPE_GATES=PASS

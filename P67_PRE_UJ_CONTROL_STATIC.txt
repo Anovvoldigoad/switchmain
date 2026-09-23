@@ -1,0 +1,130 @@
+
+==============================================================================================
+A) PRE-F58 UJ INPUT / CONTROL REGION
+==============================================================================================
+0x007F43B0: ldr      x8, [x8, #0x6c10]                     
+0x007F43B4: ldr      x20, [x8, #0x180]                     
+0x007F43B8: ldr      w21, [x0, #0xe54]                     
+0x007F43BC: mov      x19, x0                               
+0x007F43C0: bl       #0x75df64                             
+0x007F43C4: mov      w2, w0                                
+0x007F43C8: mov      x0, x20                               
+0x007F43CC: mov      w1, w21                               
+0x007F43D0: bl       #0x534c6c                             
+0x007F43D4: mov      w8, #0x2314                           
+0x007F43D8: movk     w8, #1, lsl #16                       
+0x007F43DC: add      x8, x19, x8                           
+0x007F43E0: ldr      s1, [x8]                              
+0x007F43E4: fcmp     s1, s0                                
+0x007F43E8: b.ge     #0x7f43f0                             
+0x007F43EC: str      s0, [x8]                              
+0x007F43F0: ldp      x20, x19, [sp, #0x10]                 
+0x007F43F4: ldp      x30, x21, [sp], #0x20                 
+0x007F43F8: ret                                            
+0x007F43FC: ldr      x1, [x0, #8]                          
+0x007F4400: b        #0x19acc                              
+0x007F4404: str      d8, [sp, #-0x50]!                     
+0x007F4408: stp      x30, x25, [sp, #0x10]                 
+0x007F440C: stp      x24, x23, [sp, #0x20]                 
+0x007F4410: stp      x22, x21, [sp, #0x30]                 
+0x007F4414: stp      x20, x19, [sp, #0x40]                 
+0x007F4418: mov      w8, #0x1768                           
+0x007F441C: movk     w8, #1, lsl #16                       
+0x007F4420: mov      w9, #0x6f4                            
+0x007F4424: movk     w9, #1, lsl #16                       
+0x007F4428: add      x22, x0, x8                           
+0x007F442C: mov      w8, #0xbdc8                           
+0x007F4430: add      x20, x0, #0x228                       
+0x007F4434: mov      x19, x0                               
+0x007F4438: add      x23, x0, x9                           
+0x007F443C: add      x24, x0, x8                           
+0x007F4440: mov      x0, x20                               
+0x007F4444: mov      w1, wzr                               
+0x007F4448: bl       #0x7c6280                                <<< NATIVE CONTROL GETTER
+0x007F444C: cbz      w0, #0x7f4460                         
+0x007F4450: ldr      x8, [x19]                             
+0x007F4454: mov      x0, x19                               
+0x007F4458: ldr      x8, [x8, #0xe90]                      
+0x007F445C: blr      x8                                    
+0x007F4460: ldr      x8, [x19]                             
+0x007F4464: mov      x0, x19                               
+0x007F4468: ldr      x8, [x8, #0xef0]                      
+0x007F446C: blr      x8                                    
+0x007F4470: cbz      w0, #0x7f44ec                         
+0x007F4474: mov      x0, x19                               
+0x007F4478: bl       #0x8b2a00                             
+0x007F447C: cbz      w0, #0x7f44ec                         
+0x007F4480: ldr      x0, [x22, #0x4c0]                     
+0x007F4484: ldr      x8, [x0]                              
+0x007F4488: ldr      x8, [x8, #0x18]                       
+0x007F448C: blr      x8                                    
+0x007F4490: ldr      x8, [x19]                             
+0x007F4494: mov      x0, x19                               
+0x007F4498: mov      v8.16b, v0.16b                        
+0x007F449C: ldr      x8, [x8, #0xd48]                      
+0x007F44A0: blr      x8                                    
+0x007F44A4: cbz      w0, #0x7f46d0                         
+0x007F44A8: mov      w8, #0x101c                           
+0x007F44AC: ldrb     w8, [x23, x8]                         
+0x007F44B0: tbnz     w8, #3, #0x7f44d0                     
+0x007F44B4: mov      x0, x19                               
+0x007F44B8: mov      w1, #1                                
+0x007F44BC: bl       #0x7f4ff0                             
+0x007F44C0: mov      x0, x19                               
+0x007F44C4: bl       #0x7abe9c                             
+0x007F44C8: cbnz     w0, #0x7f44f8                         
+0x007F44CC: b        #0x7f4520                             
+0x007F44D0: ldr      w8, [x23]                             
+0x007F44D4: cmp      w8, #0                                
+0x007F44D8: ldr      x8, [x19]                             
+0x007F44DC: cset     w1, eq                                
+0x007F44E0: ldr      x8, [x8, #0x18b8]                     
+0x007F44E4: mov      x0, x19                               
+0x007F44E8: blr      x8                                    
+0x007F44EC: mov      x0, x19                               
+0x007F44F0: bl       #0x7abe9c                             
+0x007F44F4: cbz      w0, #0x7f4520                         
+0x007F44F8: ldr      x8, [x19]                             
+0x007F44FC: mov      x0, x19                               
+0x007F4500: ldr      x8, [x8, #0xee8]                      
+0x007F4504: blr      x8                                    
+0x007F4508: cbz      w0, #0x7f4520                         
+0x007F450C: ldr      x8, [x19]                             
+0x007F4510: mov      w1, #0xd                              
+0x007F4514: mov      x0, x19                               
+0x007F4518: ldr      x8, [x8, #0xdf0]                      
+0x007F451C: blr      x8                                    
+
+==============================================================================================
+B) EXACT CONTROL GETTER @ 0x7F4448
+==============================================================================================
+0x007F4400: b        #0x19acc                              
+0x007F4404: str      d8, [sp, #-0x50]!                     
+0x007F4408: stp      x30, x25, [sp, #0x10]                 
+0x007F440C: stp      x24, x23, [sp, #0x20]                 
+0x007F4410: stp      x22, x21, [sp, #0x30]                 
+0x007F4414: stp      x20, x19, [sp, #0x40]                 
+0x007F4418: mov      w8, #0x1768                           
+0x007F441C: movk     w8, #1, lsl #16                       
+0x007F4420: mov      w9, #0x6f4                            
+0x007F4424: movk     w9, #1, lsl #16                       
+0x007F4428: add      x22, x0, x8                           
+0x007F442C: mov      w8, #0xbdc8                           
+0x007F4430: add      x20, x0, #0x228                       
+0x007F4434: mov      x19, x0                               
+0x007F4438: add      x23, x0, x9                           
+0x007F443C: add      x24, x0, x8                           
+0x007F4440: mov      x0, x20                               
+0x007F4444: mov      w1, wzr                               
+0x007F4448: bl       #0x7c6280                                <<< NATIVE CONTROL GETTER
+0x007F444C: cbz      w0, #0x7f4460                         
+0x007F4450: ldr      x8, [x19]                             
+0x007F4454: mov      x0, x19                               
+0x007F4458: ldr      x8, [x8, #0xe90]                      
+0x007F445C: blr      x8                                    
+0x007F4460: ldr      x8, [x19]                             
+0x007F4464: mov      x0, x19                               
+0x007F4468: ldr      x8, [x8, #0xef0]                      
+0x007F446C: blr      x8                                    
+
+P67_STATIC_DUMP=PASS

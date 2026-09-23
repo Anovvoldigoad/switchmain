@@ -1,0 +1,188 @@
+===== P71 W21 STATE ASSIGNMENTS =====
+count = 7
+
+--- 0x007F47B8: mov w21, #0x87 ---
+0x007F47A8: fmov     s1, w8                            
+0x007F47AC: fcmp     s0, s1                            
+0x007F47B0: b.ge     #0x7f4890                         
+0x007F47B4: mov      w25, wzr                          
+0x007F47B8: mov      w21, #0x87                           <<<
+0x007F47BC: ldr      x8, [x19]                         
+0x007F47C0: mov      x0, x19                           
+0x007F47C4: ldr      x8, [x8, #0x1480]                 
+0x007F47C8: blr      x8                                
+0x007F47CC: cbnz     w0, #0x7f47d8                     
+
+--- 0x007F4890: mov w21, #0x8d ---
+0x007F4880: mov      x0, x20                           
+0x007F4884: bl       #0x7c5fc0                         
+0x007F4888: cbnz     w0, #0x7f4900                     
+0x007F488C: b        #0x7f490c                         
+0x007F4890: mov      w21, #0x8d                           <<<
+0x007F4894: mov      w25, #1                           
+0x007F4898: b        #0x7f47bc                         
+0x007F489C: ldr      x0, [x22, #0x18]                  
+0x007F48A0: ldr      x8, [x0]                          
+0x007F48A4: ldr      x8, [x8, #0x30]                   
+
+--- 0x007F4A18: mov w21, #1 ---
+0x007F4A08: mov      x0, x19                           
+0x007F4A0C: mov      w1, #1                            
+0x007F4A10: bl       #0x775c14                         
+0x007F4A14: b        #0x7f4a38                         
+0x007F4A18: mov      w21, #1                              <<<
+0x007F4A1C: str      wzr, [x23, #0x101c]               
+0x007F4A20: ldr      w9, [x23, #0xa9c]                 
+0x007F4A24: cbnz     w9, #0x7f4968                     
+0x007F4A28: cbz      w8, #0x7f4f28                     
+0x007F4A2C: mov      x0, x19                           
+
+--- 0x007F4BF0: mov w21, #2 ---
+0x007F4BE0: bl       #0x7c6280                         
+0x007F4BE4: cbnz     w0, #0x7f4bf0                     
+0x007F4BE8: ldr      w8, [x19, #0x918]                 
+0x007F4BEC: cbz      w8, #0x7f4c3c                     
+0x007F4BF0: mov      w21, #2                              <<<
+0x007F4BF4: mov      x0, x19                           
+0x007F4BF8: bl       #0x6472b8                         
+0x007F4BFC: cbz      w0, #0x7f4c70                     
+0x007F4C00: ldr      w8, [x19, #0xe54]                 
+0x007F4C04: cmp      w8, #0xe3                         
+
+--- 0x007F4F60: mov w21, #3 ---
+0x007F4F50: bl       #0x7c6280                         
+0x007F4F54: cbnz     w0, #0x7f4f60                     
+0x007F4F58: ldr      w8, [x19, #0x91c]                 
+0x007F4F5C: cbz      w8, #0x7f4f74                     
+0x007F4F60: mov      w21, #3                              <<<
+0x007F4F64: mov      x0, x19                           
+0x007F4F68: bl       #0x6472b8                         
+0x007F4F6C: cbnz     w0, #0x7f4c00                     
+0x007F4F70: b        #0x7f4c70                         
+0x007F4F74: mov      x0, x20                           
+
+--- 0x007F4F98: mov w21, #1 ---
+0x007F4F88: bl       #0x7c6280                         
+0x007F4F8C: cbnz     w0, #0x7f4f98                     
+0x007F4F90: ldr      w8, [x19, #0x914]                 
+0x007F4F94: cbz      w8, #0x7f4fac                     
+0x007F4F98: mov      w21, #1                              <<<
+0x007F4F9C: mov      x0, x19                           
+0x007F4FA0: bl       #0x6472b8                         
+0x007F4FA4: cbnz     w0, #0x7f4c00                     
+0x007F4FA8: b        #0x7f4c70                         
+0x007F4FAC: mov      w21, #-1                          
+
+--- 0x007F4FAC: mov w21, #-1 ---
+0x007F4F9C: mov      x0, x19                           
+0x007F4FA0: bl       #0x6472b8                         
+0x007F4FA4: cbnz     w0, #0x7f4c00                     
+0x007F4FA8: b        #0x7f4c70                         
+0x007F4FAC: mov      w21, #-1                             <<<
+0x007F4FB0: mov      x0, x19                           
+0x007F4FB4: bl       #0x6472b8                         
+0x007F4FB8: cbnz     w0, #0x7f4c00                     
+0x007F4FBC: b        #0x7f4c70                         
+0x007F4FC0: stp      x30, x19, [sp, #-0x10]!           
+
+===== P71 ALL W21 USES =====
+0x007F461C: mov      w21, w0
+0x007F462C: tbnz     w21, #0xf, #0x7f4900
+0x007F4678: cset     w21, eq
+0x007F4688: orr      w2, w21, w8
+0x007F47B8: mov      w21, #0x87
+0x007F4820: mov      w1, w21
+0x007F4890: mov      w21, #0x8d
+0x007F48AC: mov      w21, w0
+0x007F48B8: cbz      w21, #0x7f48e4
+0x007F4914: mov      w21, w0
+0x007F4924: sub      w8, w21, #1
+0x007F495C: mov      w21, wzr
+0x007F4994: mov      w1, w21
+0x007F4A18: mov      w21, #1
+0x007F4A30: mov      w1, w21
+0x007F4AFC: ldr      w21, [x23, #0x101c]
+0x007F4B20: tbnz     w21, #5, #0x7f4b40
+0x007F4B3C: tbz      w21, #5, #0x7f4b24
+0x007F4BF0: mov      w21, #2
+0x007F4C34: str      w21, [x22, #0xb04]
+0x007F4C60: mov      w21, wzr
+0x007F4C74: mov      w1, w21
+0x007F4F30: mov      w1, w21
+0x007F4F60: mov      w21, #3
+0x007F4F98: mov      w21, #1
+0x007F4FAC: mov      w21, #-1
+
+===== P71 KNOWN BRANCH DESTINATIONS =====
+
+--- DEST 0x007F4840 ---
+0x007F484C: blr      x8
+0x007F4850: cbz      w0, #0x7f489c
+0x007F4854: mov      x0, x20
+0x007F4858: bl       #0x7c5fc0
+0x007F485C: cbz      w0, #0x7f4880
+0x007F4860: mov      x0, x20
+0x007F4864: mov      w1, wzr
+
+--- DEST 0x007F48E8 ---
+0x007F48E8: mov      x0, x19
+0x007F48EC: bl       #0x7983b0
+0x007F48F0: b        #0x7f4908
+0x007F48F4: mov      x0, x20
+0x007F48F8: bl       #0x7c5ffc
+0x007F48FC: cbz      w0, #0x7f490c
+0x007F4900: mov      x0, x19
+0x007F4904: bl       #0x798484
+0x007F490C: mov      x0, x19
+
+--- DEST 0x007F4900 ---
+0x007F4900: mov      x0, x19
+0x007F4904: bl       #0x798484
+0x007F490C: mov      x0, x19
+0x007F4910: bl       #0x795350
+0x007F4914: mov      w21, w0
+0x007F4918: mov      x0, x19
+0x007F491C: bl       #0x7ab0c8
+0x007F4920: cbz      w0, #0x7f49a4
+0x007F4924: sub      w8, w21, #1
+
+--- DEST 0x007F490C ---
+0x007F490C: mov      x0, x19
+0x007F4910: bl       #0x795350
+0x007F4914: mov      w21, w0
+0x007F4918: mov      x0, x19
+0x007F491C: bl       #0x7ab0c8
+0x007F4920: cbz      w0, #0x7f49a4
+0x007F4924: sub      w8, w21, #1
+0x007F4928: mov      w9, #0x2a
+0x007F492C: mov      w10, #0x1fc
+
+--- DEST 0x007F4A38 ---
+0x007F4A3C: mov      x0, x19
+0x007F4A44: blr      x8
+0x007F4A48: cbz      w0, #0x7f4acc
+0x007F4A4C: mov      x0, x20
+0x007F4A50: bl       #0x7c5f78
+0x007F4A54: cbnz     w0, #0x7f4a70
+0x007F4A58: mov      w1, #0x15
+0x007F4A5C: mov      x0, x20
+
+--- DEST 0x007F4F10 ---
+0x007F4F28: cbz      x0, #0x7f4a38
+0x007F4F2C: mov      x0, x19
+0x007F4F30: mov      w1, w21
+0x007F4F34: bl       #0x7c9d08
+
+===== P71 UJ ANCHOR =====
+0x007F47A8: fmov     s1, w8                            
+0x007F47AC: fcmp     s0, s1                            
+0x007F47B0: b.ge     #0x7f4890                         
+0x007F47B4: mov      w25, wzr                          
+0x007F47B8: mov      w21, #0x87                           <<< UJ STATE 0x87
+0x007F47BC: ldr      x8, [x19]                         
+0x007F47C0: mov      x0, x19                           
+0x007F47C4: ldr      x8, [x8, #0x1480]                 
+0x007F47C8: blr      x8                                
+0x007F47CC: cbnz     w0, #0x7f47d8                     
+
+P71_STATE_SELECTOR_MAP=PASS

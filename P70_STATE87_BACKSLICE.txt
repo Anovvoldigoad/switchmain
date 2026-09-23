@@ -1,0 +1,128 @@
+===== P70 UJ ROOT =====
+UJ_BLOCK = 0x7F47B4
+STATE87  = 0x7F47B8
+
+===== A) INCOMING EDGES TO 0x7F47B4 =====
+0x007F46CC: b #0x7f47b4
+0x007F4780: cbz w0, #0x7f47b4
+0x007F4790: cbnz w0, #0x7f47b4
+fallthrough: 0x7F47B0 -> 0x7F47B4
+
+===== B) UJ PREDECESSOR CONTEXTS =====
+
+--- around 0x007F46CC ---
+0x007F46C0: mov      w1, wzr                           
+0x007F46C4: bl       #0x7d2de4                         
+0x007F46C8: cbnz     w0, #0x7f4784                     
+0x007F46CC: b        #0x7f47b4                            <<< DECISION
+0x007F46D0: ldr      w8, [x24]                         
+
+--- around 0x007F4780 ---
+0x007F4774: mov      x0, x19                           
+0x007F4778: mov      w1, wzr                           
+0x007F477C: bl       #0x7d2de4                         
+0x007F4780: cbz      w0, #0x7f47b4                        <<< DECISION
+0x007F4784: mov      x0, x20                           
+
+--- around 0x007F4790 ---
+0x007F4784: mov      x0, x20                           
+0x007F4788: mov      w1, #8                            
+0x007F478C: bl       #0x7c6280                         
+0x007F4790: cbnz     w0, #0x7f47b4                        <<< DECISION
+0x007F4794: ldr      x8, [x19]                         
+
+--- around 0x007F47B0 ---
+0x007F47A4: mov      w8, #0x42c80000                   
+0x007F47A8: fmov     s1, w8                            
+0x007F47AC: fcmp     s0, s1                            
+0x007F47B0: b.ge     #0x7f4890                            <<< DECISION
+0x007F47B4: mov      w25, wzr                             <<< UJ BLOCK
+
+===== C) F58 / POST-GATE PATH =====
+0x007F46A0: mov      w2, wzr                           
+0x007F46A4: ldr      x8, [x19]                         
+0x007F46A8: mov      x0, x19                           
+0x007F46AC: mov      w1, wzr                           
+0x007F46B0: ldr      x8, [x8, #0xf58]                  
+0x007F46B4: blr      x8                                   <<< F58 VCALL
+0x007F46B8: cbz      w0, #0x7f4738                        <<< F58 RESULT
+0x007F46BC: mov      x0, x19                           
+0x007F46C0: mov      w1, wzr                           
+0x007F46C4: bl       #0x7d2de4                            <<< POST GATE
+0x007F46C8: cbnz     w0, #0x7f4784                     
+0x007F46CC: b        #0x7f47b4                         
+
+===== D) ALTERNATE ROUTE TO STATE87 =====
+0x007F4738: ldr      x8, [x19]                         
+0x007F473C: mov      x0, x19                           
+0x007F4740: mov      w1, wzr                           
+0x007F4744: ldr      x8, [x8, #0x1928]                 
+0x007F4748: blr      x8                                
+0x007F474C: cbz      w0, #0x7f4590                     
+0x007F4750: movi     v0.2s, #1                         
+0x007F4754: str      d0, [x23, #0x820]                 
+0x007F4758: adrp     x8, #0x2143000                    
+0x007F475C: ldr      x8, [x8, #0x6b0]                  
+0x007F4760: ldr      x0, [x8]                          
+0x007F4764: mov      w1, #0x1008                       
+0x007F4768: mov      w2, wzr                           
+0x007F476C: mov      w3, wzr                           
+0x007F4770: bl       #0x706f80                         
+0x007F4774: mov      x0, x19                           
+0x007F4778: mov      w1, wzr                           
+0x007F477C: bl       #0x7d2de4                         
+0x007F4780: cbz      w0, #0x7f47b4                     
+0x007F4784: mov      x0, x20                           
+0x007F4788: mov      w1, #8                            
+0x007F478C: bl       #0x7c6280                         
+0x007F4790: cbnz     w0, #0x7f47b4                     
+0x007F4794: ldr      x8, [x19]                         
+0x007F4798: mov      x0, x19                           
+0x007F479C: ldr      x8, [x8, #0xdb0]                  
+0x007F47A0: blr      x8                                
+0x007F47A4: mov      w8, #0x42c80000                   
+0x007F47A8: fmov     s1, w8                            
+0x007F47AC: fcmp     s0, s1                            
+0x007F47B0: b.ge     #0x7f4890                         
+0x007F47B4: mov      w25, wzr                             <<< UJ BLOCK
+0x007F47B8: mov      w21, #0x87                           <<< MOV W21,#0x87
+
+===== E) PRE-F58 BOOLEAN CALLS =====
+CALL 0x007F4588 BLR->INDIRECT | 0x007F458C: cbz w0, #0x7f4640
+CALL 0x007F4594 BL->0x008B2D04 | 0x007F4598: cbz w0, #0x7f4a38
+CALL 0x007F45A8 BLR->INDIRECT | 0x007F45AC: cbz w0, #0x7f4690
+CALL 0x007F45E8 BL->0x00805BC4 | 0x007F45EC: cbnz w0, #0x7f4f10
+CALL 0x007F45F4 BL->0x007C553C | 0x007F45F8: cbnz w0, #0x7f490c
+CALL 0x007F4608 BLR->INDIRECT | 0x007F460C: cbz w0, #0x7f4840
+CALL 0x007F4624 BL->0x007C5FC0 | 0x007F4628: cbz w0, #0x7f4630
+CALL 0x007F4634 BL->0x007C5FC0 | 0x007F4638: cbnz w0, #0x7f48e8
+CALL 0x007F4644 BL->0x008B2B70 | 0x007F4648: cbnz w0, #0x7f4658
+CALL 0x007F4650 BL->0x008B2C54 | 0x007F4654: cbz w0, #0x7f4590
+CALL 0x007F465C BL->0x00794EC8 | 0x007F4660: cbz w0, #0x7f46a0
+CALL 0x007F4694 BL->0x007C5FFC | 0x007F4698: cbnz w0, #0x7f4a38
+
+===== F) PRE-F58 BRANCH MAP =====
+0x007F458C: cbz    w0, #0x7f4640                -> 0x007F4640
+0x007F4598: cbz    w0, #0x7f4a38                -> 0x007F4A38
+0x007F45AC: cbz    w0, #0x7f4690                -> 0x007F4690
+0x007F45B8: b.hi   #0x7f45d0                    -> 0x007F45D0
+0x007F45CC: b.ne   #0x7f45e0                    -> 0x007F45E0
+0x007F45D4: b.eq   #0x7f45e0                    -> 0x007F45E0
+0x007F45DC: b.ne   #0x7f45f0                    -> 0x007F45F0
+0x007F45E4: cbz    x0, #0x7f45f0                -> 0x007F45F0
+0x007F45EC: cbnz   w0, #0x7f4f10                -> 0x007F4F10
+0x007F45F8: cbnz   w0, #0x7f490c                -> 0x007F490C
+0x007F460C: cbz    w0, #0x7f4840                -> 0x007F4840
+0x007F4628: cbz    w0, #0x7f4630                -> 0x007F4630
+0x007F462C: tbnz   w21, #0xf, #0x7f4900         -> 0x007F4900
+0x007F4638: cbnz   w0, #0x7f48e8                -> 0x007F48E8
+0x007F4648: cbnz   w0, #0x7f4658                -> 0x007F4658
+0x007F4654: cbz    w0, #0x7f4590                -> 0x007F4590
+0x007F4660: cbz    w0, #0x7f46a0                -> 0x007F46A0
+0x007F4668: cbz    x8, #0x7f46a0                -> 0x007F46A0
+0x007F4698: cbnz   w0, #0x7f4a38                -> 0x007F4A38
+
+===== P70 RESULT =====
+Root target is NOT MOV #0x87 itself.
+Find earliest pre-F58 predicate whose outcome sends Tobi away from this corridor.
+P70_STATE87_BACKSLICE=PASS
