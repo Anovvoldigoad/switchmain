@@ -6376,7 +6376,7 @@ HOOK_DEFINE_TRAMPOLINE(P89ActorPredBridgeHook) {
             bda4 = *reinterpret_cast<volatile uint32_t*>(b + 0xBDA4);
             bdc8 = *reinterpret_cast<volatile uint32_t*>(b + 0xBDC8);
             semantic = P64QuerySemanticUltimateJutsu(actor);
-            member = ContainsOugiAwakeningId(cid);
+            member = p81_data::ContainsOugiAwakeningId(cid);
             bridge =
                 native_ret == 0 &&
                 bda4 == 3 &&
