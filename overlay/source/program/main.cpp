@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP90ACinematicHandoffTrace();
+    nsc::InstallP90BZeroExtraHandoffTrace();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P90A cinematic handoff trace exception");
+    EXL_ABORT("NSC P90B zero-extra handoff trace exception");
 }

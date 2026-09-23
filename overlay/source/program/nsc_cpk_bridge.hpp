@@ -29,6 +29,6 @@ void InstallP86ABda4Bdc8ProducerProbe();
 void InstallP87AActiveProducerProbe();
 void InstallP88BBootSafeUJHelperProbe();
 void InstallP89APhase3ActorPredBridge();
-void InstallP90ACinematicHandoffTrace();
+void InstallP90BZeroExtraHandoffTrace();
 void InstallP88AWideUJAdmissionTrace();
 }
