@@ -9,5 +9,5 @@ extern "C" void exl_main(void* x0, void* x1) {
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P80B deep condition trace exception");
+    EXL_ABORT("NSC P89A phase3 actor predicate bridge exception");
 }

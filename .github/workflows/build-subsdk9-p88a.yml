@@ -1,59 +1,8 @@
-name: Build NSC P88A wide UJ admission trace
+name: Historical P88A (manual only)
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 jobs:
-  build:
+  archived:
     runs-on: ubuntu-latest
-    container:
-      image: devkitpro/devkita64:latest
-    env:
-      DEVKITPRO: /opt/devkitpro
-      DEVKITA64: /opt/devkitpro/devkitA64
     steps:
-      - uses: actions/checkout@v4
-      - name: Verify P88 source
-        run: python3 verify_p88a_source.py
-      - name: Clone pinned exlaunch
-        shell: bash
-        run: |
-          set -euxo pipefail
-          git clone https://github.com/shadowninja108/exlaunch.git exlaunch
-          git -C exlaunch checkout --detach 229bbd6
-          git -C exlaunch submodule update --init --recursive
-      - name: Apply overlay
-        shell: bash
-        run: |
-          set -euxo pipefail
-          chmod +x prepare_exlaunch.sh
-          bash ./prepare_exlaunch.sh "$GITHUB_WORKSPACE/exlaunch"
-          grep -q '\[NSC:P88A\]' "$GITHUB_WORKSPACE/exlaunch/source/program/nsc_cpk_bridge.cpp"
-          test -f "$GITHUB_WORKSPACE/exlaunch/source/program/p81_ougi_awake_ids.hpp"
-      - name: Build
-        shell: bash
-        run: |
-          set -euxo pipefail
-          export PATH="$DEVKITPRO/tools/bin:$DEVKITA64/bin:$PATH"
-          cd "$GITHUB_WORKSPACE/exlaunch"
-          make -j2
-      - name: Package
-        shell: bash
-        run: |
-          set -euxo pipefail
-          cd "$GITHUB_WORKSPACE"
-          OUT="$(find exlaunch -type f -name subsdk9 -size +10k -print -quit)"
-          test -n "$OUT"
-          mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
-          cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
-          cp paired/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
-          cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
-          cp README_P88A.txt P88A_STATIC_AUDIT.txt analyze_p88a_log.py artifact/
-          (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
-      - uses: actions/upload-artifact@v4
-        with:
-          name: NSC-P88A-wide-uj-admission-trace
-          path: artifact/
-          if-no-files-found: error
-          compression-level: 9
+      - run: echo 'P88A archived; use current P89A workflow for normal pushes.'

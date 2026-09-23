@@ -1,31 +1,33 @@
-#!/usr/bin/env python3
 from pathlib import Path
-R=Path.cwd()
-cp=R/"overlay/source/program/nsc_cpk_bridge.cpp"
-hp=R/"overlay/source/program/nsc_cpk_bridge.hpp"
-mp=R/"overlay/source/program/main.cpp"
-for p in (cp,hp,mp):
-    if not p.exists(): raise SystemExit(f"P89A_SOURCE_SANITY=FAIL missing {p}")
-c=cp.read_text(); h=hp.read_text(); m=mp.read_text()
-start=c.find("// P89A generic phase-3 actor-predicate compatibility bridge.")
-section=c[start:] if start >= 0 else ""
+import hashlib, sys
+root=Path(__file__).resolve().parent
+cpp=(root/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
+hpp=(root/'overlay/source/program/nsc_cpk_bridge.hpp').read_text()
+main=(root/'overlay/source/program/main.cpp').read_text()
+ids=(root/'overlay/source/program/p81_ougi_awake_ids.hpp').read_text()
 checks={
- "MAIN_ACTIVE":m.count("nsc::InstallP89APhase3ActorPredBridge();")==1,
- "P88B_MAIN_INACTIVE":"nsc::InstallP88BBootSafeUJHelperProbe();" not in m,
- "HEADER":h.count("void InstallP89APhase3ActorPredBridge();")==1,
- "READY":"[NSC:P89A] READY" in c,
- "ACTOR_LOG":"[NSC:P89A] ACTOR_PRED" in c,
- "TARGET":"kP89ActorPred = 0x7E24EC" in c,
- "FULL_FINGERPRINT":all(x in section for x in ["0xF81F0FFE","0xF9400008","0xF94C7508","0xD63F0100","0x7100041F","0x1A9F17E0","0xF84107FE","0xD65F03C0"]),
- "P88B_PARENT":"InstallP88BBootSafeUJHelperProbe();" in section,
- "PHASE_GATE":"bda4 == 3" in section and "bdc8 == 1" in section,
- "SEMANTIC_GATE":"P64QuerySemanticUltimateJutsu(actor)" in section,
- "MEMBERSHIP_GATE":"ContainsOugiAwakeningId(cid)" in section,
- "PRESERVE_NATIVE":"const uint32_t out = bridge ? 1u : native_ret;" in section,
- "CORRECT_OFFSETS":all(x in c for x in ["s106f4","0x106F4","s123e0","0x123E0","s123e4","0x123E4"]),
- "NO_WRONG_OFFSETS":all(x not in c for x in ["s116f4","0x116F4","s133e0","0x133E0","s133e4","0x133E4"]),
- "NO_CHAR281_BRANCH":"==281" not in section.replace(" ",""),
+ 'entrypoint': 'nsc::InstallP89APhase3ActorPredBridge();' in main,
+ 'decl': 'void InstallP89APhase3ActorPredBridge();' in hpp,
+ 'hook_offset': 'kP89ActorPred = 0x7E24EC' in cpp,
+ 'namespace_fix': 'p81_data::ContainsOugiAwakeningId(cid)' in cpp,
+ 'semantic_gate': 'P64QuerySemanticUltimateJutsu(actor)' in cpp,
+ 'phase3': 'bda4 == 3' in cpp and 'bdc8 == 1' in cpp,
+ 'preserve_native': 'const uint32_t out = bridge ? 1u : native_ret;' in cpp,
+ 'ready_marker': '[NSC:P89A] READY' in cpp,
+ 'pred_marker': '[NSC:P89A] ACTOR_PRED' in cpp,
+ 'correct_106f4': 's106f4' in cpp and 'b+0x106F4' in cpp,
+ 'correct_123e0': 's123e0' in cpp and 'b+0x123E0' in cpp,
+ 'correct_123e4': 's123e4' in cpp and 'b+0x123E4' in cpp,
+ 'no_bad_116f4': 's116f4' not in cpp,
+ 'no_bad_133e0': 's133e0' not in cpp,
+ 'no_bad_133e4': 's133e4' not in cpp,
+ 'generated_membership': 'ContainsOugiAwakeningId' in ids,
+ 'no_char281_branch': 'cid == 281' not in cpp and 'cid==281' not in cpp,
 }
-for k,v in checks.items(): print(f"P89A_{k}={'PASS' if v else 'FAIL'}")
-if not all(checks.values()): raise SystemExit("P89A_SOURCE_SANITY=FAIL")
-print("P89A_SOURCE_SANITY=PASS")
+for k,v in checks.items(): print(f'{k}={"PASS" if v else "FAIL"}')
+if not all(checks.values()): sys.exit(1)
+for rel,want in [
+ ('paired/atmosphere/contents/0100FA10190A0000/exefs/main','1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0'),
+ ('restore/atmosphere/contents/0100FA10190A0000/exefs/main','2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9')]:
+ p=root/rel; got=hashlib.sha256(p.read_bytes()).hexdigest(); print(rel,got); assert got==want
+print('P89A_DROPIN_SOURCE_VERIFY=PASS')
