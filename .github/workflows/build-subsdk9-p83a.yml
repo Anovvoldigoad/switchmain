@@ -1,6 +1,9 @@
-name: Build NSC P82A Downstream UJ Corridor Trace
+name: Build NSC P83A Slot1928 Ougi Policy Bridge
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -26,7 +29,7 @@ jobs:
         run: |
           set -euxo pipefail
 
-          test -f verify_p82a_kit.py
+          test -f verify_p83a_kit.py
           test -f prepare_exlaunch_p67a.sh
           test -f overlay/source/program/nsc_cpk_bridge.cpp
           test -f overlay/source/program/main.cpp
@@ -72,7 +75,7 @@ jobs:
             /tmp/condition_compat_generated.hpp \
             overlay/source/program/condition_compat_generated.hpp
 
-          python3 verify_p82a_kit.py
+          python3 verify_p83a_kit.py
 
       - name: Clone pinned exlaunch
         shell: bash
@@ -137,6 +140,7 @@ jobs:
 
           grep -aFq '[NSC:P81A] READY' "$ELF"
           grep -aFq '[NSC:P82A] READY' "$ELF"
+          grep -aFq '[NSC:P83A] READY' "$ELF"
           grep -aFq '[NSC:P77A] READY' "$ELF"
           grep -aFq '[NSC:P67A] READY' "$ELF"
           grep -aFq '[NSC:P64F] UJ_SEM_GATE' "$ELF"
@@ -175,7 +179,7 @@ jobs:
             artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
 
           cp \
-            README_P82A.txt \
+            README_P83A.txt \
             artifact/
 
           (
@@ -200,6 +204,6 @@ jobs:
       - name: Upload P81A artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P82A-downstream-uj-corridor-trace
+          name: NSC-P83A-slot1928-ougi-policy-bridge
           path: artifact/
           compression-level: 9

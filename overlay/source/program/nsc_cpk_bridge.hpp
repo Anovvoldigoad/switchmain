@@ -22,4 +22,5 @@ void InstallP79ADualSubpredicateProbe();
 void InstallP80BDeepConditionTrace();
 void InstallP81AOugiAwakeningPolicyBridge();
 void InstallP82ADownstreamCorridorProbe();
+void InstallP83ASlot1928PolicyBridge();
 }
