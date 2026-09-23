@@ -1,0 +1,60 @@
+name: Build NSC P89A generic phase3 actor predicate bridge
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify P89A source
+        run: |
+          python3 verify_p89a_source.py
+          grep -q 'nsc::InstallP89APhase3ActorPredBridge();' overlay/source/program/main.cpp
+          grep -q '\[NSC:P89A\] READY' overlay/source/program/nsc_cpk_bridge.cpp
+
+      - name: Bootstrap pinned exlaunch
+        run: |
+          rm -rf exlaunch
+          git clone https://github.com/shadowninja108/exlaunch.git exlaunch
+          git -C exlaunch checkout --detach 229bbd6
+          git -C exlaunch submodule update --init --recursive
+
+      - name: Prepare
+        run: |
+          chmod +x prepare_exlaunch.sh
+          bash prepare_exlaunch.sh
+          grep -q '\[NSC:P89A\] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -q 'InstallP89APhase3ActorPredBridge' exlaunch/source/program/main.cpp
+
+      - name: Build
+        working-directory: exlaunch
+        run: make -j2
+
+      - name: Package and verify
+        run: |
+          set -eu
+          test -f exlaunch/output/subsdk9
+          PAIRED_SHA="$(sha256sum paired/atmosphere/contents/0100FA10190A0000/exefs/main | awk '{print $1}')"
+          RESTORE_SHA="$(sha256sum restore/atmosphere/contents/0100FA10190A0000/exefs/main | awk '{print $1}')"
+          test "$PAIRED_SHA" = "1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0"
+          test "$RESTORE_SHA" = "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+          rm -rf artifact
+          mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs
+          mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
+          cp exlaunch/output/subsdk9 artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
+          cp paired/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
+          cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
+          cp README_P89A.txt analyze_p89a_log.py artifact/
+          strings artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9 | grep -q '\[NSC:P89A\] READY'
+          strings artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9 | grep -q '\[NSC:P89A\] ACTOR_PRED'
+          (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NSC-P89A-phase3-actor-predicate-bridge
+          path: artifact/

@@ -21,7 +21,7 @@ constexpr ptrdiff_t kFileLoadRequestOffset   = 0x1206B4C; // nuccFileLoadList re
 constexpr ptrdiff_t kFileLoadCreateOffset    = 0x1206C9C; // create new nuccFileLoad object
 constexpr ptrdiff_t kFileLoadStatusOffset    = 0x1207EFC; // lookup path -> status, 4 if absent from list
 constexpr ptrdiff_t kChunkBinaryOffset        = 0x3EAE70;  // ccGetChunkBinary(full_path, key)
-constexpr ptrdiff_t kLoadRequestProcessOffset = 0x116F404; // nuccLoadRequest process/open/read path
+constexpr ptrdiff_t kLoadRequestProcessOffset = 0x106F404; // nuccLoadRequest process/open/read path
 constexpr ptrdiff_t kFileOpenOffset           = 0x1170FB0; // low-level file open request; returns 1/0
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 constexpr ptrdiff_t kEvent235Offset           = 0x8162D4;  // native ME_ENEMY_DISP_ON callback
@@ -1044,7 +1044,7 @@ HOOK_DEFINE_TRAMPOLINE(ChunkBinaryHook) {
 };
 
 // main+0x1170FB0 copies the candidate path into the request and asks the
-// underlying mounted-file provider to open it. Native caller 0x116F4D8 marks
+// underlying mounted-file provider to open it. Native caller 0x106F4D8 marks
 // the nuccFileLoad object status=5 when this returns 0.
 //
 // x0=request object, x1=path C-string, w2=request/file slot; w0=1 success / 0 fail.
@@ -1060,7 +1060,7 @@ HOOK_DEFINE_TRAMPOLINE(FileOpenHook) {
     }
 };
 
-// main+0x116F404 is the native nuccLoadRequest processing routine that owns
+// main+0x106F404 is the native nuccLoadRequest processing routine that owns
 // BOTH proven status=5 branches:
 //   0x116F520 -> status=5 after FILE_OPEN returned 0 ("file could not be opened")
 //   0x116F5C0 -> status=5 after the XFBIN read path reports failure.
@@ -6292,15 +6292,15 @@ static constexpr ptrdiff_t kP88CtrlMode=0x7C553C, kP88Input=0x7C6074, kP88Mask=0
 static constexpr ptrdiff_t kP88State2=0x7D5C10, kP88Gate14=0x78FDC0;
 static std::atomic<uint32_t> g88prod{0},g88help{0},g88actor{0},g88ctrl{0},g88input{0},g88mask{0},g88state2{0},g88gate14{0};
 static constexpr uint32_t kP88Limit=65536;
-struct P88Snap {int32_t bda4,bdc8,e94,e98,e9c,s116f4,s133e0,s133e4,f7cc;uint32_t c404,c408,c5a0;};
+struct P88Snap {int32_t bda4,bdc8,e94,e98,e9c,s106f4,s123e0,s123e4,f7cc;uint32_t c404,c408,c5a0;};
 static P88Snap P88Read(void* actor){P88Snap s{};auto*b=reinterpret_cast<volatile uint8_t*>(actor);auto*c=b+0x228;
  s.bda4=*reinterpret_cast<volatile int32_t*>(b+0xBDA4);s.bdc8=*reinterpret_cast<volatile int32_t*>(b+0xBDC8);
  s.e94=*reinterpret_cast<volatile int32_t*>(b+0xE94);s.e98=*reinterpret_cast<volatile int32_t*>(b+0xE98);s.e9c=*reinterpret_cast<volatile int32_t*>(b+0xE9C);
- s.s116f4=*reinterpret_cast<volatile int32_t*>(b+0x116F4);s.s133e0=*reinterpret_cast<volatile int32_t*>(b+0x133E0);s.s133e4=*reinterpret_cast<volatile int32_t*>(b+0x133E4);s.f7cc=*reinterpret_cast<volatile int32_t*>(b+0x7CC);
+ s.s106f4=*reinterpret_cast<volatile int32_t*>(b+0x106F4);s.s123e0=*reinterpret_cast<volatile int32_t*>(b+0x123E0);s.s123e4=*reinterpret_cast<volatile int32_t*>(b+0x123E4);s.f7cc=*reinterpret_cast<volatile int32_t*>(b+0x7CC);
  s.c404=*reinterpret_cast<volatile uint32_t*>(c+0x404);s.c408=*reinterpret_cast<volatile uint32_t*>(c+0x408);s.c5a0=*reinterpret_cast<volatile uint32_t*>(c+0x5A0);return s;}
 static bool P88ActorFromCtrl(void* ctrl,void*&actor,uint32_t&side,uint32_t&cid){if(!ctrl)return false;actor=reinterpret_cast<uint8_t*>(ctrl)-0x228;return ReadActorIdentity(actor,side,cid);}
 static void P88LogSnap(const char*tag,void*actor,uint32_t side,uint32_t cid,const P88Snap&a,const P88Snap&z,unsigned long r,unsigned arg=0){
- Logging.Log("[NSC:P88A] %s actor=%p side=%u char=%u arg=%u ret=%lu bda4=%d->%d bdc8=%d->%d e94=%d->%d e98=%d->%d e9c=%d->%d s116f4=%d->%d s133e0=%d->%d s133e4=%d->%d f7cc=%d c404=%08x c408=%08x c5a0=%08x",tag,actor,side,cid,arg,r,a.bda4,z.bda4,a.bdc8,z.bdc8,a.e94,z.e94,a.e98,z.e98,a.e9c,z.e9c,a.s116f4,z.s116f4,a.s133e0,z.s133e0,a.s133e4,z.s133e4,a.f7cc,a.c404,a.c408,a.c5a0);}
+ Logging.Log("[NSC:P88A] %s actor=%p side=%u char=%u arg=%u ret=%lu bda4=%d->%d bdc8=%d->%d e94=%d->%d e98=%d->%d e9c=%d->%d s106f4=%d->%d s123e0=%d->%d s123e4=%d->%d f7cc=%d c404=%08x c408=%08x c5a0=%08x",tag,actor,side,cid,arg,r,a.bda4,z.bda4,a.bdc8,z.bdc8,a.e94,z.e94,a.e98,z.e98,a.e9c,z.e9c,a.s106f4,z.s106f4,a.s123e0,z.s123e0,a.s123e4,z.s123e4,a.f7cc,a.c404,a.c408,a.c5a0);}
 HOOK_DEFINE_TRAMPOLINE(P88ProdHook){static uint64_t Callback(void* actor){uint32_t s=~0u,c=~0u;bool v=ReadActorIdentity(actor,s,c);P88Snap a{};if(v)a=P88Read(actor);auto r=Orig(actor);if(v&&s==0&&g88prod.fetch_add(1)<kP88Limit)P88LogSnap("PROD",actor,s,c,a,P88Read(actor),(unsigned long)r);return r;}};
 HOOK_DEFINE_TRAMPOLINE(P88HelperHook){static uint32_t Callback(void* actor){uint32_t s=~0u,c=~0u;bool v=ReadActorIdentity(actor,s,c);P88Snap a{};if(v)a=P88Read(actor);auto r=Orig(actor);if(v&&s==0&&g88help.fetch_add(1)<kP88Limit)P88LogSnap("HELPER_8B30E4",actor,s,c,a,P88Read(actor),r);return r;}};
 HOOK_DEFINE_TRAMPOLINE(P88ActorPredHook){static uint32_t Callback(void* actor){uint32_t s=~0u,c=~0u;bool v=ReadActorIdentity(actor,s,c);P88Snap a{};if(v)a=P88Read(actor);auto r=Orig(actor);if(v&&s==0&&g88actor.fetch_add(1)<kP88Limit)P88LogSnap("ACTOR_7E24EC",actor,s,c,a,P88Read(actor),r);return r;}};
@@ -6339,13 +6339,91 @@ namespace {
 static constexpr ptrdiff_t kP88BHelper=0x8B30E4;
 static std::atomic<uint32_t> gP88BCount{0};
 static constexpr uint32_t kP88BLimit=131072;
-struct P88BSnap{int32_t bda4,bda8,bdc8,e94,e98,e9c,f7cc,s116f4,s133e0,s133e4;uint32_t c404,c408,c5a0;};
-static P88BSnap P88BRead(void* actor){P88BSnap s{};auto*b=reinterpret_cast<volatile uint8_t*>(actor);auto*c=b+0x228;s.bda4=*reinterpret_cast<volatile int32_t*>(b+0xBDA4);s.bda8=*reinterpret_cast<volatile int32_t*>(b+0xBDA8);s.bdc8=*reinterpret_cast<volatile int32_t*>(b+0xBDC8);s.e94=*reinterpret_cast<volatile int32_t*>(b+0xE94);s.e98=*reinterpret_cast<volatile int32_t*>(b+0xE98);s.e9c=*reinterpret_cast<volatile int32_t*>(b+0xE9C);s.f7cc=*reinterpret_cast<volatile int32_t*>(b+0x7CC);s.s116f4=*reinterpret_cast<volatile int32_t*>(b+0x116F4);s.s133e0=*reinterpret_cast<volatile int32_t*>(b+0x133E0);s.s133e4=*reinterpret_cast<volatile int32_t*>(b+0x133E4);s.c404=*reinterpret_cast<volatile uint32_t*>(c+0x404);s.c408=*reinterpret_cast<volatile uint32_t*>(c+0x408);s.c5a0=*reinterpret_cast<volatile uint32_t*>(c+0x5A0);return s;}
-HOOK_DEFINE_TRAMPOLINE(P88BHelperHook){static uint32_t Callback(void* actor){uint32_t side=~0u,cid=~0u;bool v=ReadActorIdentity(actor,side,cid);P88BSnap a{};if(v)a=P88BRead(actor);auto r=Orig(actor);if(v&&side==0&&gP88BCount.fetch_add(1)<kP88BLimit){auto z=P88BRead(actor);Logging.Log("[NSC:P88B] HELPER actor=%p side=%u char=%u ret=%u bda4=%d->%d bda8=%d->%d bdc8=%d->%d e94=%d->%d e98=%d->%d e9c=%d->%d f7cc=%d->%d s116f4=%d->%d s133e0=%d->%d s133e4=%d->%d c404=%08x->%08x c408=%08x->%08x c5a0=%08x->%08x",actor,side,cid,r,a.bda4,z.bda4,a.bda8,z.bda8,a.bdc8,z.bdc8,a.e94,z.e94,a.e98,z.e98,a.e9c,z.e9c,a.f7cc,z.f7cc,a.s116f4,z.s116f4,a.s133e0,z.s133e0,a.s133e4,z.s133e4,a.c404,z.c404,a.c408,z.c408,a.c5a0,z.c5a0);}return r;}};
+struct P88BSnap{int32_t bda4,bda8,bdc8,e94,e98,e9c,f7cc,s106f4,s123e0,s123e4;uint32_t c404,c408,c5a0;};
+static P88BSnap P88BRead(void* actor){P88BSnap s{};auto*b=reinterpret_cast<volatile uint8_t*>(actor);auto*c=b+0x228;s.bda4=*reinterpret_cast<volatile int32_t*>(b+0xBDA4);s.bda8=*reinterpret_cast<volatile int32_t*>(b+0xBDA8);s.bdc8=*reinterpret_cast<volatile int32_t*>(b+0xBDC8);s.e94=*reinterpret_cast<volatile int32_t*>(b+0xE94);s.e98=*reinterpret_cast<volatile int32_t*>(b+0xE98);s.e9c=*reinterpret_cast<volatile int32_t*>(b+0xE9C);s.f7cc=*reinterpret_cast<volatile int32_t*>(b+0x7CC);s.s106f4=*reinterpret_cast<volatile int32_t*>(b+0x106F4);s.s123e0=*reinterpret_cast<volatile int32_t*>(b+0x123E0);s.s123e4=*reinterpret_cast<volatile int32_t*>(b+0x123E4);s.c404=*reinterpret_cast<volatile uint32_t*>(c+0x404);s.c408=*reinterpret_cast<volatile uint32_t*>(c+0x408);s.c5a0=*reinterpret_cast<volatile uint32_t*>(c+0x5A0);return s;}
+HOOK_DEFINE_TRAMPOLINE(P88BHelperHook){static uint32_t Callback(void* actor){uint32_t side=~0u,cid=~0u;bool v=ReadActorIdentity(actor,side,cid);P88BSnap a{};if(v)a=P88BRead(actor);auto r=Orig(actor);if(v&&side==0&&gP88BCount.fetch_add(1)<kP88BLimit){auto z=P88BRead(actor);Logging.Log("[NSC:P88B] HELPER actor=%p side=%u char=%u ret=%u bda4=%d->%d bda8=%d->%d bdc8=%d->%d e94=%d->%d e98=%d->%d e9c=%d->%d f7cc=%d->%d s106f4=%d->%d s123e0=%d->%d s123e4=%d->%d c404=%08x->%08x c408=%08x->%08x c5a0=%08x->%08x",actor,side,cid,r,a.bda4,z.bda4,a.bda8,z.bda8,a.bdc8,z.bdc8,a.e94,z.e94,a.e98,z.e98,a.e9c,z.e9c,a.f7cc,z.f7cc,a.s106f4,z.s106f4,a.s123e0,z.s123e0,a.s123e4,z.s123e4,a.c404,z.c404,a.c408,z.c408,a.c5a0,z.c5a0);}return r;}};
 static bool InstallP88BInternal(){static constexpr uint32_t sig[]={0xA9BE57FE,0xA9014FF4,0x9108A014,0xAA0003F3};if(!MatchWords(kP88BHelper,sig)){LogFingerprintFail("P88B_HELP",kP88BHelper);return false;}P88BHelperHook::InstallAtOffset(kP88BHelper);return true;}
 } // anonymous P88B
 
 void InstallP88BBootSafeUJHelperProbe(){InstallP85AF58IntentProbe();const bool ok=InstallP88BInternal();Logging.Log("[NSC:P88B] READY baseline_p85=1 helper_only=1 probe=%d readonly=1 preserve_orig=1 no_shared_control_hooks=1 no_bda4_write=1 no_bdc8_write=1 no_force_return=1 no_force_f58=1 no_force87=1 no_force700=1 no_action445_rewrite=1 no_selector8=1 no_char281_branch=1 limit=%u",ok?1:0,kP88BLimit);}
 
+
+// P89A generic phase-3 actor-predicate compatibility bridge.
+// Preserve native TRUE. Bridge native FALSE only for exact phase-3,
+// semantic UJ permission + generated OugiAwakening membership.
+// No character-ID hardcode and no gameplay-state/action writes.
+namespace {
+static constexpr ptrdiff_t kP89ActorPred = 0x7E24EC;
+static constexpr uint32_t kP89Limit = 131072;
+static std::atomic<uint32_t> gP89Count{0};
+
+HOOK_DEFINE_TRAMPOLINE(P89ActorPredBridgeHook) {
+    static uint32_t Callback(void* actor) {
+        const uint32_t native_ret = Orig(actor);
+
+        uint32_t side = 0xFFFFFFFFu;
+        uint32_t cid = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, cid);
+
+        uint32_t bda4 = 0xFFFFFFFFu;
+        uint32_t bdc8 = 0xFFFFFFFFu;
+        bool semantic = false;
+        bool member = false;
+        bool bridge = false;
+
+        if (valid && actor) {
+            auto* b = reinterpret_cast<volatile uint8_t*>(actor);
+            bda4 = *reinterpret_cast<volatile uint32_t*>(b + 0xBDA4);
+            bdc8 = *reinterpret_cast<volatile uint32_t*>(b + 0xBDC8);
+            semantic = P64QuerySemanticUltimateJutsu(actor);
+            member = ContainsOugiAwakeningId(cid);
+            bridge =
+                native_ret == 0 &&
+                bda4 == 3 &&
+                bdc8 == 1 &&
+                semantic &&
+                member;
+        }
+
+        const uint32_t out = bridge ? 1u : native_ret;
+
+        if (valid && side == 0 &&
+            gP89Count.fetch_add(1, std::memory_order_relaxed) < kP89Limit) {
+            Logging.Log(
+                "[NSC:P89A] ACTOR_PRED actor=%p side=%u char=%u "
+                "bda4=%u bdc8=%u native=%u semantic=%u member=%u bridge=%u out=%u",
+                actor, side, cid, bda4, bdc8, native_ret,
+                semantic ? 1u : 0u, member ? 1u : 0u,
+                bridge ? 1u : 0u, out);
+        }
+        return out;
+    }
+};
+
+static bool InstallP89Internal() {
+    static constexpr uint32_t sig[] = {
+        0xF81F0FFE, 0xF9400008, 0xF94C7508, 0xD63F0100,
+        0x7100041F, 0x1A9F17E0, 0xF84107FE, 0xD65F03C0
+    };
+    if (!MatchWords(kP89ActorPred, sig)) {
+        LogFingerprintFail("P89_ACTOR_PRED", kP89ActorPred);
+        return false;
+    }
+    P89ActorPredBridgeHook::InstallAtOffset(kP89ActorPred);
+    return true;
+}
+} // anonymous P89A
+
+void InstallP89APhase3ActorPredBridge() {
+    InstallP88BBootSafeUJHelperProbe();
+    const bool ok = InstallP89Internal();
+    Logging.Log(
+        "[NSC:P89A] READY parent_p88b=1 actor_pred=0x7e24ec probe=%d "
+        "generic=1 phase3_only=1 preserve_native_true=1 semantic_gate=1 "
+        "membership_gate=1 corrected_snapshots=1 no_bda4_write=1 "
+        "no_bdc8_write=1 no_force_f58=1 no_force700=1 "
+        "no_action445_rewrite=1 no_selector8=1 no_char281_branch=1 limit=%u",
+        ok ? 1 : 0, kP89Limit);
+}
 
 } // namespace nsc
