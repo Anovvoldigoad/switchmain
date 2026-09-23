@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP89APhase3ActorPredBridge();
+    nsc::InstallP90ACinematicHandoffTrace();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P89A phase3 actor predicate bridge exception");
+    EXL_ABORT("NSC P90A cinematic handoff trace exception");
 }

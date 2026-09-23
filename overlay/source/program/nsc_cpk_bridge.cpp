@@ -6426,4 +6426,149 @@ void InstallP89APhase3ActorPredBridge() {
         ok ? 1 : 0, kP89Limit);
 }
 
+// P90A boot-safe cinematic handoff tracer.
+// Static P90C narrowed the post-admission frontier to the 707/708 corridor
+// in main+0x7E47B8.  Do not hook the large dispatcher or its virtual BLR.
+// Instead observe two normal function-entry boundaries already source-proven:
+//   0x768E84 ActionLookup(actor,index,flag), called for 707/708
+//   0x769A4C ActionGate(actor), used by the 707/708/709 handler.
+// PlayAction 0x766B8C is already observed by the inherited P50 trampoline,
+// so P90A deliberately does NOT double-hook it.
+namespace {
+static constexpr ptrdiff_t kP90ActionLookup = 0x768E84;
+static constexpr ptrdiff_t kP90ActionGate   = 0x769A4C;
+static constexpr uint32_t kP90Limit = 65536;
+static std::atomic<uint32_t> gP90LookupCount{0};
+static std::atomic<uint32_t> gP90GateCount{0};
+
+struct P90Snap {
+    int32_t e60, e94, e98, e9c, ea0;
+    uint32_t ea4;
+    int32_t bda4, bdc8;
+};
+
+static P90Snap P90Read(void* actor) {
+    P90Snap s{};
+    if (!actor) return s;
+    auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+    s.e60  = *reinterpret_cast<const volatile int32_t*>(b + 0xE60);
+    s.e94  = *reinterpret_cast<const volatile int32_t*>(b + 0xE94);
+    s.e98  = *reinterpret_cast<const volatile int32_t*>(b + 0xE98);
+    s.e9c  = *reinterpret_cast<const volatile int32_t*>(b + 0xE9C);
+    s.ea0  = *reinterpret_cast<const volatile int32_t*>(b + 0xEA0);
+    s.ea4  = *reinterpret_cast<const volatile uint32_t*>(b + 0xEA4);
+    s.bda4 = *reinterpret_cast<const volatile int32_t*>(b + 0xBDA4);
+    s.bdc8 = *reinterpret_cast<const volatile int32_t*>(b + 0xBDC8);
+    return s;
+}
+
+HOOK_DEFINE_TRAMPOLINE(P90ActionLookupHook) {
+    static void* Callback(void* actor, int32_t index, int32_t flag) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+
+        // The P90 corridor is intentionally narrow: action 707/708/709 and
+        // nearby native cinematic states only. Other lookups remain native
+        // with minimal perturbation and no logging.
+        const bool relevant = index >= 700 && index <= 740;
+        if (!relevant) return Orig(actor, index, flag);
+
+        uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, cid);
+        const P90Snap pre = P90Read(actor);
+        void* const ret = Orig(actor, index, flag);
+        const P90Snap post = P90Read(actor);
+
+        const uint32_t n = gP90LookupCount.fetch_add(1, std::memory_order_relaxed);
+        if (n < kP90Limit) {
+            Logging.Log(
+                "[NSC:P90A] LOOKUP n=%u actor=%p valid=%u side=%u char=%u "
+                "index=%d flag=%d ret=%p caller_off=0x%lx "
+                "e60=%d->%d e94=%d->%d e98=%d->%d e9c=%d->%d "
+                "ea0=%d->%d ea4=%08x->%08x bda4=%d->%d bdc8=%d->%d",
+                n, actor, valid ? 1u : 0u, side, cid, index, flag, ret,
+                static_cast<unsigned long>(caller_off),
+                pre.e60, post.e60, pre.e94, post.e94, pre.e98, post.e98,
+                pre.e9c, post.e9c, pre.ea0, post.ea0, pre.ea4, post.ea4,
+                pre.bda4, post.bda4, pre.bdc8, post.bdc8);
+        }
+        return ret;
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(P90ActionGateHook) {
+    static uint32_t Callback(void* actor) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+
+        uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, cid);
+        const P90Snap pre = P90Read(actor);
+        const uint32_t ret = Orig(actor);
+        const P90Snap post = P90Read(actor);
+
+        const bool relevant =
+            (pre.e94 >= 700 && pre.e94 <= 740) ||
+            (post.e94 >= 700 && post.e94 <= 740) ||
+            caller_off == 0x7E48E8;
+        if (relevant) {
+            const uint32_t n = gP90GateCount.fetch_add(1, std::memory_order_relaxed);
+            if (n < kP90Limit) {
+                Logging.Log(
+                    "[NSC:P90A] GATE n=%u actor=%p valid=%u side=%u char=%u "
+                    "ret=%u caller_off=0x%lx "
+                    "e60=%d->%d e94=%d->%d e98=%d->%d e9c=%d->%d "
+                    "ea0=%d->%d ea4=%08x->%08x bda4=%d->%d bdc8=%d->%d",
+                    n, actor, valid ? 1u : 0u, side, cid, ret,
+                    static_cast<unsigned long>(caller_off),
+                    pre.e60, post.e60, pre.e94, post.e94, pre.e98, post.e98,
+                    pre.e9c, post.e9c, pre.ea0, post.ea0, pre.ea4, post.ea4,
+                    pre.bda4, post.bda4, pre.bdc8, post.bdc8);
+            }
+        }
+        return ret;
+    }
+};
+
+static bool InstallP90Internal() {
+    static constexpr uint32_t lookup_sig[] = {
+        0xA9BE57FE, 0xA9014FF4, 0xB94E5408, 0x2A0203F5,
+        0x2A0103F3, 0xAA0003F4, 0x7100411F, 0x54000081
+    };
+    static constexpr uint32_t gate_sig[] = {
+        0xFC1D0FE8, 0xA90157FE, 0xA9024FF4, 0xAA0003F3,
+        0xF9410C00, 0xB4000160, 0x97F34520, 0xD000CEC8
+    };
+    bool ok = true;
+    if (!MatchWords(kP90ActionLookup, lookup_sig)) {
+        LogFingerprintFail("P90_LOOKUP", kP90ActionLookup);
+        ok = false;
+    }
+    if (!MatchWords(kP90ActionGate, gate_sig)) {
+        LogFingerprintFail("P90_GATE", kP90ActionGate);
+        ok = false;
+    }
+    if (!ok) return false;
+    P90ActionLookupHook::InstallAtOffset(kP90ActionLookup);
+    P90ActionGateHook::InstallAtOffset(kP90ActionGate);
+    return true;
+}
+} // anonymous P90A
+
+void InstallP90ACinematicHandoffTrace() {
+    // P89 is the proven functional parent. P90 adds observation only.
+    InstallP89APhase3ActorPredBridge();
+    const bool ok = InstallP90Internal();
+    Logging.Log(
+        "[NSC:P90A] READY parent_p89=1 probe=%d readonly=1 preserve_orig=1 "
+        "lookup=0x768e84 gate=0x769a4c inherited_playaction=0x766b8c "
+        "corridor=707-708 ea4_snapshot=1 no_dispatcher_hook=1 no_blr_replay=1 "
+        "no_event236_change=1 no_victim_change=1 no_bda4_write=1 no_bdc8_write=1 "
+        "no_ea4_write=1 no_force_f58=1 no_force700=1 no_force708=1 "
+        "no_action445_rewrite=1 no_selector8=1 no_char281_branch=1 limit=%u",
+        ok ? 1 : 0, kP90Limit);
+}
+
 } // namespace nsc
