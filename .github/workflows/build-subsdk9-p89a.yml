@@ -35,11 +35,13 @@ jobs:
       - name: Package and verify
         run: |
           set -eux
-          test -f exlaunch/output/subsdk9
+          OUT="$(find exlaunch -type f -name subsdk9 -size +10k -print -quit)"
+          test -n "$OUT"
+          echo "SUBSDK9=$OUT"
           rm -rf artifact
           mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs
           mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
-          cp exlaunch/output/subsdk9 artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
+          cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
           cp paired/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
           cp README_P89A.txt analyze_p89a_log.py artifact/

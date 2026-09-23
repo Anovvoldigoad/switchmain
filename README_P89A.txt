@@ -29,3 +29,7 @@ Test matrix after boot:
 3. custom ordinary XA x2
 4. custom intended XXA/UJ x2
 Capture full emulator log and upload it.
+
+P89A DROP-IN v2 BUILD FIX
+- Packaging discovers the built subsdk9 with find, matching the proven P88A workflow.
+- It does not assume exlaunch/output/subsdk9.
