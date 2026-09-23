@@ -32,6 +32,16 @@ jobs:
       - name: Build
         working-directory: exlaunch
         run: make -j2
+      - name: Verify linked P89A markers
+        run: |
+          set -eux
+          ELF="$(find exlaunch -maxdepth 2 -type f -name '*_final.elf' -size +10k -print -quit)"
+          test -n "$ELF"
+          echo "ELF=$ELF"
+          grep -aFq '[NSC:P89A] READY' "$ELF"
+          grep -aFq '[NSC:P89A] ACTOR_PRED' "$ELF"
+          grep -aFq '[NSC:P88B] READY' "$ELF"
+          echo 'P89A_LINKED_MARKERS=PASS'
       - name: Package and verify
         run: |
           set -eux

@@ -33,3 +33,10 @@ Capture full emulator log and upload it.
 P89A DROP-IN v2 BUILD FIX
 - Packaging discovers the built subsdk9 with find, matching the proven P88A workflow.
 - It does not assume exlaunch/output/subsdk9.
+
+
+P89A DROP-IN v3 BUILD VERIFICATION
+- Runtime marker strings are verified in the linked *_final.elf before NSO conversion.
+- The packaged subsdk9 is verified as NSO0 and non-trivial size.
+- Raw marker search in subsdk9 is intentionally NOT used because NSO segments may be compressed.
+- Paired and restore main SHA256 values remain strictly verified.
