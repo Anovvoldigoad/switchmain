@@ -5,4 +5,4 @@ jobs:
   archived:
     runs-on: ubuntu-latest
     steps:
-      - run: echo 'P87A archived; use current P89A workflow for normal pushes.'
+      - run: echo 'P87A archived; P90A is the only workflow enabled for pushes.'

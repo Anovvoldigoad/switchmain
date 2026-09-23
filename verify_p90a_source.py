@@ -26,6 +26,19 @@ for rel,want in [
  ('paired/atmosphere/contents/0100FA10190A0000/exefs/main','1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0'),
  ('restore/atmosphere/contents/0100FA10190A0000/exefs/main','2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9')]:
  p=root/rel; got=hashlib.sha256(p.read_bytes()).hexdigest(); print(rel,got); assert got==want
-w=list((root/'.github/workflows').glob('*.yml'))
-print('workflow_count',len(w)); assert len(w)==1 and w[0].name=='build-subsdk9-p90a.yml'
+w=sorted((root/'.github/workflows').glob('*.yml'))
+print('workflow_count',len(w),[p.name for p in w])
+assert (root/'.github/workflows/build-subsdk9-p90a.yml').is_file()
+push_enabled=[]
+for wf in w:
+    txt=wf.read_text()
+    if 'push:' in txt:
+        push_enabled.append(wf.name)
+print('push_enabled_workflows',push_enabled)
+assert push_enabled==['build-subsdk9-p90a.yml'], push_enabled
+for old in ['build-subsdk9-p87a.yml','build-subsdk9-p88a.yml','build-subsdk9-p89a.yml']:
+    p=root/'.github/workflows'/old
+    if p.exists():
+        txt=p.read_text()
+        assert 'workflow_dispatch:' in txt and 'push:' not in txt, old
 print('P90A_DROPIN_SOURCE_VERIFY=PASS')

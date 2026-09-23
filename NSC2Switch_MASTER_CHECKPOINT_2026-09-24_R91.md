@@ -286,3 +286,9 @@ Source preflight PASS:
 - artifact manifest excludes `SHA256SUMS.txt` itself.
 
 Important validation boundary: local source/static preflight is PASS. Actual devkitA64 compilation is intentionally performed by the included GitHub Actions workflow; do not claim runtime/compile PASS until that CI artifact exists and is audited.
+
+
+## R91.1 — workflow verifier correction
+The first P90A kit incorrectly asserted that the repository must contain exactly one YAML workflow file. P89 P40 v3 intentionally leaves P87A/P88A historical manual-only workflows and the repository also retains P89A, so extracting P90A produced four workflow files. This was a packaging/verifier bug, not a runtime/source failure.
+
+Correct policy: P90A must be the ONLY push-enabled workflow. Historical P87A/P88A/P89A files are overwritten as workflow_dispatch-only stubs. verify_p90a_source.py now checks push-enabled workflow identity rather than raw workflow file count. No gameplay/runtime source change was made by this correction.
