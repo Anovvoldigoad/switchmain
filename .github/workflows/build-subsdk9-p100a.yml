@@ -1,4 +1,4 @@
-name: Build NSC P99A cleanup gate1278 trace
+name: Build NSC P100A action710 corridor landmarks
 on:
   workflow_dispatch:
 jobs:
@@ -7,10 +7,10 @@ jobs:
     container: devkitpro/devkita64:latest
     steps:
       - uses: actions/checkout@v4
-      - name: Preflight P99A drop-in kit
+      - name: Preflight P100A drop-in kit
         run: |
           set -eux
-          python3 verify_p99a_source.py
+          python3 verify_p100a_source.py
       - name: Bootstrap pinned exlaunch
         run: |
           set -eux
@@ -23,10 +23,10 @@ jobs:
           set -eux
           chmod +x prepare_exlaunch.sh
           ./prepare_exlaunch.sh
-          grep -Fq '[NSC:P99A] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq '[NSC:P99A] GATE1278' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq '[NSC:P99A] TOPO' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq 'nsc::InstallP99ACleanupGate1278Trace();' exlaunch/source/program/main.cpp
+          grep -Fq '[NSC:P100A] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq '[NSC:P100A] LANDMARK' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq 'ENTRY_7E6A58' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq 'nsc::InstallP100AAction710CorridorLandmarks();' exlaunch/source/program/main.cpp
           ! grep -Fq 'InstallP97' exlaunch/source/program/main.cpp
           ! grep -Fq 'InstallP98B' exlaunch/source/program/main.cpp
       - name: Build
@@ -37,9 +37,9 @@ jobs:
           set -eux
           ELF="$(find exlaunch -maxdepth 2 -type f -name '*_final.elf' -size +10k -print -quit)"
           test -n "$ELF"
-          grep -aFq '[NSC:P99A] READY' "$ELF"
-          grep -aFq '[NSC:P99A] GATE1278' "$ELF"
-          grep -aFq '[NSC:P99A] TOPO' "$ELF"
+          grep -aFq '[NSC:P100A] READY' "$ELF"
+          grep -aFq '[NSC:P100A] LANDMARK' "$ELF"
+          grep -aFq 'REQUEST710_7E6EA8' "$ELF"
           grep -aFq '[NSC:P96A] READY' "$ELF"
           grep -aFq '[NSC:P89A] READY' "$ELF"
       - name: Package
@@ -55,6 +55,6 @@ jobs:
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: NSC-P99A-cleanup-gate1278-trace
+          name: NSC-P100A-action710-corridor-landmarks
           path: artifact/
           if-no-files-found: error
