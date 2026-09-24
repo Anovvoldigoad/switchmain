@@ -1,8 +1,6 @@
 name: Build NSC P97A v2 early-transition guard compilefix
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest

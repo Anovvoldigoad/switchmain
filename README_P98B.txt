@@ -35,3 +35,7 @@ B. E9C becomes125 in P93/P95 logs but there is NO P98B req=125:
    state125 bypasses vslot/base 0x7A89A4; pivot directly to 0x7A8A9C/non-virtual writer provenance.
 
 Never hardcode char281; it is only the reproducer. No force708/710 and no E9C write.
+
+P98B v2 CI packaging fix
+------------------------
+This package also includes build-subsdk9-p97a.yml as workflow_dispatch-only so a stale push-enabled P97A workflow is overwritten. Runtime/source logic is unchanged.
