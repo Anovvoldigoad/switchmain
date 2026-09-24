@@ -19,5 +19,5 @@ s,n4=re.subn(r'(?m)^ELF_EXTRACT\s*:=.*$', 'ELF_EXTRACT := $(PWD)/p64f_final.elf'
 if (n1,n2,n3,n4)!=(1,1,1,1): raise SystemExit(f'config patch failed {(n1,n2,n3,n4)}')
 p.write_text(s)
 PY
-echo "[+] P89A complete drop-in overlay prepared"
+echo "[+] P104B complete drop-in overlay prepared"
 grep -E '^(LOAD_KIND|PROGRAM_ID|CXX_FLAGS|ELF_EXTRACT)[[:space:]]*:=' "$EXL/config.mk"

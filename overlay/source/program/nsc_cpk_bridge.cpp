@@ -7056,7 +7056,7 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P104A — sibling-controller gate proof (one trampoline, read-only).
+// P104B — sibling-controller two-gate proof v2 (one trampoline, read-only).
 //
 // Proven static chain on Switch v1.70:
 //   actor vtable +0x4C0 -> main+0x7DDD94
@@ -7070,47 +7070,74 @@ void InstallP96AActionDescriptorTransitionTrace() {
 //       0x7DE030 CBZ W8,0x7DE4C0
 //   Only when BOTH gates are nonzero can this path continue toward 262/261.
 //
-// P104A hooks ONLY 0x7EE8E0. At the exact return caller 0x7DE028 it logs:
+// P104B hooks ONLY 0x7EE8E0. Caller LR is captured before any helper call.
+// Non-target callers execute Orig(actor) without actor-state instrumentation.
+// For exact caller return 0x7DE028 and player-side actors, it captures:
 //   gate #1 = native predicate return
-//   gate #2 = actor+0x12240 value
-// for focused 700..711 actions. It never changes either gate or gameplay state.
+//   gate #2 pre  = actor+0x12240 before native predicate
+//   gate #2 post = actor+0x12240 after native predicate, immediately before
+//                  returning to the controller (authoritative P104B sample)
+// plus focused 700..711 pre/post state and vtable +0x4C0/+0x520 targets.
+// It never changes either gate or gameplay state.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP104SiblingPredicateOffset = 0x7EE8E0;
-static constexpr ptrdiff_t kP104SiblingPredicateReturn = 0x7DE028;
-static constexpr ptrdiff_t kP104Gate12240Offset = 0x12240;
-static constexpr uint32_t kP104GateLogLimit = 4096u;
-static std::atomic<uint32_t> g_p104_gate_logs{0};
+static constexpr ptrdiff_t kP104BSiblingPredicateOffset = 0x7EE8E0;
+static constexpr ptrdiff_t kP104BSiblingPredicateReturn = 0x7DE028;
+static constexpr ptrdiff_t kP104BGate12240Offset = 0x12240;
+static constexpr uint32_t kP104BGateLogLimit = 4096u;
+static std::atomic<uint32_t> g_p104b_gate_logs{0};
 
-HOOK_DEFINE_TRAMPOLINE(P104SiblingControllerGateHook) {
+HOOK_DEFINE_TRAMPOLINE(P104BSiblingControllerGateHook) {
     static uint32_t Callback(void* actor) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
         const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        const bool exact_caller = caller_off == kP104BSiblingPredicateReturn;
 
+        // IMPORTANT: for non-target callers, do not inspect actor state at all.
         uint32_t side = 0xFFFFFFFFu;
         uint32_t cid = 0xFFFFFFFFu;
-        const bool valid = ReadActorIdentity(actor, side, cid);
-        const P93CoreState pre = valid ? ReadP93CoreState(actor) : P93CoreState{};
-        uint32_t gate12240 = 0xFFFFFFFFu;
-        if (valid && actor) {
-            const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
-            gate12240 = *reinterpret_cast<const volatile uint32_t*>(b + kP104Gate12240Offset);
-        }
-        const bool semantic = valid && P64QuerySemanticUltimateJutsu(actor);
-        const bool member = valid && p81_data::ContainsOugiAwakeningId(cid);
+        bool valid_player = false;
+        P93CoreState pre{};
+        uint32_t gate12240_pre = 0xFFFFFFFFu;
+        bool semantic = false;
+        bool member = false;
 
-        // Native predicate executes exactly once. P104A never overrides it.
+        if (exact_caller) {
+            const bool valid = ReadActorIdentity(actor, side, cid);
+            valid_player = valid && side == 0u;
+            if (valid_player) {
+                pre = ReadP93CoreState(actor);
+                semantic = P64QuerySemanticUltimateJutsu(actor);
+                member = p81_data::ContainsOugiAwakeningId(cid);
+                // Sample gate2_pre last, immediately before Orig(actor).
+                const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+                gate12240_pre = *reinterpret_cast<const volatile uint32_t*>(b + kP104BGate12240Offset);
+            }
+        }
+
+        // Native predicate executes exactly once on every invocation.
+        // P104B never overrides its return value.
         const uint32_t native_ret = Orig(actor);
 
-        const P93CoreState post = valid ? ReadP93CoreState(actor) : P93CoreState{};
+        if (!exact_caller || !valid_player) {
+            return native_ret;
+        }
+
+        // This is intentionally sampled AFTER the native predicate and as close
+        // as possible to the caller's subsequent LDR at 0x7DE02C while keeping
+        // P104B to one read-only whole-function trampoline.
+        const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+        const uint32_t gate12240_post =
+            *reinterpret_cast<const volatile uint32_t*>(b + kP104BGate12240Offset);
+        const P93CoreState post = ReadP93CoreState(actor);
         const bool focused_action =
             (pre.action >= 700u && pre.action <= 711u) ||
             (post.action >= 700u && post.action <= 711u);
 
-        if (valid && caller_off == kP104SiblingPredicateReturn && focused_action) {
-            const uint32_t n = g_p104_gate_logs.fetch_add(1, std::memory_order_relaxed);
-            if (n < kP104GateLogLimit) {
+        if (focused_action) {
+            const uint32_t n = g_p104b_gate_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < kP104BGateLogLimit) {
                 uintptr_t vtable = 0;
                 ptrdiff_t slot4c0_off = -1;
                 ptrdiff_t slot520_off = -1;
@@ -7124,14 +7151,15 @@ HOOK_DEFINE_TRAMPOLINE(P104SiblingControllerGateHook) {
                     }
                 }
                 Logging.Log(
-                    "[NSC:P104A] GATE n=%u actor=%p side=%u char=%u semantic=%u member=%u "
-                    "caller_off=0x%lx action=%u->%u pred=%u gate12240=%08x "
-                    "e94=%u->%u e98=%u->%u e9c=%u->%u ea4=%08x->%08x "
+                    "[NSC:P104B] GATE n=%u actor=%p side=%u char=%u semantic=%u member=%u "
+                    "caller_off=0x%lx action=%u->%u pred=%u gate12240_pre=%08x gate12240_post=%08x "
+                    "gate12240_changed=%u e94=%u->%u e98=%u->%u e9c=%u->%u ea4=%08x->%08x "
                     "bda4=%u->%u bda8=%u->%u bdc8=%u->%u "
                     "vtable=%p slot4c0_off=0x%lx slot520_off=0x%lx",
                     n, actor, side, cid, semantic ? 1u : 0u, member ? 1u : 0u,
                     static_cast<unsigned long>(caller_off), pre.action, post.action,
-                    native_ret, gate12240,
+                    native_ret, gate12240_pre, gate12240_post,
+                    gate12240_pre != gate12240_post ? 1u : 0u,
                     pre.e94, post.e94, pre.e98, post.e98, pre.e9c, post.e9c,
                     pre.ea4, post.ea4,
                     pre.bda4, post.bda4, pre.bda8, post.bda8,
@@ -7144,28 +7172,29 @@ HOOK_DEFINE_TRAMPOLINE(P104SiblingControllerGateHook) {
     }
 };
 
-static bool InstallP104SiblingControllerGateTraceInternal() {
+static bool InstallP104BSiblingControllerGateTraceInternal() {
     static constexpr uint32_t sig[] = {
         0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0xF9400008,
         0xAA0003F5, 0xF946E908, 0xD63F0100, 0xB40003C0,
     };
-    if (!MatchWords(kP104SiblingPredicateOffset, sig)) {
-        LogFingerprintFail("P104_SIBLING_PRED_7EE8E0", kP104SiblingPredicateOffset);
+    if (!MatchWords(kP104BSiblingPredicateOffset, sig)) {
+        LogFingerprintFail("P104B_SIBLING_PRED_7EE8E0", kP104BSiblingPredicateOffset);
         return false;
     }
-    P104SiblingControllerGateHook::InstallAtOffset(kP104SiblingPredicateOffset);
+    P104BSiblingControllerGateHook::InstallAtOffset(kP104BSiblingPredicateOffset);
     return true;
 }
-} // anonymous namespace — P104A
+} // anonymous namespace — P104B
 
-void InstallP104ASiblingControllerGateTrace() {
+void InstallP104BSiblingControllerGateTrace() {
     // Clean proven parent. P101/P102/P103 are deliberately not installed.
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP104SiblingControllerGateTraceInternal();
+    const bool ok = InstallP104BSiblingControllerGateTraceInternal();
     Logging.Log(
-        "[NSC:P104A] READY parent_p96=1 preserve_p89=1 preserve_p50_event236=1 "
+        "[NSC:P104B] READY parent_p96=1 preserve_p89=1 preserve_p50_event236=1 "
         "sibling_controller_7ddd94=1 predicate_7ee8e0=1 caller_7de028=1 "
-        "gate12240=1 slot4c0=1 slot520=1 focused_actions_700_711=1 "
+        "gate12240_pre_post=1 player_side_only=1 early_exact_caller_filter=1 "
+        "slot4c0=1 slot520=1 focused_actions_700_711=1 "
         "p101_p102_p103_not_installed=1 preserve_orig=1 one_new_trampoline=1 "
         "no_inline_hooks=1 readonly=1 no_actor_write=1 no_action_write=1 "
         "no_state_write=1 no_gate_write=1 no_force708=1 no_force710=1 "

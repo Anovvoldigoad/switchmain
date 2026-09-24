@@ -1,0 +1,46 @@
+P104B DELTA AUDIT — against uploaded P104A package
+
+INTENTIONAL REMOVALS / RENAMES
+- .github/workflows/build-subsdk9-p104a.yml
+- P104A_SOURCE_VERIFY.txt
+- README_P104A.txt
+- analyze_p104a_log.py
+- verify_p104a_source.py
+
+INTENTIONAL ADDITIONS
+- .github/workflows/build-subsdk9-p104b.yml
+- NSC2Switch_MASTER_CHECKPOINT_2026-09-25_R113.md
+- P104B_SOURCE_VERIFY.txt
+- README_P104B.txt
+- analyze_p104b_log.py
+- verify_p104b_source.py
+- P104B_DELTA_AUDIT.txt
+
+INTENTIONAL MODIFICATIONS
+- overlay/source/program/main.cpp
+- overlay/source/program/nsc_cpk_bridge.cpp
+- overlay/source/program/nsc_cpk_bridge.hpp
+- prepare_exlaunch.sh
+- SHA256SUMS.txt (regenerated after finalization)
+
+CORE P104B DELTA
+- Still exactly one new whole-function trampoline: main+0x7EE8E0.
+- Exact caller captured from X30 before actor-state instrumentation.
+- Non-target callers reach Orig(actor) without actor-state reads.
+- Runtime log restricted to side==0.
+- gate12240_pre read immediately before Orig(actor).
+- native predicate Orig(actor) executes once and its return is preserved.
+- gate12240_post read immediately after Orig(actor), before post-state reads.
+- Log includes gate12240_changed.
+- Analyzer hard-validates side, caller, +0x4C0 target, +0x520 target.
+- P101/P102/P103 remain absent; parent remains P96.
+- paired/restore main binaries are unchanged from P104A/R112.
+
+STATIC VERIFICATION
+See P104B_SOURCE_VERIFY.txt. All P104B source/static checks PASS.
+Python scripts compile with py_compile. Workflow YAML parses. prepare_exlaunch.sh passes bash -n.
+
+NOT INCLUDED / NOT CLAIMED
+The final compiler-linked P104B subsdk9 is not present in this source drop-in package.
+GitHub Actions must build it; audit the resulting subsdk9 artifact separately if exact
+final-runtime-binary verification is required.
