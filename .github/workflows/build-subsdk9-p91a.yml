@@ -1,6 +1,8 @@
-name: Build NSC P90B zero-extra cinematic handoff trace
+name: Build NSC P91A focused handoff-state trace
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 jobs:
   build:
@@ -11,7 +13,7 @@ jobs:
       - name: Preflight P90B drop-in kit
         run: |
           set -eux
-          python3 verify_p90b_source.py
+          python3 verify_p91a_source.py
       - name: Bootstrap pinned exlaunch
         run: |
           set -eux
@@ -24,9 +26,9 @@ jobs:
           set -eux
           chmod +x prepare_exlaunch.sh
           ./prepare_exlaunch.sh
-          grep -Fq '[NSC:P90B] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq '[NSC:P90B] HANDOFF' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq 'nsc::InstallP90BZeroExtraHandoffTrace();' exlaunch/source/program/main.cpp
+          grep -Fq '[NSC:P91A] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq '[NSC:P91A] HANDOFF' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq 'nsc::InstallP91AFocusedHandoffStateTrace();' exlaunch/source/program/main.cpp
       - name: Build
         working-directory: exlaunch
         run: make -j2
@@ -35,11 +37,11 @@ jobs:
           set -eux
           ELF="$(find exlaunch -maxdepth 2 -type f -name '*_final.elf' -size +10k -print -quit)"
           test -n "$ELF"
-          grep -aFq '[NSC:P90B] READY' "$ELF"
-          grep -aFq '[NSC:P90B] HANDOFF' "$ELF"
+          grep -aFq '[NSC:P91A] READY' "$ELF"
+          grep -aFq '[NSC:P91A] HANDOFF' "$ELF"
           grep -aFq '[NSC:P89A] READY' "$ELF"
           grep -aFq '[NSC:P88B] READY' "$ELF"
-          echo P90B_LINKED_MARKERS=PASS
+          echo P91A_LINKED_MARKERS=PASS
       - name: Package and verify
         run: |
           set -eux
@@ -51,11 +53,11 @@ jobs:
           cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
           cp paired/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
           cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
-          cp README_P90B.txt analyze_p90b_log.py artifact/
-          python3 verify_p90b_artifact.py artifact
+          cp README_P91A.txt analyze_p91a_log.py artifact/
+          python3 verify_p91a_artifact.py artifact
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: NSC-P90B-zero-extra-handoff-trace
+          name: NSC-P91A-focused-handoff-state-trace
           path: artifact/
           if-no-files-found: error

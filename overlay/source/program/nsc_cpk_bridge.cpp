@@ -1721,40 +1721,61 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         }
 
         uint32_t pre_action = 0xFFFFFFFFu;
+        uint32_t pre_e60 = 0xFFFFFFFFu, pre_e98 = 0xFFFFFFFFu, pre_e9c = 0xFFFFFFFFu, pre_ea0 = 0xFFFFFFFFu;
         uint32_t pre_ea4 = 0xFFFFFFFFu, pre_bda4 = 0xFFFFFFFFu, pre_bdc8 = 0xFFFFFFFFu;
+        uint32_t pre_106f4 = 0xFFFFFFFFu, pre_123e0 = 0xFFFFFFFFu, pre_123e4 = 0xFFFFFFFFu;
         const uintptr_t setter_target = ReadActionSetterTarget(actor);
         const ptrdiff_t setter_off = MainRelativeOffset(setter_target);
         if (actor) {
             const auto* pb = reinterpret_cast<const volatile uint8_t*>(actor);
             pre_action = *reinterpret_cast<const volatile uint32_t*>(pb + 4712);
+            pre_e60 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE60);
+            pre_e98 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE98);
+            pre_e9c = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE9C);
+            pre_ea0 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xEA0);
             pre_ea4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xEA4);
             pre_bda4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xBDA4);
             pre_bdc8 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xBDC8);
+            pre_106f4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x106F4);
+            pre_123e0 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E0);
+            pre_123e4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E4);
         }
 
         const int32_t ret = Orig(actor, index, a2, a3, a4, a5, rate);
 
         uint32_t post_action = 0xFFFFFFFFu;
+        uint32_t post_e60 = 0xFFFFFFFFu, post_e98 = 0xFFFFFFFFu, post_e9c = 0xFFFFFFFFu, post_ea0 = 0xFFFFFFFFu;
         uint32_t post_ea4 = 0xFFFFFFFFu, post_bda4 = 0xFFFFFFFFu, post_bdc8 = 0xFFFFFFFFu;
+        uint32_t post_106f4 = 0xFFFFFFFFu, post_123e0 = 0xFFFFFFFFu, post_123e4 = 0xFFFFFFFFu;
         if (actor) {
             const auto* pb = reinterpret_cast<const volatile uint8_t*>(actor);
             post_action = *reinterpret_cast<const volatile uint32_t*>(pb + 4712);
+            post_e60 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE60);
+            post_e98 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE98);
+            post_e9c = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE9C);
+            post_ea0 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xEA0);
             post_ea4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xEA4);
             post_bda4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xBDA4);
             post_bdc8 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xBDC8);
+            post_106f4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x106F4);
+            post_123e0 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E0);
+            post_123e4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E4);
         }
 
-        // P90B: zero-extra-trampoline cinematic handoff trace. Reuse the proven
-        // P50 PlayAction trampoline only; never allocate a new trampoline.
-        // 707/708/709 are the statically proven immediate successor corridor.
+        // P91A: focused zero-extra handoff-state trace. Reuse the proven P50
+        // PlayAction trampoline; add snapshots only, never another hook.
         if (valid && index >= 700 && index <= 740) {
             Logging.Log(
-                "[NSC:P90B] HANDOFF actor=%p side=%u char=%u index=%d ret=%d "
-                "caller_off=0x%lx action=%u->%u ea4=%08x->%08x "
-                "bda4=%u->%u bdc8=%u->%u zero_extra_trampoline=1",
-                actor, side, char_id, index, ret,
-                static_cast<unsigned long>(caller_off), pre_action, post_action,
-                pre_ea4, post_ea4, pre_bda4, post_bda4, pre_bdc8, post_bdc8);
+                "[NSC:P91A] HANDOFF actor=%p side=%u char=%u index=%d ret=%d "
+                "caller_off=0x%lx action=%u->%u e60=%08x->%08x e98=%08x->%08x "
+                "e9c=%08x->%08x ea0=%08x->%08x ea4=%08x->%08x "
+                "bda4=%u->%u bdc8=%u->%u s106f4=%08x->%08x "
+                "s123e0=%08x->%08x s123e4=%08x->%08x zero_extra_trampoline=1",
+                actor, side, char_id, index, ret, static_cast<unsigned long>(caller_off),
+                pre_action, post_action, pre_e60, post_e60, pre_e98, post_e98,
+                pre_e9c, post_e9c, pre_ea0, post_ea0, pre_ea4, post_ea4,
+                pre_bda4, post_bda4, pre_bdc8, post_bdc8,
+                pre_106f4, post_106f4, pre_123e0, post_123e0, pre_123e4, post_123e4);
         }
 
         if (p59_log) {
@@ -6448,17 +6469,17 @@ void InstallP89APhase3ActorPredBridge() {
 }
 
 
-void InstallP90BZeroExtraHandoffTrace() {
+void InstallP91AFocusedHandoffStateTrace() {
     // Functional parent remains exactly P89A. P90B adds no hook installation;
     // HANDOFF records are emitted by the already-installed P50 PlayAction hook.
     InstallP89APhase3ActorPredBridge();
     Logging.Log(
-        "[NSC:P90B] READY parent_p89=1 probe=1 readonly=1 zero_extra_trampolines=1 "
-        "reuse_p50_playaction=1 corridor=700-740 ea4_snapshot=1 bda4_bdc8_snapshot=1 "
-        "no_lookup_hook=1 no_gate_hook=1 no_dispatcher_hook=1 no_blr_replay=1 "
-        "no_event236_change=1 no_victim_change=1 no_bda4_write=1 no_bdc8_write=1 "
-        "no_ea4_write=1 no_force_f58=1 no_force700=1 no_force708=1 "
-        "no_action445_rewrite=1 no_selector8=1 no_char281_branch=1");
+        "[NSC:P91A] READY parent_p89=1 probe=1 readonly=1 zero_extra_trampolines=1 "
+        "reuse_p50_playaction=1 corridor=700-740 focused_707_708_710=1 "
+        "e60_e98_e9c_ea0_ea4=1 state106f4_123e0_123e4=1 bda4_bdc8=1 "
+        "no_new_hook=1 no_dispatcher_hook=1 no_blr_replay=1 no_event236_change=1 "
+        "no_victim_change=1 no_state_write=1 no_force_f58=1 no_force700=1 "
+        "no_force708=1 no_force710=1 no_action445_rewrite=1 no_selector8=1 no_char281_branch=1");
 }
 
 } // namespace nsc
