@@ -81,7 +81,13 @@ if imm & 0x02000000: imm-=0x04000000
 target=0x722F2C + imm*4
 print('call 0x722F2C ->',hex(target)); assert target==0x7CAB00
 
-# Active workflow safety: exactly one workflow and it is P103A.
-wfs=sorted((root/'.github/workflows').glob('*.yml'))
-print('workflows',[p.name for p in wfs]); assert [p.name for p in wfs]==['build-subsdk9-p103a.yml']
+# Active workflow safety: legacy workflows may remain in a long-lived repo,
+# but exactly P103A may be push-enabled. Manual workflow_dispatch-only
+# historical files are harmless and are intentionally allowed.
+push=[]
+for p in sorted((root/'.github/workflows').glob('*.yml')):
+ s=p.read_text()
+ if re.search(r'^\s{2}push:\s*$',s,re.M):
+  push.append(p.name)
+print('push_enabled_workflows',push); assert push==['build-subsdk9-p103a.yml']
 print('P103A_DROPIN_SOURCE_VERIFY=PASS')

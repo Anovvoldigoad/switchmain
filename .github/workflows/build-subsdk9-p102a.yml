@@ -1,8 +1,6 @@
 name: Build NSC P102A exact fallback74 suppression candidate
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest

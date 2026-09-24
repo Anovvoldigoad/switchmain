@@ -36,5 +36,5 @@ fp 0x7cab1c 912f8129 PASS
 fp 0x722f24 b9400340 PASS
 fp 0x722f28 b942ff81 PASS
 call 0x722F2C -> 0x7cab00
-workflows ['build-subsdk9-p103a.yml']
+push_enabled_workflows ['build-subsdk9-p103a.yml']
 P103A_DROPIN_SOURCE_VERIFY=PASS
