@@ -1,0 +1,40 @@
+entrypoint PASS
+decl PASS
+map_include PASS
+prepare_copies_map PASS
+parent_p96 PASS
+ready PASS
+remap_log PASS
+dispatcher_offset PASS
+one_p103_trampoline PASS
+no_p103_inline PASS
+map_call PASS
+orig_once PASS
+context_preserved PASS
+map_281_58 PASS
+map_276_276 PASS
+map_count_2 PASS
+p102_hold_absent PASS
+p101_state_guard_absent PASS
+victim_shadow_preserved PASS
+no_force710 PASS
+no_force708 PASS
+no_actor_field_write PASS
+no_action_write PASS
+no_state_write PASS
+no_char281_gameplay_branch PASS
+paired main 1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0
+restore main 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+fp 0x7cab00 f81e0ffe PASS
+fp 0x7cab04 a9014ff4 PASS
+fp 0x7cab08 51015008 PASS
+fp 0x7cab0c 2a0003f3 PASS
+fp 0x7cab10 7100b91f PASS
+fp 0x7cab14 54000548 PASS
+fp 0x7cab18 b0009c29 PASS
+fp 0x7cab1c 912f8129 PASS
+fp 0x722f24 b9400340 PASS
+fp 0x722f28 b942ff81 PASS
+call 0x722F2C -> 0x7cab00
+workflows ['build-subsdk9-p103a.yml']
+P103A_DROPIN_SOURCE_VERIFY=PASS

@@ -1,5 +1,6 @@
 #include "nsc_cpk_bridge.hpp"
 #include "p81_ougi_awake_ids.hpp"
+#include "p103_specialcond_map.hpp"
 #include "condition_compat_generated.hpp"
 
 #include "lib.hpp"
@@ -624,31 +625,6 @@ bool P64QuerySemanticUltimateJutsu(void* actor) {
         return (e.enabled_mask & kP64SemanticUltimateJutsuBit) != 0;
     }
     return false;
-}
-
-uint32_t P102IncrementHold74Count(void* actor) {
-    uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
-    if (!ReadActorIdentity(actor, side, char_id)) return 0xFFFFFFFFu;
-    P64SemanticLock lock;
-    for (auto& e : g_p64_semantic_controls) {
-        if (e.actor != actor) continue;
-        if (e.char_id != char_id) return 0xFFFFFFFFu;
-        if (e.p102_hold74_count != 0xFFFFFFFFu) ++e.p102_hold74_count;
-        return e.p102_hold74_count;
-    }
-    return 0xFFFFFFFFu;
-}
-
-void P102ResetHold74Count(void* actor) {
-    uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
-    if (!ReadActorIdentity(actor, side, char_id)) return;
-    P64SemanticLock lock;
-    for (auto& e : g_p64_semantic_controls) {
-        if (e.actor != actor) continue;
-        if (e.char_id != char_id) return;
-        e.p102_hold74_count = 0;
-        return;
-    }
 }
 
 
@@ -2271,42 +2247,9 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             pre_123e4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E4);
         }
 
-        // P102A functional candidate: suppress only the exact proven 708->74
-        // fallback call at main+0x798F30 (return LR main+0x798F34). Runtime
-        // log45 proves this call occurs after Kamui absorption while action708
-        // still carries the UJ control lock (BDA4=1). We do NOT force 710,
-        // mutate actor state, or key on a character ID. Native PlayAction's
-        // observed return for this call is 1, so suppression returns the same
-        // success value and lets the caller continue its native cleanup.
-        constexpr ptrdiff_t kP102Fallback74CallerReturn = 0x798F34;
-        constexpr uint32_t kP102MaxHold74Calls = 16u;
-        if (index == 700 && valid) P102ResetHold74Count(actor);
-        const bool p102_semantic = valid && P64QuerySemanticUltimateJutsu(actor);
-        const bool p102_member = valid && p81_data::ContainsOugiAwakeningId(char_id);
-        const bool p102_exact_fallback =
-            valid && caller_off == kP102Fallback74CallerReturn && index == 74 &&
-            pre_action == 708u && p102_semantic && p102_member &&
-            pre_e98 == 63u && pre_e9c == 0u && pre_bda4 == 1u && pre_bdc8 == 0u;
-        if (p102_exact_fallback) {
-            const uint32_t hold_n = P102IncrementHold74Count(actor);
-            if (hold_n != 0xFFFFFFFFu && hold_n <= kP102MaxHold74Calls) {
-                P93TraceCore("P102_HOLD74", actor, caller_off, index, 0);
-                Logging.Log(
-                    "[NSC:P102A] HOLD74 actor=%p side=%u char=%u caller_off=0x%lx "
-                    "index=%d action=%u semantic=%u member=%u count=%u/%u "
-                    "e98=%u e9c=%u bda4=%u bdc8=%u ret=1",
-                    actor, side, char_id, static_cast<unsigned long>(caller_off),
-                    index, pre_action, p102_semantic ? 1u : 0u, p102_member ? 1u : 0u,
-                    hold_n, kP102MaxHold74Calls, pre_e98, pre_e9c, pre_bda4, pre_bdc8);
-                P93TraceCore("P102_HOLD74", actor, caller_off, index, 1);
-                return 1;
-            }
-            Logging.Log(
-                "[NSC:P102A] FAILOPEN74 actor=%p side=%u char=%u caller_off=0x%lx "
-                "index=%d action=%u count=%u max=%u -> native",
-                actor, side, char_id, static_cast<unsigned long>(caller_off),
-                index, pre_action, hold_n, kP102MaxHold74Calls);
-        }
+        // P103A: the retired P102 action74 suppression is intentionally absent.
+        // PlayAction remains native; SpecialCond compatibility is applied only at
+        // the factory dispatcher boundary main+0x7CAB00.
 
         P93TraceCore("PLAYACTION", actor, caller_off, index, 0);
         const int32_t ret = Orig(actor, index, a2, a3, a4, a5, rate);
@@ -7502,30 +7445,73 @@ void InstallP100COneTrampolineAction710RouteOracle() {
 
 
 // ============================================================================
-// P102A — functional exact-callsite 708->74 fallback suppression candidate.
+// P103A — source-faithful SpecialCond factory selector bridge.
 //
-// Runtime proof from log45 + pinned v1.70 main:
-// - main+0x798E6C materializes W1=74;
-// - main+0x798F30 calls PlayAction; runtime LR is main+0x798F34;
-// - custom semantic UJ reaches that call while current action is still 708,
-//   E98=63, E9C=0, BDA4=1, BDC8=0;
-// - after native PlayAction74, the UJ control lock remains set and Tobi cannot move.
+// Source/static proof chain:
+// - UltimateStormAPI SpecialCondParam::Create_NSC implements
+//       original(remap(characterSelector), context)
+//   while preserving the second argument.
+// - compiled specialCondParam currently maps:
+//       276 -> COND_9ISH -> dispatcher selector 276
+//       281 -> COND_2DNZ -> dispatcher selector 58
+// - PC and Switch selector tables match 82/82 in value/order.
+// - Switch v1.70 dispatcher main+0x7CAB00 receives W0=selector, W1=context.
+// - selector58 exists and resolves to factory main+0x7CC8E0.
+// - selector281 is absent and otherwise falls back to selector0/default factory.
 //
-// P102A adds NO trampoline. The functional gate lives inside the already-proven
-// P50 PlayAction trampoline and suppresses only that exact fallback fingerprint.
-// It returns native-success value 1 and is bounded to 16 matching calls per UJ.
-// No action710 is forced and no actor field is modified.
+// P103A therefore remaps ONLY the factory selector argument from generated data
+// before calling the original dispatcher. It does not rewrite actor E54, action,
+// state, controls, or UJ sequence fields. Caller identity remains untouched and
+// is reloaded by native code after the factory returns.
 // ============================================================================
-void InstallP102AExactFallback74SuppressionCandidate() {
+namespace {
+static constexpr ptrdiff_t kP103SpecialCondDispatcherOffset = 0x7CAB00;
+static constexpr uint32_t kP103LogLimit = 256u;
+static std::atomic<uint32_t> g_p103_remap_logs{0};
+
+HOOK_DEFINE_TRAMPOLINE(P103SpecialCondFactoryBridgeHook) {
+    static void* Callback(uint32_t selector, uint32_t context) {
+        const uint32_t mapped = p103_data::MapSpecialCondSelector(selector);
+        void* const ret = Orig(mapped, context);
+
+        if (mapped != selector) {
+            const uint32_t n = g_p103_remap_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < kP103LogLimit) {
+                Logging.Log(
+                    "[NSC:P103A] REMAP n=%u selector=%u mapped=%u context=%u ret=%p",
+                    n, selector, mapped, context, ret);
+            }
+        }
+        return ret;
+    }
+};
+
+static bool InstallP103SpecialCondFactoryBridgeInternal() {
+    static constexpr uint32_t sig[] = {
+        0xF81E0FFE, 0xA9014FF4, 0x51015008, 0x2A0003F3,
+        0x7100B91F, 0x54000548, 0xB0009C29, 0x912F8129,
+    };
+    if (!MatchWords(kP103SpecialCondDispatcherOffset, sig)) {
+        LogFingerprintFail("P103_SPECIALCOND_DISPATCHER_7CAB00",
+                           kP103SpecialCondDispatcherOffset);
+        return false;
+    }
+    P103SpecialCondFactoryBridgeHook::InstallAtOffset(kP103SpecialCondDispatcherOffset);
+    return true;
+}
+} // anonymous namespace — P103A
+
+void InstallP103ASpecialCondFactoryBridge() {
+    // Keep the proven P96/P89/P50 chain. P101/P102 functional guards are retired.
     InstallP96AActionDescriptorTransitionTrace();
+    const bool ok = InstallP103SpecialCondFactoryBridgeInternal();
     Logging.Log(
-        "[NSC:P102A] READY parent_p96=1 reuse_p50_playaction=1 exact_caller_798f34=1 "
-        "index74_gate=1 action708_gate=1 semantic_gate=1 membership_gate=1 "
-        "e98_63_gate=1 e9c_0_gate=1 bda4_1_gate=1 bdc8_0_gate=1 "
-        "max_hold_calls=16 bounded_fail_open=1 zero_new_trampoline=1 "
-        "p101_state125_guard_absent=1 no_force708=1 no_force710=1 "
-        "no_action_write=1 no_e94_write=1 no_bda4_write=1 "
-        "victim_event236_shadow_preserved=1 no_char281_branch=1 probe=1");
+        "[NSC:P103A] READY parent_p96=1 preserve_p89=1 preserve_p50_event236=1 "
+        "dispatcher_7cab00=1 generated_map_count=%u selector58_factory=7cc8e0 "
+        "p101_absent=1 p102_hold74_absent=1 preserve_orig=1 one_new_trampoline=1 "
+        "no_inline_hooks=1 no_actor_id_write=1 no_action_write=1 no_state_write=1 "
+        "no_force708=1 no_force710=1 data_driven=1 probe=%u",
+        static_cast<unsigned>(p103_data::kSpecialCondMapCount), ok ? 1u : 0u);
 }
 
 } // namespace nsc

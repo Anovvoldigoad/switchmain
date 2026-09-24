@@ -39,5 +39,5 @@ void InstallP98BState125ProvenanceTrace();
 void InstallP99ACleanupGate1278Trace();
 void InstallP88AWideUJAdmissionTrace();
 void InstallP100COneTrampolineAction710RouteOracle();
-void InstallP102AExactFallback74SuppressionCandidate();
+void InstallP103ASpecialCondFactoryBridge();
 }
