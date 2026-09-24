@@ -789,6 +789,7 @@ void P94TraceSequence(const char* tag, void* actor, ptrdiff_t caller_off, int32_
 // P93 trace point and stack-provenance only from the existing PlayAction hook.
 static std::atomic<uint32_t> g_p95_queue_logs{0};
 static std::atomic<uint32_t> g_p95_wrapper_logs{0};
+static bool g_p96_descriptor_trace_mode = false;
 static constexpr uint32_t kP95QueueLimit = 32768;
 static constexpr uint32_t kP95WrapperLimit = 4096;
 static constexpr uintptr_t kP95MainTextSize = 0x12F5FD0u;
@@ -861,6 +862,7 @@ static __attribute__((noinline)) void P95TraceWrapperParent(void* actor, int32_t
     // read-only; captured_sp is taken at PlayAction callback entry before any
     // helper call. The wrapper saves its incoming X30 before BL PlayAction, so
     // an indirect/direct parent return address remains above this stack frame.
+    if (g_p96_descriptor_trace_mode) return;
     if (!actor || caller_off != 0x7725D0 || index < 700 || index > 740 || !captured_sp) return;
     const uint32_t n = g_p95_wrapper_logs.fetch_add(1, std::memory_order_relaxed);
     if (n >= kP95WrapperLimit) return;
@@ -950,6 +952,124 @@ static __attribute__((noinline)) void P95TraceWrapperParent(void* actor, int32_t
         static_cast<unsigned long>(eb0[5]), eb0_soff[5]);
 }
 
+
+// P96A: exact action-descriptor / transition-key trace.
+// P95A runtime proved that observed semantic-custom 707->708 reaches the generic
+// action wrapper from main+0x7EFF8C (not main+0x7732A8 and not main+0x48FE4),
+// and the same stack provenance contained main+0x7EFF40. Static v1.70 analysis
+// of main+0x7EFEBC proves that return 0x7EFF40 is the non-empty descriptor-key
+// branch: current-action record -> descriptor -> inline key at descriptor+0x94
+// -> main+0x3F5540 -> string/id lookup main+0x80EFEC -> W21 -> vtable+0xEB0.
+//
+// The current-action record path is also statically resolved:
+//   main+0x766A98 : actor+0x218 -> current action at +0x2C
+//   main+0x769B04 : action 700..908 mapper; for fixture classes 129 and >280,
+//                   e70 0/1/2/3 selects +0/+84/+126/+168 before table lookup
+//   main+0x7948E8 : table object cache at actor+0x11660 + (actor+e90)*8
+//   main+0x782C08 : record = table_base + mapped_action*0x18
+// P96A stays read-only, adds no hook/trampoline, and reads only the already-live
+// table/descriptor objects used by the native path. P95 stack scanning is muted
+// while P96A is active because its parent identity is already proven and the
+// emulator reported unmapped stack-page invalidations near the 0x1000 scan edge.
+static std::atomic<uint32_t> g_p96_desc_logs{0};
+static constexpr uint32_t kP96DescLimit = 4096;
+
+static bool P96PlausiblePtr(uintptr_t p) {
+    return p >= 0x10000u && p < 0x8000000000ull && (p & 0x7u) == 0;
+}
+
+static void P96CopyKey(char* out, size_t out_size, const volatile uint8_t* src) {
+    if (!out || out_size == 0) return;
+    size_t n = 0;
+    if (src) {
+        for (; n + 1 < out_size; ++n) {
+            const uint8_t c = src[n];
+            if (c == 0) break;
+            out[n] = (c >= 0x20 && c <= 0x7e) ? static_cast<char>(c) : '.';
+        }
+    }
+    out[n] = '\0';
+}
+
+static void P96TraceDescriptor(const char* tag, void* actor, ptrdiff_t caller_off, int32_t code,
+                               uint32_t phase, uint32_t side, uint32_t cid,
+                               bool semantic, const P93CoreState& st) {
+    if (!g_p96_descriptor_trace_mode || !actor) return;
+    // Entry into 707 gives an early baseline; 708 is the failing custom edge;
+    // 710 is the successful vanilla edge. No tick-wide spam is needed.
+    if (!(code == 707 || code == 708 || code == 710)) return;
+    const uint32_t n = g_p96_desc_logs.fetch_add(1, std::memory_order_relaxed);
+    if (n >= kP96DescLimit) return;
+
+    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+    const uintptr_t cur_state = *reinterpret_cast<const volatile uintptr_t*>(b + 0x218);
+    uint32_t cur_action = 0xFFFFFFFFu;
+    if (P96PlausiblePtr(cur_state))
+        cur_action = *reinterpret_cast<const volatile uint32_t*>(cur_state + 0x2C);
+
+    const uint32_t e70 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE70);
+    const uint32_t e90 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE90);
+    uintptr_t table_slot = 0, table_obj = 0, table_base = 0;
+    if (e90 < 0x100u) {
+        table_slot = reinterpret_cast<uintptr_t>(b) + 0x11660u + static_cast<uintptr_t>(e90) * 8u;
+        table_obj = *reinterpret_cast<const volatile uintptr_t*>(table_slot);
+        if (P96PlausiblePtr(table_obj))
+            table_base = *reinterpret_cast<const volatile uintptr_t*>(table_obj);
+    }
+
+    // For the observed 707 corridor on both vanilla fixture 129 and semantic
+    // custom fixture 281, e70==0, so native mapper main+0x769B04 selects 707.
+    // We still log all four generic e70 candidates to expose a future mod actor
+    // using mode 1/2/3 without introducing any character-specific branch.
+    static constexpr uint32_t kIdx[4] = {707u, 791u, 833u, 875u};
+    uintptr_t desc[4]{};
+    uint16_t d6c[4]{}, d72[4]{};
+    uint8_t d94[4]{};
+    char key[4][48]{};
+    uint64_t r1[4]{}, r2[4]{};
+    if (P96PlausiblePtr(table_base)) {
+        for (uint32_t i = 0; i < 4; ++i) {
+            const uintptr_t rec = table_base + static_cast<uintptr_t>(kIdx[i]) * 0x18u;
+            desc[i] = *reinterpret_cast<const volatile uintptr_t*>(rec + 0x00);
+            r1[i] = *reinterpret_cast<const volatile uint64_t*>(rec + 0x08);
+            r2[i] = *reinterpret_cast<const volatile uint64_t*>(rec + 0x10);
+            if (P96PlausiblePtr(desc[i])) {
+                const auto* d = reinterpret_cast<const volatile uint8_t*>(desc[i]);
+                d6c[i] = *reinterpret_cast<const volatile uint16_t*>(d + 0x6C);
+                d72[i] = *reinterpret_cast<const volatile uint16_t*>(d + 0x72);
+                d94[i] = *(d + 0x94);
+                P96CopyKey(key[i], sizeof(key[i]), d + 0x94);
+            }
+        }
+    }
+
+    uint32_t mapped = cur_action;
+    if (cur_action >= 700u && cur_action <= 908u) {
+        if (e70 == 1u) mapped = cur_action + 84u;
+        else if (e70 == 2u) mapped = cur_action + 126u;
+        else if (e70 == 3u) mapped = cur_action + 168u;
+    }
+
+    Logging.Log(
+        "[NSC:P96A] ACTDESC n=%u tag=%s phase=%u actor=%p side=%u char=%u semantic=%u caller_off=0x%lx code=%d "
+        "action=%u cur_state=0x%lx cur_action=%u e70=%u e90=%u mapped_generic=%u "
+        "table_slot=0x%lx table_obj=0x%lx table_base=0x%lx "
+        "i707_desc=0x%lx r1=%016lx r2=%016lx d6c=%u d72=%u d94=%u key707='%s' "
+        "i791_desc=0x%lx d6c=%u d72=%u d94=%u key791='%s' "
+        "i833_desc=0x%lx d6c=%u d72=%u d94=%u key833='%s' "
+        "i875_desc=0x%lx d6c=%u d72=%u d94=%u key875='%s'",
+        n, tag, phase, actor, side, cid, semantic ? 1u : 0u,
+        static_cast<unsigned long>(caller_off), code, st.action,
+        static_cast<unsigned long>(cur_state), cur_action, e70, e90, mapped,
+        static_cast<unsigned long>(table_slot), static_cast<unsigned long>(table_obj),
+        static_cast<unsigned long>(table_base),
+        static_cast<unsigned long>(desc[0]), static_cast<unsigned long>(r1[0]), static_cast<unsigned long>(r2[0]),
+        d6c[0], d72[0], d94[0], key[0],
+        static_cast<unsigned long>(desc[1]), d6c[1], d72[1], d94[1], key[1],
+        static_cast<unsigned long>(desc[2]), d6c[2], d72[2], d94[2], key[2],
+        static_cast<unsigned long>(desc[3]), d6c[3], d72[3], d94[3], key[3]);
+}
+
 void P93TraceCore(const char* tag, void* actor, ptrdiff_t caller_off, int32_t code, uint32_t phase) {
     uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
     if (!ReadActorIdentity(actor, side, cid)) return;
@@ -979,6 +1099,7 @@ void P93TraceCore(const char* tag, void* actor, ptrdiff_t caller_off, int32_t co
         st.c404, st.c408, st.c5a0);
     P94TraceSequence(tag, actor, caller_off, code, phase, side, cid, semantic, st);
     P95TraceQueue(tag, actor, caller_off, code, phase, side, cid, semantic, st);
+    P96TraceDescriptor(tag, actor, caller_off, code, phase, side, cid, semantic, st);
 }
 
 uintptr_t ReadActionSetterTarget(void* actor) {
@@ -6925,6 +7046,12 @@ void InstallP94ASequenceControllerTrace() {
 void InstallP95AQueuedActionParentTrace() {
     InstallP94ASequenceControllerTrace();
     Logging.Log("[NSC:P95A] READY parent_p94=1 readonly=1 zero_extra_trampolines=1 reuse_existing_hooks=1 queue_104dc_10610=1 pending_105fc_10600=1 vslot_eb0=1 wrapper_parent_stack_scan=1 direct_48fe4=1 indirect_7732a8=1 indirect_7eff8c=1 no_new_hook=1 no_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1");
+}
+
+void InstallP96AActionDescriptorTransitionTrace() {
+    InstallP95AQueuedActionParentTrace();
+    g_p96_descriptor_trace_mode = true;
+    Logging.Log("[NSC:P96A] READY parent_p95=1 readonly=1 zero_extra_trampolines=1 reuse_existing_hooks=1 mute_p95_stack_scan=1 current_action_766a98=1 mapper_769b04_e70=1 table_cache_7948e8=1 record_lookup_782c08=1 transition_selector_7efebc=1 string_resolver_3f5540_80efec=1 descriptor_key_94=1 indices_707_791_833_875=1 no_new_hook=1 no_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1");
 }
 
 } // namespace nsc

@@ -34,5 +34,6 @@ void InstallP92AFocusedHandoffStateSweep();
 void InstallP93AMaxUsefulTrace();
 void InstallP94ASequenceControllerTrace();
 void InstallP95AQueuedActionParentTrace();
+void InstallP96AActionDescriptorTransitionTrace();
 void InstallP88AWideUJAdmissionTrace();
 }
