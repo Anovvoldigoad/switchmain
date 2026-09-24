@@ -456,7 +456,6 @@ struct P64SemanticControlEntry {
 };
 P64SemanticControlEntry g_p64_semantic_controls[32]{};
 constexpr uint32_t kP64SemanticUltimateJutsuBit = (1u << 1);
-constexpr uint32_t kP101Op23SeenBit = (1u << 2);
 
 class P64SemanticLock {
 public:
@@ -597,12 +596,11 @@ void P64SetSemanticUltimateJutsu(void* actor, bool enabled) {
             if (enabled) {
                 const bool was_enabled = (e.enabled_mask & kP64SemanticUltimateJutsuBit) != 0;
                 if (!was_enabled) {
-                    e.enabled_mask &= ~kP101Op23SeenBit;
                     e.p102_hold74_count = 0;
                 }
                 e.enabled_mask |= kP64SemanticUltimateJutsuBit;
             } else {
-                e.enabled_mask &= ~(kP64SemanticUltimateJutsuBit | kP101Op23SeenBit);
+                e.enabled_mask &= ~kP64SemanticUltimateJutsuBit;
                 e.p102_hold74_count = 0;
             }
             return;
@@ -624,31 +622,6 @@ bool P64QuerySemanticUltimateJutsu(void* actor) {
         if (e.actor != actor) continue;
         if (e.char_id != char_id) return false;
         return (e.enabled_mask & kP64SemanticUltimateJutsuBit) != 0;
-    }
-    return false;
-}
-
-void P101SetOp23Seen(void* actor, bool seen) {
-    uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
-    if (!ReadActorIdentity(actor, side, char_id)) return;
-    P64SemanticLock lock;
-    for (auto& e : g_p64_semantic_controls) {
-        if (e.actor != actor) continue;
-        if (e.char_id != char_id) return;
-        if (seen) e.enabled_mask |= kP101Op23SeenBit;
-        else e.enabled_mask &= ~kP101Op23SeenBit;
-        return;
-    }
-}
-
-bool P101QueryOp23Seen(void* actor) {
-    uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
-    if (!ReadActorIdentity(actor, side, char_id)) return false;
-    P64SemanticLock lock;
-    for (auto& e : g_p64_semantic_controls) {
-        if (e.actor != actor) continue;
-        if (e.char_id != char_id) return false;
-        return (e.enabled_mask & kP101Op23SeenBit) != 0;
     }
     return false;
 }

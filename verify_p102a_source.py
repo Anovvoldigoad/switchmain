@@ -28,6 +28,7 @@ checks={
  'zero_new_p102_trampoline':'HOOK_DEFINE_TRAMPOLINE(P102' not in cpp and 'HOOK_DEFINE_INLINE(P102' not in cpp,
  'p101_state_guard_absent':'HOOK_DEFINE_TRAMPOLINE(P101State125GuardHook)' not in cpp,
  'no_active_p101_logs':'[NSC:P101A]' not in cpp,
+ 'no_p101_op23_helpers':all(x not in cpp for x in ['kP101Op23SeenBit','P101SetOp23Seen','P101QueryOp23Seen']),
  'victim_shadow_preserved':'case 12:' in cpp and 'VIS_SHADOW' in cpp and 'case 14:' in cpp and 'CTRL14_SHADOW' in cpp,
  'event23_normal':'case 23: // source me_play_action' in cpp and 'return HandleActionAnimation(actor, event, p2, p3, true);' in cpp,
  'no_force710':not re.search(r'Orig\s*\([^\n]*710|index\s*=\s*710|return\s+710',block+play),

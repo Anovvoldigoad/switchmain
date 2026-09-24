@@ -1,6 +1,11 @@
-NSC2Switch P102A — Exact Fallback74 Suppression Candidate
+NSC2Switch P102A — Exact Fallback74 Suppression Candidate (BUILD-FIX r2)
 Target: Naruto x Boruto Ultimate Ninja Storm Connections Switch v1.70
 Build ID: 48ece454b61412b9fb46fab2be3f5ef7b2804f39
+
+Build-fix r2
+------------
+Removed stale P101SetOp23Seen/P101QueryOp23Seen helpers and the obsolete P101 op23 bit from P102A.
+This fixes -Werror=unused-function in GitHub Actions. Functional HOLD74 logic is unchanged.
 
 Purpose
 -------
