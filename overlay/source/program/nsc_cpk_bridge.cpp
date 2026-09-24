@@ -1778,6 +1778,29 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
                 pre_106f4, post_106f4, pre_123e0, post_123e0, pre_123e4, post_123e4);
         }
 
+        // P92A: zero-extra broad actor-state sweep at the decisive UJ boundaries.
+        // Diagnostic only: read actor+0xE40..0xEBC when 707/708/710 is requested.
+        // No state writes and no character-ID policy.
+        if (valid && actor && (index == 707 || index == 708 || index == 710)) {
+            const auto* pb = reinterpret_cast<const volatile uint8_t*>(actor);
+            uint32_t q[32]{};
+            for (uint32_t i = 0; i < 32; ++i) {
+                q[i] = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE40 + i * 4);
+            }
+            Logging.Log(
+                "[NSC:P92A] SWEEP0 actor=%p side=%u char=%u index=%d caller_off=0x%lx "
+                "e40=%08x e44=%08x e48=%08x e4c=%08x e50=%08x e54=%08x e58=%08x e5c=%08x "
+                "e60=%08x e64=%08x e68=%08x e6c=%08x e70=%08x e74=%08x e78=%08x e7c=%08x",
+                actor, side, char_id, index, static_cast<unsigned long>(caller_off),
+                q[0],q[1],q[2],q[3],q[4],q[5],q[6],q[7],q[8],q[9],q[10],q[11],q[12],q[13],q[14],q[15]);
+            Logging.Log(
+                "[NSC:P92A] SWEEP1 actor=%p side=%u char=%u index=%d caller_off=0x%lx "
+                "e80=%08x e84=%08x e88=%08x e8c=%08x e90=%08x e94=%08x e98=%08x e9c=%08x "
+                "ea0=%08x ea4=%08x ea8=%08x eac=%08x eb0=%08x eb4=%08x eb8=%08x ebc=%08x",
+                actor, side, char_id, index, static_cast<unsigned long>(caller_off),
+                q[16],q[17],q[18],q[19],q[20],q[21],q[22],q[23],q[24],q[25],q[26],q[27],q[28],q[29],q[30],q[31]);
+        }
+
         if (p59_log) {
             const uint32_t n = g_p59_play_call_logs.fetch_add(1, std::memory_order_relaxed);
             if (n < 8192) {
@@ -6480,6 +6503,12 @@ void InstallP91AFocusedHandoffStateTrace() {
         "no_new_hook=1 no_dispatcher_hook=1 no_blr_replay=1 no_event236_change=1 "
         "no_victim_change=1 no_state_write=1 no_force_f58=1 no_force700=1 "
         "no_force708=1 no_force710=1 no_action445_rewrite=1 no_selector8=1 no_char281_branch=1");
+}
+
+
+void InstallP92AFocusedHandoffStateSweep() {
+    InstallP91AFocusedHandoffStateTrace();
+    Logging.Log("[NSC:P92A] READY parent_p91=1 readonly=1 zero_extra_trampolines=1 reuse_p50_playaction=1 sweep_e40_ebc=1 focus_707_708_710=1 no_new_hook=1 no_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1");
 }
 
 } // namespace nsc

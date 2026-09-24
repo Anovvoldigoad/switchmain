@@ -1,63 +1,8 @@
-name: Build NSC P91A focused handoff-state trace
+name: Historical P91A (manual only)
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-
 jobs:
-  build:
+  archived:
     runs-on: ubuntu-latest
-    container: devkitpro/devkita64:latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Preflight P90B drop-in kit
-        run: |
-          set -eux
-          python3 verify_p91a_source.py
-      - name: Bootstrap pinned exlaunch
-        run: |
-          set -eux
-          rm -rf exlaunch
-          git clone https://github.com/shadowninja108/exlaunch.git exlaunch
-          git -C exlaunch checkout --detach 229bbd6
-          git -C exlaunch submodule update --init --recursive
-      - name: Prepare
-        run: |
-          set -eux
-          chmod +x prepare_exlaunch.sh
-          ./prepare_exlaunch.sh
-          grep -Fq '[NSC:P91A] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq '[NSC:P91A] HANDOFF' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq 'nsc::InstallP91AFocusedHandoffStateTrace();' exlaunch/source/program/main.cpp
-      - name: Build
-        working-directory: exlaunch
-        run: make -j2
-      - name: Verify linked markers
-        run: |
-          set -eux
-          ELF="$(find exlaunch -maxdepth 2 -type f -name '*_final.elf' -size +10k -print -quit)"
-          test -n "$ELF"
-          grep -aFq '[NSC:P91A] READY' "$ELF"
-          grep -aFq '[NSC:P91A] HANDOFF' "$ELF"
-          grep -aFq '[NSC:P89A] READY' "$ELF"
-          grep -aFq '[NSC:P88B] READY' "$ELF"
-          echo P91A_LINKED_MARKERS=PASS
-      - name: Package and verify
-        run: |
-          set -eux
-          OUT="$(find exlaunch -type f -name subsdk9 -size +10k -print -quit)"
-          test -n "$OUT"
-          rm -rf artifact
-          mkdir -p artifact/atmosphere/contents/0100FA10190A0000/exefs
-          mkdir -p artifact/restore/atmosphere/contents/0100FA10190A0000/exefs
-          cp "$OUT" artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
-          cp paired/atmosphere/contents/0100FA10190A0000/exefs/main artifact/atmosphere/contents/0100FA10190A0000/exefs/main
-          cp restore/atmosphere/contents/0100FA10190A0000/exefs/main artifact/restore/atmosphere/contents/0100FA10190A0000/exefs/main
-          cp README_P91A.txt analyze_p91a_log.py artifact/
-          python3 verify_p91a_artifact.py artifact
-          (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
-      - uses: actions/upload-artifact@v4
-        with:
-          name: NSC-P91A-focused-handoff-state-trace
-          path: artifact/
-          if-no-files-found: error
+      - run: echo 'P91A archived; use P92A.'
