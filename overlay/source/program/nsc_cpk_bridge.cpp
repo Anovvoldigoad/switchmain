@@ -673,6 +673,111 @@ P93CoreState ReadP93CoreState(void* actor) {
     return st;
 }
 
+// P94A: sequence-controller trace for the post-707 cinematic handoff.
+// Static proof on v1.70 shows main+0x48F18 consumes actor-owned action
+// sequence vectors and the sole direct BL to the generic main+0x772594
+// wrapper is main+0x48FE0. The wrapper receives W1 already selected; it
+// does not choose action708. P94A therefore observes, but never mutates,
+// the actor+0x12460 sequence controller and actor+0x12320 handoff field.
+struct P94VecState {
+    uintptr_t begin = 0;
+    uintptr_t end = 0;
+    uintptr_t cap = 0;
+    uint32_t count = 0;
+    uint32_t valid = 0;
+    uint32_t h0 = 0xFFFFFFFFu, h1 = 0xFFFFFFFFu, h2 = 0xFFFFFFFFu;
+    uint32_t h3 = 0xFFFFFFFFu, h4 = 0xFFFFFFFFu, h5 = 0xFFFFFFFFu;
+    uint32_t prev = 0xFFFFFFFFu, cur = 0xFFFFFFFFu, next = 0xFFFFFFFFu;
+};
+
+static std::atomic<uint32_t> g_p94_seq_logs{0};
+static constexpr uint32_t kP94SeqLimit = 32768;
+
+P94VecState ReadP94Vec(const volatile uint8_t* actor, size_t off, int32_t idx) {
+    P94VecState v{};
+    if (!actor) return v;
+    v.begin = *reinterpret_cast<const volatile uintptr_t*>(actor + off + 0x00);
+    v.end   = *reinterpret_cast<const volatile uintptr_t*>(actor + off + 0x08);
+    v.cap   = *reinterpret_cast<const volatile uintptr_t*>(actor + off + 0x10);
+    if (!v.begin || v.end < v.begin) return v;
+    const uintptr_t bytes = v.end - v.begin;
+    if ((bytes & 3u) != 0 || bytes > 0x100u) return v;
+    if (v.cap && v.cap < v.end) return v;
+    v.count = static_cast<uint32_t>(bytes >> 2);
+    if (v.count > 64u) return v;
+    v.valid = 1;
+    const auto* items = reinterpret_cast<const volatile uint32_t*>(v.begin);
+    if (v.count > 0) v.h0 = items[0];
+    if (v.count > 1) v.h1 = items[1];
+    if (v.count > 2) v.h2 = items[2];
+    if (v.count > 3) v.h3 = items[3];
+    if (v.count > 4) v.h4 = items[4];
+    if (v.count > 5) v.h5 = items[5];
+    if (idx >= 0 && static_cast<uint32_t>(idx) < v.count) {
+        const uint32_t uidx = static_cast<uint32_t>(idx);
+        v.cur = items[uidx];
+        if (uidx > 0) v.prev = items[uidx - 1];
+        if (uidx + 1 < v.count) v.next = items[uidx + 1];
+    }
+    return v;
+}
+
+void P94TraceSequence(const char* tag, void* actor, ptrdiff_t caller_off, int32_t code,
+                      uint32_t phase, uint32_t side, uint32_t cid,
+                      bool semantic, const P93CoreState& st) {
+    if (!actor) return;
+    const bool focus =
+        (st.action >= 700u && st.action <= 710u) ||
+        (code >= 700 && code <= 710) ||
+        st.e94 == 136u || st.e94 == 137u ||
+        (semantic && (st.action == 707u || st.action == 708u));
+    if (!focus) return;
+    const uint32_t n = g_p94_seq_logs.fetch_add(1, std::memory_order_relaxed);
+    if (n >= kP94SeqLimit) return;
+
+    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+    const uintptr_t ctl12460 = *reinterpret_cast<const volatile uintptr_t*>(b + 0x12460);
+    const uint32_t ctr12468 = *reinterpret_cast<const volatile uint32_t*>(b + 0x12468);
+    const int32_t idx1246c = *reinterpret_cast<const volatile int32_t*>(b + 0x1246C);
+    const uint32_t gate12320 = *reinterpret_cast<const volatile uint32_t*>(b + 0x12320);
+    const uint32_t flag12500 = *reinterpret_cast<const volatile uint32_t*>(b + 0x12500);
+    const uint32_t mode12504 = *reinterpret_cast<const volatile uint32_t*>(b + 0x12504);
+
+    const P94VecState va = ReadP94Vec(b, 0x12470, idx1246c);
+    const P94VecState vb = ReadP94Vec(b, 0x124A0, idx1246c);
+    const P94VecState vc = ReadP94Vec(b, 0x124D0, idx1246c);
+
+    Logging.Log(
+        "[NSC:P94A] SEQCTRL n=%u tag=%s phase=%u actor=%p side=%u char=%u semantic=%u caller_off=0x%lx code=%d "
+        "action=%u e94=%u e98=%u e9c=%u ea4=%08x ea8=%08x bda4=%u bda8=%u bdc8=%u "
+        "gate12320=%08x ctl12460=0x%lx ctr12468=%u idx1246c=%d flag12500=%08x mode12504=%u "
+        "va_valid=%u va_count=%u vb_valid=%u vb_count=%u vc_valid=%u vc_count=%u",
+        n, tag, phase, actor, side, cid, semantic ? 1u : 0u,
+        static_cast<unsigned long>(caller_off), code,
+        st.action, st.e94, st.e98, st.e9c, st.ea4, st.ea8, st.bda4, st.bda8, st.bdc8,
+        gate12320, static_cast<unsigned long>(ctl12460), ctr12468, idx1246c, flag12500, mode12504,
+        va.valid, va.count, vb.valid, vb.count, vc.valid, vc.count);
+
+    if (va.valid) Logging.Log(
+        "[NSC:P94A] SEQVEC n=%u which=A off=12470 begin=0x%lx end=0x%lx cap=0x%lx count=%u idx=%d "
+        "head=%u,%u,%u,%u,%u,%u prev=%u cur=%u next=%u",
+        n, static_cast<unsigned long>(va.begin), static_cast<unsigned long>(va.end),
+        static_cast<unsigned long>(va.cap), va.count, idx1246c,
+        va.h0, va.h1, va.h2, va.h3, va.h4, va.h5, va.prev, va.cur, va.next);
+    if (vb.valid) Logging.Log(
+        "[NSC:P94A] SEQVEC n=%u which=B off=124a0 begin=0x%lx end=0x%lx cap=0x%lx count=%u idx=%d "
+        "head=%u,%u,%u,%u,%u,%u prev=%u cur=%u next=%u",
+        n, static_cast<unsigned long>(vb.begin), static_cast<unsigned long>(vb.end),
+        static_cast<unsigned long>(vb.cap), vb.count, idx1246c,
+        vb.h0, vb.h1, vb.h2, vb.h3, vb.h4, vb.h5, vb.prev, vb.cur, vb.next);
+    if (vc.valid) Logging.Log(
+        "[NSC:P94A] SEQVEC n=%u which=C off=124d0 begin=0x%lx end=0x%lx cap=0x%lx count=%u idx=%d "
+        "head=%u,%u,%u,%u,%u,%u prev=%u cur=%u next=%u",
+        n, static_cast<unsigned long>(vc.begin), static_cast<unsigned long>(vc.end),
+        static_cast<unsigned long>(vc.cap), vc.count, idx1246c,
+        vc.h0, vc.h1, vc.h2, vc.h3, vc.h4, vc.h5, vc.prev, vc.cur, vc.next);
+}
+
 void P93TraceCore(const char* tag, void* actor, ptrdiff_t caller_off, int32_t code, uint32_t phase) {
     uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
     if (!ReadActorIdentity(actor, side, cid)) return;
@@ -700,6 +805,7 @@ void P93TraceCore(const char* tag, void* actor, ptrdiff_t caller_off, int32_t co
         st.e94, st.e98, st.e9c, st.ea0, st.ea4, st.ea8, st.eac,
         st.bda4, st.bda8, st.bdc8, st.s106f4, st.s123e0, st.s123e4, st.f7cc,
         st.c404, st.c408, st.c5a0);
+    P94TraceSequence(tag, actor, caller_off, code, phase, side, cid, semantic, st);
 }
 
 uintptr_t ReadActionSetterTarget(void* actor) {
@@ -6631,6 +6737,11 @@ void InstallP92AFocusedHandoffStateSweep() {
 void InstallP93AMaxUsefulTrace() {
     InstallP92AFocusedHandoffStateSweep();
     Logging.Log("[NSC:P93A] READY parent_p92=1 readonly=1 zero_extra_trampolines=1 reuse_existing_hooks=1 tags=PLAYACTION,CENTRAL_SETTER,MODE_BASE,P81_POLICY,P77_UJ_ACCEPT,P88B_HELPER,P89_ACTOR_PRED,EVT236_PRE wide_actor_state=1 control_state=1 limit=65536 no_new_hook=1 no_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1");
+}
+
+void InstallP94ASequenceControllerTrace() {
+    InstallP93AMaxUsefulTrace();
+    Logging.Log("[NSC:P94A] READY parent_p93=1 readonly=1 zero_extra_trampolines=1 reuse_existing_hooks=1 sequence_controller_12460=1 vectors_12470_124a0_124d0=1 idx_1246c=1 mode_12504=1 gate_12320=1 vec_head_and_index_items=1 static_48f18_772594_proof=1 no_new_hook=1 no_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1");
 }
 
 } // namespace nsc
