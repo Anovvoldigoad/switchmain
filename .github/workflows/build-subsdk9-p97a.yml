@@ -1,16 +1,18 @@
-name: Build NSC P96A action-descriptor transition trace
+name: Build NSC P97A early-transition guard
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest
     container: devkitpro/devkita64:latest
     steps:
       - uses: actions/checkout@v4
-      - name: Preflight P96A drop-in kit
+      - name: Preflight P97A drop-in kit
         run: |
           set -eux
-          python3 verify_p96a_source.py
+          python3 verify_p97a_source.py
       - name: Bootstrap pinned exlaunch
         run: |
           set -eux
@@ -23,10 +25,10 @@ jobs:
           set -eux
           chmod +x prepare_exlaunch.sh
           ./prepare_exlaunch.sh
-          grep -Fq '[NSC:P96A] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq '[NSC:P96A] ACTDESC' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq '[NSC:P95A] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq 'nsc::InstallP96AActionDescriptorTransitionTrace();' exlaunch/source/program/main.cpp
+          grep -Fq '[NSC:P97A] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq '[NSC:P97A] GUARD' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq 'P97EarlyTransitionGuardHook' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq 'nsc::InstallP97AEarlyTransitionGuard();' exlaunch/source/program/main.cpp
       - name: Build
         working-directory: exlaunch
         run: make -j2
@@ -35,14 +37,10 @@ jobs:
           set -eux
           ELF="$(find exlaunch -maxdepth 2 -type f -name '*_final.elf' -size +10k -print -quit)"
           test -n "$ELF"
-          grep -aFq '[NSC:P96A] READY' "$ELF"
-          grep -aFq '[NSC:P96A] ACTDESC' "$ELF"
-          grep -aFq '[NSC:P95A] READY' "$ELF"
-          grep -aFq '[NSC:P94A] READY' "$ELF"
-          grep -aFq '[NSC:P93A] READY' "$ELF"
-          grep -aFq '[NSC:P93A] CORE' "$ELF"
-          grep -aFq '[NSC:P92A] READY' "$ELF"
+          grep -aFq '[NSC:P97A] READY' "$ELF"
+          grep -aFq '[NSC:P97A] GUARD' "$ELF"
           grep -aFq '[NSC:P89A] READY' "$ELF"
+          grep -aFq 'P97_TRANSITION_SELECTOR' "$ELF"
       - name: Package
         run: |
           set -eux
@@ -56,6 +54,6 @@ jobs:
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: NSC-P96A-action-descriptor-transition-trace
+          name: NSC-P97A-early-transition-guard
           path: artifact/
           if-no-files-found: error

@@ -790,6 +790,7 @@ void P94TraceSequence(const char* tag, void* actor, ptrdiff_t caller_off, int32_
 static std::atomic<uint32_t> g_p95_queue_logs{0};
 static std::atomic<uint32_t> g_p95_wrapper_logs{0};
 static bool g_p96_descriptor_trace_mode = false;
+static bool g_p97_transition_guard_mode = false;
 static constexpr uint32_t kP95QueueLimit = 32768;
 static constexpr uint32_t kP95WrapperLimit = 4096;
 static constexpr uintptr_t kP95MainTextSize = 0x12F5FD0u;
@@ -862,7 +863,7 @@ static __attribute__((noinline)) void P95TraceWrapperParent(void* actor, int32_t
     // read-only; captured_sp is taken at PlayAction callback entry before any
     // helper call. The wrapper saves its incoming X30 before BL PlayAction, so
     // an indirect/direct parent return address remains above this stack frame.
-    if (g_p96_descriptor_trace_mode) return;
+    if (g_p96_descriptor_trace_mode || g_p97_transition_guard_mode) return;
     if (!actor || caller_off != 0x7725D0 || index < 700 || index > 740 || !captured_sp) return;
     const uint32_t n = g_p95_wrapper_logs.fetch_add(1, std::memory_order_relaxed);
     if (n >= kP95WrapperLimit) return;
@@ -1069,6 +1070,103 @@ static void P96TraceDescriptor(const char* tag, void* actor, ptrdiff_t caller_of
         static_cast<unsigned long>(desc[2]), d6c[2], d72[2], d94[2], key[2],
         static_cast<unsigned long>(desc[3]), d6c[3], d72[3], d94[3], key[3]);
 }
+
+
+// P97A: functional early-transition guard for semantic custom UJ handoff.
+// Runtime proof chain:
+//   P93/P95: semantic custom leaves action707 at EA4=0x258 through wrapper parent 0x7EFF8C.
+//   P96: the same actor has e70=0/e90=0/mapped=707 and descriptor707 key
+//        "PL_ANM_SPSKILL_1_LOOP", while successful vanilla fixture 129 has an
+//        empty descriptor707 key and reaches action710 from 0x7E6EC8.
+// Static v1.70 proof at main+0x7EFEBC:
+//   descriptor+0x94 non-empty -> main+0x3F5540 resolver -> W21 -> vtable+0xEB0,
+//   and successful return is 1; early/no-transition return is 0.
+// P97A therefore defers ONLY the descriptor-driven transition-selector while a
+// data-driven semantic-UJ member is still in the proven 707 pre-handoff state.
+// It never rewrites action IDs, never forces 710, and never branches on char281.
+namespace {
+static constexpr ptrdiff_t kP97TransitionSelectorOffset = 0x7EFEBC;
+static std::atomic<uint32_t> g_p97_guard_logs{0};
+static constexpr uint32_t kP97GuardLimit = 4096;
+
+static bool P97Descriptor707HasKey(void* actor, uint16_t& d6c, uint16_t& d72, uint8_t& d94) {
+    d6c = d72 = 0;
+    d94 = 0;
+    if (!actor) return false;
+    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+    const uint32_t e70 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE70);
+    const uint32_t e90 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE90);
+    // The guarded state is specifically native action707 with no generic mapper offset.
+    if (e70 != 0u || e90 >= 0x100u) return false;
+    const uintptr_t table_slot = reinterpret_cast<uintptr_t>(b) + 0x11660u + static_cast<uintptr_t>(e90) * 8u;
+    const uintptr_t table_obj = *reinterpret_cast<const volatile uintptr_t*>(table_slot);
+    if (!P96PlausiblePtr(table_obj)) return false;
+    const uintptr_t table_base = *reinterpret_cast<const volatile uintptr_t*>(table_obj);
+    if (!P96PlausiblePtr(table_base)) return false;
+    const uintptr_t rec = table_base + static_cast<uintptr_t>(707u) * 0x18u;
+    const uintptr_t desc = *reinterpret_cast<const volatile uintptr_t*>(rec);
+    if (!P96PlausiblePtr(desc)) return false;
+    const auto* d = reinterpret_cast<const volatile uint8_t*>(desc);
+    d6c = *reinterpret_cast<const volatile uint16_t*>(d + 0x6C);
+    d72 = *reinterpret_cast<const volatile uint16_t*>(d + 0x72);
+    d94 = *(d + 0x94);
+    return d94 != 0u;
+}
+
+HOOK_DEFINE_TRAMPOLINE(P97EarlyTransitionGuardHook) {
+    static uint32_t Callback(void* actor, int32_t context_code) {
+        uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, cid);
+        if (!valid || !actor) return Orig(actor, context_code);
+
+        const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+        const uint32_t action = *reinterpret_cast<const volatile uint32_t*>(b + 4712);
+        const uint32_t e94 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE94);
+        const uint32_t e9c = *reinterpret_cast<const volatile uint32_t*>(b + 0xE9C);
+        const uint32_t bda4 = *reinterpret_cast<const volatile uint32_t*>(b + 0xBDA4);
+        const uint32_t bda8 = *reinterpret_cast<const volatile uint32_t*>(b + 0xBDA8);
+        const uint32_t bdc8 = *reinterpret_cast<const volatile uint32_t*>(b + 0xBDC8);
+        const bool semantic = P64QuerySemanticUltimateJutsu(actor);
+        const bool member = p81_data::ContainsOugiAwakeningId(cid);
+
+        uint16_t d6c = 0, d72 = 0;
+        uint8_t d94 = 0;
+        const bool keyed707 = action == 707u && P97Descriptor707HasKey(actor, d6c, d72, d94);
+        const bool prehandoff =
+            action == 707u && e94 == 136u && e9c == 0u &&
+            bda4 == 1u && bda8 == 0u && bdc8 == 0u;
+        const bool guard = semantic && member && keyed707 && prehandoff;
+
+        const uint32_t n = g_p97_guard_logs.fetch_add(1, std::memory_order_relaxed);
+        if ((guard || (semantic && action == 707u)) && n < kP97GuardLimit) {
+            Logging.Log(
+                "[NSC:P97A] GUARD n=%u actor=%p side=%u char=%u ctx=%d action=%u "
+                "semantic=%u member=%u keyed707=%u d6c=%u d72=%u d94=%u "
+                "e94=%u e9c=%u bda4=%u bda8=%u bdc8=%u guard=%u",
+                n, actor, side, cid, context_code, action,
+                semantic ? 1u : 0u, member ? 1u : 0u, keyed707 ? 1u : 0u,
+                static_cast<uint32_t>(d6c), static_cast<uint32_t>(d72), static_cast<uint32_t>(d94),
+                e94, e9c, bda4, bda8, bdc8, guard ? 1u : 0u);
+        }
+
+        if (guard) return 0u; // native no-transition result; do not enter 0x772594 wrapper.
+        return Orig(actor, context_code);
+    }
+};
+
+static bool InstallP97Internal() {
+    static constexpr uint32_t sig[] = {
+        0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x2A0103F4,
+        0xAA0003F3, 0x97FDDAF2, 0x2A0003E1, 0xAA1303E0
+    };
+    if (!MatchWords(kP97TransitionSelectorOffset, sig)) {
+        LogFingerprintFail("P97_TRANSITION_SELECTOR", kP97TransitionSelectorOffset);
+        return false;
+    }
+    P97EarlyTransitionGuardHook::InstallAtOffset(kP97TransitionSelectorOffset);
+    return true;
+}
+} // anonymous P97A
 
 void P93TraceCore(const char* tag, void* actor, ptrdiff_t caller_off, int32_t code, uint32_t phase) {
     uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
@@ -7052,6 +7150,21 @@ void InstallP96AActionDescriptorTransitionTrace() {
     InstallP95AQueuedActionParentTrace();
     g_p96_descriptor_trace_mode = true;
     Logging.Log("[NSC:P96A] READY parent_p95=1 readonly=1 zero_extra_trampolines=1 reuse_existing_hooks=1 mute_p95_stack_scan=1 current_action_766a98=1 mapper_769b04_e70=1 table_cache_7948e8=1 record_lookup_782c08=1 transition_selector_7efebc=1 string_resolver_3f5540_80efec=1 descriptor_key_94=1 indices_707_791_833_875=1 no_new_hook=1 no_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1");
+}
+
+
+void InstallP97AEarlyTransitionGuard() {
+    // Functional parent is the proven P89 bridge, not the P91-P96 diagnostic chain.
+    // P97 adds exactly one whole-function trampoline at the statically/runtimely proven selector.
+    InstallP89APhase3ActorPredBridge();
+    g_p97_transition_guard_mode = true; // also mutes obsolete P95 stack scanning.
+    const bool ok = InstallP97Internal();
+    Logging.Log(
+        "[NSC:P97A] READY parent_p89=1 functional=1 selector=0x7efebc hook=%d "
+        "semantic_gate=1 membership_gate=1 keyed707_gate=1 prehandoff_gate=1 "
+        "native_no_transition_return=1 one_extra_trampoline=1 no_action_rewrite=1 "
+        "no_force708=1 no_force710=1 no_char281_branch=1",
+        ok ? 1 : 0);
 }
 
 } // namespace nsc
