@@ -778,6 +778,178 @@ void P94TraceSequence(const char* tag, void* actor, ptrdiff_t caller_off, int32_
         vc.h0, vc.h1, vc.h2, vc.h3, vc.h4, vc.h5, vc.prev, vc.cur, vc.next);
 }
 
+
+// P95A: queued-action / virtual-parent trace after P94A falsified the
+// actor+0x12460 sequence-controller hypothesis for the observed 707->708 exit.
+// Static v1.70 evidence around main+0x7732A0 shows an indirect virtual call
+// through vtable+0xEB0 with W1 loaded from actor+0x10600. A second vtable+0xEB0
+// call exists at main+0x7EFF88 and direct caller main+0x48FE0 also reaches the
+// same generic main+0x772594 wrapper. P95A stays read-only and adds no hook:
+// it samples the nearby actor-owned queue/controller family at every existing
+// P93 trace point and stack-provenance only from the existing PlayAction hook.
+static std::atomic<uint32_t> g_p95_queue_logs{0};
+static std::atomic<uint32_t> g_p95_wrapper_logs{0};
+static constexpr uint32_t kP95QueueLimit = 32768;
+static constexpr uint32_t kP95WrapperLimit = 4096;
+static constexpr uintptr_t kP95MainTextSize = 0x12F5FD0u;
+
+static ptrdiff_t P95MainOffset(uintptr_t address, uintptr_t base) {
+    if (!address || address < base) return -1;
+    const uintptr_t delta = address - base;
+    return delta < kP95MainTextSize ? static_cast<ptrdiff_t>(delta) : -1;
+}
+
+static bool P95IsBl(uint32_t insn) {
+    return (insn & 0xFC000000u) == 0x94000000u;
+}
+
+static bool P95IsBlr(uint32_t insn) {
+    return (insn & 0xFFFFFC1Fu) == 0xD63F0000u;
+}
+
+static void P95TraceQueue(const char* tag, void* actor, ptrdiff_t caller_off, int32_t code,
+                          uint32_t phase, uint32_t side, uint32_t cid,
+                          bool semantic, const P93CoreState& st) {
+    if (!actor) return;
+    const bool focus =
+        (st.action >= 700u && st.action <= 710u) ||
+        (code >= 700 && code <= 710) ||
+        st.e94 == 136u || st.e94 == 137u ||
+        (semantic && (st.action == 707u || st.action == 708u));
+    if (!focus) return;
+    const uint32_t n = g_p95_queue_logs.fetch_add(1, std::memory_order_relaxed);
+    if (n >= kP95QueueLimit) return;
+
+    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+    const uint32_t q104dc = *reinterpret_cast<const volatile uint32_t*>(b + 0x104DC);
+    const uint32_t q104e0 = *reinterpret_cast<const volatile uint32_t*>(b + 0x104E0);
+    const uint32_t q105e8 = *reinterpret_cast<const volatile uint32_t*>(b + 0x105E8);
+    const uint32_t q105ec = *reinterpret_cast<const volatile uint32_t*>(b + 0x105EC);
+    const uint32_t q105f0 = *reinterpret_cast<const volatile uint32_t*>(b + 0x105F0);
+    const uint32_t q105f4 = *reinterpret_cast<const volatile uint32_t*>(b + 0x105F4);
+    const uint32_t q105f8 = *reinterpret_cast<const volatile uint32_t*>(b + 0x105F8);
+    const uint32_t q105fc = *reinterpret_cast<const volatile uint32_t*>(b + 0x105FC);
+    const uint32_t q10600 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10600);
+    const uint32_t q10604 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10604);
+    const uint32_t q10608 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10608);
+    const uint32_t q1060c = *reinterpret_cast<const volatile uint32_t*>(b + 0x1060C);
+    const uint32_t q10610 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10610);
+    const uintptr_t vtable = *reinterpret_cast<const volatile uintptr_t*>(b);
+    uintptr_t slot_eb0 = 0;
+    if (vtable) slot_eb0 = *reinterpret_cast<const volatile uintptr_t*>(vtable + 0xEB0);
+    const uintptr_t base = exl::util::modules::GetTargetStart();
+    const ptrdiff_t slot_eb0_off = P95MainOffset(slot_eb0, base);
+
+    Logging.Log(
+        "[NSC:P95A] QUEUECTRL n=%u tag=%s phase=%u actor=%p side=%u char=%u semantic=%u caller_off=0x%lx code=%d "
+        "action=%u e94=%u e98=%u e9c=%u ea4=%08x ea8=%08x bda4=%u bda8=%u bdc8=%u "
+        "q104dc=%08x q104e0=%08x q105e8=%08x q105ec=%08x q105f0=%08x "
+        "q105f4=%08x q105f8=%08x q105fc=%08x q10600=%08x q10604=%08x q10608=%08x q1060c=%08x q10610=%08x "
+        "slot_eb0=0x%lx slot_eb0_off=0x%lx",
+        n, tag, phase, actor, side, cid, semantic ? 1u : 0u,
+        static_cast<unsigned long>(caller_off), code,
+        st.action, st.e94, st.e98, st.e9c, st.ea4, st.ea8, st.bda4, st.bda8, st.bdc8,
+        q104dc, q104e0, q105e8, q105ec, q105f0,
+        q105f4, q105f8, q105fc, q10600, q10604, q10608, q1060c, q10610,
+        static_cast<unsigned long>(slot_eb0), static_cast<unsigned long>(slot_eb0_off));
+}
+
+static __attribute__((noinline)) void P95TraceWrapperParent(void* actor, int32_t index, ptrdiff_t caller_off,
+                                  uintptr_t captured_sp, uint32_t side, uint32_t cid,
+                                  bool semantic) {
+    // Only inspect the decisive generic wrapper return site. Stack scanning is
+    // read-only; captured_sp is taken at PlayAction callback entry before any
+    // helper call. The wrapper saves its incoming X30 before BL PlayAction, so
+    // an indirect/direct parent return address remains above this stack frame.
+    if (!actor || caller_off != 0x7725D0 || index < 700 || index > 740 || !captured_sp) return;
+    const uint32_t n = g_p95_wrapper_logs.fetch_add(1, std::memory_order_relaxed);
+    if (n >= kP95WrapperLimit) return;
+
+    const uintptr_t base = exl::util::modules::GetTargetStart();
+    const auto* sp = reinterpret_cast<const volatile uintptr_t*>(captured_sp);
+    static constexpr uint32_t kScanBytes = 0x1000;
+    static constexpr uint32_t kMaxCalls = 8;
+    static constexpr uint32_t kMaxEb0 = 6;
+    ptrdiff_t calls[kMaxCalls]{};
+    uint32_t call_soff[kMaxCalls]{};
+    uint32_t call_insn[kMaxCalls]{};
+    ptrdiff_t eb0[kMaxEb0]{};
+    uint32_t eb0_soff[kMaxEb0]{};
+    uint32_t call_count = 0, eb0_count = 0;
+    uint32_t hit48fe4 = 0, hit7732a8 = 0, hit7eff8c = 0;
+
+    for (uint32_t byte_off = 0; byte_off < kScanBytes; byte_off += sizeof(uintptr_t)) {
+        const uintptr_t ret = sp[byte_off / sizeof(uintptr_t)];
+        const ptrdiff_t off = P95MainOffset(ret, base);
+        if (off < 4 || (ret & 3u) != 0) continue;
+        const uint32_t insn = *reinterpret_cast<const volatile uint32_t*>(ret - 4);
+        if (!(P95IsBl(insn) || P95IsBlr(insn))) continue;
+
+        if (off == 0x48FE4) hit48fe4 = 1;
+        if (off == 0x7732A8) hit7732a8 = 1;
+        if (off == 0x7EFF8C) hit7eff8c = 1;
+
+        bool duplicate = false;
+        for (uint32_t j = 0; j < call_count; ++j) {
+            if (calls[j] == off) { duplicate = true; break; }
+        }
+        if (!duplicate && call_count < kMaxCalls) {
+            calls[call_count] = off;
+            call_soff[call_count] = byte_off;
+            call_insn[call_count] = insn;
+            ++call_count;
+        }
+
+        if (off >= 8) {
+            const uint32_t prev = *reinterpret_cast<const volatile uint32_t*>(ret - 8);
+            // LDR X8,[X8,#0xEB0] ; BLR X8
+            if (prev == 0xF9475908u && insn == 0xD63F0100u) {
+                bool dup_eb0 = false;
+                for (uint32_t j = 0; j < eb0_count; ++j) {
+                    if (eb0[j] == off) { dup_eb0 = true; break; }
+                }
+                if (!dup_eb0 && eb0_count < kMaxEb0) {
+                    eb0[eb0_count] = off;
+                    eb0_soff[eb0_count] = byte_off;
+                    ++eb0_count;
+                }
+            }
+        }
+    }
+
+    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+    const uint32_t q105f4 = *reinterpret_cast<const volatile uint32_t*>(b + 0x105F4);
+    const uint32_t q105f8 = *reinterpret_cast<const volatile uint32_t*>(b + 0x105F8);
+    const uint32_t q105fc = *reinterpret_cast<const volatile uint32_t*>(b + 0x105FC);
+    const uint32_t q10600 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10600);
+
+    Logging.Log(
+        "[NSC:P95A] WRAPPER_PARENT n=%u actor=%p side=%u char=%u semantic=%u index=%d caller_off=0x%lx sp=0x%lx "
+        "q105f4=%08x q105f8=%08x q105fc=%08x q10600=%08x "
+        "hit48fe4=%u hit7732a8=%u hit7eff8c=%u calls=%u eb0calls=%u "
+        "c0=0x%lx@+%x/%08x c1=0x%lx@+%x/%08x c2=0x%lx@+%x/%08x c3=0x%lx@+%x/%08x "
+        "c4=0x%lx@+%x/%08x c5=0x%lx@+%x/%08x c6=0x%lx@+%x/%08x c7=0x%lx@+%x/%08x "
+        "e0=0x%lx@+%x e1=0x%lx@+%x e2=0x%lx@+%x e3=0x%lx@+%x e4=0x%lx@+%x e5=0x%lx@+%x",
+        n, actor, side, cid, semantic ? 1u : 0u, index,
+        static_cast<unsigned long>(caller_off), static_cast<unsigned long>(captured_sp),
+        q105f4, q105f8, q105fc, q10600,
+        hit48fe4, hit7732a8, hit7eff8c, call_count, eb0_count,
+        static_cast<unsigned long>(calls[0]), call_soff[0], call_insn[0],
+        static_cast<unsigned long>(calls[1]), call_soff[1], call_insn[1],
+        static_cast<unsigned long>(calls[2]), call_soff[2], call_insn[2],
+        static_cast<unsigned long>(calls[3]), call_soff[3], call_insn[3],
+        static_cast<unsigned long>(calls[4]), call_soff[4], call_insn[4],
+        static_cast<unsigned long>(calls[5]), call_soff[5], call_insn[5],
+        static_cast<unsigned long>(calls[6]), call_soff[6], call_insn[6],
+        static_cast<unsigned long>(calls[7]), call_soff[7], call_insn[7],
+        static_cast<unsigned long>(eb0[0]), eb0_soff[0],
+        static_cast<unsigned long>(eb0[1]), eb0_soff[1],
+        static_cast<unsigned long>(eb0[2]), eb0_soff[2],
+        static_cast<unsigned long>(eb0[3]), eb0_soff[3],
+        static_cast<unsigned long>(eb0[4]), eb0_soff[4],
+        static_cast<unsigned long>(eb0[5]), eb0_soff[5]);
+}
+
 void P93TraceCore(const char* tag, void* actor, ptrdiff_t caller_off, int32_t code, uint32_t phase) {
     uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
     if (!ReadActorIdentity(actor, side, cid)) return;
@@ -806,6 +978,7 @@ void P93TraceCore(const char* tag, void* actor, ptrdiff_t caller_off, int32_t co
         st.bda4, st.bda8, st.bdc8, st.s106f4, st.s123e0, st.s123e4, st.f7cc,
         st.c404, st.c408, st.c5a0);
     P94TraceSequence(tag, actor, caller_off, code, phase, side, cid, semantic, st);
+    P95TraceQueue(tag, actor, caller_off, code, phase, side, cid, semantic, st);
 }
 
 uintptr_t ReadActionSetterTarget(void* actor) {
@@ -1886,7 +2059,9 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         // the return address established by the native BL/BLR that entered
         // PlayAction. This is the missing provenance level P57A could not see.
         uintptr_t caller_lr = 0;
+        uintptr_t captured_sp = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
+        asm volatile("mov %0, sp" : "=r"(captured_sp));
 
         uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
         const bool valid = ReadActorIdentity(actor, side, char_id);
@@ -1903,6 +2078,9 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             call_m8 = *reinterpret_cast<const volatile uint32_t*>(base + caller_off - 8);
             call_m4 = *reinterpret_cast<const volatile uint32_t*>(base + caller_off - 4);
         }
+
+        P95TraceWrapperParent(actor, index, caller_off, captured_sp, side, char_id,
+                              P64QuerySemanticUltimateJutsu(actor));
 
         const bool ordinary_jutsu = index == 84;
         const bool direct_cluster_action = index == 98 || index == 100 || index == 937 || index == 938;
@@ -6742,6 +6920,11 @@ void InstallP93AMaxUsefulTrace() {
 void InstallP94ASequenceControllerTrace() {
     InstallP93AMaxUsefulTrace();
     Logging.Log("[NSC:P94A] READY parent_p93=1 readonly=1 zero_extra_trampolines=1 reuse_existing_hooks=1 sequence_controller_12460=1 vectors_12470_124a0_124d0=1 idx_1246c=1 mode_12504=1 gate_12320=1 vec_head_and_index_items=1 static_48f18_772594_proof=1 no_new_hook=1 no_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1");
+}
+
+void InstallP95AQueuedActionParentTrace() {
+    InstallP94ASequenceControllerTrace();
+    Logging.Log("[NSC:P95A] READY parent_p94=1 readonly=1 zero_extra_trampolines=1 reuse_existing_hooks=1 queue_104dc_10610=1 pending_105fc_10600=1 vslot_eb0=1 wrapper_parent_stack_scan=1 direct_48fe4=1 indirect_7732a8=1 indirect_7eff8c=1 no_new_hook=1 no_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1");
 }
 
 } // namespace nsc

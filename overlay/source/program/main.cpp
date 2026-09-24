@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP94ASequenceControllerTrace();
+    nsc::InstallP95AQueuedActionParentTrace();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P94A sequence-controller zero-extra trace exception");
+    EXL_ABORT("NSC P95A queued-action parent zero-extra trace exception");
 }

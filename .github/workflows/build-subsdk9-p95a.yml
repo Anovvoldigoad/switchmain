@@ -1,16 +1,18 @@
-name: Build NSC P94A sequence-controller zero-extra trace
+name: Build NSC P95A queued-action parent zero-extra trace
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest
     container: devkitpro/devkita64:latest
     steps:
       - uses: actions/checkout@v4
-      - name: Preflight P94A drop-in kit
+      - name: Preflight P95A drop-in kit
         run: |
           set -eux
-          python3 verify_p94a_source.py
+          python3 verify_p95a_source.py
       - name: Bootstrap pinned exlaunch
         run: |
           set -eux
@@ -23,10 +25,10 @@ jobs:
           set -eux
           chmod +x prepare_exlaunch.sh
           ./prepare_exlaunch.sh
-          grep -Fq '[NSC:P94A] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq '[NSC:P94A] SEQCTRL' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq '[NSC:P94A] SEQVEC' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq 'nsc::InstallP94ASequenceControllerTrace();' exlaunch/source/program/main.cpp
+          grep -Fq '[NSC:P95A] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq '[NSC:P95A] QUEUECTRL' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq '[NSC:P95A] WRAPPER_PARENT' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq 'nsc::InstallP95AQueuedActionParentTrace();' exlaunch/source/program/main.cpp
       - name: Build
         working-directory: exlaunch
         run: make -j2
@@ -35,9 +37,10 @@ jobs:
           set -eux
           ELF="$(find exlaunch -maxdepth 2 -type f -name '*_final.elf' -size +10k -print -quit)"
           test -n "$ELF"
+          grep -aFq '[NSC:P95A] READY' "$ELF"
+          grep -aFq '[NSC:P95A] QUEUECTRL' "$ELF"
+          grep -aFq '[NSC:P95A] WRAPPER_PARENT' "$ELF"
           grep -aFq '[NSC:P94A] READY' "$ELF"
-          grep -aFq '[NSC:P94A] SEQCTRL' "$ELF"
-          grep -aFq '[NSC:P94A] SEQVEC' "$ELF"
           grep -aFq '[NSC:P93A] READY' "$ELF"
           grep -aFq '[NSC:P93A] CORE' "$ELF"
           grep -aFq '[NSC:P92A] READY' "$ELF"
@@ -55,6 +58,6 @@ jobs:
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: NSC-P94A-sequence-controller-zero-extra-trace
+          name: NSC-P95A-queued-action-parent-zero-extra-trace
           path: artifact/
           if-no-files-found: error
