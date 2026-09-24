@@ -35,6 +35,6 @@ void InstallP93AMaxUsefulTrace();
 void InstallP94ASequenceControllerTrace();
 void InstallP95AQueuedActionParentTrace();
 void InstallP96AActionDescriptorTransitionTrace();
-void InstallP97AEarlyTransitionGuard();
+void InstallP98BState125ProvenanceTrace();
 void InstallP88AWideUJAdmissionTrace();
 }
