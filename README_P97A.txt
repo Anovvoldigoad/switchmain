@@ -32,3 +32,10 @@ Test order
 5. Test one ordinary custom jutsu/normal action transition as regression control.
 
 If boot fails before READY, classify as trampoline-capacity failure, not semantic failure. P90A previously proved two extra whole-function trampolines can exhaust the pool; P97 adds exactly one.
+
+P97A v2 compile-order hotfix
+----------------------------
+The first P97A source kit placed InstallP97Internal() before the shared
+MatchWords()/LogFingerprintFail() definitions without forward declarations.
+GCC therefore failed before link. v2 adds declarations only; guard semantics,
+hook offset 0x7EFEBC, fingerprints, actor gates and return policy are unchanged.

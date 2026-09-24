@@ -14,6 +14,7 @@ checks={
 'no_p97_inline':'HOOK_DEFINE_INLINE(P97' not in cpp,
 'selector_offset':'kP97TransitionSelectorOffset = 0x7EFEBC' in cpp,
 'fingerprint':all(x in cpp for x in ['0xA9BD5FFE','0xA90157F6','0xA9024FF4','0x2A0103F4','0x97FDDAF2']),
+'compile_order_helpers': cpp.index('template <size_t N>\nbool MatchWords(ptrdiff_t offset, const uint32_t (&expected)[N]);') < cpp.index('static bool InstallP97Internal()') and cpp.index('void LogFingerprintFail(const char* name, ptrdiff_t offset);') < cpp.index('static bool InstallP97Internal()'),
 'semantic_gate':'P64QuerySemanticUltimateJutsu(actor)' in cpp,
 'membership_gate':'p81_data::ContainsOugiAwakeningId(cid)' in cpp,
 'keyed707_gate':'P97Descriptor707HasKey' in cpp and 'd + 0x94' in cpp,
@@ -39,5 +40,5 @@ for p in sorted((ROOT/'.github/workflows').glob('*.yml')):
 print('push_enabled_workflows',push); assert push==['build-subsdk9-p97a.yml']
 wf=(ROOT/'.github/workflows/build-subsdk9-p97a.yml').read_text()
 assert 'git -C exlaunch checkout --detach 229bbd6' in wf
-assert 'NSC-P97A-early-transition-guard' in wf
+assert 'NSC-P97A-v2-early-transition-guard' in wf
 print('P97A_DROPIN_SOURCE_VERIFY=PASS')

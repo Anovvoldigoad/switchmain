@@ -1,4 +1,4 @@
-name: Build NSC P97A early-transition guard
+name: Build NSC P97A v2 early-transition guard compilefix
 on:
   workflow_dispatch:
   push:
@@ -54,6 +54,6 @@ jobs:
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: NSC-P97A-early-transition-guard
+          name: NSC-P97A-v2-early-transition-guard
           path: artifact/
           if-no-files-found: error

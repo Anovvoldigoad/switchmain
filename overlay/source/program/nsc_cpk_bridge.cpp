@@ -1072,6 +1072,12 @@ static void P96TraceDescriptor(const char* tag, void* actor, ptrdiff_t caller_of
 }
 
 
+// Compile-order forward declarations used by the P97A installer below.
+// Definitions remain in the shared helper section later in this translation unit.
+template <size_t N>
+bool MatchWords(ptrdiff_t offset, const uint32_t (&expected)[N]);
+void LogFingerprintFail(const char* name, ptrdiff_t offset);
+
 // P97A: functional early-transition guard for semantic custom UJ handoff.
 // Runtime proof chain:
 //   P93/P95: semantic custom leaves action707 at EA4=0x258 through wrapper parent 0x7EFF8C.
