@@ -452,6 +452,7 @@ struct P64SemanticControlEntry {
     void* actor = nullptr;
     uint32_t char_id = 0xFFFFFFFFu;
     uint32_t enabled_mask = 0;
+    uint32_t p102_hold74_count = 0;
 };
 P64SemanticControlEntry g_p64_semantic_controls[32]{};
 constexpr uint32_t kP64SemanticUltimateJutsuBit = (1u << 1);
@@ -591,13 +592,18 @@ void P64SetSemanticUltimateJutsu(void* actor, bool enabled) {
             if (e.char_id != char_id) {
                 e.char_id = char_id;
                 e.enabled_mask = 0;
+                e.p102_hold74_count = 0;
             }
             if (enabled) {
                 const bool was_enabled = (e.enabled_mask & kP64SemanticUltimateJutsuBit) != 0;
-                if (!was_enabled) e.enabled_mask &= ~kP101Op23SeenBit;
+                if (!was_enabled) {
+                    e.enabled_mask &= ~kP101Op23SeenBit;
+                    e.p102_hold74_count = 0;
+                }
                 e.enabled_mask |= kP64SemanticUltimateJutsuBit;
             } else {
                 e.enabled_mask &= ~(kP64SemanticUltimateJutsuBit | kP101Op23SeenBit);
+                e.p102_hold74_count = 0;
             }
             return;
         }
@@ -607,6 +613,7 @@ void P64SetSemanticUltimateJutsu(void* actor, bool enabled) {
     empty->actor = actor;
     empty->char_id = char_id;
     empty->enabled_mask = enabled ? kP64SemanticUltimateJutsuBit : 0u;
+    empty->p102_hold74_count = 0;
 }
 
 bool P64QuerySemanticUltimateJutsu(void* actor) {
@@ -644,6 +651,31 @@ bool P101QueryOp23Seen(void* actor) {
         return (e.enabled_mask & kP101Op23SeenBit) != 0;
     }
     return false;
+}
+
+uint32_t P102IncrementHold74Count(void* actor) {
+    uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+    if (!ReadActorIdentity(actor, side, char_id)) return 0xFFFFFFFFu;
+    P64SemanticLock lock;
+    for (auto& e : g_p64_semantic_controls) {
+        if (e.actor != actor) continue;
+        if (e.char_id != char_id) return 0xFFFFFFFFu;
+        if (e.p102_hold74_count != 0xFFFFFFFFu) ++e.p102_hold74_count;
+        return e.p102_hold74_count;
+    }
+    return 0xFFFFFFFFu;
+}
+
+void P102ResetHold74Count(void* actor) {
+    uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+    if (!ReadActorIdentity(actor, side, char_id)) return;
+    P64SemanticLock lock;
+    for (auto& e : g_p64_semantic_controls) {
+        if (e.actor != actor) continue;
+        if (e.char_id != char_id) return;
+        e.p102_hold74_count = 0;
+        return;
+    }
 }
 
 
@@ -2143,28 +2175,8 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
             case 22: // source me_play_pl_anm
                 return HandleActionAnimation(actor, event, p2, p3, false);
 
-            case 23: { // source me_play_action
-                const bool p101_focus =
-                    p55_pre.action == 708u &&
-                    P64QuerySemanticUltimateJutsu(actor) &&
-                    p81_data::ContainsOugiAwakeningId(char_id);
-                if (p101_focus) {
-                    P101SetOp23Seen(actor, true);
-                    char p101_text[31]{};
-                    CopyEventText(p101_text, event);
-                    Logging.Log(
-                        "[NSC:P101A] OP23 actor=%p side=%u char=%u action=%u text=%s seen=1",
-                        actor, side, char_id, p55_pre.action, p101_text);
-                }
-                const uint32_t ret = HandleActionAnimation(actor, event, p2, p3, true);
-                if (p101_focus) {
-                    const P55ActorState post = ReadP55ActorState(actor);
-                    Logging.Log(
-                        "[NSC:P101A] OP23_RESULT actor=%p char=%u ret=%u action=%u->%u",
-                        actor, char_id, ret, p55_pre.action, post.action);
-                }
-                return ret;
-            }
+            case 23: // source me_play_action
+                return HandleActionAnimation(actor, event, p2, p3, true);
 
             default:
                 // Valid MovesetPlus opcode but not yet Switch-proven: shadow/no-op.
@@ -2284,6 +2296,43 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             pre_106f4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x106F4);
             pre_123e0 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E0);
             pre_123e4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E4);
+        }
+
+        // P102A functional candidate: suppress only the exact proven 708->74
+        // fallback call at main+0x798F30 (return LR main+0x798F34). Runtime
+        // log45 proves this call occurs after Kamui absorption while action708
+        // still carries the UJ control lock (BDA4=1). We do NOT force 710,
+        // mutate actor state, or key on a character ID. Native PlayAction's
+        // observed return for this call is 1, so suppression returns the same
+        // success value and lets the caller continue its native cleanup.
+        constexpr ptrdiff_t kP102Fallback74CallerReturn = 0x798F34;
+        constexpr uint32_t kP102MaxHold74Calls = 16u;
+        if (index == 700 && valid) P102ResetHold74Count(actor);
+        const bool p102_semantic = valid && P64QuerySemanticUltimateJutsu(actor);
+        const bool p102_member = valid && p81_data::ContainsOugiAwakeningId(char_id);
+        const bool p102_exact_fallback =
+            valid && caller_off == kP102Fallback74CallerReturn && index == 74 &&
+            pre_action == 708u && p102_semantic && p102_member &&
+            pre_e98 == 63u && pre_e9c == 0u && pre_bda4 == 1u && pre_bdc8 == 0u;
+        if (p102_exact_fallback) {
+            const uint32_t hold_n = P102IncrementHold74Count(actor);
+            if (hold_n != 0xFFFFFFFFu && hold_n <= kP102MaxHold74Calls) {
+                P93TraceCore("P102_HOLD74", actor, caller_off, index, 0);
+                Logging.Log(
+                    "[NSC:P102A] HOLD74 actor=%p side=%u char=%u caller_off=0x%lx "
+                    "index=%d action=%u semantic=%u member=%u count=%u/%u "
+                    "e98=%u e9c=%u bda4=%u bdc8=%u ret=1",
+                    actor, side, char_id, static_cast<unsigned long>(caller_off),
+                    index, pre_action, p102_semantic ? 1u : 0u, p102_member ? 1u : 0u,
+                    hold_n, kP102MaxHold74Calls, pre_e98, pre_e9c, pre_bda4, pre_bdc8);
+                P93TraceCore("P102_HOLD74", actor, caller_off, index, 1);
+                return 1;
+            }
+            Logging.Log(
+                "[NSC:P102A] FAILOPEN74 actor=%p side=%u char=%u caller_off=0x%lx "
+                "index=%d action=%u count=%u max=%u -> native",
+                actor, side, char_id, static_cast<unsigned long>(caller_off),
+                index, pre_action, hold_n, kP102MaxHold74Calls);
         }
 
         P93TraceCore("PLAYACTION", actor, caller_off, index, 0);
@@ -7480,89 +7529,30 @@ void InstallP100COneTrampolineAction710RouteOracle() {
 
 
 // ============================================================================
-// P101A — functional, data-driven 708-loop completion guard.
+// P102A — functional exact-callsite 708->74 fallback suppression candidate.
 //
-// Runtime proof through P100C/log44:
-// - custom UJ must follow 707 -> 708 -> 710; 708 is required;
-// - state125 is requested during 708 and terminates into 261/74;
-// - the custom 708 loop does not emit Event236 op23 before that cleanup;
-// - source semantics use Event236 op23 (me_play_action) for action-data
-//   transitions, so give the loop a bounded chance to execute its own END event.
+// Runtime proof from log45 + pinned v1.70 main:
+// - main+0x798E6C materializes W1=74;
+// - main+0x798F30 calls PlayAction; runtime LR is main+0x798F34;
+// - custom semantic UJ reaches that call while current action is still 708,
+//   E98=63, E9C=0, BDA4=1, BDC8=0;
+// - after native PlayAction74, the UJ control lock remains set and Tobi cannot move.
 //
-// This hook DOES NOT force 710 or rewrite any actor field. It rejects only the
-// proven cleanup state125 request while all generic semantic gates match and
-// op23 has not yet been observed. It fails open after EA4 exceeds a bounded
-// window, and immediately fails open once op23 is seen.
+// P102A adds NO trampoline. The functional gate lives inside the already-proven
+// P50 PlayAction trampoline and suppresses only that exact fallback fingerprint.
+// It returns native-success value 1 and is bounded to 16 matching calls per UJ.
+// No action710 is forced and no actor field is modified.
 // ============================================================================
-namespace {
-constexpr ptrdiff_t kP101StateRequestOffset = 0x7A89A4;
-constexpr uint32_t kP101HoldEa4Max = 0x3000u;
-static std::atomic<uint32_t> g_p101_hold_logs{0};
-
-HOOK_DEFINE_TRAMPOLINE(P101State125GuardHook) {
-    static uint32_t Callback(void* actor, uint32_t requested_state,
-                             uint32_t arg2, uint32_t arg3) {
-        uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
-        const bool valid = ReadActorIdentity(actor, side, cid);
-        const P93CoreState pre = valid ? ReadP93CoreState(actor) : P93CoreState{};
-        const bool semantic = valid && P64QuerySemanticUltimateJutsu(actor);
-        const bool member = valid && p81_data::ContainsOugiAwakeningId(cid);
-        const bool op23_seen = valid && P101QueryOp23Seen(actor);
-        const bool ea4_in_window = pre.ea4 <= kP101HoldEa4Max;
-        const bool hold =
-            valid && requested_state == 125u && pre.action == 708u &&
-            semantic && member && !op23_seen && ea4_in_window;
-
-        if (hold) {
-            const uint32_t n = g_p101_hold_logs.fetch_add(1, std::memory_order_relaxed);
-            if (n < 4096u) {
-                Logging.Log(
-                    "[NSC:P101A] HOLD125 n=%u actor=%p side=%u char=%u req=%u "
-                    "action=%u semantic=%u member=%u op23_seen=%u ea4=%08x max=%08x "
-                    "e94=%u e98=%u e9c=%u bda4=%u bda8=%u bdc8=%u ret=0",
-                    n, actor, side, cid, requested_state, pre.action,
-                    semantic ? 1u : 0u, member ? 1u : 0u, op23_seen ? 1u : 0u,
-                    pre.ea4, kP101HoldEa4Max, pre.e94, pre.e98, pre.e9c,
-                    pre.bda4, pre.bda8, pre.bdc8);
-            }
-            return 0u;
-        }
-
-        const uint32_t ret = Orig(actor, requested_state, arg2, arg3);
-        if (valid && requested_state == 125u && pre.action == 708u && semantic && member) {
-            Logging.Log(
-                "[NSC:P101A] PASS125 actor=%p side=%u char=%u op23_seen=%u "
-                "ea4=%08x max=%08x ret=%u",
-                actor, side, cid, op23_seen ? 1u : 0u, pre.ea4, kP101HoldEa4Max, ret);
-        }
-        return ret;
-    }
-};
-
-static bool InstallP101State125GuardInternal() {
-    static constexpr uint32_t sig[] = {
-        0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x2A0103F4,
-        0xAA0003F3, 0x34000282, 0xF9400268, 0xAA1303E0
-    };
-    if (!MatchWords(kP101StateRequestOffset, sig)) {
-        LogFingerprintFail("P101_STATE_REQUEST_7A89A4", kP101StateRequestOffset);
-        return false;
-    }
-    P101State125GuardHook::InstallAtOffset(kP101StateRequestOffset);
-    return true;
-}
-} // anonymous namespace — P101A
-
-void InstallP101AEventDriven708EndGuard() {
+void InstallP102AExactFallback74SuppressionCandidate() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP101State125GuardInternal();
     Logging.Log(
-        "[NSC:P101A] READY parent_p96=1 event236_op23_latch=1 state125_guard=0x7a89a4 "
-        "bounded_ea4_max=0x3000 semantic_gate=1 membership_gate=1 action708_gate=1 "
-        "req125_gate=1 op23_fail_open=1 bounded_fail_open=1 probe=%u one_new_trampoline=1 "
-        "no_force708=1 no_force710=1 no_action_write=1 no_e94_write=1 no_bda4_write=1 "
-        "victim_event236_shadow_preserved=1 no_char281_branch=1",
-        ok ? 1u : 0u);
+        "[NSC:P102A] READY parent_p96=1 reuse_p50_playaction=1 exact_caller_798f34=1 "
+        "index74_gate=1 action708_gate=1 semantic_gate=1 membership_gate=1 "
+        "e98_63_gate=1 e9c_0_gate=1 bda4_1_gate=1 bdc8_0_gate=1 "
+        "max_hold_calls=16 bounded_fail_open=1 zero_new_trampoline=1 "
+        "p101_state125_guard_absent=1 no_force708=1 no_force710=1 "
+        "no_action_write=1 no_e94_write=1 no_bda4_write=1 "
+        "victim_event236_shadow_preserved=1 no_char281_branch=1 probe=1");
 }
 
 } // namespace nsc

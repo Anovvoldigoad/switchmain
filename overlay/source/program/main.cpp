@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP101AEventDriven708EndGuard();
+    nsc::InstallP102AExactFallback74SuppressionCandidate();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P101A event-driven 708 end guard exception");
+    EXL_ABORT("NSC P102A exact fallback74 suppression exception");
 }
