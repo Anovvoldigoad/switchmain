@@ -615,6 +615,93 @@ bool P64QuerySemanticUltimateJutsu(void* actor) {
     return false;
 }
 
+
+// P93A: maximum-useful trace without consuming another trampoline.
+// This only reads actor/control state and is called from hooks that already
+// exist in the proven P89 parent chain. It never changes gameplay state.
+struct P93CoreState {
+    uint32_t action, e40, e44, e48, e4c, e50, e54;
+    uint32_t e60, e64, e68, e6c, e70, e7c, e80, e84, e88, e8c, e90;
+    uint32_t e94, e98, e9c, ea0, ea4, ea8, eac;
+    uint32_t bda4, bda8, bdc8, s106f4, s123e0, s123e4, f7cc;
+    uint32_t c404, c408, c5a0;
+};
+
+static std::atomic<uint32_t> g_p93_core_logs{0};
+static constexpr uint32_t kP93CoreLimit = 65536;
+
+P93CoreState ReadP93CoreState(void* actor) {
+    P93CoreState st{};
+    if (!actor) return st;
+    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+    const auto* c = b + 0x228;
+    st.action = *reinterpret_cast<const volatile uint32_t*>(b + 4712);
+    st.e40 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE40);
+    st.e44 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE44);
+    st.e48 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE48);
+    st.e4c = *reinterpret_cast<const volatile uint32_t*>(b + 0xE4C);
+    st.e50 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE50);
+    st.e54 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE54);
+    st.e60 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE60);
+    st.e64 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE64);
+    st.e68 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE68);
+    st.e6c = *reinterpret_cast<const volatile uint32_t*>(b + 0xE6C);
+    st.e70 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE70);
+    st.e7c = *reinterpret_cast<const volatile uint32_t*>(b + 0xE7C);
+    st.e80 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE80);
+    st.e84 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE84);
+    st.e88 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE88);
+    st.e8c = *reinterpret_cast<const volatile uint32_t*>(b + 0xE8C);
+    st.e90 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE90);
+    st.e94 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE94);
+    st.e98 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE98);
+    st.e9c = *reinterpret_cast<const volatile uint32_t*>(b + 0xE9C);
+    st.ea0 = *reinterpret_cast<const volatile uint32_t*>(b + 0xEA0);
+    st.ea4 = *reinterpret_cast<const volatile uint32_t*>(b + 0xEA4);
+    st.ea8 = *reinterpret_cast<const volatile uint32_t*>(b + 0xEA8);
+    st.eac = *reinterpret_cast<const volatile uint32_t*>(b + 0xEAC);
+    st.bda4 = *reinterpret_cast<const volatile uint32_t*>(b + 0xBDA4);
+    st.bda8 = *reinterpret_cast<const volatile uint32_t*>(b + 0xBDA8);
+    st.bdc8 = *reinterpret_cast<const volatile uint32_t*>(b + 0xBDC8);
+    st.s106f4 = *reinterpret_cast<const volatile uint32_t*>(b + 0x106F4);
+    st.s123e0 = *reinterpret_cast<const volatile uint32_t*>(b + 0x123E0);
+    st.s123e4 = *reinterpret_cast<const volatile uint32_t*>(b + 0x123E4);
+    st.f7cc = *reinterpret_cast<const volatile uint32_t*>(b + 0x7CC);
+    st.c404 = *reinterpret_cast<const volatile uint32_t*>(c + 0x404);
+    st.c408 = *reinterpret_cast<const volatile uint32_t*>(c + 0x408);
+    st.c5a0 = *reinterpret_cast<const volatile uint32_t*>(c + 0x5A0);
+    return st;
+}
+
+void P93TraceCore(const char* tag, void* actor, ptrdiff_t caller_off, int32_t code, uint32_t phase) {
+    uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
+    if (!ReadActorIdentity(actor, side, cid)) return;
+    const bool custom = cid > kVanillaMaxCharId && cid < 0x1000u;
+    if (!(side == 0u || custom)) return;
+    const P93CoreState st = ReadP93CoreState(actor);
+    const bool semantic = P64QuerySemanticUltimateJutsu(actor);
+    const bool uj_state = (st.action >= 700u && st.action <= 740u) ||
+                          (st.e94 >= 135u && st.e94 <= 138u) ||
+                          (st.e98 >= 135u && st.e98 <= 138u) ||
+                          (code >= 700 && code <= 740);
+    if (!(semantic || uj_state)) return;
+    const uint32_t n = g_p93_core_logs.fetch_add(1, std::memory_order_relaxed);
+    if (n >= kP93CoreLimit) return;
+    Logging.Log(
+        "[NSC:P93A] CORE n=%u tag=%s phase=%u actor=%p side=%u char=%u semantic=%u caller_off=0x%lx code=%d "
+        "action=%u e40=%08x e44=%08x e48=%08x e4c=%08x e50=%08x e54=%08x "
+        "e60=%08x e64=%08x e68=%08x e6c=%08x e70=%08x e7c=%08x e80=%08x e84=%08x e88=%08x e8c=%08x e90=%08x "
+        "e94=%08x e98=%08x e9c=%08x ea0=%08x ea4=%08x ea8=%08x eac=%08x "
+        "bda4=%u bda8=%u bdc8=%u s106f4=%08x s123e0=%08x s123e4=%08x f7cc=%08x c404=%08x c408=%08x c5a0=%08x",
+        n, tag, phase, actor, side, cid, semantic ? 1u : 0u,
+        static_cast<unsigned long>(caller_off), code,
+        st.action, st.e40, st.e44, st.e48, st.e4c, st.e50, st.e54,
+        st.e60, st.e64, st.e68, st.e6c, st.e70, st.e7c, st.e80, st.e84, st.e88, st.e8c, st.e90,
+        st.e94, st.e98, st.e9c, st.ea0, st.ea4, st.ea8, st.eac,
+        st.bda4, st.bda8, st.bdc8, st.s106f4, st.s123e0, st.s123e4, st.f7cc,
+        st.c404, st.c408, st.c5a0);
+}
+
 uintptr_t ReadActionSetterTarget(void* actor) {
     if (!actor) return 0;
     const uintptr_t vtable = *reinterpret_cast<const volatile uintptr_t*>(actor);
@@ -1494,6 +1581,8 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
             }
         }
 
+        P93TraceCore("EVT236_PRE", actor, -1, static_cast<int32_t>(op), 0);
+
         switch (op) {
             case 2: // source me_test_switch_stage
                 return HandleStageMove(actor, event, p2);
@@ -1741,7 +1830,9 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             pre_123e4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E4);
         }
 
+        P93TraceCore("PLAYACTION", actor, caller_off, index, 0);
         const int32_t ret = Orig(actor, index, a2, a3, a4, a5, rate);
+        P93TraceCore("PLAYACTION", actor, caller_off, index, 1);
 
         uint32_t post_action = 0xFFFFFFFFu;
         uint32_t post_e60 = 0xFFFFFFFFu, post_e98 = 0xFFFFFFFFu, post_e9c = 0xFFFFFFFFu, post_ea0 = 0xFFFFFFFFu;
@@ -2262,6 +2353,7 @@ HOOK_DEFINE_TRAMPOLINE(P81OugiAwakeningPolicyHook) {
             e94,
             e9c);
 
+        P93TraceCore("P81_POLICY", actor, caller_off, static_cast<int32_t>(policy_ret), 1);
         return policy_ret;
     }
 };
@@ -3841,6 +3933,7 @@ HOOK_DEFINE_TRAMPOLINE(P77UjAcceptanceHook) {
                     post_e94,
                     pre_e9c,
                     post_e9c);
+                P93TraceCore("P77_UJ_ACCEPT", actor, caller_off, static_cast<int32_t>(ret), 1);
             }
         } else if (ret != 0) {
             // Very small diagnostic for an unexpected positive return
@@ -4218,8 +4311,10 @@ HOOK_DEFINE_TRAMPOLINE(ActionModeBaseHook) {
         }
 
         const P55ActorState pre = ReadP55ActorState(actor);
+        P93TraceCore("MODE_BASE", actor, caller_off, static_cast<int32_t>(mode), 0);
         Orig(actor, mode);
         const P55ActorState post = ReadP55ActorState(actor);
+        P93TraceCore("MODE_BASE", actor, caller_off, static_cast<int32_t>(mode), 1);
 
         if (log_this) {
             const uint32_t n = g_p59_dispatch_logs.fetch_add(1, std::memory_order_relaxed);
@@ -4275,7 +4370,9 @@ HOOK_DEFINE_TRAMPOLINE(CentralActionSetterHook) {
             call_m4 = *reinterpret_cast<const volatile uint32_t*>(base + caller_off - 4);
         }
 
+        P93TraceCore("CENTRAL_SETTER", actor, caller_off, action, 0);
         Orig(actor, action, a2, a3);
+        P93TraceCore("CENTRAL_SETTER", actor, caller_off, action, 1);
 
         uint32_t post_action = 0xFFFFFFFFu;
         int32_t post_e94 = 0x7FFFFFFF;
@@ -6406,7 +6503,26 @@ static std::atomic<uint32_t> gP88BCount{0};
 static constexpr uint32_t kP88BLimit=131072;
 struct P88BSnap{int32_t bda4,bda8,bdc8,e94,e98,e9c,f7cc,s106f4,s123e0,s123e4;uint32_t c404,c408,c5a0;};
 static P88BSnap P88BRead(void* actor){P88BSnap s{};auto*b=reinterpret_cast<volatile uint8_t*>(actor);auto*c=b+0x228;s.bda4=*reinterpret_cast<volatile int32_t*>(b+0xBDA4);s.bda8=*reinterpret_cast<volatile int32_t*>(b+0xBDA8);s.bdc8=*reinterpret_cast<volatile int32_t*>(b+0xBDC8);s.e94=*reinterpret_cast<volatile int32_t*>(b+0xE94);s.e98=*reinterpret_cast<volatile int32_t*>(b+0xE98);s.e9c=*reinterpret_cast<volatile int32_t*>(b+0xE9C);s.f7cc=*reinterpret_cast<volatile int32_t*>(b+0x7CC);s.s106f4=*reinterpret_cast<volatile int32_t*>(b+0x106F4);s.s123e0=*reinterpret_cast<volatile int32_t*>(b+0x123E0);s.s123e4=*reinterpret_cast<volatile int32_t*>(b+0x123E4);s.c404=*reinterpret_cast<volatile uint32_t*>(c+0x404);s.c408=*reinterpret_cast<volatile uint32_t*>(c+0x408);s.c5a0=*reinterpret_cast<volatile uint32_t*>(c+0x5A0);return s;}
-HOOK_DEFINE_TRAMPOLINE(P88BHelperHook){static uint32_t Callback(void* actor){uint32_t side=~0u,cid=~0u;bool v=ReadActorIdentity(actor,side,cid);P88BSnap a{};if(v)a=P88BRead(actor);auto r=Orig(actor);if(v&&side==0&&gP88BCount.fetch_add(1)<kP88BLimit){auto z=P88BRead(actor);Logging.Log("[NSC:P88B] HELPER actor=%p side=%u char=%u ret=%u bda4=%d->%d bda8=%d->%d bdc8=%d->%d e94=%d->%d e98=%d->%d e9c=%d->%d f7cc=%d->%d s106f4=%d->%d s123e0=%d->%d s123e4=%d->%d c404=%08x->%08x c408=%08x->%08x c5a0=%08x->%08x",actor,side,cid,r,a.bda4,z.bda4,a.bda8,z.bda8,a.bdc8,z.bdc8,a.e94,z.e94,a.e98,z.e98,a.e9c,z.e9c,a.f7cc,z.f7cc,a.s106f4,z.s106f4,a.s123e0,z.s123e0,a.s123e4,z.s123e4,a.c404,z.c404,a.c408,z.c408,a.c5a0,z.c5a0);}return r;}};
+HOOK_DEFINE_TRAMPOLINE(P88BHelperHook) {
+    static uint32_t Callback(void* actor) {
+        uint32_t side = ~0u, cid = ~0u;
+        const bool v = ReadActorIdentity(actor, side, cid);
+        P88BSnap a{};
+        if (v) a = P88BRead(actor);
+        P93TraceCore("P88B_HELPER", actor, -1, 0, 0);
+        const auto r = Orig(actor);
+        P93TraceCore("P88B_HELPER", actor, -1, static_cast<int32_t>(r), 1);
+        if (v && side == 0 && gP88BCount.fetch_add(1) < kP88BLimit) {
+            const auto z = P88BRead(actor);
+            Logging.Log("[NSC:P88B] HELPER actor=%p side=%u char=%u ret=%u bda4=%d->%d bda8=%d->%d bdc8=%d->%d e94=%d->%d e98=%d->%d e9c=%d->%d f7cc=%d->%d s106f4=%d->%d s123e0=%d->%d s123e4=%d->%d c404=%08x->%08x c408=%08x->%08x c5a0=%08x->%08x",
+                        actor, side, cid, r, a.bda4, z.bda4, a.bda8, z.bda8, a.bdc8, z.bdc8,
+                        a.e94, z.e94, a.e98, z.e98, a.e9c, z.e9c, a.f7cc, z.f7cc,
+                        a.s106f4, z.s106f4, a.s123e0, z.s123e0, a.s123e4, z.s123e4,
+                        a.c404, z.c404, a.c408, z.c408, a.c5a0, z.c5a0);
+        }
+        return r;
+    }
+};
 static bool InstallP88BInternal(){static constexpr uint32_t sig[]={0xA9BE57FE,0xA9014FF4,0x9108A014,0xAA0003F3};if(!MatchWords(kP88BHelper,sig)){LogFingerprintFail("P88B_HELP",kP88BHelper);return false;}P88BHelperHook::InstallAtOffset(kP88BHelper);return true;}
 } // anonymous P88B
 
@@ -6461,6 +6577,7 @@ HOOK_DEFINE_TRAMPOLINE(P89ActorPredBridgeHook) {
                 semantic ? 1u : 0u, member ? 1u : 0u,
                 bridge ? 1u : 0u, out);
         }
+        P93TraceCore("P89_ACTOR_PRED", actor, -1, static_cast<int32_t>(out), 1);
         return out;
     }
 };
@@ -6509,6 +6626,11 @@ void InstallP91AFocusedHandoffStateTrace() {
 void InstallP92AFocusedHandoffStateSweep() {
     InstallP91AFocusedHandoffStateTrace();
     Logging.Log("[NSC:P92A] READY parent_p91=1 readonly=1 zero_extra_trampolines=1 reuse_p50_playaction=1 sweep_e40_ebc=1 focus_707_708_710=1 no_new_hook=1 no_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1");
+}
+
+void InstallP93AMaxUsefulTrace() {
+    InstallP92AFocusedHandoffStateSweep();
+    Logging.Log("[NSC:P93A] READY parent_p92=1 readonly=1 zero_extra_trampolines=1 reuse_existing_hooks=1 tags=PLAYACTION,CENTRAL_SETTER,MODE_BASE,P81_POLICY,P77_UJ_ACCEPT,P88B_HELPER,P89_ACTOR_PRED,EVT236_PRE wide_actor_state=1 control_state=1 limit=65536 no_new_hook=1 no_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1");
 }
 
 } // namespace nsc

@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP92AFocusedHandoffStateSweep();
+    nsc::InstallP93AMaxUsefulTrace();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P92A zero-extra handoff-state sweep exception");
+    EXL_ABORT("NSC P93A maximum-useful zero-extra trace exception");
 }

@@ -31,5 +31,6 @@ void InstallP88BBootSafeUJHelperProbe();
 void InstallP89APhase3ActorPredBridge();
 void InstallP91AFocusedHandoffStateTrace();
 void InstallP92AFocusedHandoffStateSweep();
+void InstallP93AMaxUsefulTrace();
 void InstallP88AWideUJAdmissionTrace();
 }

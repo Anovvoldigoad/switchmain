@@ -1,9 +1,8 @@
-name: Historical P90A (manual only)
+name: Historical build-subsdk9-p90a (manual only)
 on:
   workflow_dispatch:
-
 jobs:
   archived:
     runs-on: ubuntu-latest
     steps:
-      - run: echo 'P90A archived after trampoline-pool boot failure; use P90B.'
+      - run: echo "build-subsdk9-p90a archived; current build is P93A."

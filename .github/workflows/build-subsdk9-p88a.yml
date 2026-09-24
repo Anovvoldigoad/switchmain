@@ -1,9 +1,8 @@
-name: Historical P88A (manual only)
+name: Historical build-subsdk9-p88a (manual only)
 on:
   workflow_dispatch:
-
 jobs:
   archived:
     runs-on: ubuntu-latest
     steps:
-      - run: echo 'P88A archived; use current P89A workflow for normal pushes.'
+      - run: echo "build-subsdk9-p88a archived; current build is P93A."
