@@ -1,6 +1,5 @@
 #include "nsc_cpk_bridge.hpp"
 #include "p81_ougi_awake_ids.hpp"
-#include "p103_specialcond_map.hpp"
 #include "condition_compat_generated.hpp"
 
 #include "lib.hpp"
@@ -453,7 +452,6 @@ struct P64SemanticControlEntry {
     void* actor = nullptr;
     uint32_t char_id = 0xFFFFFFFFu;
     uint32_t enabled_mask = 0;
-    uint32_t p102_hold74_count = 0;
 };
 P64SemanticControlEntry g_p64_semantic_controls[32]{};
 constexpr uint32_t kP64SemanticUltimateJutsuBit = (1u << 1);
@@ -592,18 +590,9 @@ void P64SetSemanticUltimateJutsu(void* actor, bool enabled) {
             if (e.char_id != char_id) {
                 e.char_id = char_id;
                 e.enabled_mask = 0;
-                e.p102_hold74_count = 0;
             }
-            if (enabled) {
-                const bool was_enabled = (e.enabled_mask & kP64SemanticUltimateJutsuBit) != 0;
-                if (!was_enabled) {
-                    e.p102_hold74_count = 0;
-                }
-                e.enabled_mask |= kP64SemanticUltimateJutsuBit;
-            } else {
-                e.enabled_mask &= ~kP64SemanticUltimateJutsuBit;
-                e.p102_hold74_count = 0;
-            }
+            if (enabled) e.enabled_mask |= kP64SemanticUltimateJutsuBit;
+            else e.enabled_mask &= ~kP64SemanticUltimateJutsuBit;
             return;
         }
         if (!e.actor && !empty) empty = &e;
@@ -612,7 +601,6 @@ void P64SetSemanticUltimateJutsu(void* actor, bool enabled) {
     empty->actor = actor;
     empty->char_id = char_id;
     empty->enabled_mask = enabled ? kP64SemanticUltimateJutsuBit : 0u;
-    empty->p102_hold74_count = 0;
 }
 
 bool P64QuerySemanticUltimateJutsu(void* actor) {
@@ -2247,10 +2235,6 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             pre_123e4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E4);
         }
 
-        // P103A: the retired P102 action74 suppression is intentionally absent.
-        // PlayAction remains native; SpecialCond compatibility is applied only at
-        // the factory dispatcher boundary main+0x7CAB00.
-
         P93TraceCore("PLAYACTION", actor, caller_off, index, 0);
         const int32_t ret = Orig(actor, index, a2, a3, a4, a5, rate);
         P93TraceCore("PLAYACTION", actor, caller_off, index, 1);
@@ -2311,32 +2295,6 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
                 "ea0=%08x ea4=%08x ea8=%08x eac=%08x eb0=%08x eb4=%08x eb8=%08x ebc=%08x",
                 actor, side, char_id, index, static_cast<unsigned long>(caller_off),
                 q[16],q[17],q[18],q[19],q[20],q[21],q[22],q[23],q[24],q[25],q[26],q[27],q[28],q[29],q[30],q[31]);
-
-            // P99A zero-extra topology snapshot at native UJ action boundaries.
-            // This lets us compare dynamic virtual implementations even if a
-            // vanilla actor does not share the custom fixture's +0x1278 target.
-            uintptr_t p99_vtable = *reinterpret_cast<const volatile uintptr_t*>(pb);
-            uintptr_t p99_s1278 = 0, p99_s12c8 = 0, p99_s12d0 = 0, p99_s1988 = 0;
-            ptrdiff_t p99_o1278 = -1, p99_o12c8 = -1, p99_o12d0 = -1, p99_o1988 = -1;
-            if (p99_vtable) {
-                p99_s1278 = *reinterpret_cast<const volatile uintptr_t*>(p99_vtable + 0x1278);
-                p99_s12c8 = *reinterpret_cast<const volatile uintptr_t*>(p99_vtable + 0x12C8);
-                p99_s12d0 = *reinterpret_cast<const volatile uintptr_t*>(p99_vtable + 0x12D0);
-                p99_s1988 = *reinterpret_cast<const volatile uintptr_t*>(p99_vtable + 0x1988);
-                p99_o1278 = MainRelativeOffset(p99_s1278);
-                p99_o12c8 = MainRelativeOffset(p99_s12c8);
-                p99_o12d0 = MainRelativeOffset(p99_s12d0);
-                p99_o1988 = MainRelativeOffset(p99_s1988);
-            }
-            Logging.Log(
-                "[NSC:P99A] TOPO actor=%p side=%u char=%u index=%d caller_off=0x%lx "
-                "vtable=0x%lx slot1278_off=0x%lx slot12c8_off=0x%lx slot12d0_off=0x%lx slot1988_off=0x%lx "
-                "e74=%08x e7c=%08x e94=%08x e9c=%08x",
-                actor, side, char_id, index, static_cast<unsigned long>(caller_off),
-                static_cast<unsigned long>(p99_vtable),
-                static_cast<unsigned long>(p99_o1278), static_cast<unsigned long>(p99_o12c8),
-                static_cast<unsigned long>(p99_o12d0), static_cast<unsigned long>(p99_o1988),
-                q[13], q[15], q[21], q[23]);
         }
 
         if (p59_log) {
@@ -7098,420 +7056,121 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P98B — state125 request provenance after correcting the custom UJ graph.
+// P104A — sibling-controller gate proof (one trampoline, read-only).
 //
-// Runtime P96 proves the required custom path is 707 -> 708, and during 708
-// E9C changes 0 -> 125 before the downstream 708 -> 261 fallback. P97's
-// suppression of 708 is retired and is NOT installed here.
+// Proven static chain on Switch v1.70:
+//   actor vtable +0x4C0 -> main+0x7DDD94
+//   actor vtable +0x520 -> main+0x7E64D4 (contains native PlayAction710)
+//   custom action708 is terminated inside +0x4C0 by selected action261.
+//   Before the 262/261 selector, +0x4C0 executes exactly:
+//       0x7DE020 MOV X0,X19
+//       0x7DE024 BL  0x7EE8E0
+//       0x7DE028 CBZ W0,0x7DE4C0
+//       0x7DE02C LDR W8,[X23,#0x1D84] ; actor+0x12240
+//       0x7DE030 CBZ W8,0x7DE4C0
+//   Only when BOTH gates are nonzero can this path continue toward 262/261.
 //
-// Static v1.70 relocation proof:
-//   actor vtable +0xE28 is the state-request virtual slot.
-//   155 native vtables map +0xE28 -> main+0x7A89A4.
-//   one subclass maps the same slot -> main+0x138D14.
-// Historical runtime for the custom fixture reports actor vtable main+0x201BF58;
-// the pinned relocation at that exact table maps:
-//   +0xE28 -> 0x7A89A4, +0xE40 -> 0x7B468C, +0xEB0 -> 0x772594.
-// Therefore P98B hooks only the active base state-request implementation and
-// logs its incoming requested state + caller provenance. Orig() is always
-// called exactly once. No state/action/control value is changed.
+// P104A hooks ONLY 0x7EE8E0. At the exact return caller 0x7DE028 it logs:
+//   gate #1 = native predicate return
+//   gate #2 = actor+0x12240 value
+// for focused 700..711 actions. It never changes either gate or gameplay state.
 // ============================================================================
 namespace {
+static constexpr ptrdiff_t kP104SiblingPredicateOffset = 0x7EE8E0;
+static constexpr ptrdiff_t kP104SiblingPredicateReturn = 0x7DE028;
+static constexpr ptrdiff_t kP104Gate12240Offset = 0x12240;
+static constexpr uint32_t kP104GateLogLimit = 4096u;
+static std::atomic<uint32_t> g_p104_gate_logs{0};
 
-constexpr ptrdiff_t kP98BStateRequestOffset = 0x7A89A4;
-constexpr ptrdiff_t kP98BStateRequestSlot = 0xE28;
-static std::atomic<uint32_t> g_p98b_state_req_logs{0};
-static constexpr uint32_t kP98BStateReqLimit = 8192;
-
-HOOK_DEFINE_TRAMPOLINE(P98BStateRequestProvenanceHook) {
-    static uint32_t Callback(void* actor, uint32_t requested_state,
-                             uint32_t arg2, uint32_t arg3) {
-        uintptr_t caller_lr = 0;
-        asm volatile("mov %0, x30" : "=r"(caller_lr));
-        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
-
-        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
-        const bool valid = ReadActorIdentity(actor, side, char_id);
-        const bool semantic = valid && P64QuerySemanticUltimateJutsu(actor);
-        const P93CoreState pre = valid ? ReadP93CoreState(actor) : P93CoreState{};
-
-        uintptr_t vtable = 0, slot_target = 0;
-        ptrdiff_t slot_off = -1;
-        if (valid && actor) {
-            const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
-            vtable = *reinterpret_cast<const volatile uintptr_t*>(b);
-            if (vtable) {
-                slot_target = *reinterpret_cast<const volatile uintptr_t*>(vtable + kP98BStateRequestSlot);
-                slot_off = MainRelativeOffset(slot_target);
-            }
-        }
-
-        uint32_t call_m4 = 0, call_m8 = 0;
-        if (caller_off >= 4) {
-            call_m4 = *reinterpret_cast<const volatile uint32_t*>(caller_lr - 4);
-            if (caller_off >= 8)
-                call_m8 = *reinterpret_cast<const volatile uint32_t*>(caller_lr - 8);
-        }
-
-        // Native behavior is preserved exactly: one call, unchanged args/result.
-        const uint32_t ret = Orig(actor, requested_state, arg2, arg3);
-        const P93CoreState post = valid ? ReadP93CoreState(actor) : P93CoreState{};
-
-        // Never miss the decisive state125 request even if the semantic latch
-        // changes at the boundary. Otherwise focus on the semantic 708 corridor.
-        const bool focus = valid &&
-            (requested_state == 125u || pre.action == 708u || post.action == 708u ||
-             (semantic && requested_state >= 120u && requested_state <= 140u));
-        if (focus) {
-            const uint32_t n = g_p98b_state_req_logs.fetch_add(1, std::memory_order_relaxed);
-            if (n < kP98BStateReqLimit) {
-                Logging.Log(
-                    "[NSC:P98B] STATE_REQ n=%u actor=%p side=%u char=%u semantic=%u "
-                    "req=%u arg2=%u arg3=%u ret=%u caller_off=0x%lx call_m8=%08x call_m4=%08x "
-                    "vtable=0x%lx slot_e28=0x%lx slot_e28_off=0x%lx "
-                    "action=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u "
-                    "ea4=%08x->%08x ea8=%08x->%08x bda4=%u->%u bda8=%u->%u bdc8=%u->%u",
-                    n, actor, side, char_id, semantic ? 1u : 0u,
-                    requested_state, arg2, arg3, ret,
-                    static_cast<unsigned long>(caller_off), call_m8, call_m4,
-                    static_cast<unsigned long>(vtable), static_cast<unsigned long>(slot_target),
-                    static_cast<unsigned long>(slot_off),
-                    pre.action, post.action, pre.e94, post.e94, pre.e98, post.e98,
-                    pre.e9c, post.e9c, pre.ea4, post.ea4, pre.ea8, post.ea8,
-                    pre.bda4, post.bda4, pre.bda8, post.bda8, pre.bdc8, post.bdc8);
-            }
-        }
-        return ret;
-    }
-};
-
-static bool InstallP98BStateRequestProvenanceInternal() {
-    static constexpr uint32_t sig[] = {
-        0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x2A0103F4,
-        0xAA0003F3, 0x34000282, 0xF9400268, 0xAA1303E0
-    };
-    if (!MatchWords(kP98BStateRequestOffset, sig)) {
-        LogFingerprintFail("P98B_STATE_REQUEST_7A89A4", kP98BStateRequestOffset);
-        return false;
-    }
-    P98BStateRequestProvenanceHook::InstallAtOffset(kP98BStateRequestOffset);
-    return true;
-}
-
-} // anonymous namespace — P98B
-
-void InstallP98BState125ProvenanceTrace() {
-    // Parent P96 restores native 707->708 and contains observation only.
-    // P97 early-transition guard is deliberately absent.
-    InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP98BStateRequestProvenanceInternal();
-    Logging.Log(
-        "[NSC:P98B] READY parent_p96=1 p97_guard_removed=1 state_request=0x7a89a4 "
-        "vslot_e28=1 runtime_table_201bf58_static_base=1 probe=%u preserve_orig=1 "
-        "one_new_trampoline=1 no_state_write=1 no_e9c_write=1 no_action_write=1 "
-        "no_force708=1 no_force710=1 no_char281_branch=1",
-        ok ? 1u : 0u);
-}
-
-
-// ============================================================================
-// P99A — cleanup gate +0x1278 predicate trace for native UJ 707/708/710.
-//
-// P98B runtime proof:
-//   action708 -> request state125 is produced by caller main+0x7EB28C.
-// Static v1.70 proof then resolves the chain:
-//   main+0x7EAF90 calls actor vslot +0x1988
-//   custom fixture vslot +0x1988 -> main+0x7EB270
-//   main+0x7EB270 requests state125 through the native state-request wrapper.
-//
-// Before main+0x7EAF90 can call +0x1988, the cleanup corridor invokes actor
-// vslot +0x1278. For the observed custom runtime vtable, +0x1278 resolves to
-// main+0x7EB518. This function is a read-only predicate over actor state and the
-// actor+0x106F4 family. P99A hooks ONLY that predicate, calls Orig() exactly
-// once, and records the return value plus its source fields. It never mutates
-// E94/E9C/action/controls and never forces 708 or 710.
-// ============================================================================
-namespace {
-
-constexpr ptrdiff_t kP99AGate1278Offset = 0x7EB518;
-constexpr ptrdiff_t kP99AGate1278Slot = 0x1278;
-constexpr ptrdiff_t kP99AVslot1008 = 0x1008;
-static std::atomic<uint32_t> g_p99a_gate_logs{0};
-static constexpr uint32_t kP99AGateLogLimit = 8192;
-
-HOOK_DEFINE_TRAMPOLINE(P99AGate1278TraceHook) {
+HOOK_DEFINE_TRAMPOLINE(P104SiblingControllerGateHook) {
     static uint32_t Callback(void* actor) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
         const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
 
-        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
-        const bool valid = ReadActorIdentity(actor, side, char_id);
-        const bool semantic = valid && P64QuerySemanticUltimateJutsu(actor);
+        uint32_t side = 0xFFFFFFFFu;
+        uint32_t cid = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, cid);
         const P93CoreState pre = valid ? ReadP93CoreState(actor) : P93CoreState{};
-
-        uint32_t f24 = 0;
-        uint32_t q106f4 = 0, q10f54 = 0, q10f58 = 0, q10f60 = 0, q10f64 = 0;
-        uintptr_t vtable = 0, slot1278 = 0, slot1008 = 0;
-        ptrdiff_t slot1278_off = -1, slot1008_off = -1;
+        uint32_t gate12240 = 0xFFFFFFFFu;
         if (valid && actor) {
             const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
-            f24 = *reinterpret_cast<const volatile uint32_t*>(b + 0xF24);
-            q106f4 = *reinterpret_cast<const volatile uint32_t*>(b + 0x106F4);
-            q10f54 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10F54);
-            q10f58 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10F58);
-            q10f60 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10F60);
-            q10f64 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10F64);
-            vtable = *reinterpret_cast<const volatile uintptr_t*>(b);
-            if (vtable) {
-                slot1278 = *reinterpret_cast<const volatile uintptr_t*>(vtable + kP99AGate1278Slot);
-                slot1008 = *reinterpret_cast<const volatile uintptr_t*>(vtable + kP99AVslot1008);
-                slot1278_off = MainRelativeOffset(slot1278);
-                slot1008_off = MainRelativeOffset(slot1008);
-            }
+            gate12240 = *reinterpret_cast<const volatile uint32_t*>(b + kP104Gate12240Offset);
         }
+        const bool semantic = valid && P64QuerySemanticUltimateJutsu(actor);
+        const bool member = valid && p81_data::ContainsOugiAwakeningId(cid);
 
-        // Preserve native behavior exactly.
-        const uint32_t ret = Orig(actor);
+        // Native predicate executes exactly once. P104A never overrides it.
+        const uint32_t native_ret = Orig(actor);
+
         const P93CoreState post = valid ? ReadP93CoreState(actor) : P93CoreState{};
+        const bool focused_action =
+            (pre.action >= 700u && pre.action <= 711u) ||
+            (post.action >= 700u && post.action <= 711u);
 
-        const bool focus = valid &&
-            (semantic || pre.action == 707u || pre.action == 708u || pre.action == 710u ||
-             post.action == 707u || post.action == 708u || post.action == 710u ||
-             (pre.e94 >= 135u && pre.e94 <= 138u) ||
-             (post.e94 >= 135u && post.e94 <= 138u));
-        if (focus) {
-            const uint32_t n = g_p99a_gate_logs.fetch_add(1, std::memory_order_relaxed);
-            if (n < kP99AGateLogLimit) {
-                Logging.Log(
-                    "[NSC:P99A] GATE1278 n=%u actor=%p side=%u char=%u semantic=%u ret=%u "
-                    "caller_off=0x%lx vtable=0x%lx slot1278=0x%lx slot1278_off=0x%lx "
-                    "slot1008=0x%lx slot1008_off=0x%lx action=%u->%u "
-                    "e70=%u e74=%u e7c=%u e94=%u->%u e98=%u->%u e9c=%u->%u "
-                    "ea4=%08x->%08x ea8=%08x->%08x bda4=%u->%u bda8=%u->%u bdc8=%u->%u "
-                    "f24=%u q106f4=%08x q10f54=%08x q10f58=%08x q10f60=%08x q10f64=%08x",
-                    n, actor, side, char_id, semantic ? 1u : 0u, ret,
-                    static_cast<unsigned long>(caller_off),
-                    static_cast<unsigned long>(vtable), static_cast<unsigned long>(slot1278),
-                    static_cast<unsigned long>(slot1278_off),
-                    static_cast<unsigned long>(slot1008), static_cast<unsigned long>(slot1008_off),
-                    pre.action, post.action, pre.e70,
-                    *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor) + 0xE74),
-                    pre.e7c, pre.e94, post.e94, pre.e98, post.e98, pre.e9c, post.e9c,
-                    pre.ea4, post.ea4, pre.ea8, post.ea8,
-                    pre.bda4, post.bda4, pre.bda8, post.bda8, pre.bdc8, post.bdc8,
-                    f24, q106f4, q10f54, q10f58, q10f60, q10f64);
-            }
-        }
-        return ret;
-    }
-};
-
-static bool InstallP99AGate1278Internal() {
-    static constexpr uint32_t sig[] = {
-        0xA9BE57FE, 0xA9014FF4, 0xB94F2408, 0x7100051F,
-        0x54000120, 0xAA0003F3, 0x97FD9310, 0x350000C0
-    };
-    if (!MatchWords(kP99AGate1278Offset, sig)) {
-        LogFingerprintFail("P99A_GATE1278_7EB518", kP99AGate1278Offset);
-        return false;
-    }
-    P99AGate1278TraceHook::InstallAtOffset(kP99AGate1278Offset);
-    return true;
-}
-
-} // anonymous namespace — P99A
-
-void InstallP99ACleanupGate1278Trace() {
-    // P96 is the observation-only parent with native 707->708 preserved.
-    // P97/P98 functional/diagnostic hooks are deliberately not installed.
-    InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP99AGate1278Internal();
-    Logging.Log(
-        "[NSC:P99A] READY parent_p96=1 p97_absent=1 p98_absent=1 gate1278=0x7eb518 "
-        "vslot1278=1 cleanup_caller_7eaf90=1 predicate_only=1 preserve_orig=1 "
-        "one_new_trampoline=1 no_state_write=1 no_e94_write=1 no_e9c_write=1 "
-        "no_action_write=1 no_force708=1 no_force710=1 no_char281_branch=1 probe=%u",
-        ok ? 1u : 0u);
-}
-
-
-// ============================================================================
-// P100C — one-trampoline action710 route oracle.
-//
-// P100B failed before READY because exlaunch's trampoline allocator was
-// exhausted by sixteen HOOK_DEFINE_INLINE installs.  P100C collapses the same
-// question into ONE proven native helper: main+0x64942C.  The action710
-// controller calls this helper from five distinct sites, so LR alone identifies
-// the route stage.  The decisive call is return address 0x7E6B20: native code
-// compares W0 with 0x13; equality continues toward participant lookup/remap and
-// the proven PlayAction(710) caller, inequality branches to the fallback family.
-//
-// Read-only diagnostic. Orig() is called exactly once; all arguments and return
-// value are preserved. No action/state/control write and no char281 branch.
-// ============================================================================
-namespace {
-
-static constexpr ptrdiff_t kP100CHelperOffset = 0x64942C;
-static std::atomic<uint32_t> g_p100c_logs{0};
-static constexpr uint32_t kP100CLogLimit = 4096;
-
-static const char* P100CCallerTag(ptrdiff_t caller_off) {
-    switch (caller_off) {
-        case 0x7E6AB4: return "PRE22";
-        case 0x7E6ACC: return "PRE19";
-        case 0x7E6AE4: return "PRE2A";
-        case 0x7E6B20: return "ROUTE13";
-        case 0x7E6D68: return "NOT13_RECHECK22";
-        default: return nullptr;
-    }
-}
-
-HOOK_DEFINE_TRAMPOLINE(P100CAction710RouteOracleHook) {
-    static uint32_t Callback(void* actor, uintptr_t arg1, uint32_t arg2) {
-        uintptr_t caller_lr = 0;
-        asm volatile("mov %0, x30" : "=r"(caller_lr));
-        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
-        const char* tag = P100CCallerTag(caller_off);
-
-        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
-        const bool valid = ReadActorIdentity(actor, side, char_id);
-        P93CoreState pre{};
-        if (valid) pre = ReadP93CoreState(actor);
-
-        const uint32_t ret = Orig(actor, arg1, arg2);
-
-        if (tag && valid) {
-            const bool focus = pre.action == 700u || pre.action == 707u ||
-                               pre.action == 708u || pre.action == 710u ||
-                               (pre.e94 >= 135u && pre.e94 <= 138u) ||
-                               P64QuerySemanticUltimateJutsu(actor);
-            if (focus) {
-                const uint32_t n = g_p100c_logs.fetch_add(1, std::memory_order_relaxed);
-                if (n < kP100CLogLimit) {
-                    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
-                    const uint32_t e54 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE54);
-                    const uint32_t e70 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE70);
-                    const uint32_t e74 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE74);
-                    const uint32_t e7c = *reinterpret_cast<const volatile uint32_t*>(b + 0xE7C);
-                    Logging.Log(
-                        "[NSC:P100C] ORACLE n=%u tag=%s actor=%p side=%u char=%u semantic=%u "
-                        "caller_off=0x%lx arg1=0x%lx arg2=%u ret=%u ret_hex=0x%x route13=%u "
-                        "action=%u e54=%u e70=%u e74=%u e7c=%u e94=%u e98=%u e9c=%u "
-                        "ea4=%08x ea8=%08x bda4=%u bda8=%u bdc8=%u",
-                        n, tag, actor, side, char_id,
-                        P64QuerySemanticUltimateJutsu(actor) ? 1u : 0u,
-                        static_cast<unsigned long>(caller_off),
-                        static_cast<unsigned long>(arg1), arg2, ret, ret,
-                        (caller_off == 0x7E6B20 && ret == 0x13u) ? 1u : 0u,
-                        pre.action, e54, e70, e74, e7c,
-                        pre.e94, pre.e98, pre.e9c, pre.ea4, pre.ea8,
-                        pre.bda4, pre.bda8, pre.bdc8);
+        if (valid && caller_off == kP104SiblingPredicateReturn && focused_action) {
+            const uint32_t n = g_p104_gate_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < kP104GateLogLimit) {
+                uintptr_t vtable = 0;
+                ptrdiff_t slot4c0_off = -1;
+                ptrdiff_t slot520_off = -1;
+                if (actor) {
+                    vtable = *reinterpret_cast<const volatile uintptr_t*>(actor);
+                    if (vtable) {
+                        const uintptr_t slot4c0 = *reinterpret_cast<const volatile uintptr_t*>(vtable + 0x4C0);
+                        const uintptr_t slot520 = *reinterpret_cast<const volatile uintptr_t*>(vtable + 0x520);
+                        slot4c0_off = MainRelativeOffset(slot4c0);
+                        slot520_off = MainRelativeOffset(slot520);
+                    }
                 }
-            }
-        }
-        return ret;
-    }
-};
-
-static bool InstallP100CRouteOracleInternal() {
-    static constexpr uint32_t sig[] = {
-        0xA9BC67FE, 0xA9015FF8, 0xA90257F6, 0xA9034FF4,
-        0xD000D7D8, 0xF9426318, 0xF9400315, 0xB40024F5,
-    };
-    if (!MatchWords(kP100CHelperOffset, sig)) {
-        LogFingerprintFail("P100C_HELPER_64942C", kP100CHelperOffset);
-        return false;
-    }
-    P100CAction710RouteOracleHook::InstallAtOffset(kP100CHelperOffset);
-    return true;
-}
-
-} // anonymous namespace — P100C
-
-void InstallP100COneTrampolineAction710RouteOracle() {
-    // Functional/diagnostic baseline remains P96. P97/P98/P99/P100A/P100B are
-    // deliberately not installed.
-    InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP100CRouteOracleInternal();
-    Logging.Log(
-        "[NSC:P100C] READY parent_p96=1 p97_p98_p99_p100a_p100b_not_installed=1 "
-        "helper_64942c=1 route_sites=7e6ab4,7e6acc,7e6ae4,7e6b20,7e6d68 "
-        "decisive_route13=1 preserve_orig=1 one_new_trampoline=1 "
-        "no_inline_hooks=1 no_state_write=1 no_action_write=1 no_force708=1 "
-        "no_force710=1 no_char281_branch=1 probe=%u",
-        ok ? 1u : 0u);
-}
-
-
-
-// ============================================================================
-// P103A — source-faithful SpecialCond factory selector bridge.
-//
-// Source/static proof chain:
-// - UltimateStormAPI SpecialCondParam::Create_NSC implements
-//       original(remap(characterSelector), context)
-//   while preserving the second argument.
-// - compiled specialCondParam currently maps:
-//       276 -> COND_9ISH -> dispatcher selector 276
-//       281 -> COND_2DNZ -> dispatcher selector 58
-// - PC and Switch selector tables match 82/82 in value/order.
-// - Switch v1.70 dispatcher main+0x7CAB00 receives W0=selector, W1=context.
-// - selector58 exists and resolves to factory main+0x7CC8E0.
-// - selector281 is absent and otherwise falls back to selector0/default factory.
-//
-// P103A therefore remaps ONLY the factory selector argument from generated data
-// before calling the original dispatcher. It does not rewrite actor E54, action,
-// state, controls, or UJ sequence fields. Caller identity remains untouched and
-// is reloaded by native code after the factory returns.
-// ============================================================================
-namespace {
-static constexpr ptrdiff_t kP103SpecialCondDispatcherOffset = 0x7CAB00;
-static constexpr uint32_t kP103LogLimit = 256u;
-static std::atomic<uint32_t> g_p103_remap_logs{0};
-
-HOOK_DEFINE_TRAMPOLINE(P103SpecialCondFactoryBridgeHook) {
-    static void* Callback(uint32_t selector, uint32_t context) {
-        const uint32_t mapped = p103_data::MapSpecialCondSelector(selector);
-        void* const ret = Orig(mapped, context);
-
-        if (mapped != selector) {
-            const uint32_t n = g_p103_remap_logs.fetch_add(1, std::memory_order_relaxed);
-            if (n < kP103LogLimit) {
                 Logging.Log(
-                    "[NSC:P103A] REMAP n=%u selector=%u mapped=%u context=%u ret=%p",
-                    n, selector, mapped, context, ret);
+                    "[NSC:P104A] GATE n=%u actor=%p side=%u char=%u semantic=%u member=%u "
+                    "caller_off=0x%lx action=%u->%u pred=%u gate12240=%08x "
+                    "e94=%u->%u e98=%u->%u e9c=%u->%u ea4=%08x->%08x "
+                    "bda4=%u->%u bda8=%u->%u bdc8=%u->%u "
+                    "vtable=%p slot4c0_off=0x%lx slot520_off=0x%lx",
+                    n, actor, side, cid, semantic ? 1u : 0u, member ? 1u : 0u,
+                    static_cast<unsigned long>(caller_off), pre.action, post.action,
+                    native_ret, gate12240,
+                    pre.e94, post.e94, pre.e98, post.e98, pre.e9c, post.e9c,
+                    pre.ea4, post.ea4,
+                    pre.bda4, post.bda4, pre.bda8, post.bda8,
+                    pre.bdc8, post.bdc8, vtable,
+                    static_cast<unsigned long>(slot4c0_off),
+                    static_cast<unsigned long>(slot520_off));
             }
         }
-        return ret;
+        return native_ret;
     }
 };
 
-static bool InstallP103SpecialCondFactoryBridgeInternal() {
+static bool InstallP104SiblingControllerGateTraceInternal() {
     static constexpr uint32_t sig[] = {
-        0xF81E0FFE, 0xA9014FF4, 0x51015008, 0x2A0003F3,
-        0x7100B91F, 0x54000548, 0xB0009C29, 0x912F8129,
+        0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0xF9400008,
+        0xAA0003F5, 0xF946E908, 0xD63F0100, 0xB40003C0,
     };
-    if (!MatchWords(kP103SpecialCondDispatcherOffset, sig)) {
-        LogFingerprintFail("P103_SPECIALCOND_DISPATCHER_7CAB00",
-                           kP103SpecialCondDispatcherOffset);
+    if (!MatchWords(kP104SiblingPredicateOffset, sig)) {
+        LogFingerprintFail("P104_SIBLING_PRED_7EE8E0", kP104SiblingPredicateOffset);
         return false;
     }
-    P103SpecialCondFactoryBridgeHook::InstallAtOffset(kP103SpecialCondDispatcherOffset);
+    P104SiblingControllerGateHook::InstallAtOffset(kP104SiblingPredicateOffset);
     return true;
 }
-} // anonymous namespace — P103A
+} // anonymous namespace — P104A
 
-void InstallP103ASpecialCondFactoryBridge() {
-    // Keep the proven P96/P89/P50 chain. P101/P102 functional guards are retired.
+void InstallP104ASiblingControllerGateTrace() {
+    // Clean proven parent. P101/P102/P103 are deliberately not installed.
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP103SpecialCondFactoryBridgeInternal();
+    const bool ok = InstallP104SiblingControllerGateTraceInternal();
     Logging.Log(
-        "[NSC:P103A] READY parent_p96=1 preserve_p89=1 preserve_p50_event236=1 "
-        "dispatcher_7cab00=1 generated_map_count=%u selector58_factory=7cc8e0 "
-        "p101_absent=1 p102_hold74_absent=1 preserve_orig=1 one_new_trampoline=1 "
-        "no_inline_hooks=1 no_actor_id_write=1 no_action_write=1 no_state_write=1 "
-        "no_force708=1 no_force710=1 data_driven=1 probe=%u",
-        static_cast<unsigned>(p103_data::kSpecialCondMapCount), ok ? 1u : 0u);
+        "[NSC:P104A] READY parent_p96=1 preserve_p89=1 preserve_p50_event236=1 "
+        "sibling_controller_7ddd94=1 predicate_7ee8e0=1 caller_7de028=1 "
+        "gate12240=1 slot4c0=1 slot520=1 focused_actions_700_711=1 "
+        "p101_p102_p103_not_installed=1 preserve_orig=1 one_new_trampoline=1 "
+        "no_inline_hooks=1 readonly=1 no_actor_write=1 no_action_write=1 "
+        "no_state_write=1 no_gate_write=1 no_force708=1 no_force710=1 "
+        "no_char281_branch=1 probe=%u",
+        ok ? 1u : 0u);
 }
 
 } // namespace nsc

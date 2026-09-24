@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP103ASpecialCondFactoryBridge();
+    nsc::InstallP104ASiblingControllerGateTrace();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P103A SpecialCond factory bridge exception");
+    EXL_ABORT("NSC P104A sibling-controller gate trace exception");
 }
