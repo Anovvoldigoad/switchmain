@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP100BOneShotAction710RouteSweep();
+    nsc::InstallP100COneTrampolineAction710RouteOracle();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P100B one-shot action710 route sweep exception");
+    EXL_ABORT("NSC P100C one-trampoline action710 route oracle exception");
 }

@@ -7320,239 +7320,109 @@ void InstallP99ACleanupGate1278Trace() {
 
 
 // ============================================================================
-// P100B — one-shot native action710 route sweep.
+// P100C — one-trampoline action710 route oracle.
 //
-// Goal: collapse the remaining diagnosis into one runtime round.  P99 proved
-// cleanup/state125 is downstream fallback, not the missing 710 producer.
-// P100B therefore observes the unique wrapper caller, the native function mode
-// split, the common path, and the complete proven 710 corridor in one build.
+// P100B failed before READY because exlaunch's trampoline allocator was
+// exhausted by sixteen HOOK_DEFINE_INLINE installs.  P100C collapses the same
+// question into ONE proven native helper: main+0x64942C.  The action710
+// controller calls this helper from five distinct sites, so LR alone identifies
+// the route stage.  The decisive call is return address 0x7E6B20: native code
+// compares W0 with 0x13; equality continues toward participant lookup/remap and
+// the proven PlayAction(710) caller, inequality branches to the fallback family.
 //
-// Every hook is INLINE and replaces only a simple MOV/LDR/ADD-style instruction
-// that is reproduced exactly.  No BL/BLR/CMP/conditional branch is replayed or
-// modified.  No action/state/control field is written, 708/710 are never forced,
-// and there is no char281 gameplay branch.
+// Read-only diagnostic. Orig() is called exactly once; all arguments and return
+// value are preserved. No action/state/control write and no char281 branch.
 // ============================================================================
 namespace {
 
-static std::atomic<uint32_t> g_p100b_logs{0};
-static constexpr uint32_t kP100BLogLimit = 16384;
+static constexpr ptrdiff_t kP100CHelperOffset = 0x64942C;
+static std::atomic<uint32_t> g_p100c_logs{0};
+static constexpr uint32_t kP100CLogLimit = 4096;
 
-static bool P100BFocusActor(void* actor, uint32_t& side, uint32_t& char_id, P93CoreState& st) {
-    if (!ReadActorIdentity(actor, side, char_id)) return false;
-    st = ReadP93CoreState(actor);
-    return st.action == 700u || st.action == 707u || st.action == 708u || st.action == 710u ||
-           (st.e94 >= 135u && st.e94 <= 138u) || P64QuerySemanticUltimateJutsu(actor);
+static const char* P100CCallerTag(ptrdiff_t caller_off) {
+    switch (caller_off) {
+        case 0x7E6AB4: return "PRE22";
+        case 0x7E6ACC: return "PRE19";
+        case 0x7E6AE4: return "PRE2A";
+        case 0x7E6B20: return "ROUTE13";
+        case 0x7E6D68: return "NOT13_RECHECK22";
+        default: return nullptr;
+    }
 }
 
-static void P100BLogStage(const char* stage, void* actor, uint64_t aux0, uint64_t aux1) {
-    uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
-    P93CoreState st{};
-    if (!P100BFocusActor(actor, side, char_id, st)) return;
-    const uint32_t n = g_p100b_logs.fetch_add(1, std::memory_order_relaxed);
-    if (n >= kP100BLogLimit) return;
-    Logging.Log(
-        "[NSC:P100B] ROUTE n=%u stage=%s actor=%p side=%u char=%u semantic=%u "
-        "action=%u e70=%u e74=%u e7c=%u e94=%u e98=%u e9c=%u ea4=%08x ea8=%08x "
-        "bda4=%u bda8=%u bdc8=%u aux0=0x%lx aux1=0x%lx",
-        n, stage, actor, side, char_id, P64QuerySemanticUltimateJutsu(actor) ? 1u : 0u,
-        st.action,
-        actor ? *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor)+0xE70) : 0u,
-        actor ? *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor)+0xE74) : 0u,
-        actor ? *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor)+0xE7C) : 0u,
-        st.e94, st.e98, st.e9c, st.ea4, st.ea8, st.bda4, st.bda8, st.bdc8,
-        static_cast<unsigned long>(aux0), static_cast<unsigned long>(aux1));
-}
+HOOK_DEFINE_TRAMPOLINE(P100CAction710RouteOracleHook) {
+    static uint32_t Callback(void* actor, uintptr_t arg1, uint32_t arg2) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        const char* tag = P100CCallerTag(caller_off);
 
-// Unique direct caller of main+0x7E64D4. Replays MOV X19,X0.
-HOOK_DEFINE_INLINE(P100BCallerHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        void* actor = reinterpret_cast<void*>(ctx->X[0]);
-        P100BLogStage("CALLER_488B24", actor, ctx->W[1], ctx->X[30]);
-        ctx->X[19] = ctx->X[0];
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        P93CoreState pre{};
+        if (valid) pre = ReadP93CoreState(actor);
+
+        const uint32_t ret = Orig(actor, arg1, arg2);
+
+        if (tag && valid) {
+            const bool focus = pre.action == 700u || pre.action == 707u ||
+                               pre.action == 708u || pre.action == 710u ||
+                               (pre.e94 >= 135u && pre.e94 <= 138u) ||
+                               P64QuerySemanticUltimateJutsu(actor);
+            if (focus) {
+                const uint32_t n = g_p100c_logs.fetch_add(1, std::memory_order_relaxed);
+                if (n < kP100CLogLimit) {
+                    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+                    const uint32_t e54 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE54);
+                    const uint32_t e70 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE70);
+                    const uint32_t e74 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE74);
+                    const uint32_t e7c = *reinterpret_cast<const volatile uint32_t*>(b + 0xE7C);
+                    Logging.Log(
+                        "[NSC:P100C] ORACLE n=%u tag=%s actor=%p side=%u char=%u semantic=%u "
+                        "caller_off=0x%lx arg1=0x%lx arg2=%u ret=%u ret_hex=0x%x route13=%u "
+                        "action=%u e54=%u e70=%u e74=%u e7c=%u e94=%u e98=%u e9c=%u "
+                        "ea4=%08x ea8=%08x bda4=%u bda8=%u bdc8=%u",
+                        n, tag, actor, side, char_id,
+                        P64QuerySemanticUltimateJutsu(actor) ? 1u : 0u,
+                        static_cast<unsigned long>(caller_off),
+                        static_cast<unsigned long>(arg1), arg2, ret, ret,
+                        (caller_off == 0x7E6B20 && ret == 0x13u) ? 1u : 0u,
+                        pre.action, e54, e70, e74, e7c,
+                        pre.e94, pre.e98, pre.e9c, pre.ea4, pre.ea8,
+                        pre.bda4, pre.bda8, pre.bdc8);
+                }
+            }
+        }
+        return ret;
     }
 };
 
-// Native function entry after frame setup. Replays MOV X19,X0.
-HOOK_DEFINE_INLINE(P100BFunctionEntryHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        void* actor = reinterpret_cast<void*>(ctx->X[0]);
-        P100BLogStage("FUNC_7E6500", actor, ctx->W[1], ctx->X[30]);
-        ctx->X[19] = ctx->X[0];
-    }
-};
-
-// Mode-0 target. Replays LDR W8,[X28,#0x1C00].
-HOOK_DEFINE_INLINE(P100BMode0Hook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        uint32_t v = *reinterpret_cast<const volatile uint32_t*>(ctx->X[28] + 0x1C00);
-        P100BLogStage("MODE0_7E6520", reinterpret_cast<void*>(ctx->X[19]), v, 0);
-        ctx->W[8] = v;
-    }
-};
-
-// Mode-2 target. Replays LDR X8,[X19].
-HOOK_DEFINE_INLINE(P100BMode2Hook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        uint64_t v = *reinterpret_cast<const volatile uint64_t*>(ctx->X[19]);
-        P100BLogStage("MODE2_7E664C", reinterpret_cast<void*>(ctx->X[19]), v, 0);
-        ctx->X[8] = v;
-    }
-};
-
-// Mode-1 target. Replays MOV X0,X19.
-HOOK_DEFINE_INLINE(P100BMode1Hook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        P100BLogStage("MODE1_7E6768", reinterpret_cast<void*>(ctx->X[19]), ctx->W[1], 0);
-        ctx->X[0] = ctx->X[19];
-    }
-};
-
-// Common prelude. Replays LDR W8,[X28,#0x1C00].
-HOOK_DEFINE_INLINE(P100BCommonPreludeHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        uint32_t v = *reinterpret_cast<const volatile uint32_t*>(ctx->X[28] + 0x1C00);
-        P100BLogStage("COMMON_7E6814", reinterpret_cast<void*>(ctx->X[19]), v, ctx->W[22]);
-        ctx->W[8] = v;
-    }
-};
-
-// Common path reached after the prelude routing. Replays MOVZ X0,#0,LSL#16.
-HOOK_DEFINE_INLINE(P100BCommonHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        P100BLogStage("COMMON_7E6880", reinterpret_cast<void*>(ctx->X[19]), ctx->W[22], ctx->X[24]);
-        ctx->X[0] = 0;
-    }
-};
-
-// Earliest landmark in the final 710 branch family. Replays MOV X26,X23.
-HOOK_DEFINE_INLINE(P100BEntry710Hook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        P100BLogStage("ENTRY_7E6A58", reinterpret_cast<void*>(ctx->X[19]), ctx->X[23], ctx->X[25]);
-        ctx->X[26] = ctx->X[23];
-    }
-};
-
-// Immediately after actor vslot+0xC48. Replays MOV X22,X24.
-HOOK_DEFINE_INLINE(P100BC48ReturnHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        P100BLogStage("C48RET_7E6B08", reinterpret_cast<void*>(ctx->X[19]), ctx->W[0], ctx->X[24]);
-        ctx->X[22] = ctx->X[24];
-    }
-};
-
-// Nonzero side of the C48 branch. Replays MOV X0,X19.
-HOOK_DEFINE_INLINE(P100BC48NonzeroHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        P100BLogStage("C48_NONZERO_7E6B10", reinterpret_cast<void*>(ctx->X[19]), ctx->W[0], 0);
-        ctx->X[0] = ctx->X[19];
-    }
-};
-
-// Zero source-field path. Replays LDR W8,[X19,#0xE54].
-HOOK_DEFINE_INLINE(P100BZeroPathHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        void* actor = reinterpret_cast<void*>(ctx->X[19]);
-        uint32_t v = *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor)+0xE54);
-        P100BLogStage("ZERO_PATH_7E6BB4", actor, v, 0);
-        ctx->W[8] = v;
-    }
-};
-
-// Participant lookup return. Replays MOV X22,X24.
-HOOK_DEFINE_INLINE(P100BLookupHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        P100BLogStage("LOOKUP_7E6C34", reinterpret_cast<void*>(ctx->X[19]), ctx->X[0], ctx->W[21]);
-        ctx->X[22] = ctx->X[24];
-    }
-};
-
-// Remapper return. Replays MOV W1,W0.
-HOOK_DEFINE_INLINE(P100BRemapHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        P100BLogStage("REMAPRET_7E6C50", reinterpret_cast<void*>(ctx->X[19]), ctx->W[0], 0);
-        ctx->W[1] = ctx->W[0];
-    }
-};
-
-// C48-zero target. Replays LDR X8,[X19].
-HOOK_DEFINE_INLINE(P100BC48ZeroHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        uint64_t v = *reinterpret_cast<const volatile uint64_t*>(ctx->X[19]);
-        P100BLogStage("C48_ZERO_7E6D0C", reinterpret_cast<void*>(ctx->X[19]), v, 0);
-        ctx->X[8] = v;
-    }
-};
-
-// State-not-0x13 path target. Replays MOV X0,X19.
-HOOK_DEFINE_INLINE(P100BStateNot13Hook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        P100BLogStage("STATE_NOT13_7E6D58", reinterpret_cast<void*>(ctx->X[19]), ctx->W[0], 0);
-        ctx->X[0] = ctx->X[19];
-    }
-};
-
-// Exact native action710 request construction. Replays MOV W1,#710.
-HOOK_DEFINE_INLINE(P100BRequest710Hook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        P100BLogStage("REQUEST710_7E6EA8", reinterpret_cast<void*>(ctx->X[19]), ctx->X[0], ctx->X[24]);
-        ctx->W[1] = 710u;
-    }
-};
-
-static bool InstallP100BRouteSweepInternal() {
-    struct Sig { ptrdiff_t off; uint32_t word; const char* name; };
-    static constexpr Sig sigs[] = {
-        {0x488B24, 0xAA0003F3, "P100B_CALLER"},
-        {0x7E6500, 0xAA0003F3, "P100B_FUNC"},
-        {0x7E6520, 0xB95C0388, "P100B_MODE0"},
-        {0x7E664C, 0xF9400268, "P100B_MODE2"},
-        {0x7E6768, 0xAA1303E0, "P100B_MODE1"},
-        {0x7E6814, 0xB95C0388, "P100B_COMMON_PRE"},
-        {0x7E6880, 0xD2A00000, "P100B_COMMON"},
-        {0x7E6A58, 0xAA1703FA, "P100B_ENTRY710"},
-        {0x7E6B08, 0xAA1803F6, "P100B_C48RET"},
-        {0x7E6B10, 0xAA1303E0, "P100B_C48NZ"},
-        {0x7E6BB4, 0xB94E5668, "P100B_ZERO"},
-        {0x7E6C34, 0xAA1803F6, "P100B_LOOKUP"},
-        {0x7E6C50, 0x2A0003E1, "P100B_REMAP"},
-        {0x7E6D0C, 0xF9400268, "P100B_C48ZERO"},
-        {0x7E6D58, 0xAA1303E0, "P100B_NOT13"},
-        {0x7E6EA8, 0x528058C1, "P100B_REQ710"},
+static bool InstallP100CRouteOracleInternal() {
+    static constexpr uint32_t sig[] = {
+        0xA9BC67FE, 0xA9015FF8, 0xA90257F6, 0xA9034FF4,
+        0xD000D7D8, 0xF9426318, 0xF9400315, 0xB40024F5,
     };
-    for (const auto& s : sigs) {
-        const uint32_t exp[1] = {s.word};
-        if (!MatchWords(s.off, exp)) { LogFingerprintFail(s.name, s.off); return false; }
+    if (!MatchWords(kP100CHelperOffset, sig)) {
+        LogFingerprintFail("P100C_HELPER_64942C", kP100CHelperOffset);
+        return false;
     }
-    P100BCallerHook::InstallAtOffset(0x488B24);
-    P100BFunctionEntryHook::InstallAtOffset(0x7E6500);
-    P100BMode0Hook::InstallAtOffset(0x7E6520);
-    P100BMode2Hook::InstallAtOffset(0x7E664C);
-    P100BMode1Hook::InstallAtOffset(0x7E6768);
-    P100BCommonPreludeHook::InstallAtOffset(0x7E6814);
-    P100BCommonHook::InstallAtOffset(0x7E6880);
-    P100BEntry710Hook::InstallAtOffset(0x7E6A58);
-    P100BC48ReturnHook::InstallAtOffset(0x7E6B08);
-    P100BC48NonzeroHook::InstallAtOffset(0x7E6B10);
-    P100BZeroPathHook::InstallAtOffset(0x7E6BB4);
-    P100BLookupHook::InstallAtOffset(0x7E6C34);
-    P100BRemapHook::InstallAtOffset(0x7E6C50);
-    P100BC48ZeroHook::InstallAtOffset(0x7E6D0C);
-    P100BStateNot13Hook::InstallAtOffset(0x7E6D58);
-    P100BRequest710Hook::InstallAtOffset(0x7E6EA8);
+    P100CAction710RouteOracleHook::InstallAtOffset(kP100CHelperOffset);
     return true;
 }
 
-} // anonymous namespace — P100B
+} // anonymous namespace — P100C
 
-void InstallP100BOneShotAction710RouteSweep() {
+void InstallP100COneTrampolineAction710RouteOracle() {
+    // Functional/diagnostic baseline remains P96. P97/P98/P99/P100A/P100B are
+    // deliberately not installed.
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP100BRouteSweepInternal();
+    const bool ok = InstallP100CRouteOracleInternal();
     Logging.Log(
-        "[NSC:P100B] READY parent_p96=1 p97_p98_p99_p100a_not_installed=1 "
-        "caller_488b24=1 func_7e6500=1 mode0=1 mode1=1 mode2=1 common=1 "
-        "entry710=1 c48ret=1 c48_nonzero=1 zero_path=1 lookup=1 remapret=1 c48_zero=1 state_not13=1 req710=1 "
-        "inline_only=1 zero_extra_trampolines=1 no_bl_replay=1 no_blr_replay=1 no_cmp_replay=1 no_branch_rewrite=1 "
-        "no_state_write=1 no_action_rewrite=1 no_force708=1 no_force710=1 no_char281_branch=1 one_shot_trace=1 probe=%u",
+        "[NSC:P100C] READY parent_p96=1 p97_p98_p99_p100a_p100b_not_installed=1 "
+        "helper_64942c=1 route_sites=7e6ab4,7e6acc,7e6ae4,7e6b20,7e6d68 "
+        "decisive_route13=1 preserve_orig=1 one_new_trampoline=1 "
+        "no_inline_hooks=1 no_state_write=1 no_action_write=1 no_force708=1 "
+        "no_force710=1 no_char281_branch=1 probe=%u",
         ok ? 1u : 0u);
 }
 

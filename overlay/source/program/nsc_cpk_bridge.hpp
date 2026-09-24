@@ -38,5 +38,5 @@ void InstallP96AActionDescriptorTransitionTrace();
 void InstallP98BState125ProvenanceTrace();
 void InstallP99ACleanupGate1278Trace();
 void InstallP88AWideUJAdmissionTrace();
-void InstallP100BOneShotAction710RouteSweep();
+void InstallP100COneTrampolineAction710RouteOracle();
 }
