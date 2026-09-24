@@ -1,16 +1,18 @@
-name: Build NSC P100C one-trampoline action710 route oracle
+name: Build NSC P101A event-driven 708 end guard
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest
     container: devkitpro/devkita64:latest
     steps:
       - uses: actions/checkout@v4
-      - name: Preflight P100C drop-in kit
+      - name: Preflight P101A drop-in kit
         run: |
           set -eux
-          python3 verify_p100c_source.py
+          python3 verify_p101a_source.py
       - name: Bootstrap pinned exlaunch
         run: |
           set -eux
@@ -23,10 +25,11 @@ jobs:
           set -eux
           chmod +x prepare_exlaunch.sh
           ./prepare_exlaunch.sh
-          grep -Fq '[NSC:P100C] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq '[NSC:P100C] ORACLE' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq 'nsc::InstallP100COneTrampolineAction710RouteOracle();' exlaunch/source/program/main.cpp
-          ! grep -Fq 'InstallP100BOneShotAction710RouteSweep();' exlaunch/source/program/main.cpp
+          grep -Fq '[NSC:P101A] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq '[NSC:P101A] HOLD125' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq '[NSC:P101A] OP23' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq 'nsc::InstallP101AEventDriven708EndGuard();' exlaunch/source/program/main.cpp
+          ! grep -Fq 'InstallP100COneTrampolineAction710RouteOracle();' exlaunch/source/program/main.cpp
       - name: Build
         working-directory: exlaunch
         run: make -j2
@@ -35,8 +38,9 @@ jobs:
           set -eux
           ELF="$(find exlaunch -maxdepth 2 -type f -name '*_final.elf' -size +10k -print -quit)"
           test -n "$ELF"
-          grep -aFq '[NSC:P100C] READY' "$ELF"
-          grep -aFq '[NSC:P100C] ORACLE' "$ELF"
+          grep -aFq '[NSC:P101A] READY' "$ELF"
+          grep -aFq '[NSC:P101A] HOLD125' "$ELF"
+          grep -aFq '[NSC:P101A] OP23' "$ELF"
           grep -aFq '[NSC:P96A] READY' "$ELF"
           grep -aFq '[NSC:P89A] READY' "$ELF"
       - name: Package
@@ -52,6 +56,6 @@ jobs:
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: NSC-P100C-one-trampoline-action710-route-oracle
+          name: NSC-P101A-event-driven-708-end-guard
           path: artifact/
           if-no-files-found: error
