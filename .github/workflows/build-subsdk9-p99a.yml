@@ -1,16 +1,18 @@
-name: Build NSC P98B state125 provenance trace
+name: Build NSC P99A cleanup gate1278 trace
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest
     container: devkitpro/devkita64:latest
     steps:
       - uses: actions/checkout@v4
-      - name: Preflight P98B drop-in kit
+      - name: Preflight P99A drop-in kit
         run: |
           set -eux
-          python3 verify_p98b_source.py
+          python3 verify_p99a_source.py
       - name: Bootstrap pinned exlaunch
         run: |
           set -eux
@@ -23,10 +25,12 @@ jobs:
           set -eux
           chmod +x prepare_exlaunch.sh
           ./prepare_exlaunch.sh
-          grep -Fq '[NSC:P98B] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq '[NSC:P98B] STATE_REQ' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq 'nsc::InstallP98BState125ProvenanceTrace();' exlaunch/source/program/main.cpp
+          grep -Fq '[NSC:P99A] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq '[NSC:P99A] GATE1278' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq '[NSC:P99A] TOPO' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq 'nsc::InstallP99ACleanupGate1278Trace();' exlaunch/source/program/main.cpp
           ! grep -Fq 'InstallP97' exlaunch/source/program/main.cpp
+          ! grep -Fq 'InstallP98B' exlaunch/source/program/main.cpp
       - name: Build
         working-directory: exlaunch
         run: make -j2
@@ -35,8 +39,9 @@ jobs:
           set -eux
           ELF="$(find exlaunch -maxdepth 2 -type f -name '*_final.elf' -size +10k -print -quit)"
           test -n "$ELF"
-          grep -aFq '[NSC:P98B] READY' "$ELF"
-          grep -aFq '[NSC:P98B] STATE_REQ' "$ELF"
+          grep -aFq '[NSC:P99A] READY' "$ELF"
+          grep -aFq '[NSC:P99A] GATE1278' "$ELF"
+          grep -aFq '[NSC:P99A] TOPO' "$ELF"
           grep -aFq '[NSC:P96A] READY' "$ELF"
           grep -aFq '[NSC:P89A] READY' "$ELF"
       - name: Package
@@ -52,6 +57,6 @@ jobs:
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: NSC-P98B-state125-provenance-trace
+          name: NSC-P99A-cleanup-gate1278-trace
           path: artifact/
           if-no-files-found: error

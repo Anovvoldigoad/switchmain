@@ -2295,6 +2295,32 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
                 "ea0=%08x ea4=%08x ea8=%08x eac=%08x eb0=%08x eb4=%08x eb8=%08x ebc=%08x",
                 actor, side, char_id, index, static_cast<unsigned long>(caller_off),
                 q[16],q[17],q[18],q[19],q[20],q[21],q[22],q[23],q[24],q[25],q[26],q[27],q[28],q[29],q[30],q[31]);
+
+            // P99A zero-extra topology snapshot at native UJ action boundaries.
+            // This lets us compare dynamic virtual implementations even if a
+            // vanilla actor does not share the custom fixture's +0x1278 target.
+            uintptr_t p99_vtable = *reinterpret_cast<const volatile uintptr_t*>(pb);
+            uintptr_t p99_s1278 = 0, p99_s12c8 = 0, p99_s12d0 = 0, p99_s1988 = 0;
+            ptrdiff_t p99_o1278 = -1, p99_o12c8 = -1, p99_o12d0 = -1, p99_o1988 = -1;
+            if (p99_vtable) {
+                p99_s1278 = *reinterpret_cast<const volatile uintptr_t*>(p99_vtable + 0x1278);
+                p99_s12c8 = *reinterpret_cast<const volatile uintptr_t*>(p99_vtable + 0x12C8);
+                p99_s12d0 = *reinterpret_cast<const volatile uintptr_t*>(p99_vtable + 0x12D0);
+                p99_s1988 = *reinterpret_cast<const volatile uintptr_t*>(p99_vtable + 0x1988);
+                p99_o1278 = MainRelativeOffset(p99_s1278);
+                p99_o12c8 = MainRelativeOffset(p99_s12c8);
+                p99_o12d0 = MainRelativeOffset(p99_s12d0);
+                p99_o1988 = MainRelativeOffset(p99_s1988);
+            }
+            Logging.Log(
+                "[NSC:P99A] TOPO actor=%p side=%u char=%u index=%d caller_off=0x%lx "
+                "vtable=0x%lx slot1278_off=0x%lx slot12c8_off=0x%lx slot12d0_off=0x%lx slot1988_off=0x%lx "
+                "e74=%08x e7c=%08x e94=%08x e9c=%08x",
+                actor, side, char_id, index, static_cast<unsigned long>(caller_off),
+                static_cast<unsigned long>(p99_vtable),
+                static_cast<unsigned long>(p99_o1278), static_cast<unsigned long>(p99_o12c8),
+                static_cast<unsigned long>(p99_o12d0), static_cast<unsigned long>(p99_o1988),
+                q[13], q[15], q[21], q[23]);
         }
 
         if (p59_log) {
@@ -7167,6 +7193,128 @@ void InstallP98BState125ProvenanceTrace() {
         "vslot_e28=1 runtime_table_201bf58_static_base=1 probe=%u preserve_orig=1 "
         "one_new_trampoline=1 no_state_write=1 no_e9c_write=1 no_action_write=1 "
         "no_force708=1 no_force710=1 no_char281_branch=1",
+        ok ? 1u : 0u);
+}
+
+
+// ============================================================================
+// P99A — cleanup gate +0x1278 predicate trace for native UJ 707/708/710.
+//
+// P98B runtime proof:
+//   action708 -> request state125 is produced by caller main+0x7EB28C.
+// Static v1.70 proof then resolves the chain:
+//   main+0x7EAF90 calls actor vslot +0x1988
+//   custom fixture vslot +0x1988 -> main+0x7EB270
+//   main+0x7EB270 requests state125 through the native state-request wrapper.
+//
+// Before main+0x7EAF90 can call +0x1988, the cleanup corridor invokes actor
+// vslot +0x1278. For the observed custom runtime vtable, +0x1278 resolves to
+// main+0x7EB518. This function is a read-only predicate over actor state and the
+// actor+0x106F4 family. P99A hooks ONLY that predicate, calls Orig() exactly
+// once, and records the return value plus its source fields. It never mutates
+// E94/E9C/action/controls and never forces 708 or 710.
+// ============================================================================
+namespace {
+
+constexpr ptrdiff_t kP99AGate1278Offset = 0x7EB518;
+constexpr ptrdiff_t kP99AGate1278Slot = 0x1278;
+constexpr ptrdiff_t kP99AVslot1008 = 0x1008;
+static std::atomic<uint32_t> g_p99a_gate_logs{0};
+static constexpr uint32_t kP99AGateLogLimit = 8192;
+
+HOOK_DEFINE_TRAMPOLINE(P99AGate1278TraceHook) {
+    static uint32_t Callback(void* actor) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const bool semantic = valid && P64QuerySemanticUltimateJutsu(actor);
+        const P93CoreState pre = valid ? ReadP93CoreState(actor) : P93CoreState{};
+
+        uint32_t f24 = 0;
+        uint32_t q106f4 = 0, q10f54 = 0, q10f58 = 0, q10f60 = 0, q10f64 = 0;
+        uintptr_t vtable = 0, slot1278 = 0, slot1008 = 0;
+        ptrdiff_t slot1278_off = -1, slot1008_off = -1;
+        if (valid && actor) {
+            const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+            f24 = *reinterpret_cast<const volatile uint32_t*>(b + 0xF24);
+            q106f4 = *reinterpret_cast<const volatile uint32_t*>(b + 0x106F4);
+            q10f54 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10F54);
+            q10f58 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10F58);
+            q10f60 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10F60);
+            q10f64 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10F64);
+            vtable = *reinterpret_cast<const volatile uintptr_t*>(b);
+            if (vtable) {
+                slot1278 = *reinterpret_cast<const volatile uintptr_t*>(vtable + kP99AGate1278Slot);
+                slot1008 = *reinterpret_cast<const volatile uintptr_t*>(vtable + kP99AVslot1008);
+                slot1278_off = MainRelativeOffset(slot1278);
+                slot1008_off = MainRelativeOffset(slot1008);
+            }
+        }
+
+        // Preserve native behavior exactly.
+        const uint32_t ret = Orig(actor);
+        const P93CoreState post = valid ? ReadP93CoreState(actor) : P93CoreState{};
+
+        const bool focus = valid &&
+            (semantic || pre.action == 707u || pre.action == 708u || pre.action == 710u ||
+             post.action == 707u || post.action == 708u || post.action == 710u ||
+             (pre.e94 >= 135u && pre.e94 <= 138u) ||
+             (post.e94 >= 135u && post.e94 <= 138u));
+        if (focus) {
+            const uint32_t n = g_p99a_gate_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < kP99AGateLogLimit) {
+                Logging.Log(
+                    "[NSC:P99A] GATE1278 n=%u actor=%p side=%u char=%u semantic=%u ret=%u "
+                    "caller_off=0x%lx vtable=0x%lx slot1278=0x%lx slot1278_off=0x%lx "
+                    "slot1008=0x%lx slot1008_off=0x%lx action=%u->%u "
+                    "e70=%u e74=%u e7c=%u e94=%u->%u e98=%u->%u e9c=%u->%u "
+                    "ea4=%08x->%08x ea8=%08x->%08x bda4=%u->%u bda8=%u->%u bdc8=%u->%u "
+                    "f24=%u q106f4=%08x q10f54=%08x q10f58=%08x q10f60=%08x q10f64=%08x",
+                    n, actor, side, char_id, semantic ? 1u : 0u, ret,
+                    static_cast<unsigned long>(caller_off),
+                    static_cast<unsigned long>(vtable), static_cast<unsigned long>(slot1278),
+                    static_cast<unsigned long>(slot1278_off),
+                    static_cast<unsigned long>(slot1008), static_cast<unsigned long>(slot1008_off),
+                    pre.action, post.action, pre.e70,
+                    *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor) + 0xE74),
+                    pre.e7c, pre.e94, post.e94, pre.e98, post.e98, pre.e9c, post.e9c,
+                    pre.ea4, post.ea4, pre.ea8, post.ea8,
+                    pre.bda4, post.bda4, pre.bda8, post.bda8, pre.bdc8, post.bdc8,
+                    f24, q106f4, q10f54, q10f58, q10f60, q10f64);
+            }
+        }
+        return ret;
+    }
+};
+
+static bool InstallP99AGate1278Internal() {
+    static constexpr uint32_t sig[] = {
+        0xA9BE57FE, 0xA9014FF4, 0xB94F2408, 0x7100051F,
+        0x54000120, 0xAA0003F3, 0x97FD9310, 0x350000C0
+    };
+    if (!MatchWords(kP99AGate1278Offset, sig)) {
+        LogFingerprintFail("P99A_GATE1278_7EB518", kP99AGate1278Offset);
+        return false;
+    }
+    P99AGate1278TraceHook::InstallAtOffset(kP99AGate1278Offset);
+    return true;
+}
+
+} // anonymous namespace — P99A
+
+void InstallP99ACleanupGate1278Trace() {
+    // P96 is the observation-only parent with native 707->708 preserved.
+    // P97/P98 functional/diagnostic hooks are deliberately not installed.
+    InstallP96AActionDescriptorTransitionTrace();
+    const bool ok = InstallP99AGate1278Internal();
+    Logging.Log(
+        "[NSC:P99A] READY parent_p96=1 p97_absent=1 p98_absent=1 gate1278=0x7eb518 "
+        "vslot1278=1 cleanup_caller_7eaf90=1 predicate_only=1 preserve_orig=1 "
+        "one_new_trampoline=1 no_state_write=1 no_e94_write=1 no_e9c_write=1 "
+        "no_action_write=1 no_force708=1 no_force710=1 no_char281_branch=1 probe=%u",
         ok ? 1u : 0u);
 }
 
