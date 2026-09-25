@@ -5,4 +5,4 @@ jobs:
   disabled:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "P115A retired: three inline hooks exhaust trampoline allocation; use P115B"
+      - run: echo "P115A retired; use P115B"

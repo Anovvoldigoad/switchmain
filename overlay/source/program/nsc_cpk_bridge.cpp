@@ -7056,75 +7056,62 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P115A — exact cinematic preflight gate triplet provenance (READ ONLY).
+// P115B — boot-safe cinematic event-type preflight provenance (READ ONLY).
 //
-// P114A proved the successful vanilla UJ reaches main+0x77C4B0 with the
-// type9 query returning 0, while failing custom Tobi never reaches that query.
-// Therefore the remaining native frontier immediately before 0x77C4B0 is:
+// P114A proved successful vanilla reaches the type9 query at 0x77C4B0 with
+// ret=0, while failing custom Tobi never reaches that query. P115A attempted
+// three inline probes across event-type + actor-C48 + peer-C48 gates, but the
+// runtime aborted during hook installation because multiple new inline hooks
+// exhausted exlaunch trampoline allocation on this environment.
 //
-//   0x77C474  LDR W8,[X20,#0x50]       event type source
-//   0x77C478  AND W9,W8,#~1
-//   0x77C47C  CMP W9,#10               type 10/11 gate
-//   0x77C480  B.NE bypass
-//   0x77C484..0x77C490 actor vslot +0xC48 ; BLR X8
-//   0x77C494  CBZ W0,bypass
-//   0x77C498..0x77C4A4 peer  vslot +0xC48 ; BLR X8
-//   0x77C4A8  CBZ W0,bypass
-//   0x77C4AC  MOV W0,#9
-//   0x77C4B0  BL 0x750860              type9 preflight query
+// P115B therefore narrows to exactly ONE extra inline hook at 0x77C474:
+//   LDR W8,[X20,#0x50]
+// It faithfully reproduces the native load and logs the raw/normalized event
+// type only for the generic UJ corridor. This answers whether failing custom
+// Tobi reaches the event-type gate at all, and whether type 10/11 is present.
 //
-// P115A removes the P114 whole-function trampoline and adds three inline
-// observation hooks only at the native instructions above:
-//   * event-type LDR: faithfully reproduces the LDR into W8 and logs raw type;
-//   * actor C48 BLR: calls the original virtual target exactly once, copies
-//     its native W0 result back into the inline context, then logs it;
-//   * peer C48 BLR: same preservation contract for the peer gate.
-//
-// Logging is focused generically on the UJ corridor (action700..710,
-// state136/137, or semantic-UJ context). No character ID is special-cased.
-// No branch, state, action, session, event, or actor memory is modified.
+// No virtual C48 call is intercepted. No branch, state, action, session,
+// event, or actor memory is modified. No character ID is special-cased.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP115EventTypeLoadOffset = 0x77C474;
-static constexpr ptrdiff_t kP115ActorC48CallOffset = 0x77C490;
-static constexpr ptrdiff_t kP115PeerC48CallOffset = 0x77C4A4;
-static constexpr ptrdiff_t kP115Type9QueryCallOffset = 0x77C4B0;
-static constexpr ptrdiff_t kP115OuterSetupCallOffset = 0x77C5E8;
-static constexpr uint32_t kP115LogLimit = 1024u;
-static std::atomic<uint32_t> g_p115_evt_logs{0};
-static std::atomic<uint32_t> g_p115_actor_c48_logs{0};
-static std::atomic<uint32_t> g_p115_peer_c48_logs{0};
+static constexpr ptrdiff_t kP115BEventTypeLoadOffset = 0x77C474;
+static constexpr ptrdiff_t kP115BActorC48CallOffset = 0x77C490;
+static constexpr ptrdiff_t kP115BPeerC48CallOffset = 0x77C4A4;
+static constexpr ptrdiff_t kP115BType9QueryCallOffset = 0x77C4B0;
+static constexpr ptrdiff_t kP115BOuterSetupCallOffset = 0x77C5E8;
+static constexpr uint32_t kP115BLogLimit = 1024u;
+static std::atomic<uint32_t> g_p115b_evt_logs{0};
 
-static uint32_t P115ReadAction(void* actor) {
+static uint32_t P115BReadAction(void* actor) {
     if (!actor) return 0xFFFFFFFFu;
     const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
     return *reinterpret_cast<const volatile uint32_t*>(b + 4712);
 }
 
-static uint32_t P115ReadE94(void* actor) {
+static uint32_t P115BReadE94(void* actor) {
     if (!actor) return 0xFFFFFFFFu;
     const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
     return *reinterpret_cast<const volatile uint32_t*>(b + 0xE94);
 }
 
-static bool P115FocusActor(void* actor) {
+static bool P115BFocusActor(void* actor) {
     if (!actor) return false;
-    const uint32_t action = P115ReadAction(actor);
-    const uint32_t e94 = P115ReadE94(actor);
+    const uint32_t action = P115BReadAction(actor);
+    const uint32_t e94 = P115BReadE94(actor);
     return (action >= 700u && action <= 710u) || e94 == 136u || e94 == 137u ||
            P64QuerySemanticUltimateJutsu(actor);
 }
 
-static void P115ReadIdentityLite(void* actor, uint32_t& side, uint32_t& cid,
-                                 uint32_t& action, uint32_t& e94) {
+static void P115BReadIdentityLite(void* actor, uint32_t& side, uint32_t& cid,
+                                  uint32_t& action, uint32_t& e94) {
     side = cid = action = e94 = 0xFFFFFFFFu;
     if (!actor) return;
     (void)ReadActorIdentity(actor, side, cid);
-    action = P115ReadAction(actor);
-    e94 = P115ReadE94(actor);
+    action = P115BReadAction(actor);
+    e94 = P115BReadE94(actor);
 }
 
-HOOK_DEFINE_INLINE(P115EventTypeLoadHook) {
+HOOK_DEFINE_INLINE(P115BEventTypeLoadHook) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         auto* event = reinterpret_cast<const volatile uint8_t*>(ctx->X[20]);
         // Faithfully reproduce the replaced native LDR W8,[X20,#0x50].
@@ -7133,20 +7120,20 @@ HOOK_DEFINE_INLINE(P115EventTypeLoadHook) {
         ctx->W[8] = raw_type;
 
         void* actor = reinterpret_cast<void*>(ctx->X[19]);
-        if (!P115FocusActor(actor)) return;
+        if (!P115BFocusActor(actor)) return;
         void* peer = reinterpret_cast<void*>(ctx->X[23]);
 
         uint32_t side, cid, action, e94;
         uint32_t pside, pcid, paction, pe94;
-        P115ReadIdentityLite(actor, side, cid, action, e94);
-        P115ReadIdentityLite(peer, pside, pcid, paction, pe94);
+        P115BReadIdentityLite(actor, side, cid, action, e94);
+        P115BReadIdentityLite(peer, pside, pcid, paction, pe94);
         const uint32_t normalized = raw_type & ~1u;
         const uint32_t pass = normalized == 10u ? 1u : 0u;
 
-        const uint32_t n = g_p115_evt_logs.fetch_add(1, std::memory_order_relaxed);
-        if (n < kP115LogLimit) {
+        const uint32_t n = g_p115b_evt_logs.fetch_add(1, std::memory_order_relaxed);
+        if (n < kP115BLogLimit) {
             Logging.Log(
-                "[NSC:P115A] EVT_GATE n=%u actor=%p side=%u char=%u action=%u e94=%u "
+                "[NSC:P115B] EVT_GATE n=%u actor=%p side=%u char=%u action=%u e94=%u "
                 "peer=%p pside=%u pchar=%u paction=%u pe94=%u event=%p raw_type=%u norm_type=%u pass=%u",
                 n, actor, side, cid, action, e94,
                 peer, pside, pcid, paction, pe94,
@@ -7155,77 +7142,7 @@ HOOK_DEFINE_INLINE(P115EventTypeLoadHook) {
     }
 };
 
-using P115C48Fn = uint32_t (*)(void*, uintptr_t, uintptr_t, uintptr_t,
-                              uintptr_t, uintptr_t, uintptr_t, uintptr_t);
-
-static uint32_t P115CallNativeC48(exl::hook::nx64::InlineCtx* ctx, void* actor,
-                                  uintptr_t target) {
-    auto fn = reinterpret_cast<P115C48Fn>(target);
-    return fn(actor, ctx->X[1], ctx->X[2], ctx->X[3],
-              ctx->X[4], ctx->X[5], ctx->X[6], ctx->X[7]);
-}
-
-HOOK_DEFINE_INLINE(P115ActorC48CallHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        void* actor = reinterpret_cast<void*>(ctx->X[0]);
-        void* peer = reinterpret_cast<void*>(ctx->X[23]);
-        const uintptr_t target = static_cast<uintptr_t>(ctx->X[8]);
-        const bool focus = P115FocusActor(actor);
-
-        uint32_t side, cid, action, e94;
-        uint32_t pside, pcid, paction, pe94;
-        P115ReadIdentityLite(actor, side, cid, action, e94);
-        P115ReadIdentityLite(peer, pside, pcid, paction, pe94);
-        const uint32_t raw_type = *reinterpret_cast<const volatile uint32_t*>(
-            reinterpret_cast<const volatile uint8_t*>(ctx->X[20]) + 0x50);
-
-        const uint32_t ret = P115CallNativeC48(ctx, actor, target);
-        ctx->W[0] = ret;
-
-        if (!focus) return;
-        const uint32_t n = g_p115_actor_c48_logs.fetch_add(1, std::memory_order_relaxed);
-        if (n < kP115LogLimit) {
-            Logging.Log(
-                "[NSC:P115A] ACTOR_C48 n=%u actor=%p side=%u char=%u action=%u e94=%u "
-                "peer=%p pside=%u pchar=%u paction=%u pe94=%u raw_type=%u target_off=0x%lx ret=%u",
-                n, actor, side, cid, action, e94,
-                peer, pside, pcid, paction, pe94, raw_type,
-                static_cast<unsigned long>(MainRelativeOffset(target)), ret);
-        }
-    }
-};
-
-HOOK_DEFINE_INLINE(P115PeerC48CallHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        void* peer = reinterpret_cast<void*>(ctx->X[0]);
-        void* actor = reinterpret_cast<void*>(ctx->X[19]);
-        const uintptr_t target = static_cast<uintptr_t>(ctx->X[8]);
-        const bool focus = P115FocusActor(actor);
-
-        uint32_t side, cid, action, e94;
-        uint32_t pside, pcid, paction, pe94;
-        P115ReadIdentityLite(actor, side, cid, action, e94);
-        P115ReadIdentityLite(peer, pside, pcid, paction, pe94);
-        const uint32_t raw_type = *reinterpret_cast<const volatile uint32_t*>(
-            reinterpret_cast<const volatile uint8_t*>(ctx->X[20]) + 0x50);
-
-        const uint32_t ret = P115CallNativeC48(ctx, peer, target);
-        ctx->W[0] = ret;
-
-        if (!focus) return;
-        const uint32_t n = g_p115_peer_c48_logs.fetch_add(1, std::memory_order_relaxed);
-        if (n < kP115LogLimit) {
-            Logging.Log(
-                "[NSC:P115A] PEER_C48 n=%u actor=%p side=%u char=%u action=%u e94=%u "
-                "peer=%p pside=%u pchar=%u paction=%u pe94=%u raw_type=%u target_off=0x%lx ret=%u",
-                n, actor, side, cid, action, e94,
-                peer, pside, pcid, paction, pe94, raw_type,
-                static_cast<unsigned long>(MainRelativeOffset(target)), ret);
-        }
-    }
-};
-
-static bool InstallP115APreflightGateTripletInternal() {
+static bool InstallP115BEventGateInternal() {
     static constexpr uint32_t sigEventTypeGate[] = {
         0xB9405288, 0x121F7909, 0x7100293F, 0x54000B81,
     };
@@ -7242,38 +7159,39 @@ static bool InstallP115APreflightGateTripletInternal() {
         0xAA1703E0, 0x9401CAAC, 0xB9405288,
     };
 
-    if (!MatchWords(kP115EventTypeLoadOffset, sigEventTypeGate)) {
-        LogFingerprintFail("P115_EVENT_TYPE_GATE_77C474", kP115EventTypeLoadOffset); return false;
+    if (!MatchWords(kP115BEventTypeLoadOffset, sigEventTypeGate)) {
+        LogFingerprintFail("P115B_EVENT_TYPE_GATE_77C474", kP115BEventTypeLoadOffset); return false;
     }
+    // Fingerprint downstream gates without hooking them, so the static corridor
+    // is still pinned to this exact v1.70 main.
     if (!MatchWords(0x77C484, sigActorC48Gate)) {
-        LogFingerprintFail("P115_ACTOR_C48_77C484", 0x77C484); return false;
+        LogFingerprintFail("P115B_ACTOR_C48_77C484", 0x77C484); return false;
     }
     if (!MatchWords(0x77C498, sigPeerC48Gate)) {
-        LogFingerprintFail("P115_PEER_C48_77C498", 0x77C498); return false;
+        LogFingerprintFail("P115B_PEER_C48_77C498", 0x77C498); return false;
     }
     if (!MatchWords(0x77C4AC, sigType9Query)) {
-        LogFingerprintFail("P115_TYPE9_QUERY_77C4AC", 0x77C4AC); return false;
+        LogFingerprintFail("P115B_TYPE9_QUERY_77C4AC", 0x77C4AC); return false;
     }
     if (!MatchWords(0x77C5E4, sigOuterCall)) {
-        LogFingerprintFail("P115_OUTER_SETUP_77C5E4", 0x77C5E4); return false;
+        LogFingerprintFail("P115B_OUTER_SETUP_77C5E4", 0x77C5E4); return false;
     }
 
-    P115EventTypeLoadHook::InstallAtOffset(kP115EventTypeLoadOffset);
-    P115ActorC48CallHook::InstallAtOffset(kP115ActorC48CallOffset);
-    P115PeerC48CallHook::InstallAtOffset(kP115PeerC48CallOffset);
+    P115BEventTypeLoadHook::InstallAtOffset(kP115BEventTypeLoadOffset);
     return true;
 }
-} // anonymous namespace — P115A
+} // anonymous namespace — P115B
 
-void InstallP115APreflightGateTripletProbe() {
+void InstallP115BEventGateProbe() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP115APreflightGateTripletInternal();
+    const bool ok = InstallP115BEventGateInternal();
     Logging.Log(
-        "[NSC:P115A] READY parent_p96=1 readonly=1 event_gate_77c474=1 actor_c48_77c490=1 "
-        "peer_c48_77c4a4=1 type9_downstream_77c4b0=1 outer_7ef098_downstream=1 "
-        "three_inline_hooks=1 zero_new_trampolines=1 native_ldr_replayed=1 native_c48_once=1 "
-        "no_branch_patch=1 no_session_create=1 no_state_map=1 no_direct_state_write=1 "
-        "no_force708=1 no_force710=1 no_char281_branch=1 probe_ok=%u",
+        "[NSC:P115B] READY parent_p96=1 readonly=1 event_gate_77c474=1 "
+        "actor_c48_fingerprint_only=1 peer_c48_fingerprint_only=1 type9_downstream_77c4b0=1 "
+        "outer_7ef098_downstream=1 one_inline_hook=1 one_extra_trampoline_budget=1 "
+        "native_ldr_replayed=1 no_virtual_call_intercept=1 no_branch_patch=1 "
+        "no_session_create=1 no_state_map=1 no_direct_state_write=1 no_force708=1 "
+        "no_force710=1 no_char281_branch=1 probe_ok=%u",
         ok ? 1u : 0u);
 }
 

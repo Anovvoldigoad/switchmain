@@ -1,0 +1,62 @@
+entrypoint PASS
+decl PASS
+parent_p96 PASS
+ready PASS
+evt_log PASS
+event_offset PASS
+actor_fingerprint_offset PASS
+peer_fingerprint_offset PASS
+type9_proof PASS
+outer_proof PASS
+one_p115b_inline_hook PASS
+zero_p115b_trampolines PASS
+one_p115b_install PASS
+no_actor_c48_install PASS
+no_peer_c48_install PASS
+p115a_runtime_absent PASS
+p114_runtime_absent PASS
+p113_runtime_absent PASS
+p112_runtime_absent PASS
+victim_shadow_preserved PASS
+native_ldr_replayed PASS
+no_virtual_call_intercept PASS
+one_extra_budget_claim PASS
+no_session_create_claim PASS
+no_branch_patch_claim PASS
+no_actor_memory_write PASS
+no_force710 PASS
+no_force708 PASS
+no_char281_branch PASS
+p115b_log_bounds [('EVT_GATE', 310), ('READY', 414)]
+p115b_log_buffer_guard PASS
+paired main 1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0
+restore main 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+fp 0x77c474 b9405288 PASS
+fp 0x77c478 121f7909 PASS
+fp 0x77c47c 7100293f PASS
+fp 0x77c480 54000b81 PASS
+fp 0x77c484 f9400268 PASS
+fp 0x77c488 aa1303e0 PASS
+fp 0x77c48c f9462508 PASS
+fp 0x77c490 d63f0100 PASS
+fp 0x77c494 34000ac0 PASS
+fp 0x77c498 f94002e8 PASS
+fp 0x77c49c aa1703e0 PASS
+fp 0x77c4a0 f9462508 PASS
+fp 0x77c4a4 d63f0100 PASS
+fp 0x77c4a8 34000a20 PASS
+fp 0x77c4ac 52800120 PASS
+fp 0x77c4b0 97ff50ec PASS
+fp 0x77c4b4 34000300 PASS
+fp 0x77c5e4 aa1703e0 PASS
+fp 0x77c5e8 9401caac PASS
+fp 0x77c5ec b9405288 PASS
+call 0x77c4b0 -> 0x750860
+call 0x77c5e8 -> 0x7ef098
+runtime_sig_0xb9405288 PASS
+runtime_sig_0xf9400268 PASS
+runtime_sig_0xf94002e8 PASS
+runtime_sig_0x52800120 PASS
+runtime_sig_0xaa1703e0 PASS
+push_enabled_workflows ['build-subsdk9-p115b.yml']
+P115B_DROPIN_SOURCE_VERIFY=PASS
