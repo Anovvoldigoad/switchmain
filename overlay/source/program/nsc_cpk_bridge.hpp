@@ -36,5 +36,5 @@ void InstallP94ASequenceControllerTrace();
 void InstallP95AQueuedActionParentTrace();
 void InstallP96AActionDescriptorTransitionTrace();
 void InstallP88AWideUJAdmissionTrace();
-void InstallP114APreflightType9Probe();
+void InstallP115APreflightGateTripletProbe();
 }
