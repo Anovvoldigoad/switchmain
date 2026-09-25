@@ -7056,155 +7056,143 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P106A — +0x520 entry proof, one-trampoline swap from P105B.
+// P107A — exact post-708 cleanup-state bridge (functional candidate).
 //
-// Historical proof already retired the downstream cleanup chain as root:
-// state125 -> +0x4C0 mode0 -> action261 -> action74. P98/P101/P102 showed that
-// observing or suppressing those cleanup effects does not create action710.
+// P106A proved the missing native 710 controller is NOT entered by custom Tobi:
+// vanilla state137 dispatches through +0x520 and produces PlayAction710, while
+// custom post-708 cleanup requests state125 and the same generic state dispatcher
+// subsequently selects +0x4C0 -> action261. P98B previously proved the exact
+// state125 producer returns at main+0x7EB28C.
 //
-// The remaining unanswered question is whether the custom action708 path ever
-// enters the native action710-producing sibling controller at actor vtable
-// +0x520 -> main+0x7E64D4. P106A spends exactly the same single-trampoline budget
-// as P105B, but moves it from +0x4C0 to +0x520. +0x4C0 is fully native again.
-//
-// ABI is (actor, mode) -> void, proven by the prior P105A static audit.
-// X30/caller is captured before helpers. Orig(actor, mode) executes exactly once
-// on the valid player path and exactly once on the early non-player path. Only
-// player-side action700..711 samples are logged. No state/action/mode writes.
+// P107A does NOT hold state125 (P101 already falsified that) and does NOT force
+// action710. It maps only the exact native cleanup request 125 -> handoff state137
+// through the original state-request function main+0x7A89A4. Native validation,
+// native E9C store, native state commit, and native controller dispatch remain in
+// control. The policy is generic/data-driven: semantic UJ + generated membership
+// + exact action/state/caller fingerprint; no char281 gameplay branch.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP106Controller520Offset = 0x7E64D4;
-static constexpr ptrdiff_t kP106Controller4C0Offset = 0x7DDD94;
-static constexpr uint32_t kP106LogLimit = 65536u;
-static std::atomic<uint32_t> g_p106_seq{0};
+static constexpr ptrdiff_t kP107StateRequestOffset = 0x7A89A4;
+static constexpr ptrdiff_t kP107CleanupCallerReturn = 0x7EB28C;
+static constexpr uint32_t kP107CleanupState = 125u;
+static constexpr uint32_t kP107HandoffState = 137u;
+static constexpr uint32_t kP107LogLimit = 64u;
+static std::atomic<uint32_t> g_p107_count{0};
 
-static bool P106FocusedAction(const P93CoreState& st) {
-    return st.action >= 700u && st.action <= 711u;
-}
-
-static void P106ReadVtableSlots(void* actor, ptrdiff_t& slot4c0_off, ptrdiff_t& slot520_off) {
-    slot4c0_off = -1;
-    slot520_off = -1;
-    if (!actor) return;
-    const uintptr_t vtable = *reinterpret_cast<const volatile uintptr_t*>(actor);
-    if (!vtable) return;
-    const uintptr_t slot4c0 = *reinterpret_cast<const volatile uintptr_t*>(vtable + 0x4C0);
-    const uintptr_t slot520 = *reinterpret_cast<const volatile uintptr_t*>(vtable + 0x520);
-    slot4c0_off = MainRelativeOffset(slot4c0);
-    slot520_off = MainRelativeOffset(slot520);
-}
-
-static void P106Log520(
-    uint32_t seq, uint32_t phase, void* actor, uint32_t side, uint32_t cid,
-    uint32_t mode, ptrdiff_t caller_off, const P93CoreState& pre,
-    const P93CoreState& cur, ptrdiff_t slot4c0_off, ptrdiff_t slot520_off) {
-    const ptrdiff_t callsite_off = caller_off >= 4 ? caller_off - 4 : -1;
-    Logging.Log(
-        "[NSC:P106A] CTRL520 seq=%u phase=%u actor=%p side=%u char=%u mode=%u "
-        "caller_off=0x%lx callsite_off=0x%lx action=%u->%u "
-        "slot4c0_off=0x%lx slot520_off=0x%lx",
-        seq, phase, actor, side, cid, mode,
-        static_cast<unsigned long>(caller_off), static_cast<unsigned long>(callsite_off),
-        pre.action, cur.action, static_cast<unsigned long>(slot4c0_off),
-        static_cast<unsigned long>(slot520_off));
-    Logging.Log(
-        "[NSC:P106A] STATE520 seq=%u phase=%u "
-        "e60=%08x->%08x e70=%08x->%08x e90=%08x->%08x "
-        "e94=%08x->%08x e98=%08x->%08x e9c=%08x->%08x "
-        "ea0=%08x->%08x ea4=%08x->%08x "
-        "bda4=%u->%u bda8=%u->%u bdc8=%u->%u",
-        seq, phase,
-        pre.e60, cur.e60, pre.e70, cur.e70, pre.e90, cur.e90,
-        pre.e94, cur.e94, pre.e98, cur.e98, pre.e9c, cur.e9c,
-        pre.ea0, cur.ea0, pre.ea4, cur.ea4,
-        pre.bda4, cur.bda4, pre.bda8, cur.bda8, pre.bdc8, cur.bdc8);
-}
-
-HOOK_DEFINE_TRAMPOLINE(P106Controller520Hook) {
-    static void Callback(void* actor, uint32_t mode) {
+HOOK_DEFINE_TRAMPOLINE(P107StateRequestBridgeHook) {
+    static uint32_t Callback(void* actor, uint32_t requested_state,
+                             uint32_t arg2, uint32_t arg3) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
         const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
 
+        // This function is globally hot. Keep every unrelated state request on an
+        // immediate native fast path before touching actor state.
+        if (caller_off != kP107CleanupCallerReturn || requested_state != kP107CleanupState) {
+            return Orig(actor, requested_state, arg2, arg3);
+        }
+
         uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
-        const bool valid_player = ReadActorIdentity(actor, side, cid) && side == 0u;
-        if (!valid_player) {
-            Orig(actor, mode);
-            return;
-        }
+        const bool valid = ReadActorIdentity(actor, side, cid);
+        const P93CoreState pre = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
+        const bool semantic = valid && actor && P64QuerySemanticUltimateJutsu(actor);
+        const bool member = valid && p81_data::ContainsOugiAwakeningId(cid);
 
-        const uint32_t seq = g_p106_seq.fetch_add(1, std::memory_order_relaxed);
-        const P93CoreState pre = ReadP93CoreState(actor);
-        ptrdiff_t slot4c0_off = -1, slot520_off = -1;
-        P106ReadVtableSlots(actor, slot4c0_off, slot520_off);
-        const bool enter_focused = P106FocusedAction(pre);
-        if (enter_focused && seq < kP106LogLimit) {
-            P106Log520(seq, 0, actor, side, cid, mode, caller_off,
-                       pre, pre, slot4c0_off, slot520_off);
-        }
+        const bool bridge =
+            valid && side == 0u && semantic && member &&
+            arg2 == 1u && arg3 == 0u &&
+            pre.action == 708u &&
+            pre.e94 == 63u && pre.e98 == 136u && pre.e9c == 0u &&
+            pre.bda4 == 1u && pre.bda8 == 0u && pre.bdc8 == 0u;
 
-        Orig(actor, mode);
+        const uint32_t mapped_state = bridge ? kP107HandoffState : requested_state;
+        const uint32_t ret = Orig(actor, mapped_state, arg2, arg3);
+        const P93CoreState post = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
 
-        const P93CoreState post = ReadP93CoreState(actor);
-        if ((enter_focused || P106FocusedAction(post)) && seq < kP106LogLimit) {
-            P106Log520(seq, 1, actor, side, cid, mode, caller_off,
-                       pre, post, slot4c0_off, slot520_off);
+        if (bridge && g_p107_count.fetch_add(1, std::memory_order_relaxed) < kP107LogLimit) {
+            Logging.Log(
+                "[NSC:P107A] BRIDGE actor=%p side=%u char=%u caller_off=0x%lx "
+                "req=%u mapped=%u arg2=%u arg3=%u ret=%u action=%u->%u "
+                "e94=%u->%u e98=%u->%u e9c=%u->%u ea4=%08x->%08x "
+                "bda4=%u->%u bda8=%u->%u bdc8=%u->%u semantic=%u member=%u",
+                actor, side, cid, static_cast<unsigned long>(caller_off),
+                requested_state, mapped_state, arg2, arg3, ret,
+                pre.action, post.action, pre.e94, post.e94, pre.e98, post.e98,
+                pre.e9c, post.e9c, pre.ea4, post.ea4,
+                pre.bda4, post.bda4, pre.bda8, post.bda8, pre.bdc8, post.bdc8,
+                semantic ? 1u : 0u, member ? 1u : 0u);
         }
+        return ret;
     }
 };
 
-static bool InstallP106Controller520EntryProofInternal() {
-    static constexpr uint32_t sig520[] = {
-        0xD10683FF, 0xA9147BFD, 0xA9156FFC, 0xA91667FA,
-        0xA9175FF8, 0xA91857F6, 0xA9194FF4, 0x5280E408,
+static bool InstallP107StateRequestBridgeInternal() {
+    // main+0x7A89A4 state request implementation. W1=requested state.
+    static constexpr uint32_t sigStateRequest[] = {
+        0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x2A0103F4,
+        0xAA0003F3, 0x34000282, 0xF9400268, 0xAA1303E0,
     };
-    static constexpr uint32_t sig520Producer[] = {
-        0x528058C1, // 0x7E6EA8 MOV W1,#710
+    // Exact custom cleanup producer: MOV W1,#125; ... BLR X8; return 0x7EB28C.
+    static constexpr uint32_t sigCleanupProducer[] = {
+        0xF81E0FFE, 0xA9014FF4, 0xF9400008, 0x52800FA1,
+        0xAA0003F3, 0xF946F908, 0xD63F0100, 0xF9400268,
     };
-    static constexpr uint32_t sig520Call[] = {
-        0x97FDFF32, // 0x7E6EC4 BL PlayAction
+    // Generic state dispatcher: read E94, table[state*0x20], mode0, BLR controller.
+    static constexpr uint32_t sigStateDispatcher[] = {
+        0xB94E9675, // 0x7A8310 LDR W21,[X19,#E94]
     };
-    static constexpr uint32_t sigDirectWrapper[] = {
-        0x940D766B, // 0x488B28 BL 0x7E64D4
+    static constexpr uint32_t sigDispatchCall[] = {
+        0x2A1F03E1, // 0x7A834C MOV W1,WZR
+        0xD63F0100, // 0x7A8350 BLR X8
     };
-    static constexpr uint32_t sig4c0[] = {
-        0xD10243FF, // +0x4C0 must remain native/unhooked
-    };
+    // Native handoff controller and exact PlayAction710 producer remain untouched.
+    static constexpr uint32_t sigController520[] = {0xD10683FF};
+    static constexpr uint32_t sig710Producer[] = {0x528058C1};
+    static constexpr uint32_t sig710Call[] = {0x97FDFF32};
 
-    if (!MatchWords(kP106Controller520Offset, sig520)) {
-        LogFingerprintFail("P106_CTRL_520_7E64D4", kP106Controller520Offset);
+    if (!MatchWords(kP107StateRequestOffset, sigStateRequest)) {
+        LogFingerprintFail("P107_STATE_REQUEST_7A89A4", kP107StateRequestOffset);
         return false;
     }
-    if (!MatchWords(0x7E6EA8, sig520Producer)) {
-        LogFingerprintFail("P106_520_PRODUCER_7E6EA8", 0x7E6EA8);
+    if (!MatchWords(0x7EB270, sigCleanupProducer)) {
+        LogFingerprintFail("P107_CLEANUP_PRODUCER_7EB270", 0x7EB270);
         return false;
     }
-    if (!MatchWords(0x7E6EC4, sig520Call)) {
-        LogFingerprintFail("P106_520_PLAYACTION_7E6EC4", 0x7E6EC4);
+    if (!MatchWords(0x7A8310, sigStateDispatcher)) {
+        LogFingerprintFail("P107_STATE_DISPATCH_E94_7A8310", 0x7A8310);
         return false;
     }
-    if (!MatchWords(0x488B28, sigDirectWrapper)) {
-        LogFingerprintFail("P106_520_DIRECT_WRAPPER_488B28", 0x488B28);
+    if (!MatchWords(0x7A834C, sigDispatchCall)) {
+        LogFingerprintFail("P107_STATE_DISPATCH_CALL_7A834C", 0x7A834C);
         return false;
     }
-    if (!MatchWords(kP106Controller4C0Offset, sig4c0)) {
-        LogFingerprintFail("P106_NATIVE_4C0_7DDD94", kP106Controller4C0Offset);
+    if (!MatchWords(0x7E64D4, sigController520)) {
+        LogFingerprintFail("P107_NATIVE_CTRL520_7E64D4", 0x7E64D4);
+        return false;
+    }
+    if (!MatchWords(0x7E6EA8, sig710Producer)) {
+        LogFingerprintFail("P107_NATIVE_710_PRODUCER_7E6EA8", 0x7E6EA8);
+        return false;
+    }
+    if (!MatchWords(0x7E6EC4, sig710Call)) {
+        LogFingerprintFail("P107_NATIVE_710_CALL_7E6EC4", 0x7E6EC4);
         return false;
     }
 
-    // Exactly one new trampoline. P105B +0x4C0 hook is retired; +0x4C0 is native.
-    P106Controller520Hook::InstallAtOffset(kP106Controller520Offset);
+    // One diagnostic trampoline is replaced by one functional trampoline.
+    P107StateRequestBridgeHook::InstallAtOffset(kP107StateRequestOffset);
     return true;
 }
-} // anonymous namespace — P106A
+} // anonymous namespace — P107A
 
-void InstallP106Controller520EntryProof() {
+void InstallP107Post708StateBridge() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP106Controller520EntryProofInternal();
+    const bool ok = InstallP107StateRequestBridgeInternal();
     Logging.Log(
-        "[NSC:P106A] READY parent_p96=1 ctrl520_7e64d4=1 ctrl4c0_native=1 "
-        "one_new_trampoline=1 zero_new_inline_hooks=1 readonly=1 "
-        "no_force708=1 no_force710=1 probe=%u",
+        "[NSC:P107A] READY parent_p96=1 state_request_7a89a4=1 "
+        "exact_cleanup_caller_7eb28c=1 map125_to137=1 native_store_dispatch=1 "
+        "one_new_trampoline=1 no_direct_state_write=1 no_force708=1 no_force710=1 "
+        "no_char281_branch=1 candidate=%u",
         ok ? 1u : 0u);
 }
 

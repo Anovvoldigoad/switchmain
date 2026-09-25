@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP106Controller520EntryProof();
+    nsc::InstallP107Post708StateBridge();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P106A controller520 entry proof exception");
+    EXL_ABORT("NSC P107A post708 state bridge exception");
 }
