@@ -7056,72 +7056,127 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P117A — action-event stream census at the bucket5 dispatcher boundary (READ ONLY).
+// P118A — action-event record neighborhood census at bucket5 dispatcher boundary (READ ONLY).
 //
-// P116 proved the failing custom Tobi never reaches main+0x7EF098 at all, while
-// the successful vanilla control in the same run reaches it from bucket5
-// (return 0x77C5EC) and creates session9/session10. The bucket5 producer lives
-// inside the large action-event dispatcher around main+0x77B560. Immediately
-// after resolving the current event pointer, native code leaves that pointer in
-// X0 and calls the tiny global getter main+0x3F4BC0 at main+0x77B5A8. Therefore
-// this one boot-safe whole-function trampoline can census the event stream
-// entering that dispatcher without modifying the event, actor, branch, session,
-// state, action, or caller. Only calls whose LR is exactly 0x77B5AC are logged;
-// all other calls pass through immediately. Native Orig(event_x0) executes once.
+// P117 proved the decisive upstream divergence: a successful vanilla action707
+// dispatches raw event type10, while the custom semantic UJ action707 dispatches
+// raw types15 and24 and never type10/11 before advancing to708. P118 keeps the
+// same boot-safe whole-function hook at main+0x3F4BC0, but adds the GLOBAL event
+// record index plus a read-only neighborhood census around the exact record.
 //
-// The key question for the next run is whether raw event type 10/11 exists in
-// the vanilla UJ window but is absent in the custom Tobi 707/708 window. If so,
-// the missing cinematic session is upstream in the generated action-event stream.
-// If custom does present type10/11, the frontier moves to the actor/peer C48
-// readiness gates inside 0x77C484..0x77C4A8.
+// main+0x3F4B00 is statically proven to be a pure bounds-checked lookup over the
+// global event-record array (stride 0x60): it reads count/base and returns either
+// base + index*0x60 or nullptr. P118 calls that native lookup only for diagnostics;
+// it never changes actor/event memory, cursor/index, branches, sessions, states,
+// or actions. The native getter Orig(event_x0) is still executed exactly once on
+// each runtime path. The ±4 raw-type window and nearest type10/11 within ±32 tell
+// us whether custom707 is selecting past an available cinematic event or whether
+// its local loaded event block lacks that trigger entirely.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP117EventGateGetterOffset = 0x3F4BC0;
-static constexpr ptrdiff_t kP117FocusedCallerReturn = 0x77B5AC;
-static constexpr ptrdiff_t kP117DispatcherEntryOffset = 0x77B560;
-static constexpr ptrdiff_t kP117EventLookupCallsite = 0x77B590;
-static constexpr ptrdiff_t kP117GateGetterCallsite = 0x77B5A8;
-static constexpr ptrdiff_t kP117Type10GateOffset = 0x77C474;
-static constexpr ptrdiff_t kP117OuterCallsite = 0x77C5E8;
-static constexpr uint32_t kP117LogLimit = 8192u;
-static std::atomic<uint32_t> g_p117_count{0};
+static constexpr ptrdiff_t kP118EventGateGetterOffset = 0x3F4BC0;
+static constexpr ptrdiff_t kP118EventLookupOffset = 0x3F4B00;
+static constexpr ptrdiff_t kP118FocusedCallerReturn = 0x77B5AC;
+static constexpr ptrdiff_t kP118DispatcherEntryOffset = 0x77B560;
+static constexpr ptrdiff_t kP118EventLookupCallsite = 0x77B590;
+static constexpr ptrdiff_t kP118GateGetterCallsite = 0x77B5A8;
+static constexpr ptrdiff_t kP118Type10GateOffset = 0x77C474;
+static constexpr ptrdiff_t kP118OuterCallsite = 0x77C5E8;
+static constexpr uint32_t kP118RecordStride = 0x60u;
+static constexpr int32_t kP118NearRadius = 32;
+static constexpr uint32_t kP118LogLimit = 8192u;
+static std::atomic<uint32_t> g_p118_count{0};
 
-HOOK_DEFINE_TRAMPOLINE(P117AActionEventStreamCensusHook) {
+using P118EventLookupFn = void* (*)(uint32_t);
+
+static uint32_t P118RawType(const void* event_ptr) {
+    if (!event_ptr) return 0xFFFFFFFFu;
+    const auto* b = reinterpret_cast<const volatile uint8_t*>(event_ptr);
+    return *reinterpret_cast<const volatile uint32_t*>(b + 0x50);
+}
+
+HOOK_DEFINE_TRAMPOLINE(P118AEventNeighborhoodCensusHook) {
     static uint32_t Callback(void* event_x0) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
         const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
-        if (caller_off != kP117FocusedCallerReturn) {
+        if (caller_off != kP118FocusedCallerReturn) {
             return Orig(event_x0);
         }
 
-        uint32_t raw_type = 0xFFFFFFFFu;
-        uint32_t payload28 = 0u;
+        const uintptr_t main_base = exl::util::modules::GetTargetStart();
+        const auto lookup = reinterpret_cast<P118EventLookupFn>(
+            main_base + kP118EventLookupOffset);
+
+        void* event0 = lookup(0u);
+        int32_t event_index = -1;
+        if (event0 && event_x0) {
+            const uintptr_t base = reinterpret_cast<uintptr_t>(event0);
+            const uintptr_t cur = reinterpret_cast<uintptr_t>(event_x0);
+            if (cur >= base) {
+                const uintptr_t delta = cur - base;
+                if ((delta % kP118RecordStride) == 0u) {
+                    const uintptr_t idx = delta / kP118RecordStride;
+                    if (idx <= 0x7FFFu) event_index = static_cast<int32_t>(idx);
+                }
+            }
+        }
+
+        const uint32_t raw_type = P118RawType(event_x0);
+        const uint32_t norm_type = raw_type & 0xFFFFFFFEu;
+        const uint32_t type10_11 = (norm_type == 10u) ? 1u : 0u;
         uint64_t mask48 = 0u;
         if (event_x0) {
             const auto* b = reinterpret_cast<const volatile uint8_t*>(event_x0);
-            payload28 = *reinterpret_cast<const volatile uint32_t*>(b + 0x28);
             mask48 = *reinterpret_cast<const volatile uint64_t*>(b + 0x48);
-            raw_type = *reinterpret_cast<const volatile uint32_t*>(b + 0x50);
         }
-        const uint32_t norm_type = raw_type & 0xFFFFFFFEu;
-        const uint32_t type10_11 = (norm_type == 10u) ? 1u : 0u;
+
+        uint32_t near[9];
+        for (auto& v : near) v = 0xFFFFFFFFu;
+        int32_t nearest_type10_delta = 127;
+        if (event_index >= 0) {
+            for (int32_t d = -kP118NearRadius; d <= kP118NearRadius; ++d) {
+                const int32_t candidate = event_index + d;
+                if (candidate < 0 || candidate > 0x7FFF) continue;
+                void* rec = lookup(static_cast<uint32_t>(candidate));
+                if (!rec) continue;
+                const uint32_t t = P118RawType(rec);
+                if (d >= -4 && d <= 4) near[d + 4] = t;
+                if ((t & 0xFFFFFFFEu) == 10u) {
+                    const int32_t ad = d < 0 ? -d : d;
+                    const int32_t cur_ad = nearest_type10_delta < 0
+                        ? -nearest_type10_delta : nearest_type10_delta;
+                    if (nearest_type10_delta == 127 || ad < cur_ad)
+                        nearest_type10_delta = d;
+                }
+            }
+        }
 
         const uint32_t ret = Orig(event_x0);
-        const uint32_t n = g_p117_count.fetch_add(1, std::memory_order_relaxed);
-        if (n < kP117LogLimit) {
+        const uint32_t n = g_p118_count.fetch_add(1, std::memory_order_relaxed);
+        if (n < kP118LogLimit) {
             Logging.Log(
-                "[NSC:P117A] EVENT n=%u event=%p caller_off=0x%lx raw_type=%u norm_type=%u type10_11=%u gate_ret=%u payload28=%08x mask48=0x%lx",
-                n, event_x0, static_cast<unsigned long>(caller_off), raw_type, norm_type,
-                type10_11, ret, payload28, static_cast<unsigned long>(mask48));
+                "[NSC:P118A] NEIGH n=%u event=%p idx=%d raw=%u norm=%u type10_11=%u gate_ret=%u near10_delta=%d "
+                "m4=%u m3=%u m2=%u m1=%u cur=%u p1=%u p2=%u p3=%u p4=%u mask48=0x%lx",
+                n, event_x0, event_index, raw_type, norm_type, type10_11, ret,
+                nearest_type10_delta,
+                near[0], near[1], near[2], near[3], near[4], near[5], near[6], near[7], near[8],
+                static_cast<unsigned long>(mask48));
         }
         return ret;
     }
 };
 
-static bool InstallP117AActionEventStreamCensusInternal() {
+static bool InstallP118AEventNeighborhoodCensusInternal() {
     static constexpr uint32_t sigGetter[] = {
         0xF000EA68, 0xF9424508, 0xF9760908, 0xF9405D08, 0x79415100, 0xD65F03C0,
+    };
+    static constexpr uint32_t sigLookup[] = {
+        0x13003C08, 0x37F801A8, 0xF000EA68, 0xF9424508,
+        0xF9760908, 0xF9405D08, 0xB9405109, 0x6B20213F,
+    };
+    static constexpr uint32_t sigLookupStride[] = {
+        0xF9402508, 0x92403C09, 0x52800C0A, 0x9B0A2120, 0xD65F03C0,
     };
     static constexpr uint32_t sigDispatcher[] = {
         0xFC180FEA, 0x6D0123E9, 0xA9027BFD, 0xA9036FFC,
@@ -7136,39 +7191,46 @@ static bool InstallP117AActionEventStreamCensusInternal() {
     };
     static constexpr uint32_t sigOuterCall[] = {0x9401CAAC};
 
-    if (!MatchWords(kP117EventGateGetterOffset, sigGetter)) {
-        LogFingerprintFail("P117_EVENT_GATE_GETTER_3F4BC0", kP117EventGateGetterOffset); return false;
+    if (!MatchWords(kP118EventGateGetterOffset, sigGetter)) {
+        LogFingerprintFail("P118_EVENT_GATE_GETTER_3F4BC0", kP118EventGateGetterOffset); return false;
     }
-    if (!MatchWords(kP117DispatcherEntryOffset, sigDispatcher)) {
-        LogFingerprintFail("P117_DISPATCHER_77B560", kP117DispatcherEntryOffset); return false;
+    if (!MatchWords(kP118EventLookupOffset, sigLookup)) {
+        LogFingerprintFail("P118_EVENT_LOOKUP_3F4B00", kP118EventLookupOffset); return false;
     }
-    if (!MatchWords(kP117EventLookupCallsite, sigLookupCall)) {
-        LogFingerprintFail("P117_EVENT_LOOKUP_77B590", kP117EventLookupCallsite); return false;
+    if (!MatchWords(kP118EventLookupOffset + 0x24, sigLookupStride)) {
+        LogFingerprintFail("P118_EVENT_LOOKUP_STRIDE_3F4B24", kP118EventLookupOffset + 0x24); return false;
     }
-    if (!MatchWords(kP117GateGetterCallsite, sigGateCallAndCmp)) {
-        LogFingerprintFail("P117_GATE_CALL_77B5A8", kP117GateGetterCallsite); return false;
+    if (!MatchWords(kP118DispatcherEntryOffset, sigDispatcher)) {
+        LogFingerprintFail("P118_DISPATCHER_77B560", kP118DispatcherEntryOffset); return false;
     }
-    if (!MatchWords(kP117Type10GateOffset, sigTypeGate)) {
-        LogFingerprintFail("P117_TYPE10_GATE_77C474", kP117Type10GateOffset); return false;
+    if (!MatchWords(kP118EventLookupCallsite, sigLookupCall)) {
+        LogFingerprintFail("P118_EVENT_LOOKUP_CALL_77B590", kP118EventLookupCallsite); return false;
     }
-    if (!MatchWords(kP117OuterCallsite, sigOuterCall)) {
-        LogFingerprintFail("P117_BUCKET5_OUTER_77C5E8", kP117OuterCallsite); return false;
+    if (!MatchWords(kP118GateGetterCallsite, sigGateCallAndCmp)) {
+        LogFingerprintFail("P118_GATE_CALL_77B5A8", kP118GateGetterCallsite); return false;
+    }
+    if (!MatchWords(kP118Type10GateOffset, sigTypeGate)) {
+        LogFingerprintFail("P118_TYPE10_GATE_77C474", kP118Type10GateOffset); return false;
+    }
+    if (!MatchWords(kP118OuterCallsite, sigOuterCall)) {
+        LogFingerprintFail("P118_BUCKET5_OUTER_77C5E8", kP118OuterCallsite); return false;
     }
 
-    P117AActionEventStreamCensusHook::InstallAtOffset(kP117EventGateGetterOffset);
+    P118AEventNeighborhoodCensusHook::InstallAtOffset(kP118EventGateGetterOffset);
     return true;
 }
-} // anonymous namespace — P117A
+} // anonymous namespace — P118A
 
-void InstallP117AActionEventStreamCensusProbe() {
+void InstallP118AEventNeighborhoodCensusProbe() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP117AActionEventStreamCensusInternal();
+    const bool ok = InstallP118AEventNeighborhoodCensusInternal();
     Logging.Log(
-        "[NSC:P117A] READY parent_p96=1 readonly=1 getter_3f4bc0=1 focus_caller_77b5ac=1 "
-        "dispatcher_77b560=1 event_lookup_77b590=1 type10_11_gate_77c474=1 bucket5_outer_77c5e8=1 "
-        "capture_lr_first=1 one_new_trampoline=1 fast_passthrough_nonfocused=1 preserve_orig_once=1 "
-        "no_branch_patch=1 no_session_create=1 no_state_map=1 no_direct_state_write=1 no_force708=1 "
-        "no_force710=1 no_char281_branch=1 probe_ok=%u",
+        "[NSC:P118A] READY parent_p96=1 readonly=1 getter_3f4bc0=1 lookup_3f4b00=1 lookup_stride_60=1 "
+        "focus_caller_77b5ac=1 neighborhood_pm4=1 nearest_type10_pm32=1 dispatcher_77b560=1 "
+        "type10_11_gate_77c474=1 bucket5_outer_77c5e8=1 capture_lr_first=1 one_new_trampoline=1 "
+        "fast_passthrough_nonfocused=1 preserve_orig_once=1 no_event_cursor_write=1 no_branch_patch=1 "
+        "no_session_create=1 no_state_map=1 no_direct_state_write=1 no_force708=1 no_force710=1 "
+        "no_char281_branch=1 probe_ok=%u",
         ok ? 1u : 0u);
 }
 
