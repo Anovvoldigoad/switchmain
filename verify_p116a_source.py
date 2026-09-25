@@ -111,4 +111,6 @@ for p in sorted((root/'.github/workflows').glob('*.yml')):
  ss=p.read_text()
  if re.search(r'^\s{2}push:\s*$',ss,re.M): push.append(p.name)
 print('push_enabled_workflows',push); assert push==['build-subsdk9-p116a.yml']
+p115=(root/'.github/workflows/build-subsdk9-p115b.yml').read_text()
+chk('p115_workflow_present_as_disabled_stub', 'workflow_dispatch:' in p115 and not re.search(r'^\s{2}push:\s*$',p115,re.M))
 print('P116A_DROPIN_SOURCE_VERIFY=PASS')

@@ -50,4 +50,5 @@ call 0x802634 -> 0x7ef098
 type10_creator_direct_callers ['0x7ef1b0']
 unique_type10_creator_caller PASS
 push_enabled_workflows ['build-subsdk9-p116a.yml']
+p115_workflow_present_as_disabled_stub PASS
 P116A_DROPIN_SOURCE_VERIFY=PASS

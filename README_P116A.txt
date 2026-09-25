@@ -24,3 +24,9 @@ Test:
 Expected decisive output:
 - vanilla: [NSC:P116A] CALL ... s10=0->1 and exact caller bucket
 - custom Tobi: either no CALL (missing upstream producer) or a CALL with no s10 creation (inner failure)
+
+R130 WORKFLOW HOTFIX
+- Runtime P116A code is unchanged from R129.
+- Explicitly overwrites stale `.github/workflows/build-subsdk9-p115b.yml` as workflow_dispatch-only.
+- Re-run `python3 verify_p116a_source.py`; only P116A may be push-enabled.
+- Use shell `&&` chaining so a failed verifier prevents commit/push.
