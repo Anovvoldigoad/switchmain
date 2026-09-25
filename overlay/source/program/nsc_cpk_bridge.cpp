@@ -7056,38 +7056,40 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P105A — dual sibling-controller entry/exit proof (two trampolines, read-only).
+// P105B — single-trampoline sibling-controller proof (boot-safe).
 //
-// Runtime proof from P104B session:
-//   vanilla char91: action707 -> PlayAction(710) at caller main+0x7E6EC8,
-//                   producer inside sibling controller main+0x7E64D4.
-//   custom char281: action707 -> 708, then 708 -> PlayAction(261) at
-//                   caller main+0x7DE558, inside controller main+0x7DDD94.
-//   P104B emitted no GATE rows, proving its exact 0x7EE8E0/mode-path probe did
-//   not observe the failing 708->261 invocation and must not be treated as the
-//   controller-dispatch discriminator.
+// P105A attempted two new whole-function trampolines (+0x4C0 and +0x520).
+// Runtime boot log proved exlaunch aborted while installing the second new
+// trampoline: AllocForTrampoline() exhausted the pinned hook JIT pool before
+// P105A READY. P104B had already proved this lineage can accommodate exactly
+// one additional whole-function trampoline.
 //
-// P105A therefore hooks the two controller ENTRIES themselves:
-//   actor vtable +0x4C0 -> main+0x7DDD94  ABI: (actor, mode), void
-//   actor vtable +0x520 -> main+0x7E64D4  ABI: (actor, mode), void
+// P105B therefore spends that one remaining trampoline only on the failing
+// controller:
+//   actor vtable +0x4C0 -> main+0x7DDD94, ABI (actor, mode), void
 //
-// X30/caller LR is captured before any helper call. Both native functions are
-// executed exactly once with the original (actor, mode). P105A never changes
-// mode, return state, actor state, actions, gates, or controller dispatch.
-// Only player-side actors are sampled. ENTER is logged when pre-action is in
-// 700..711. EXIT is logged when either pre- or post-action is in 700..711.
+// The successful sibling +0x520 is NOT hooked. Its native producer remains
+// observable through the already-installed P50/P59 PlayAction trampoline:
+//   main+0x7E6EC4 -> PlayAction(710), return/caller main+0x7E6EC8.
+// Static v1.70 proof additionally shows +0x520 has exactly one direct BL caller,
+// main+0x488B28. Thus P105B can correlate vanilla +0x520 via existing logs
+// without consuming a second trampoline.
+//
+// X30/caller LR is captured before any helper. Native +0x4C0 executes exactly
+// once with the original (actor, mode). Only player-side focused action 700..711
+// samples are logged. No action/state/gate/mode/controller writes are performed.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP105AController4C0Offset = 0x7DDD94;
-static constexpr ptrdiff_t kP105AController520Offset = 0x7E64D4;
-static constexpr uint32_t kP105ALogLimit = 65536u;
-static std::atomic<uint32_t> g_p105a_seq{0};
+static constexpr ptrdiff_t kP105BController4C0Offset = 0x7DDD94;
+static constexpr ptrdiff_t kP105BController520Offset = 0x7E64D4;
+static constexpr uint32_t kP105BLogLimit = 65536u;
+static std::atomic<uint32_t> g_p105b_seq{0};
 
-static bool P105AFocusedAction(const P93CoreState& st) {
+static bool P105BFocusedAction(const P93CoreState& st) {
     return st.action >= 700u && st.action <= 711u;
 }
 
-static void P105AReadVtableSlots(void* actor, ptrdiff_t& slot4c0_off, ptrdiff_t& slot520_off) {
+static void P105BReadVtableSlots(void* actor, ptrdiff_t& slot4c0_off, ptrdiff_t& slot520_off) {
     slot4c0_off = -1;
     slot520_off = -1;
     if (!actor) return;
@@ -7099,29 +7101,29 @@ static void P105AReadVtableSlots(void* actor, ptrdiff_t& slot4c0_off, ptrdiff_t&
     slot520_off = MainRelativeOffset(slot520);
 }
 
-static void P105ALogController(
-    uint32_t seq, const char* ctrl, ptrdiff_t entry_off, uint32_t phase,
-    void* actor, uint32_t side, uint32_t cid, uint32_t mode,
-    ptrdiff_t caller_off, const P93CoreState& pre, const P93CoreState& cur,
-    ptrdiff_t slot4c0_off, ptrdiff_t slot520_off) {
+static void P105BLog4C0(
+    uint32_t seq, uint32_t phase, void* actor, uint32_t side, uint32_t cid,
+    uint32_t mode, ptrdiff_t caller_off, const P93CoreState& pre,
+    const P93CoreState& cur, ptrdiff_t slot4c0_off, ptrdiff_t slot520_off) {
     const ptrdiff_t callsite_off = caller_off >= 4 ? caller_off - 4 : -1;
     Logging.Log(
-        "[NSC:P105A] CTRL seq=%u ctrl=%s phase=%u entry_off=0x%lx actor=%p side=%u char=%u "
+        "[NSC:P105B] CTRL4C0 seq=%u phase=%u entry_off=0x%lx actor=%p side=%u char=%u "
         "mode=%u caller_off=0x%lx callsite_off=0x%lx action=%u->%u "
         "e60=%08x->%08x e70=%08x->%08x e90=%08x->%08x "
         "e94=%08x->%08x e98=%08x->%08x e9c=%08x->%08x ea0=%08x->%08x ea4=%08x->%08x "
         "bda4=%u->%u bda8=%u->%u bdc8=%u->%u slot4c0_off=0x%lx slot520_off=0x%lx",
-        seq, ctrl, phase, static_cast<unsigned long>(entry_off), actor, side, cid, mode,
-        static_cast<unsigned long>(caller_off), static_cast<unsigned long>(callsite_off),
-        pre.action, cur.action,
+        seq, phase, static_cast<unsigned long>(kP105BController4C0Offset), actor,
+        side, cid, mode, static_cast<unsigned long>(caller_off),
+        static_cast<unsigned long>(callsite_off), pre.action, cur.action,
         pre.e60, cur.e60, pre.e70, cur.e70, pre.e90, cur.e90,
         pre.e94, cur.e94, pre.e98, cur.e98, pre.e9c, cur.e9c,
         pre.ea0, cur.ea0, pre.ea4, cur.ea4,
         pre.bda4, cur.bda4, pre.bda8, cur.bda8, pre.bdc8, cur.bdc8,
-        static_cast<unsigned long>(slot4c0_off), static_cast<unsigned long>(slot520_off));
+        static_cast<unsigned long>(slot4c0_off),
+        static_cast<unsigned long>(slot520_off));
 }
 
-HOOK_DEFINE_TRAMPOLINE(P105AController4C0Hook) {
+HOOK_DEFINE_TRAMPOLINE(P105BController4C0Hook) {
     static void Callback(void* actor, uint32_t mode) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
@@ -7134,94 +7136,77 @@ HOOK_DEFINE_TRAMPOLINE(P105AController4C0Hook) {
             return;
         }
 
-        const uint32_t seq = g_p105a_seq.fetch_add(1, std::memory_order_relaxed);
+        const uint32_t seq = g_p105b_seq.fetch_add(1, std::memory_order_relaxed);
         const P93CoreState pre = ReadP93CoreState(actor);
         ptrdiff_t slot4c0_off = -1, slot520_off = -1;
-        P105AReadVtableSlots(actor, slot4c0_off, slot520_off);
-        const bool enter_focused = P105AFocusedAction(pre);
-        if (enter_focused && seq < kP105ALogLimit) {
-            P105ALogController(seq, "4C0", kP105AController4C0Offset, 0,
-                actor, side, cid, mode, caller_off, pre, pre, slot4c0_off, slot520_off);
+        P105BReadVtableSlots(actor, slot4c0_off, slot520_off);
+        const bool enter_focused = P105BFocusedAction(pre);
+        if (enter_focused && seq < kP105BLogLimit) {
+            P105BLog4C0(seq, 0, actor, side, cid, mode, caller_off,
+                        pre, pre, slot4c0_off, slot520_off);
         }
 
         Orig(actor, mode);
 
         const P93CoreState post = ReadP93CoreState(actor);
-        if ((enter_focused || P105AFocusedAction(post)) && seq < kP105ALogLimit) {
-            P105ALogController(seq, "4C0", kP105AController4C0Offset, 1,
-                actor, side, cid, mode, caller_off, pre, post, slot4c0_off, slot520_off);
+        if ((enter_focused || P105BFocusedAction(post)) && seq < kP105BLogLimit) {
+            P105BLog4C0(seq, 1, actor, side, cid, mode, caller_off,
+                        pre, post, slot4c0_off, slot520_off);
         }
     }
 };
 
-HOOK_DEFINE_TRAMPOLINE(P105AController520Hook) {
-    static void Callback(void* actor, uint32_t mode) {
-        uintptr_t caller_lr = 0;
-        asm volatile("mov %0, x30" : "=r"(caller_lr));
-        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
-
-        uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
-        const bool valid_player = ReadActorIdentity(actor, side, cid) && side == 0u;
-        if (!valid_player) {
-            Orig(actor, mode);
-            return;
-        }
-
-        const uint32_t seq = g_p105a_seq.fetch_add(1, std::memory_order_relaxed);
-        const P93CoreState pre = ReadP93CoreState(actor);
-        ptrdiff_t slot4c0_off = -1, slot520_off = -1;
-        P105AReadVtableSlots(actor, slot4c0_off, slot520_off);
-        const bool enter_focused = P105AFocusedAction(pre);
-        if (enter_focused && seq < kP105ALogLimit) {
-            P105ALogController(seq, "520", kP105AController520Offset, 0,
-                actor, side, cid, mode, caller_off, pre, pre, slot4c0_off, slot520_off);
-        }
-
-        Orig(actor, mode);
-
-        const P93CoreState post = ReadP93CoreState(actor);
-        if ((enter_focused || P105AFocusedAction(post)) && seq < kP105ALogLimit) {
-            P105ALogController(seq, "520", kP105AController520Offset, 1,
-                actor, side, cid, mode, caller_off, pre, post, slot4c0_off, slot520_off);
-        }
-    }
-};
-
-static bool InstallP105ADualSiblingControllerTraceInternal() {
+static bool InstallP105BSingleTrampolineControllerTraceInternal() {
     static constexpr uint32_t sig4c0[] = {
         0xD10243FF, 0xF90023FE, 0xA90567FA, 0xA9065FF8,
         0xA90757F6, 0xA9084FF4, 0x52809788, 0x72A00028,
     };
-    static constexpr uint32_t sig520[] = {
-        0xD10683FF, 0xA9147BFD, 0xA9156FFC, 0xA91667FA,
-        0xA9175FF8, 0xA91857F6, 0xA9194FF4, 0x5280E408,
+    static constexpr uint32_t sig520Producer[] = {
+        0x528058C1, // 0x7E6EA8 MOV W1,#710
     };
-    if (!MatchWords(kP105AController4C0Offset, sig4c0)) {
-        LogFingerprintFail("P105A_CTRL_4C0_7DDD94", kP105AController4C0Offset);
+    static constexpr uint32_t sig520Call[] = {
+        0x97FDFF32, // 0x7E6EC4 BL PlayAction
+    };
+    static constexpr uint32_t sig520DirectWrapper[] = {
+        0x940D766B, // 0x488B28 BL 0x7E64D4
+    };
+
+    if (!MatchWords(kP105BController4C0Offset, sig4c0)) {
+        LogFingerprintFail("P105B_CTRL_4C0_7DDD94", kP105BController4C0Offset);
         return false;
     }
-    if (!MatchWords(kP105AController520Offset, sig520)) {
-        LogFingerprintFail("P105A_CTRL_520_7E64D4", kP105AController520Offset);
+    if (!MatchWords(0x7E6EA8, sig520Producer)) {
+        LogFingerprintFail("P105B_520_PRODUCER_7E6EA8", 0x7E6EA8);
         return false;
     }
-    P105AController4C0Hook::InstallAtOffset(kP105AController4C0Offset);
-    P105AController520Hook::InstallAtOffset(kP105AController520Offset);
+    if (!MatchWords(0x7E6EC4, sig520Call)) {
+        LogFingerprintFail("P105B_520_PLAYACTION_7E6EC4", 0x7E6EC4);
+        return false;
+    }
+    if (!MatchWords(0x488B28, sig520DirectWrapper)) {
+        LogFingerprintFail("P105B_520_DIRECT_WRAPPER_488B28", 0x488B28);
+        return false;
+    }
+
+    // Exactly ONE new trampoline. The +0x520 sibling remains native and is
+    // correlated using the existing PlayAction hook/caller 0x7E6EC8.
+    P105BController4C0Hook::InstallAtOffset(kP105BController4C0Offset);
     return true;
 }
-} // anonymous namespace — P105A
+} // anonymous namespace — P105B
 
-void InstallP105ADualSiblingControllerTrace() {
-    // Clean proven parent. P101/P102/P103/P104 are deliberately not installed.
+void InstallP105BSingleTrampolineControllerTrace() {
+    // Clean proven parent. P101/P102/P103/P104/P105A are deliberately absent.
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP105ADualSiblingControllerTraceInternal();
+    const bool ok = InstallP105BSingleTrampolineControllerTraceInternal();
     Logging.Log(
-        "[NSC:P105A] READY parent_p96=1 preserve_p89=1 preserve_p50_event236=1 "
-        "ctrl4c0_7ddd94=1 ctrl520_7e64d4=1 abi_actor_mode_void=1 "
-        "caller_lr_first=1 player_side_only=1 focused_actions_700_711=1 "
-        "p101_p102_p103_p104_not_installed=1 preserve_orig=1 two_new_trampolines=1 "
-        "no_inline_hooks=1 readonly=1 no_actor_write=1 no_action_write=1 no_state_write=1 "
-        "no_gate_write=1 no_mode_write=1 no_dispatch_override=1 no_force708=1 no_force710=1 "
-        "no_char281_branch=1 probe=%u",
+        "[NSC:P105B] READY parent_p96=1 preserve_p89=1 preserve_p50_playaction=1 "
+        "ctrl4c0_7ddd94=1 ctrl520_native_unhooked=1 ctrl520_playaction_caller_7e6ec8=1 "
+        "ctrl520_direct_bl_488b28=1 abi_actor_mode_void=1 caller_lr_first=1 "
+        "player_side_only=1 focused_actions_700_711=1 p101_p102_p103_p104_p105a_not_installed=1 "
+        "preserve_orig=1 one_new_trampoline=1 zero_new_inline_hooks=1 readonly=1 "
+        "no_actor_write=1 no_action_write=1 no_state_write=1 no_gate_write=1 no_mode_write=1 "
+        "no_dispatch_override=1 no_force708=1 no_force710=1 no_char281_branch=1 probe=%u",
         ok ? 1u : 0u);
 }
 
