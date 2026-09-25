@@ -7056,170 +7056,145 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P108A — exact post-708 lifecycle-state restoration (functional candidate).
+// P109A — state137 request provenance probe (READ ONLY).
 //
-// P107A proved that forcing the exact cleanup request 125 directly to state137
-// is sufficient to enter +0x520 and produce native action710, but it bypasses the
-// native state136 controller. Runtime then enters the cinematic with stale setup
-// state (notably E98=63/BDA4=1), producing broken stage/visibility/control/audio
-// lifecycle after 710.
+// P108A is retired: runtime proved that mapping the post-708 cleanup request
+// 125 -> 136 commits state136 and re-enters +0x518 at its mode0 entry, which
+// immediately replays PlayAction707 from main+0x7E485C. That is backwards in
+// the required custom graph and matches the visible Kamui replay/stuck result.
 //
-// Static v1.70 table proof: state125 -> vslot +0x4C0, state136 -> +0x518,
-// state137 -> +0x520. The +0x518 controller at main+0x7E47B8 contains the
-// 707/708 UJ corridor and native participant setup for actions136/138/137.
-// Therefore P108A maps only the exact proven post-708 cleanup request 125 -> 136
-// through the original state-request API, then leaves the native +0x518 -> +0x520
-// maturation and PlayAction710 fully untouched. No direct E94/E9C/control write,
-// no action710 force, and no char281 gameplay branch.
+// Same-session native control gives the real handoff signature: while action707
+// remains active in state136, BDA4/BDA8 matures 1/0 -> 0/1 -> 0/0 and E9C
+// changes 0 -> 137; state137 then commits and +0x520 produces PlayAction710.
+//
+// P109A therefore makes NO state mapping. It hooks the already fingerprinted
+// base request-state gateway main+0x7A89A4 and logs only requests 125/136/137,
+// for both vanilla and custom actors, preserving arguments and return exactly.
+// If vanilla req137 is seen here, caller_off identifies the real producer. If
+// native E9C=137 still appears without a P109 req137 row, the writer bypasses
+// this gateway and the next target is the direct/simple E9C setter family
+// main+0x7A8A9C. No gameplay write, no force708/710, no char281 branch.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP108StateRequestOffset = 0x7A89A4;
-static constexpr ptrdiff_t kP108CleanupCallerReturn = 0x7EB28C;
-static constexpr uint32_t kP108CleanupState = 125u;
-static constexpr uint32_t kP108SetupState = 136u;
-static constexpr uint32_t kP108LogLimit = 64u;
-static std::atomic<uint32_t> g_p108_count{0};
+static constexpr ptrdiff_t kP109StateRequestOffset = 0x7A89A4;
+static constexpr ptrdiff_t kP109SimpleE9CSetterOffset = 0x7A8A9C;
+static constexpr uint32_t kP109State125 = 125u;
+static constexpr uint32_t kP109State136 = 136u;
+static constexpr uint32_t kP109State137 = 137u;
+static constexpr uint32_t kP109LogLimit = 1024u;
+static std::atomic<uint32_t> g_p109_count{0};
 
-HOOK_DEFINE_TRAMPOLINE(P108LifecycleStateBridgeHook) {
+HOOK_DEFINE_TRAMPOLINE(P109State137ProvenanceHook) {
     static uint32_t Callback(void* actor, uint32_t requested_state,
                              uint32_t arg2, uint32_t arg3) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
         const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
 
-        // This function is globally hot. Keep every unrelated state request on an
-        // immediate native fast path before touching actor state.
-        if (caller_off != kP108CleanupCallerReturn || requested_state != kP108CleanupState) {
+        // Global hot path: only the three state IDs relevant to the proven fork
+        // enter diagnostics. Every other request immediately remains native.
+        const bool focused =
+            requested_state == kP109State125 ||
+            requested_state == kP109State136 ||
+            requested_state == kP109State137;
+        if (!focused) {
             return Orig(actor, requested_state, arg2, arg3);
         }
 
         uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
         const bool valid = ReadActorIdentity(actor, side, cid);
         const P93CoreState pre = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
-        const bool semantic = valid && actor && P64QuerySemanticUltimateJutsu(actor);
-        const bool member = valid && p81_data::ContainsOugiAwakeningId(cid);
 
-        const bool bridge =
-            valid && side == 0u && semantic && member &&
-            arg2 == 1u && arg3 == 0u &&
-            pre.action == 708u &&
-            pre.e94 == 63u && pre.e98 == 136u && pre.e9c == 0u &&
-            pre.bda4 == 1u && pre.bda8 == 0u && pre.bdc8 == 0u;
+        uintptr_t slot_e28 = 0;
+        if (valid && actor) {
+            const uintptr_t vtable = *reinterpret_cast<const volatile uintptr_t*>(actor);
+            if (vtable) {
+                slot_e28 = *reinterpret_cast<const volatile uintptr_t*>(vtable + 0xE28);
+            }
+        }
+        const ptrdiff_t slot_e28_off = MainRelativeOffset(slot_e28);
 
-        const uint32_t mapped_state = bridge ? kP108SetupState : requested_state;
-        const uint32_t ret = Orig(actor, mapped_state, arg2, arg3);
+        // Observation only: unchanged requested_state / arg2 / arg3, exactly once.
+        const uint32_t ret = Orig(actor, requested_state, arg2, arg3);
         const P93CoreState post = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
 
-        if (bridge && g_p108_count.fetch_add(1, std::memory_order_relaxed) < kP108LogLimit) {
+        const uint32_t n = valid ? g_p109_count.fetch_add(1, std::memory_order_relaxed) : kP109LogLimit;
+        if (valid && n < kP109LogLimit) {
             Logging.Log(
-                "[NSC:P108A] BRIDGE actor=%p side=%u char=%u caller_off=0x%lx "
-                "req=%u mapped=%u arg2=%u arg3=%u ret=%u action=%u->%u "
-                "e94=%u->%u e98=%u->%u e9c=%u->%u ea4=%08x->%08x "
-                "bda4=%u->%u bda8=%u->%u bdc8=%u->%u semantic=%u member=%u",
-                actor, side, cid, static_cast<unsigned long>(caller_off),
-                requested_state, mapped_state, arg2, arg3, ret,
+                "[NSC:P109A] STATE_REQ n=%u actor=%p side=%u char=%u req=%u arg2=%u arg3=%u "
+                "caller_off=0x%lx ret=%u action=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u "
+                "ea4=%08x->%08x ea8=%08x->%08x bda4=%u->%u bda8=%u->%u bdc8=%u->%u "
+                "slot_e28_off=0x%lx",
+                n, actor, side, cid, requested_state, arg2, arg3,
+                static_cast<unsigned long>(caller_off), ret,
                 pre.action, post.action, pre.e94, post.e94, pre.e98, post.e98,
-                pre.e9c, post.e9c, pre.ea4, post.ea4,
+                pre.e9c, post.e9c, pre.ea4, post.ea4, pre.ea8, post.ea8,
                 pre.bda4, post.bda4, pre.bda8, post.bda8, pre.bdc8, post.bdc8,
-                semantic ? 1u : 0u, member ? 1u : 0u);
+                static_cast<unsigned long>(slot_e28_off));
         }
         return ret;
     }
 };
 
-static bool InstallP108LifecycleStateBridgeInternal() {
-    // main+0x7A89A4 state request implementation. W1=requested state.
+static bool InstallP109State137ProvenanceInternal() {
     static constexpr uint32_t sigStateRequest[] = {
         0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x2A0103F4,
         0xAA0003F3, 0x34000282, 0xF9400268, 0xAA1303E0,
     };
-    // Exact custom cleanup producer: MOV W1,#125; ... BLR X8; return 0x7EB28C.
+    static constexpr uint32_t sigSimpleSetter[] = {
+        0xB90E9C01, // 0x7A8A9C STR W1,[X0,#E9C]
+        0x52800028, // 0x7A8AA0 MOV W8,#1
+        0x52800021, // 0x7A8AA4 MOV W1,#1
+        0xB90EB008, // 0x7A8AA8 STR W8,[X0,#EB0]
+    };
     static constexpr uint32_t sigCleanupProducer[] = {
         0xF81E0FFE, 0xA9014FF4, 0xF9400008, 0x52800FA1,
         0xAA0003F3, 0xF946F908, 0xD63F0100, 0xF9400268,
     };
-    // Generic state dispatcher: read E94, table[state*0x20], mode0, BLR controller.
-    static constexpr uint32_t sigStateDispatcher[] = {
-        0xB94E9675, // 0x7A8310 LDR W21,[X19,#E94]
-    };
-    static constexpr uint32_t sigDispatchCall[] = {
-        0x2A1F03E1, // 0x7A834C MOV W1,WZR
-        0xD63F0100, // 0x7A8350 BLR X8
-    };
-    // Native state136 setup controller (+0x518) and its UJ/participant fingerprints.
+    static constexpr uint32_t sigStateDispatcher[] = {0xB94E9675};
+    static constexpr uint32_t sigDispatchCall[] = {0x2A1F03E1, 0xD63F0100};
     static constexpr uint32_t sigController518[] = {0xF81A0FFD, 0xA9016FFE};
-    static constexpr uint32_t sigController518Action708[] = {0x52805894};
-    static constexpr uint32_t sigController518Participant136[] = {0x52801101};
-    static constexpr uint32_t sigController518Participant138[] = {0x52801141};
-    static constexpr uint32_t sigController518Participant137[] = {0x52801121};
-    // Native state137 handoff controller and exact PlayAction710 producer remain untouched.
+    static constexpr uint32_t sigReplay707Call[] = {0x97FE08CD};
     static constexpr uint32_t sigController520[] = {0xD10683FF};
     static constexpr uint32_t sig710Producer[] = {0x528058C1};
     static constexpr uint32_t sig710Call[] = {0x97FDFF32};
 
-    if (!MatchWords(kP108StateRequestOffset, sigStateRequest)) {
-        LogFingerprintFail("P108_STATE_REQUEST_7A89A4", kP108StateRequestOffset);
-        return false;
+    if (!MatchWords(kP109StateRequestOffset, sigStateRequest)) {
+        LogFingerprintFail("P109_STATE_REQUEST_7A89A4", kP109StateRequestOffset); return false;
+    }
+    if (!MatchWords(kP109SimpleE9CSetterOffset, sigSimpleSetter)) {
+        LogFingerprintFail("P109_SIMPLE_E9C_SETTER_7A8A9C", kP109SimpleE9CSetterOffset); return false;
     }
     if (!MatchWords(0x7EB270, sigCleanupProducer)) {
-        LogFingerprintFail("P108_CLEANUP_PRODUCER_7EB270", 0x7EB270);
-        return false;
+        LogFingerprintFail("P109_CLEANUP_PRODUCER_7EB270", 0x7EB270); return false;
     }
-    if (!MatchWords(0x7A8310, sigStateDispatcher)) {
-        LogFingerprintFail("P108_STATE_DISPATCH_E94_7A8310", 0x7A8310);
-        return false;
-    }
-    if (!MatchWords(0x7A834C, sigDispatchCall)) {
-        LogFingerprintFail("P108_STATE_DISPATCH_CALL_7A834C", 0x7A834C);
-        return false;
+    if (!MatchWords(0x7A8310, sigStateDispatcher) || !MatchWords(0x7A834C, sigDispatchCall)) {
+        LogFingerprintFail("P109_STATE_DISPATCH", 0x7A8310); return false;
     }
     if (!MatchWords(0x7E47B8, sigController518)) {
-        LogFingerprintFail("P108_NATIVE_CTRL518_7E47B8", 0x7E47B8);
-        return false;
+        LogFingerprintFail("P109_CTRL518_7E47B8", 0x7E47B8); return false;
     }
-    if (!MatchWords(0x7E4828, sigController518Action708)) {
-        LogFingerprintFail("P108_CTRL518_ACTION708_7E4828", 0x7E4828);
-        return false;
+    if (!MatchWords(0x7E4858, sigReplay707Call)) {
+        LogFingerprintFail("P109_CTRL518_PLAYACTION_7E4858", 0x7E4858); return false;
     }
-    if (!MatchWords(0x7E54A0, sigController518Participant136)) {
-        LogFingerprintFail("P108_CTRL518_PARTICIPANT136_7E54A0", 0x7E54A0);
-        return false;
-    }
-    if (!MatchWords(0x7E5504, sigController518Participant138)) {
-        LogFingerprintFail("P108_CTRL518_PARTICIPANT138_7E5504", 0x7E5504);
-        return false;
-    }
-    if (!MatchWords(0x7E5570, sigController518Participant137)) {
-        LogFingerprintFail("P108_CTRL518_PARTICIPANT137_7E5570", 0x7E5570);
-        return false;
-    }
-    if (!MatchWords(0x7E64D4, sigController520)) {
-        LogFingerprintFail("P108_NATIVE_CTRL520_7E64D4", 0x7E64D4);
-        return false;
-    }
-    if (!MatchWords(0x7E6EA8, sig710Producer)) {
-        LogFingerprintFail("P108_NATIVE_710_PRODUCER_7E6EA8", 0x7E6EA8);
-        return false;
-    }
-    if (!MatchWords(0x7E6EC4, sig710Call)) {
-        LogFingerprintFail("P108_NATIVE_710_CALL_7E6EC4", 0x7E6EC4);
-        return false;
+    if (!MatchWords(0x7E64D4, sigController520) ||
+        !MatchWords(0x7E6EA8, sig710Producer) || !MatchWords(0x7E6EC4, sig710Call)) {
+        LogFingerprintFail("P109_CTRL520_710", 0x7E64D4); return false;
     }
 
-    // One diagnostic trampoline is replaced by one functional trampoline.
-    P108LifecycleStateBridgeHook::InstallAtOffset(kP108StateRequestOffset);
+    P109State137ProvenanceHook::InstallAtOffset(kP109StateRequestOffset);
     return true;
 }
-} // anonymous namespace — P108A
+} // anonymous namespace — P109A
 
-void InstallP108Post708LifecycleBridge() {
+void InstallP109State137ProvenanceProbe() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP108LifecycleStateBridgeInternal();
+    const bool ok = InstallP109State137ProvenanceInternal();
     Logging.Log(
-        "[NSC:P108A] READY parent_p96=1 state_request_7a89a4=1 "
-        "exact_cleanup_caller_7eb28c=1 map125_to136=1 native_setup518=1 native_store_dispatch=1 "
-        "one_new_trampoline=1 no_direct_state_write=1 no_force708=1 no_force710=1 "
-        "no_char281_branch=1 lifecycle_candidate=%u",
+        "[NSC:P109A] READY parent_p96=1 readonly=1 state_request_7a89a4=1 "
+        "focus_states_125_136_137=1 alt_setter_7a8a9c_fingerprinted=1 "
+        "p108_mapping_retired=1 one_new_trampoline=1 preserve_orig=1 no_state_map=1 "
+        "no_direct_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1 probe_ok=%u",
         ok ? 1u : 0u);
 }
 
