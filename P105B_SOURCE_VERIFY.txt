@@ -31,6 +31,8 @@ no_force708 PASS
 no_mode_assignment PASS
 no_actor_state_write PASS
 no_char281_branch PASS
+p105b_log_bounds [('CTRL4C0', 307), ('STATE4C0', 320), ('READY', 209)]
+p105b_log_buffer_guard PASS
 paired main 1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0
 restore main 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
 fp 0x7ddd94 d10243ff PASS

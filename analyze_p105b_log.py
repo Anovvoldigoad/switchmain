@@ -6,6 +6,7 @@ if len(sys.argv)!=2:
 p=Path(sys.argv[1]); lines=p.read_text(errors='replace').splitlines()
 ready=[x for x in lines if '[NSC:P105B] READY' in x]
 ctrl=[x for x in lines if '[NSC:P105B] CTRL4C0' in x]
+state=[x for x in lines if '[NSC:P105B] STATE4C0' in x]
 play=[]
 for x in lines:
     if '[NSC:P59A] PLAY_CALL' not in x: continue
@@ -17,6 +18,8 @@ print('P105B_READY',len(ready))
 for x in ready[:3]: print(x)
 print('P105B_CTRL4C0_ROWS',len(ctrl))
 for x in ctrl: print(x)
+print('P105B_STATE4C0_ROWS',len(state))
+for x in state: print(x)
 print('PRODUCER_PLAY_CALLS',len(play))
 for x in play: print(x)
 if not ready:
@@ -29,4 +32,4 @@ else:
         m=re.search(r'phase=0.*?mode=(\d+)',x)
         if m: modes.append(int(m.group(1)))
     print('CTRL4C0_ENTER_MODES',modes)
-    print('VERDICT: correlate each CTRL4C0 ENTER/EXIT interval with P59 caller 0x7DE558 (261). Caller 0x7E6EC8 is native +0x520 -> 710 control evidence.')
+    print('VERDICT: correlate CTRL4C0/STATE4C0 pairs by seq+phase with P59 caller 0x7DE558 (261). Caller 0x7E6EC8 is native +0x520 -> 710 control evidence.')

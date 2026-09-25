@@ -7109,18 +7109,23 @@ static void P105BLog4C0(
     Logging.Log(
         "[NSC:P105B] CTRL4C0 seq=%u phase=%u entry_off=0x%lx actor=%p side=%u char=%u "
         "mode=%u caller_off=0x%lx callsite_off=0x%lx action=%u->%u "
-        "e60=%08x->%08x e70=%08x->%08x e90=%08x->%08x "
-        "e94=%08x->%08x e98=%08x->%08x e9c=%08x->%08x ea0=%08x->%08x ea4=%08x->%08x "
-        "bda4=%u->%u bda8=%u->%u bdc8=%u->%u slot4c0_off=0x%lx slot520_off=0x%lx",
+        "slot4c0_off=0x%lx slot520_off=0x%lx",
         seq, phase, static_cast<unsigned long>(kP105BController4C0Offset), actor,
         side, cid, mode, static_cast<unsigned long>(caller_off),
         static_cast<unsigned long>(callsite_off), pre.action, cur.action,
+        static_cast<unsigned long>(slot4c0_off),
+        static_cast<unsigned long>(slot520_off));
+    Logging.Log(
+        "[NSC:P105B] STATE4C0 seq=%u phase=%u "
+        "e60=%08x->%08x e70=%08x->%08x e90=%08x->%08x "
+        "e94=%08x->%08x e98=%08x->%08x e9c=%08x->%08x "
+        "ea0=%08x->%08x ea4=%08x->%08x "
+        "bda4=%u->%u bda8=%u->%u bdc8=%u->%u",
+        seq, phase,
         pre.e60, cur.e60, pre.e70, cur.e70, pre.e90, cur.e90,
         pre.e94, cur.e94, pre.e98, cur.e98, pre.e9c, cur.e9c,
         pre.ea0, cur.ea0, pre.ea4, cur.ea4,
-        pre.bda4, cur.bda4, pre.bda8, cur.bda8, pre.bdc8, cur.bdc8,
-        static_cast<unsigned long>(slot4c0_off),
-        static_cast<unsigned long>(slot520_off));
+        pre.bda4, cur.bda4, pre.bda8, cur.bda8, pre.bdc8, cur.bdc8);
 }
 
 HOOK_DEFINE_TRAMPOLINE(P105BController4C0Hook) {
@@ -7200,13 +7205,10 @@ void InstallP105BSingleTrampolineControllerTrace() {
     InstallP96AActionDescriptorTransitionTrace();
     const bool ok = InstallP105BSingleTrampolineControllerTraceInternal();
     Logging.Log(
-        "[NSC:P105B] READY parent_p96=1 preserve_p89=1 preserve_p50_playaction=1 "
-        "ctrl4c0_7ddd94=1 ctrl520_native_unhooked=1 ctrl520_playaction_caller_7e6ec8=1 "
-        "ctrl520_direct_bl_488b28=1 abi_actor_mode_void=1 caller_lr_first=1 "
-        "player_side_only=1 focused_actions_700_711=1 p101_p102_p103_p104_p105a_not_installed=1 "
-        "preserve_orig=1 one_new_trampoline=1 zero_new_inline_hooks=1 readonly=1 "
-        "no_actor_write=1 no_action_write=1 no_state_write=1 no_gate_write=1 no_mode_write=1 "
-        "no_dispatch_override=1 no_force708=1 no_force710=1 no_char281_branch=1 probe=%u",
+        "[NSC:P105B] READY parent_p96=1 ctrl4c0_7ddd94=1 "
+        "ctrl520_native_unhooked=1 ctrl520_playaction_caller_7e6ec8=1 "
+        "one_new_trampoline=1 zero_new_inline_hooks=1 readonly=1 "
+        "no_force708=1 no_force710=1 probe=%u",
         ok ? 1u : 0u);
 }
 

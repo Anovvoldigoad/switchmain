@@ -33,7 +33,7 @@ checks={
  'focused_700_711':'st.action >= 700u && st.action <= 711u' in block,
  'logs_mode':'mode=%u' in block,
  'logs_caller':'caller_off=0x%lx' in block and 'callsite_off=0x%lx' in block,
- 'logs_state':'e60=%08x->%08x' in block and 'e94=%08x->%08x' in block and 'bda4=%u->%u' in block,
+ 'logs_state':'[NSC:P105B] STATE4C0' in block and 'e60=%08x->%08x' in block and 'e94=%08x->%08x' in block and 'bda4=%u->%u' in block,
  'logs_vslots':'slot4c0_off=0x%lx' in block and 'slot520_off=0x%lx' in block,
  '520_native_unhooked_marker':'ctrl520_native_unhooked=1' in block,
  '520_playaction_correlation':'ctrl520_playaction_caller_7e6ec8=1' in block,
@@ -50,6 +50,29 @@ checks={
  'no_char281_branch':not re.search(r'(?:char_id|cid|e54)\s*==\s*281|281\s*==\s*(?:char_id|cid|e54)',block),
 }
 for k,v in checks.items(): chk(k,v)
+# LoggerMgr uses a 512-byte snprintf buffer and warnings are fatal. Guard every
+# P105B format string with a conservative expansion bound so CI catches growth
+# before the C++ compile reaches -Wformat-truncation.
+def p105b_log_format_bounds(src):
+    out=[]
+    for m in re.finditer(r'Logging\.Log\((.*?)\);',src,re.S):
+        expr=m.group(1)
+        lits=re.findall(r'"((?:\\.|[^"\\])*)"',expr)
+        if not lits: continue
+        fmt=''.join(bytes(x,'utf-8').decode('unicode_escape') for x in lits)
+        if '[NSC:P105B]' not in fmt: continue
+        total=0; last=0
+        for fm in re.finditer(r'%(?:0?8)?(?:l)?[uxp]',fmt):
+            total += len(fmt[last:fm.start()])
+            sp=fm.group(0)
+            total += 10 if sp=='%u' else 8 if sp=='%08x' else 16 if sp=='%lx' else 18
+            last=fm.end()
+        total += len(fmt[last:])
+        out.append((fmt.split()[1],total))
+    return out
+bounds=p105b_log_format_bounds(block)
+print('p105b_log_bounds',bounds)
+chk('p105b_log_buffer_guard',bool(bounds) and all(n < 512 for _,n in bounds))
 def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 paired=root/'paired/atmosphere/contents/0100FA10190A0000/exefs/main'
 restore=root/'restore/atmosphere/contents/0100FA10190A0000/exefs/main'
