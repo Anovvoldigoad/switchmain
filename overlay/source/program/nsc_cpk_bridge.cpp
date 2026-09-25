@@ -7056,141 +7056,112 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P111A — victim / participant state provenance probe (READ ONLY).
+// P112A — exact state125 producer entry provenance (READ ONLY).
 //
-// P110A proved that the custom Tobi own-UJ never enters the native type10
-// cinematic manager at all. The same-session vanilla control shows the victim
-// already in state126 / PlayAction12 (caller main+0x7DE9B0) before the manager
-// appears, while the failing custom route drives the victim through state39 /121.
-// Therefore manager absence is downstream. The new root frontier is victim-side
-// UJ participant admission.
+// P111A proved the successful vanilla cinematic victim route is:
+//   victim req125 @ caller 0x7EB28C -> req126 @ 0x7DDFE4 -> PlayAction12
+// while the failing custom Tobi victim never receives req125/126/12 and instead
+// follows state39/121.  The same native function main+0x7EB270 is also reached
+// later by the failing attacker at action708 as cleanup.  P112A therefore moves
+// the single diagnostic trampoline to the WHOLE FUNCTION main+0x7EB270 and
+// captures the incoming LR before any helper call.  It records which actor was
+// targeted and the current peer/enemy context, then calls the native function
+// exactly once with the original actor.
 //
-// P111A retires the manager trampoline and reuses the single diagnostic slot at
-// the native request-state gateway main+0x7A89A4. It logs ONLY the focused
-// participant states 39/81/121/125/126/137 for every actor, preserving the
-// original requested state, arguments and return exactly. This gives exact
-// caller provenance when a focused transition uses the gateway. The direct
-// simple E9C setter main+0x7A8A9C is fingerprinted but NOT hooked; therefore a
-// state transition observed by the inherited P93/P94/P95 traces without a P111
-// request row is evidence that the transition bypassed this gateway.
-//
-// No gameplay write, no state remap, no force708/710, no char281 branch.
+// This probe does NOT map 39/121/125/126/137, does NOT call the producer
+// manually, and does NOT force action708/710.  P50 victim-safe shadows remain.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP111StateRequestOffset = 0x7A89A4;
-static constexpr ptrdiff_t kP111SimpleE9CSetterOffset = 0x7A8A9C;
-static constexpr uint32_t kP111State39  = 39u;
-static constexpr uint32_t kP111State81  = 81u;
-static constexpr uint32_t kP111State121 = 121u;
-static constexpr uint32_t kP111State125 = 125u;
-static constexpr uint32_t kP111State126 = 126u;
-static constexpr uint32_t kP111State137 = 137u;
-static constexpr uint32_t kP111LogLimit = 2048u;
-static std::atomic<uint32_t> g_p111_count{0};
+static constexpr ptrdiff_t kP112State125ProducerOffset = 0x7EB270;
+static constexpr ptrdiff_t kP112StateRequestOffset = 0x7A89A4;
+static constexpr ptrdiff_t kP112Victim126CallerReturn = 0x7DDFE4;
+static constexpr ptrdiff_t kP112VictimAction12Return = 0x7DE9B0;
+static constexpr uint32_t kP112LogLimit = 1024u;
+static std::atomic<uint32_t> g_p112_count{0};
 
-HOOK_DEFINE_TRAMPOLINE(P111VictimStateProvenanceHook) {
-    static uint32_t Callback(void* actor, uint32_t requested_state,
-                             uint32_t arg2, uint32_t arg3) {
+HOOK_DEFINE_TRAMPOLINE(P112State125ProducerEntryHook) {
+    static void Callback(void* actor) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
         const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
-
-        // Global hot path. Do not inspect actor memory for unrelated states.
-        const bool focused =
-            requested_state == kP111State39  ||
-            requested_state == kP111State81  ||
-            requested_state == kP111State121 ||
-            requested_state == kP111State125 ||
-            requested_state == kP111State126 ||
-            requested_state == kP111State137;
-        if (!focused) {
-            return Orig(actor, requested_state, arg2, arg3);
-        }
 
         uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
         const bool valid = ReadActorIdentity(actor, side, cid);
         const P93CoreState pre = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
 
-        uintptr_t slot_e28 = 0;
-        if (valid && actor) {
-            const uintptr_t vtable = *reinterpret_cast<const volatile uintptr_t*>(actor);
-            if (vtable) slot_e28 = *reinterpret_cast<const volatile uintptr_t*>(vtable + 0xE28);
-        }
-        const ptrdiff_t slot_e28_off = MainRelativeOffset(slot_e28);
+        // Existing native vslot +0xDD0 enemy getter already used by Event236.
+        // Observation only: no peer writes and no manual producer invocation.
+        void* peer = valid ? GetEventTargetActor(actor, 1) : nullptr;
+        uint32_t pside = 0xFFFFFFFFu, pcid = 0xFFFFFFFFu;
+        const bool pvalid = ReadActorIdentity(peer, pside, pcid);
+        const P93CoreState ppre = (pvalid && peer) ? ReadP93CoreState(peer) : P93CoreState{};
 
-        // Observation only: unchanged request and args, exactly once.
-        const uint32_t ret = Orig(actor, requested_state, arg2, arg3);
+        // Native producer exactly once, unchanged actor.
+        Orig(actor);
+
         const P93CoreState post = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
-
-        const uint32_t n = valid ? g_p111_count.fetch_add(1, std::memory_order_relaxed) : kP111LogLimit;
-        if (valid && n < kP111LogLimit) {
+        const uint32_t n = valid ? g_p112_count.fetch_add(1, std::memory_order_relaxed) : kP112LogLimit;
+        if (valid && n < kP112LogLimit) {
             Logging.Log(
-                "[NSC:P111A] VSTATE n=%u actor=%p side=%u char=%u req=%u arg2=%u arg3=%u "
-                "caller_off=0x%lx ret=%u action=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u "
-                "e90=%08x->%08x ea4=%08x->%08x ea8=%08x->%08x "
-                "bda4=%u->%u bda8=%u->%u bdc8=%u->%u slot_e28_off=0x%lx",
-                n, actor, side, cid, requested_state, arg2, arg3,
-                static_cast<unsigned long>(caller_off), ret,
+                "[NSC:P112A] ENTRY n=%u actor=%p side=%u char=%u caller_off=0x%lx "
+                "action=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u "
+                "bda4=%u->%u bda8=%u->%u bdc8=%u->%u "
+                "peer=%p pvalid=%u pside=%u pchar=%u paction=%u pe94=%u pe9c=%u",
+                n, actor, side, cid, static_cast<unsigned long>(caller_off),
                 pre.action, post.action, pre.e94, post.e94, pre.e98, post.e98,
-                pre.e9c, post.e9c, pre.e90, post.e90,
-                pre.ea4, post.ea4, pre.ea8, post.ea8,
-                pre.bda4, post.bda4, pre.bda8, post.bda8, pre.bdc8, post.bdc8,
-                static_cast<unsigned long>(slot_e28_off));
+                pre.e9c, post.e9c, pre.bda4, post.bda4, pre.bda8, post.bda8,
+                pre.bdc8, post.bdc8, peer, pvalid ? 1u : 0u, pside, pcid,
+                ppre.action, ppre.e94, ppre.e9c);
         }
-        return ret;
     }
 };
 
-static bool InstallP111VictimStateProvenanceInternal() {
+static bool InstallP112State125ProducerEntryInternal() {
+    // main+0x7EB270, vslot +0x1988 implementation used by the proven req125 route.
+    static constexpr uint32_t sigProducerEntry[] = {
+        0xF81E0FFE, 0xA9014FF4, 0xF9400008, 0x52800FA1,
+        0xAA0003F3, 0xF946F908, 0xD63F0100, 0xF9400268,
+    };
+    // Request-state gateway and successful victim downstream landmarks retained
+    // only as static proof.  None of these are hooked by P112A.
     static constexpr uint32_t sigStateRequest[] = {
         0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x2A0103F4,
-        0xAA0003F3, 0x34000282, 0xF9400268, 0xAA1303E0,
     };
-    static constexpr uint32_t sigSimpleSetter[] = {
-        0xB90E9C01, 0x52800028, 0x52800021, 0xB90EB008,
+    static constexpr uint32_t sigVictim126[] = {
+        0xF9400008, 0xAA1303E0, 0x52800FC1, 0xF946F908, 0xD63F0100,
     };
-    // Vanilla victim cinematic controller: mode0 issues PlayAction12.
     static constexpr uint32_t sigVictimAction12[] = {
         0x1E2E1000, 0x52979D08, 0x12800002, 0xAA1303E0,
         0x52800181, 0x2A1F03E3, 0x2A1F03E4, 0x8B080274,
         0x97FE2078, 0xAA1303E0,
     };
-    // P110-established manager landmarks retained as static proof that the
-    // participant chain is upstream of manager phase3/state137.
-    static constexpr uint32_t sigManagerEntry[] = {0xD10183FF, 0xFD000BE8, 0xA90267FE, 0xA9035FF8};
-    static constexpr uint32_t sigManagerState137[] = {
-        0xB9403260, 0x9404C05E, 0xAA0003F6, 0x94011909,
-        0xF94002C8, 0xAA0003F7, 0x52801121, 0xAA1603E0,
-        0xF946F908, 0xD63F0100, 0xF94002E8,
-    };
 
-    if (!MatchWords(kP111StateRequestOffset, sigStateRequest)) {
-        LogFingerprintFail("P111_STATE_REQUEST_7A89A4", kP111StateRequestOffset); return false;
+    if (!MatchWords(kP112State125ProducerOffset, sigProducerEntry)) {
+        LogFingerprintFail("P112_STATE125_PRODUCER_7EB270", kP112State125ProducerOffset); return false;
     }
-    if (!MatchWords(kP111SimpleE9CSetterOffset, sigSimpleSetter)) {
-        LogFingerprintFail("P111_SIMPLE_E9C_SETTER_7A8A9C", kP111SimpleE9CSetterOffset); return false;
+    if (!MatchWords(kP112StateRequestOffset, sigStateRequest)) {
+        LogFingerprintFail("P112_STATE_REQUEST_7A89A4", kP112StateRequestOffset); return false;
+    }
+    if (!MatchWords(0x7DDFD0, sigVictim126)) {
+        LogFingerprintFail("P112_VICTIM126_7DDFD0", 0x7DDFD0); return false;
     }
     if (!MatchWords(0x7DE98C, sigVictimAction12)) {
-        LogFingerprintFail("P111_VICTIM_ACTION12_7DE98C", 0x7DE98C); return false;
-    }
-    if (!MatchWords(0x74F954, sigManagerEntry) || !MatchWords(0x74FF54, sigManagerState137)) {
-        LogFingerprintFail("P111_MANAGER_PROOF", 0x74F954); return false;
+        LogFingerprintFail("P112_VICTIM_ACTION12_7DE98C", 0x7DE98C); return false;
     }
 
-    P111VictimStateProvenanceHook::InstallAtOffset(kP111StateRequestOffset);
+    P112State125ProducerEntryHook::InstallAtOffset(kP112State125ProducerOffset);
     return true;
 }
-} // anonymous namespace — P111A
+} // anonymous namespace — P112A
 
-void InstallP111VictimStateProvenanceProbe() {
+void InstallP112State125ProducerEntryProbe() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP111VictimStateProvenanceInternal();
+    const bool ok = InstallP112State125ProducerEntryInternal();
     Logging.Log(
-        "[NSC:P111A] READY parent_p96=1 readonly=1 victim_state_gateway_7a89a4=1 "
-        "focus_39_81_121_125_126_137=1 simple_setter_7a8a9c_fingerprinted=1 "
-        "victim_action12_7de9b0_proven=1 p110_manager_retired=1 one_new_trampoline=1 "
-        "preserve_orig=1 no_state_map=1 no_direct_state_write=1 no_force708=1 "
-        "no_force710=1 no_char281_branch=1 probe_ok=%u",
+        "[NSC:P112A] READY parent_p96=1 readonly=1 producer_7eb270=1 capture_lr_first=1 "
+        "peer_vslot_dd0=1 victim125_126_action12_static_proof=1 p111_gateway_retired=1 "
+        "one_new_trampoline=1 preserve_orig_once=1 no_state_map=1 no_manual_producer_call=1 "
+        "no_direct_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1 probe_ok=%u",
         ok ? 1u : 0u);
 }
 

@@ -1,0 +1,73 @@
+producer_abi_void_actor PASS
+caller_first PASS
+peer_after_caller PASS
+orig_exactly_once PASS
+orig_unchanged PASS
+post_after_orig PASS
+entrypoint PASS
+decl PASS
+parent_p96 PASS
+ready PASS
+entry_log PASS
+producer_offset PASS
+request_offset PASS
+victim126_landmark PASS
+victim12_landmark PASS
+peer_vslot_dd0 PASS
+one_p112_trampoline PASS
+no_p112_inline PASS
+p111_runtime_absent PASS
+p110_runtime_absent PASS
+p109_runtime_absent PASS
+p108_runtime_absent PASS
+p107_runtime_absent PASS
+p106_runtime_absent PASS
+p105_runtime_absent PASS
+p104_runtime_absent PASS
+p103_absent PASS
+p102_hold74_absent PASS
+p101_hold125_absent PASS
+victim_shadow_preserved PASS
+p111_retired PASS
+no_manual_call_claim PASS
+no_state_map PASS
+no_direct_state_write PASS
+no_force710 PASS
+no_force708 PASS
+no_char281_branch PASS
+no_manual_producer_call PASS
+p112_log_bounds [('ENTRY', 439), ('READY', 331)]
+p112_log_buffer_guard PASS
+paired main 1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0
+restore main 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+fp 0x7eb270 f81e0ffe PASS
+fp 0x7eb274 a9014ff4 PASS
+fp 0x7eb278 f9400008 PASS
+fp 0x7eb27c 52800fa1 PASS
+fp 0x7eb280 aa0003f3 PASS
+fp 0x7eb284 f946f908 PASS
+fp 0x7eb288 d63f0100 PASS
+fp 0x7eb28c f9400268 PASS
+fp 0x7a89a4 a9bd5ffe PASS
+fp 0x7a89a8 a90157f6 PASS
+fp 0x7a89ac a9024ff4 PASS
+fp 0x7a89b0 2a0103f4 PASS
+fp 0x7ddfd0 f9400268 PASS
+fp 0x7ddfd4 aa1303e0 PASS
+fp 0x7ddfd8 52800fc1 PASS
+fp 0x7ddfdc f946f908 PASS
+fp 0x7ddfe0 d63f0100 PASS
+fp 0x7ddfe4 f9400268 PASS
+fp 0x7de98c 1e2e1000 PASS
+fp 0x7de990 52979d08 PASS
+fp 0x7de994 12800002 PASS
+fp 0x7de998 aa1303e0 PASS
+fp 0x7de99c 52800181 PASS
+fp 0x7de9a0 2a1f03e3 PASS
+fp 0x7de9a4 2a1f03e4 PASS
+fp 0x7de9a8 8b080274 PASS
+fp 0x7de9ac 97fe2078 PASS
+fp 0x7de9b0 aa1303e0 PASS
+call 0x7de9ac -> 0x766b8c
+push_enabled_workflows ['build-subsdk9-p112a.yml']
+P112A_DROPIN_SOURCE_VERIFY=PASS
