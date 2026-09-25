@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP112BState125ProducerEntryProbe();
+    nsc::InstallP113ACinematicSessionSetupProbe();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P112A state125 producer entry provenance exception");
+    EXL_ABORT("NSC P113A cinematic session setup provenance exception");
 }

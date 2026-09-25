@@ -7056,31 +7056,47 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P112B — exact state125 producer entry provenance (READ ONLY).
+// P113A — cinematic type10 session setup provenance (READ ONLY).
 //
-// P111A proved the successful vanilla cinematic victim route is:
-//   victim req125 @ caller 0x7EB28C -> req126 @ 0x7DDFE4 -> PlayAction12
-// while the failing custom Tobi victim never receives req125/126/12 and instead
-// follows state39/121.  The same native function main+0x7EB270 is also reached
-// later by the failing attacker at action708 as cleanup.  P112B therefore moves
-// the single diagnostic trampoline to the WHOLE FUNCTION main+0x7EB270 and
-// captures the incoming LR before any helper call.  It records which actor was
-// targeted and the current peer/enemy context, then calls the native function
-// exactly once with the original actor.
+// P110 proved successful vanilla UJ owns a type10 cinematic/session-manager
+// record while failing custom Tobi never reaches the type10 manager at all.
+// P112B further proved that the victim state125/126/action12 route is NOT
+// universal: a separate successful vanilla UJ reached action710 without any
+// call to main+0x7EB270.  Therefore P113A moves the single diagnostic
+// trampoline to the universal outer cinematic-session setup wrapper
+// main+0x7EF098.
 //
-// This probe does NOT map 39/121/125/126/137, does NOT call the producer
-// manually, and does NOT force action708/710.  P50 victim-safe shadows remain.
+// Static v1.70 chain retained as proof:
+//   0x7EF098 -> 0x7EF128
+//   0x7EF128 queries active session type9/type6 via 0x750860,
+//   resolves the peer, derives peer +0xCB8 context, then
+//   0x7EF1B0 -> 0x7514AC, whose wrapper hard-codes type=10 and calls 0x750C78.
+//
+// The hook captures incoming LR before helpers, snapshots actor + peer, queries
+// active session types 6/9/10 before and after Orig(actor), and preserves the
+// native return.  No session creation is called manually and no gameplay state
+// or action is rewritten.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP112State125ProducerOffset = 0x7EB270;
-static constexpr ptrdiff_t kP112StateRequestOffset = 0x7A89A4;
-static constexpr ptrdiff_t kP112Victim126CallerReturn = 0x7DDFE4;
-static constexpr ptrdiff_t kP112VictimAction12Return = 0x7DE9B0;
-static constexpr uint32_t kP112LogLimit = 1024u;
-static std::atomic<uint32_t> g_p112_count{0};
+static constexpr ptrdiff_t kP113SessionSetupOuterOffset = 0x7EF098;
+static constexpr ptrdiff_t kP113SessionSetupInnerOffset = 0x7EF128;
+static constexpr ptrdiff_t kP113SessionQueryOffset = 0x750860;
+static constexpr ptrdiff_t kP113Type10CreatorOffset = 0x7514AC;
+static constexpr ptrdiff_t kP113Type10CreatorCallsite = 0x7EF1B0;
+static constexpr ptrdiff_t kP113ManagerTypeDispatchOffset = 0x74F698;
+static constexpr uint32_t kP113LogLimit = 1024u;
+static std::atomic<uint32_t> g_p113_count{0};
 
-HOOK_DEFINE_TRAMPOLINE(P112BState125ProducerEntryHook) {
-    static void Callback(void* actor) {
+using P113SessionQueryFn = uint32_t (*)(uint32_t);
+
+uint32_t P113QuerySessionType(uint32_t type) {
+    const uintptr_t base = exl::util::modules::GetTargetStart();
+    auto fn = reinterpret_cast<P113SessionQueryFn>(base + kP113SessionQueryOffset);
+    return fn ? fn(type) : 0u;
+}
+
+HOOK_DEFINE_TRAMPOLINE(P113ACinematicSessionSetupHook) {
+    static uint32_t Callback(void* actor) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
         const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
@@ -7088,80 +7104,117 @@ HOOK_DEFINE_TRAMPOLINE(P112BState125ProducerEntryHook) {
         uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
         const bool valid = ReadActorIdentity(actor, side, cid);
         const P93CoreState pre = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
+        const int32_t e50 = (valid && actor) ? ReadActorI32At(actor, 0xE50) : 0x7FFFFFFF;
 
-        // Existing native vslot +0xDD0 enemy getter already used by Event236.
-        // Observation only: no peer writes and no manual producer invocation.
         void* peer = valid ? GetEventTargetActor(actor, 1) : nullptr;
         uint32_t pside = 0xFFFFFFFFu, pcid = 0xFFFFFFFFu;
         const bool pvalid = ReadActorIdentity(peer, pside, pcid);
         const P93CoreState ppre = (pvalid && peer) ? ReadP93CoreState(peer) : P93CoreState{};
 
-        // Native producer exactly once, unchanged actor.
-        Orig(actor);
+        const uint32_t s6_pre = P113QuerySessionType(6);
+        const uint32_t s9_pre = P113QuerySessionType(9);
+        const uint32_t s10_pre = P113QuerySessionType(10);
 
+        const uint32_t ret = Orig(actor);
+
+        const uint32_t s6_post = P113QuerySessionType(6);
+        const uint32_t s9_post = P113QuerySessionType(9);
+        const uint32_t s10_post = P113QuerySessionType(10);
         const P93CoreState post = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
-        const uint32_t n = valid ? g_p112_count.fetch_add(1, std::memory_order_relaxed) : kP112LogLimit;
-        if (valid && n < kP112LogLimit) {
+
+        const uint32_t n = valid ? g_p113_count.fetch_add(1, std::memory_order_relaxed) : kP113LogLimit;
+        if (valid && n < kP113LogLimit) {
             Logging.Log(
-                "[NSC:P112B] ENTRY n=%u actor=%p side=%u char=%u caller_off=0x%lx "
-                "action=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u "
-                "bda4=%u->%u bda8=%u->%u bdc8=%u->%u "
-                "peer=%p pvalid=%u pside=%u pchar=%u paction=%u pe94=%u pe9c=%u",
-                n, actor, side, cid, static_cast<unsigned long>(caller_off),
+                "[NSC:P113A] SESSION n=%u actor=%p side=%u char=%u caller_off=0x%lx ret=%u "
+                "action=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u e50=%d "
+                "bda4=%u->%u bda8=%u->%u bdc8=%u->%u s6=%u->%u s9=%u->%u s10=%u->%u",
+                n, actor, side, cid, static_cast<unsigned long>(caller_off), ret,
                 pre.action, post.action, pre.e94, post.e94, pre.e98, post.e98,
-                pre.e9c, post.e9c, pre.bda4, post.bda4, pre.bda8, post.bda8,
-                pre.bdc8, post.bdc8, peer, pvalid ? 1u : 0u, pside, pcid,
-                ppre.action, ppre.e94, ppre.e9c);
+                pre.e9c, post.e9c, e50, pre.bda4, post.bda4, pre.bda8, post.bda8,
+                pre.bdc8, post.bdc8, s6_pre, s6_post, s9_pre, s9_post, s10_pre, s10_post);
+            Logging.Log(
+                "[NSC:P113A] PEER n=%u peer=%p pvalid=%u pside=%u pchar=%u paction=%u pe94=%u pe9c=%u",
+                n, peer, pvalid ? 1u : 0u, pside, pcid, ppre.action, ppre.e94, ppre.e9c);
         }
+        return ret;
     }
 };
 
-static bool InstallP112BState125ProducerEntryInternal() {
-    // main+0x7EB270, vslot +0x1988 implementation used by the proven req125 route.
-    static constexpr uint32_t sigProducerEntry[] = {
-        0xF81E0FFE, 0xA9014FF4, 0xF9400008, 0x52800FA1,
-        0xAA0003F3, 0xF946F908, 0xD63F0100, 0xF9400268,
+static bool InstallP113ACinematicSessionSetupInternal() {
+    static constexpr uint32_t sigOuter[] = {
+        0xF81E0FFE, 0xA9014FF4, 0xAA0003F3, 0x940023EE,
     };
-    // Request-state gateway and successful victim downstream landmarks retained
-    // only as static proof.  None of these are hooked by P112B.
-    static constexpr uint32_t sigStateRequest[] = {
-        0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x2A0103F4,
+    static constexpr uint32_t sigOuterCallsInner[] = {
+        0x97FFCCE4, 0xAA1303E0, 0x94000008, 0x34000080,
     };
-    static constexpr uint32_t sigVictim126[] = {
-        0xF9400268, 0xAA1303E0, 0x52800FC1, 0xF946F908, 0xD63F0100,
+    static constexpr uint32_t sigInner[] = {
+        0xA9BE57FE, 0xA9014FF4, 0xF9400008, 0xAA0003F3,
     };
-    static constexpr uint32_t sigVictimAction12[] = {
-        0x1E2E1000, 0x52979D08, 0x12800002, 0xAA1303E0,
-        0x52800181, 0x2A1F03E3, 0x2A1F03E4, 0x8B080274,
-        0x97FE2078, 0xAA1303E0,
+    static constexpr uint32_t sigTypeBlockers[] = {
+        0x52800120, 0x97FD85C3, 0x35000080, 0x528000C0,
+        0x97FD85C0, 0x340000C0,
+    };
+    static constexpr uint32_t sigPeerType10Create[] = {
+        0xAA1303E0, 0x97FE9C81, 0xB40001A0, 0xB94E5274,
+        0xAA1303E0, 0x97FE9C7D, 0xF9465C09, 0x9132E008,
+        0xAA0803E0, 0xF9400D29, 0xD63F0120, 0x2A0003E1,
+        0x2A1403E0, 0x97FD88BF,
+    };
+    static constexpr uint32_t sigType10Creator[] = {
+        0xA9BF4FFE, 0x9000CFE8, 0xF9404108, 0x2A0003E2,
+        0xF9400100, 0xB40000E0, 0x2A0103F3, 0x52800141,
+        0x2A1F03E3, 0x97FFFDEA, 0xB4000040, 0xB9003413,
+    };
+    static constexpr uint32_t sigSessionQuery[] = {
+        0xB000CFE8, 0xF9404108, 0xF9400109, 0xB40001C9,
+        0x91002128, 0xF9400929, 0x14000002, 0xF9400529,
+        0xEB08013F, 0x54000100, 0xB9403D2A, 0x6B00015F,
+        0x54FFFF61, 0xB940392A, 0x35FFFF2A, 0x52800020,
+    };
+    static constexpr uint32_t sigType10Dispatch[] = {
+        0xB9403E88, 0x7100291F, 0x540002C1, 0x91004281,
+        0xAA1303E0, 0x940000AA,
     };
 
-    if (!MatchWords(kP112State125ProducerOffset, sigProducerEntry)) {
-        LogFingerprintFail("P112_STATE125_PRODUCER_7EB270", kP112State125ProducerOffset); return false;
+    if (!MatchWords(kP113SessionSetupOuterOffset, sigOuter)) {
+        LogFingerprintFail("P113_SESSION_OUTER_7EF098", kP113SessionSetupOuterOffset); return false;
     }
-    if (!MatchWords(kP112StateRequestOffset, sigStateRequest)) {
-        LogFingerprintFail("P112_STATE_REQUEST_7A89A4", kP112StateRequestOffset); return false;
+    if (!MatchWords(0x7EF100, sigOuterCallsInner)) {
+        LogFingerprintFail("P113_OUTER_INNER_CALL_7EF100", 0x7EF100); return false;
     }
-    if (!MatchWords(0x7DDFD0, sigVictim126)) {
-        LogFingerprintFail("P112_VICTIM126_7DDFD0", 0x7DDFD0); return false;
+    if (!MatchWords(kP113SessionSetupInnerOffset, sigInner)) {
+        LogFingerprintFail("P113_SESSION_INNER_7EF128", kP113SessionSetupInnerOffset); return false;
     }
-    if (!MatchWords(0x7DE98C, sigVictimAction12)) {
-        LogFingerprintFail("P112_VICTIM_ACTION12_7DE98C", 0x7DE98C); return false;
+    if (!MatchWords(0x7EF150, sigTypeBlockers)) {
+        LogFingerprintFail("P113_TYPE6_9_BLOCKERS_7EF150", 0x7EF150); return false;
+    }
+    if (!MatchWords(0x7EF17C, sigPeerType10Create)) {
+        LogFingerprintFail("P113_PEER_TYPE10_CREATE_7EF17C", 0x7EF17C); return false;
+    }
+    if (!MatchWords(kP113Type10CreatorOffset, sigType10Creator)) {
+        LogFingerprintFail("P113_TYPE10_CREATOR_7514AC", kP113Type10CreatorOffset); return false;
+    }
+    if (!MatchWords(kP113SessionQueryOffset, sigSessionQuery)) {
+        LogFingerprintFail("P113_SESSION_QUERY_750860", kP113SessionQueryOffset); return false;
+    }
+    if (!MatchWords(kP113ManagerTypeDispatchOffset, sigType10Dispatch)) {
+        LogFingerprintFail("P113_TYPE10_DISPATCH_74F698", kP113ManagerTypeDispatchOffset); return false;
     }
 
-    P112BState125ProducerEntryHook::InstallAtOffset(kP112State125ProducerOffset);
+    P113ACinematicSessionSetupHook::InstallAtOffset(kP113SessionSetupOuterOffset);
     return true;
 }
-} // anonymous namespace — P112B
+} // anonymous namespace — P113A
 
-void InstallP112BState125ProducerEntryProbe() {
+void InstallP113ACinematicSessionSetupProbe() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP112BState125ProducerEntryInternal();
+    const bool ok = InstallP113ACinematicSessionSetupInternal();
     Logging.Log(
-        "[NSC:P112B] READY parent_p96=1 readonly=1 producer_7eb270=1 capture_lr_first=1 "
-        "peer_vslot_dd0=1 victim125_126_action12_static_proof=1 p111_gateway_retired=1 "
-        "one_new_trampoline=1 preserve_orig_once=1 no_state_map=1 no_manual_producer_call=1 "
-        "no_direct_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1 probe_ok=%u",
+        "[NSC:P113A] READY parent_p96=1 readonly=1 outer_7ef098=1 inner_7ef128=1 "
+        "query_750860_types6_9_10=1 type10_creator_7514ac=1 unique_creator_callsite_7ef1b0=1 "
+        "capture_lr_first=1 peer_vslot_dd0=1 one_new_trampoline=1 preserve_orig_once=1 "
+        "no_manual_session_create=1 no_state_map=1 no_direct_state_write=1 no_force708=1 "
+        "no_force710=1 no_char281_branch=1 probe_ok=%u",
         ok ? 1u : 0u);
 }
 
