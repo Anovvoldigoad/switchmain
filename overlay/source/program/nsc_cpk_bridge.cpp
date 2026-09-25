@@ -7056,13 +7056,13 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P112A — exact state125 producer entry provenance (READ ONLY).
+// P112B — exact state125 producer entry provenance (READ ONLY).
 //
 // P111A proved the successful vanilla cinematic victim route is:
 //   victim req125 @ caller 0x7EB28C -> req126 @ 0x7DDFE4 -> PlayAction12
 // while the failing custom Tobi victim never receives req125/126/12 and instead
 // follows state39/121.  The same native function main+0x7EB270 is also reached
-// later by the failing attacker at action708 as cleanup.  P112A therefore moves
+// later by the failing attacker at action708 as cleanup.  P112B therefore moves
 // the single diagnostic trampoline to the WHOLE FUNCTION main+0x7EB270 and
 // captures the incoming LR before any helper call.  It records which actor was
 // targeted and the current peer/enemy context, then calls the native function
@@ -7079,7 +7079,7 @@ static constexpr ptrdiff_t kP112VictimAction12Return = 0x7DE9B0;
 static constexpr uint32_t kP112LogLimit = 1024u;
 static std::atomic<uint32_t> g_p112_count{0};
 
-HOOK_DEFINE_TRAMPOLINE(P112State125ProducerEntryHook) {
+HOOK_DEFINE_TRAMPOLINE(P112BState125ProducerEntryHook) {
     static void Callback(void* actor) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
@@ -7103,7 +7103,7 @@ HOOK_DEFINE_TRAMPOLINE(P112State125ProducerEntryHook) {
         const uint32_t n = valid ? g_p112_count.fetch_add(1, std::memory_order_relaxed) : kP112LogLimit;
         if (valid && n < kP112LogLimit) {
             Logging.Log(
-                "[NSC:P112A] ENTRY n=%u actor=%p side=%u char=%u caller_off=0x%lx "
+                "[NSC:P112B] ENTRY n=%u actor=%p side=%u char=%u caller_off=0x%lx "
                 "action=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u "
                 "bda4=%u->%u bda8=%u->%u bdc8=%u->%u "
                 "peer=%p pvalid=%u pside=%u pchar=%u paction=%u pe94=%u pe9c=%u",
@@ -7116,19 +7116,19 @@ HOOK_DEFINE_TRAMPOLINE(P112State125ProducerEntryHook) {
     }
 };
 
-static bool InstallP112State125ProducerEntryInternal() {
+static bool InstallP112BState125ProducerEntryInternal() {
     // main+0x7EB270, vslot +0x1988 implementation used by the proven req125 route.
     static constexpr uint32_t sigProducerEntry[] = {
         0xF81E0FFE, 0xA9014FF4, 0xF9400008, 0x52800FA1,
         0xAA0003F3, 0xF946F908, 0xD63F0100, 0xF9400268,
     };
     // Request-state gateway and successful victim downstream landmarks retained
-    // only as static proof.  None of these are hooked by P112A.
+    // only as static proof.  None of these are hooked by P112B.
     static constexpr uint32_t sigStateRequest[] = {
         0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x2A0103F4,
     };
     static constexpr uint32_t sigVictim126[] = {
-        0xF9400008, 0xAA1303E0, 0x52800FC1, 0xF946F908, 0xD63F0100,
+        0xF9400268, 0xAA1303E0, 0x52800FC1, 0xF946F908, 0xD63F0100,
     };
     static constexpr uint32_t sigVictimAction12[] = {
         0x1E2E1000, 0x52979D08, 0x12800002, 0xAA1303E0,
@@ -7149,16 +7149,16 @@ static bool InstallP112State125ProducerEntryInternal() {
         LogFingerprintFail("P112_VICTIM_ACTION12_7DE98C", 0x7DE98C); return false;
     }
 
-    P112State125ProducerEntryHook::InstallAtOffset(kP112State125ProducerOffset);
+    P112BState125ProducerEntryHook::InstallAtOffset(kP112State125ProducerOffset);
     return true;
 }
-} // anonymous namespace — P112A
+} // anonymous namespace — P112B
 
-void InstallP112State125ProducerEntryProbe() {
+void InstallP112BState125ProducerEntryProbe() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP112State125ProducerEntryInternal();
+    const bool ok = InstallP112BState125ProducerEntryInternal();
     Logging.Log(
-        "[NSC:P112A] READY parent_p96=1 readonly=1 producer_7eb270=1 capture_lr_first=1 "
+        "[NSC:P112B] READY parent_p96=1 readonly=1 producer_7eb270=1 capture_lr_first=1 "
         "peer_vslot_dd0=1 victim125_126_action12_static_proof=1 p111_gateway_retired=1 "
         "one_new_trampoline=1 preserve_orig_once=1 no_state_map=1 no_manual_producer_call=1 "
         "no_direct_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1 probe_ok=%u",
