@@ -7056,136 +7056,119 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P116A — universal cinematic outer-caller census (READ ONLY).
+// P117A — action-event stream census at the bucket5 dispatcher boundary (READ ONLY).
 //
-// P113 proved successful vanilla can reach main+0x7EF098 and create the
-// type10 cinematic session, while failing custom Tobi did not reach it in that
-// run. P114/P115 then over-specialized one upstream corridor at 0x77C5E8.
-// A full paired-main scan proves main+0x7EF098 has SIX direct BL callsites:
-//   0x0D6BDC, 0x0FBF60, 0x32F570, 0x753CB8, 0x77C5E8, 0x802634.
-// Therefore P116A returns to the known boot-safe whole-function boundary and
-// records the incoming caller for every native invocation. No caller is forced,
-// no session is created manually, and native Orig(actor) executes exactly once.
+// P116 proved the failing custom Tobi never reaches main+0x7EF098 at all, while
+// the successful vanilla control in the same run reaches it from bucket5
+// (return 0x77C5EC) and creates session9/session10. The bucket5 producer lives
+// inside the large action-event dispatcher around main+0x77B560. Immediately
+// after resolving the current event pointer, native code leaves that pointer in
+// X0 and calls the tiny global getter main+0x3F4BC0 at main+0x77B5A8. Therefore
+// this one boot-safe whole-function trampoline can census the event stream
+// entering that dispatcher without modifying the event, actor, branch, session,
+// state, action, or caller. Only calls whose LR is exactly 0x77B5AC are logged;
+// all other calls pass through immediately. Native Orig(event_x0) executes once.
+//
+// The key question for the next run is whether raw event type 10/11 exists in
+// the vanilla UJ window but is absent in the custom Tobi 707/708 window. If so,
+// the missing cinematic session is upstream in the generated action-event stream.
+// If custom does present type10/11, the frontier moves to the actor/peer C48
+// readiness gates inside 0x77C484..0x77C4A8.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP116SessionSetupOuterOffset = 0x7EF098;
-static constexpr ptrdiff_t kP116SessionQueryOffset = 0x750860;
-static constexpr ptrdiff_t kP116Type10CreatorOffset = 0x7514AC;
-static constexpr ptrdiff_t kP116Type10CreatorCallsite = 0x7EF1B0;
-static constexpr uint32_t kP116LogLimit = 2048u;
-static std::atomic<uint32_t> g_p116_count{0};
+static constexpr ptrdiff_t kP117EventGateGetterOffset = 0x3F4BC0;
+static constexpr ptrdiff_t kP117FocusedCallerReturn = 0x77B5AC;
+static constexpr ptrdiff_t kP117DispatcherEntryOffset = 0x77B560;
+static constexpr ptrdiff_t kP117EventLookupCallsite = 0x77B590;
+static constexpr ptrdiff_t kP117GateGetterCallsite = 0x77B5A8;
+static constexpr ptrdiff_t kP117Type10GateOffset = 0x77C474;
+static constexpr ptrdiff_t kP117OuterCallsite = 0x77C5E8;
+static constexpr uint32_t kP117LogLimit = 8192u;
+static std::atomic<uint32_t> g_p117_count{0};
 
-using P116SessionQueryFn = uint32_t (*)(uint32_t);
-
-uint32_t P116QuerySessionType(uint32_t type) {
-    const uintptr_t base = exl::util::modules::GetTargetStart();
-    auto fn = reinterpret_cast<P116SessionQueryFn>(base + kP116SessionQueryOffset);
-    return fn ? fn(type) : 0u;
-}
-
-uint32_t P116CallerBucket(ptrdiff_t caller_off) {
-    switch (caller_off) {
-        case 0x0D6BE0: return 1u;
-        case 0x0FBF64: return 2u;
-        case 0x32F574: return 3u;
-        case 0x753CBC: return 4u;
-        case 0x77C5EC: return 5u;
-        case 0x802638: return 6u;
-        default: return 0u;
-    }
-}
-
-HOOK_DEFINE_TRAMPOLINE(P116ACinematicOuterCallerCensusHook) {
-    static uint32_t Callback(void* actor) {
+HOOK_DEFINE_TRAMPOLINE(P117AActionEventStreamCensusHook) {
+    static uint32_t Callback(void* event_x0) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
         const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
-        const uint32_t bucket = P116CallerBucket(caller_off);
+        if (caller_off != kP117FocusedCallerReturn) {
+            return Orig(event_x0);
+        }
 
-        uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
-        const bool valid = ReadActorIdentity(actor, side, cid);
-        const P93CoreState pre = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
+        uint32_t raw_type = 0xFFFFFFFFu;
+        uint32_t payload28 = 0u;
+        uint64_t mask48 = 0u;
+        if (event_x0) {
+            const auto* b = reinterpret_cast<const volatile uint8_t*>(event_x0);
+            payload28 = *reinterpret_cast<const volatile uint32_t*>(b + 0x28);
+            mask48 = *reinterpret_cast<const volatile uint64_t*>(b + 0x48);
+            raw_type = *reinterpret_cast<const volatile uint32_t*>(b + 0x50);
+        }
+        const uint32_t norm_type = raw_type & 0xFFFFFFFEu;
+        const uint32_t type10_11 = (norm_type == 10u) ? 1u : 0u;
 
-        void* peer = valid ? GetEventTargetActor(actor, 1) : nullptr;
-        uint32_t pside = 0xFFFFFFFFu, pcid = 0xFFFFFFFFu;
-        const bool pvalid = ReadActorIdentity(peer, pside, pcid);
-        const P93CoreState ppre = (pvalid && peer) ? ReadP93CoreState(peer) : P93CoreState{};
-
-        const uint32_t s9_pre = P116QuerySessionType(9);
-        const uint32_t s10_pre = P116QuerySessionType(10);
-        const uint32_t ret = Orig(actor);
-        const uint32_t s9_post = P116QuerySessionType(9);
-        const uint32_t s10_post = P116QuerySessionType(10);
-        const P93CoreState post = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
-
-        const uint32_t n = valid ? g_p116_count.fetch_add(1, std::memory_order_relaxed) : kP116LogLimit;
-        if (valid && n < kP116LogLimit) {
+        const uint32_t ret = Orig(event_x0);
+        const uint32_t n = g_p117_count.fetch_add(1, std::memory_order_relaxed);
+        if (n < kP117LogLimit) {
             Logging.Log(
-                "[NSC:P116A] CALL n=%u actor=%p side=%u char=%u caller_off=0x%lx bucket=%u known=%u ret=%u "
-                "action=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u bda4=%u->%u bda8=%u->%u "
-                "s9=%u->%u s10=%u->%u",
-                n, actor, side, cid, static_cast<unsigned long>(caller_off), bucket, bucket ? 1u : 0u, ret,
-                pre.action, post.action, pre.e94, post.e94, pre.e98, post.e98, pre.e9c, post.e9c,
-                pre.bda4, post.bda4, pre.bda8, post.bda8, s9_pre, s9_post, s10_pre, s10_post);
-            Logging.Log(
-                "[NSC:P116A] PEER n=%u peer=%p pvalid=%u pside=%u pchar=%u paction=%u pe94=%u pe9c=%u",
-                n, peer, pvalid ? 1u : 0u, pside, pcid, ppre.action, ppre.e94, ppre.e9c);
+                "[NSC:P117A] EVENT n=%u event=%p caller_off=0x%lx raw_type=%u norm_type=%u type10_11=%u gate_ret=%u payload28=%08x mask48=0x%lx",
+                n, event_x0, static_cast<unsigned long>(caller_off), raw_type, norm_type,
+                type10_11, ret, payload28, static_cast<unsigned long>(mask48));
         }
         return ret;
     }
 };
 
-static bool InstallP116ACinematicOuterCallerCensusInternal() {
-    static constexpr uint32_t sigOuter[] = {
-        0xF81E0FFE, 0xA9014FF4, 0xAA0003F3, 0x940023EE,
+static bool InstallP117AActionEventStreamCensusInternal() {
+    static constexpr uint32_t sigGetter[] = {
+        0xF000EA68, 0xF9424508, 0xF9760908, 0xF9405D08, 0x79415100, 0xD65F03C0,
     };
-    static constexpr uint32_t sigSessionQuery[] = {
-        0xB000CFE8, 0xF9404108, 0xF9400109, 0xB40001C9,
-        0x91002128, 0xF9400929, 0x14000002, 0xF9400529,
-        0xEB08013F, 0x54000100, 0xB9403D2A, 0x6B00015F,
-        0x54FFFF61, 0xB940392A, 0x35FFFF2A, 0x52800020,
+    static constexpr uint32_t sigDispatcher[] = {
+        0xFC180FEA, 0x6D0123E9, 0xA9027BFD, 0xA9036FFC,
+        0xA90467FA, 0xA9055FF8, 0xA90657F6, 0xA9074FF4,
     };
-    static constexpr uint32_t sigType10Creator[] = {
-        0xA9BF4FFE, 0x9000CFE8, 0xF9404108, 0x2A0003E2,
-        0xF9400100, 0xB40000E0, 0x2A0103F3, 0x52800141,
-        0x2A1F03E3, 0x97FFFDEA, 0xB4000040, 0xB9003413,
+    static constexpr uint32_t sigLookupCall[] = {0x97F1E55C};
+    static constexpr uint32_t sigGateCallAndCmp[] = {
+        0x97F1E586, 0x6B2022BF, 0x54000161,
     };
-    static constexpr uint32_t sigCallD6BDC[] = {0x941C612F};
-    static constexpr uint32_t sigCallFBF60[] = {0x941BCC4E};
-    static constexpr uint32_t sigCall32F570[] = {0x9412FECA};
-    static constexpr uint32_t sigCall753CB8[] = {0x94026CF8};
-    static constexpr uint32_t sigCall77C5E8[] = {0x9401CAAC};
-    static constexpr uint32_t sigCall802634[] = {0x97FFB299};
+    static constexpr uint32_t sigTypeGate[] = {
+        0xB9405288, 0x121F7909, 0x7100293F, 0x54000B81,
+    };
+    static constexpr uint32_t sigOuterCall[] = {0x9401CAAC};
 
-    if (!MatchWords(kP116SessionSetupOuterOffset, sigOuter)) {
-        LogFingerprintFail("P116_SESSION_OUTER_7EF098", kP116SessionSetupOuterOffset); return false;
+    if (!MatchWords(kP117EventGateGetterOffset, sigGetter)) {
+        LogFingerprintFail("P117_EVENT_GATE_GETTER_3F4BC0", kP117EventGateGetterOffset); return false;
     }
-    if (!MatchWords(kP116SessionQueryOffset, sigSessionQuery)) {
-        LogFingerprintFail("P116_SESSION_QUERY_750860", kP116SessionQueryOffset); return false;
+    if (!MatchWords(kP117DispatcherEntryOffset, sigDispatcher)) {
+        LogFingerprintFail("P117_DISPATCHER_77B560", kP117DispatcherEntryOffset); return false;
     }
-    if (!MatchWords(kP116Type10CreatorOffset, sigType10Creator)) {
-        LogFingerprintFail("P116_TYPE10_CREATOR_7514AC", kP116Type10CreatorOffset); return false;
+    if (!MatchWords(kP117EventLookupCallsite, sigLookupCall)) {
+        LogFingerprintFail("P117_EVENT_LOOKUP_77B590", kP117EventLookupCallsite); return false;
     }
-    if (!MatchWords(0x0D6BDC, sigCallD6BDC) || !MatchWords(0x0FBF60, sigCallFBF60) ||
-        !MatchWords(0x32F570, sigCall32F570) || !MatchWords(0x753CB8, sigCall753CB8) ||
-        !MatchWords(0x77C5E8, sigCall77C5E8) || !MatchWords(0x802634, sigCall802634)) {
-        LogFingerprintFail("P116_SIX_DIRECT_CALLERS", kP116SessionSetupOuterOffset); return false;
+    if (!MatchWords(kP117GateGetterCallsite, sigGateCallAndCmp)) {
+        LogFingerprintFail("P117_GATE_CALL_77B5A8", kP117GateGetterCallsite); return false;
+    }
+    if (!MatchWords(kP117Type10GateOffset, sigTypeGate)) {
+        LogFingerprintFail("P117_TYPE10_GATE_77C474", kP117Type10GateOffset); return false;
+    }
+    if (!MatchWords(kP117OuterCallsite, sigOuterCall)) {
+        LogFingerprintFail("P117_BUCKET5_OUTER_77C5E8", kP117OuterCallsite); return false;
     }
 
-    P116ACinematicOuterCallerCensusHook::InstallAtOffset(kP116SessionSetupOuterOffset);
+    P117AActionEventStreamCensusHook::InstallAtOffset(kP117EventGateGetterOffset);
     return true;
 }
-} // anonymous namespace — P116A
+} // anonymous namespace — P117A
 
-void InstallP116ACinematicOuterCallerCensusProbe() {
+void InstallP117AActionEventStreamCensusProbe() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP116ACinematicOuterCallerCensusInternal();
+    const bool ok = InstallP117AActionEventStreamCensusInternal();
     Logging.Log(
-        "[NSC:P116A] READY parent_p96=1 readonly=1 outer_7ef098=1 direct_callers=6 "
-        "caller_returns_d6be0_fbf64_32f574_753cbc_77c5ec_802638=1 session9_10_prepost=1 "
-        "type10_creator_7514ac=1 creator_callsite_7ef1b0=1 capture_lr_first=1 peer_vslot_dd0=1 "
-        "one_new_trampoline=1 preserve_orig_once=1 no_manual_session_create=1 no_state_map=1 "
-        "no_direct_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1 probe_ok=%u",
+        "[NSC:P117A] READY parent_p96=1 readonly=1 getter_3f4bc0=1 focus_caller_77b5ac=1 "
+        "dispatcher_77b560=1 event_lookup_77b590=1 type10_11_gate_77c474=1 bucket5_outer_77c5e8=1 "
+        "capture_lr_first=1 one_new_trampoline=1 fast_passthrough_nonfocused=1 preserve_orig_once=1 "
+        "no_branch_patch=1 no_session_create=1 no_state_map=1 no_direct_state_write=1 no_force708=1 "
+        "no_force710=1 no_char281_branch=1 probe_ok=%u",
         ok ? 1u : 0u);
 }
 
