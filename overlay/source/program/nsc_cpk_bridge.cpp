@@ -7056,144 +7056,195 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P109A — state137 request provenance probe (READ ONLY).
+// P110A — type10 UJ/cinematic manager phase provenance probe (READ ONLY).
 //
-// P108A is retired: runtime proved that mapping the post-708 cleanup request
-// 125 -> 136 commits state136 and re-enters +0x518 at its mode0 entry, which
-// immediately replays PlayAction707 from main+0x7E485C. That is backwards in
-// the required custom graph and matches the visible Kamui replay/stuck result.
+// P109A proved the native state137 request is issued from caller return
+// main+0x74FF7C, inside phase3 of main+0x74F954. P107/P108 are retired:
+// mapping cleanup125 directly to 137 skips this manager setup, while mapping to
+// 136 re-enters the actor controller and replays action707.
 //
-// Same-session native control gives the real handoff signature: while action707
-// remains active in state136, BDA4/BDA8 matures 1/0 -> 0/1 -> 0/0 and E9C
-// changes 0 -> 137; state137 then commits and +0x520 produces PlayAction710.
-//
-// P109A therefore makes NO state mapping. It hooks the already fingerprinted
-// base request-state gateway main+0x7A89A4 and logs only requests 125/136/137,
-// for both vanilla and custom actors, preserving arguments and return exactly.
-// If vanilla req137 is seen here, caller_off identifies the real producer. If
-// native E9C=137 still appears without a P109 req137 row, the writer bypasses
-// this gateway and the next target is the direct/simple E9C setter family
-// main+0x7A8A9C. No gameplay write, no force708/710, no char281 branch.
+// P110A therefore moves the single diagnostic trampoline from the state-request
+// gateway to the manager itself. The target is called from the unique type10
+// dispatcher callsite main+0x74F6AC (return 0x74F6B0). It logs manager phase
+// pre/post plus the leader actor, paired actor, and the exact paired +0xB968
+// gate used by phase2 before native phase3/request137. No argument/result/state
+// is changed; native Orig(manager,ctx) runs exactly once per runtime path.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP109StateRequestOffset = 0x7A89A4;
-static constexpr ptrdiff_t kP109SimpleE9CSetterOffset = 0x7A8A9C;
-static constexpr uint32_t kP109State125 = 125u;
-static constexpr uint32_t kP109State136 = 136u;
-static constexpr uint32_t kP109State137 = 137u;
-static constexpr uint32_t kP109LogLimit = 1024u;
-static std::atomic<uint32_t> g_p109_count{0};
+static constexpr ptrdiff_t kP110ManagerOffset = 0x74F954;
+static constexpr ptrdiff_t kP110ManagerCallerReturn = 0x74F6B0;
+static constexpr ptrdiff_t kP110ResolveActorOffset = 0x8800D0;
+static constexpr ptrdiff_t kP110PairedActorOffset = 0x796384;
+static constexpr uint32_t kP110LogLimit = 2048u;
+static std::atomic<uint32_t> g_p110_count{0};
 
-HOOK_DEFINE_TRAMPOLINE(P109State137ProvenanceHook) {
-    static uint32_t Callback(void* actor, uint32_t requested_state,
-                             uint32_t arg2, uint32_t arg3) {
+struct P110ManagerState {
+    uint32_t phase = 0xFFFFFFFFu;
+    uint32_t prev_phase = 0xFFFFFFFFu;
+    uint32_t t0c = 0xFFFFFFFFu;
+    uint32_t t10 = 0xFFFFFFFFu;
+    int32_t t14 = 0x7FFFFFFF;
+    int32_t t18 = 0x7FFFFFFF;
+    uint32_t t20 = 0xFFFFFFFFu;
+    uint32_t team = 0xFFFFFFFFu;
+    uint32_t flag34 = 0xFFFFFFFFu;
+};
+
+static P110ManagerState P110ReadManagerState(void* ctx) {
+    P110ManagerState s{};
+    if (!ctx) return s;
+    const auto* b = reinterpret_cast<const volatile uint8_t*>(ctx);
+    s.phase = *reinterpret_cast<const volatile uint32_t*>(b + 0x04);
+    s.prev_phase = *reinterpret_cast<const volatile uint32_t*>(b + 0x08);
+    s.t0c = *reinterpret_cast<const volatile uint32_t*>(b + 0x0C);
+    s.t10 = *reinterpret_cast<const volatile uint32_t*>(b + 0x10);
+    s.t14 = *reinterpret_cast<const volatile int32_t*>(b + 0x14);
+    s.t18 = *reinterpret_cast<const volatile int32_t*>(b + 0x18);
+    s.t20 = *reinterpret_cast<const volatile uint32_t*>(b + 0x20);
+    s.team = *reinterpret_cast<const volatile uint32_t*>(b + 0x30);
+    s.flag34 = *reinterpret_cast<const volatile uint32_t*>(b + 0x34);
+    return s;
+}
+
+static uint32_t P110ReadB968(void* actor, uintptr_t& storage_ptr) {
+    storage_ptr = 0;
+    if (!actor) return 0;
+    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+    storage_ptr = *reinterpret_cast<const volatile uintptr_t*>(b + 0xB968);
+    if (!storage_ptr) return 0;
+    return *reinterpret_cast<const volatile uint32_t*>(storage_ptr);
+}
+
+HOOK_DEFINE_TRAMPOLINE(P110CinematicManagerPhaseHook) {
+    static uint32_t Callback(void* manager, void* ctx) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
         const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
 
-        // Global hot path: only the three state IDs relevant to the proven fork
-        // enter diagnostics. Every other request immediately remains native.
-        const bool focused =
-            requested_state == kP109State125 ||
-            requested_state == kP109State136 ||
-            requested_state == kP109State137;
-        if (!focused) {
-            return Orig(actor, requested_state, arg2, arg3);
+        // The pinned binary has exactly one direct BL into this function.
+        // Preserve any unexpected invocation without diagnostics.
+        if (!ctx || caller_off != kP110ManagerCallerReturn) {
+            return Orig(manager, ctx);
         }
 
-        uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
-        const bool valid = ReadActorIdentity(actor, side, cid);
-        const P93CoreState pre = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
+        const P110ManagerState pre = P110ReadManagerState(ctx);
+        const uintptr_t base = exl::util::modules::GetTargetStart();
+        using ResolveActorFn = void* (*)(uint32_t);
+        using PairedActorFn = void* (*)(void*);
+        auto resolve_actor = reinterpret_cast<ResolveActorFn>(base + kP110ResolveActorOffset);
+        auto paired_actor_fn = reinterpret_cast<PairedActorFn>(base + kP110PairedActorOffset);
 
-        uintptr_t slot_e28 = 0;
-        if (valid && actor) {
-            const uintptr_t vtable = *reinterpret_cast<const volatile uintptr_t*>(actor);
-            if (vtable) {
-                slot_e28 = *reinterpret_cast<const volatile uintptr_t*>(vtable + 0xE28);
-            }
+        void* leader = nullptr;
+        void* paired = nullptr;
+        if (pre.phase >= 1u && pre.phase <= 4u) {
+            leader = resolve_actor(pre.team);
+            paired = leader ? paired_actor_fn(leader) : nullptr;
         }
-        const ptrdiff_t slot_e28_off = MainRelativeOffset(slot_e28);
+        uint32_t leader_side = 0xFFFFFFFFu, leader_cid = 0xFFFFFFFFu;
+        uint32_t paired_side = 0xFFFFFFFFu, paired_cid = 0xFFFFFFFFu;
+        const bool leader_valid = ReadActorIdentity(leader, leader_side, leader_cid);
+        const bool paired_valid = ReadActorIdentity(paired, paired_side, paired_cid);
+        const P93CoreState leader_pre = leader_valid ? ReadP93CoreState(leader) : P93CoreState{};
+        const P93CoreState paired_pre = paired_valid ? ReadP93CoreState(paired) : P93CoreState{};
+        uintptr_t paired_b968_ptr = 0;
+        // The B968 dereference is the exact native phase2 gate. Avoid touching
+        // it in unrelated manager phases.
+        const uint32_t paired_b968 = (paired_valid && pre.phase == 2u)
+            ? P110ReadB968(paired, paired_b968_ptr) : 0u;
 
-        // Observation only: unchanged requested_state / arg2 / arg3, exactly once.
-        const uint32_t ret = Orig(actor, requested_state, arg2, arg3);
-        const P93CoreState post = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
+        // Observation only. Original function, arguments and return are untouched.
+        const uint32_t ret = Orig(manager, ctx);
+        const P110ManagerState post = P110ReadManagerState(ctx);
+        const P93CoreState leader_post = leader_valid ? ReadP93CoreState(leader) : P93CoreState{};
+        const P93CoreState paired_post = paired_valid ? ReadP93CoreState(paired) : P93CoreState{};
 
-        const uint32_t n = valid ? g_p109_count.fetch_add(1, std::memory_order_relaxed) : kP109LogLimit;
-        if (valid && n < kP109LogLimit) {
+        const uint32_t n = g_p110_count.fetch_add(1, std::memory_order_relaxed);
+        if (n < kP110LogLimit) {
             Logging.Log(
-                "[NSC:P109A] STATE_REQ n=%u actor=%p side=%u char=%u req=%u arg2=%u arg3=%u "
-                "caller_off=0x%lx ret=%u action=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u "
-                "ea4=%08x->%08x ea8=%08x->%08x bda4=%u->%u bda8=%u->%u bdc8=%u->%u "
-                "slot_e28_off=0x%lx",
-                n, actor, side, cid, requested_state, arg2, arg3,
-                static_cast<unsigned long>(caller_off), ret,
-                pre.action, post.action, pre.e94, post.e94, pre.e98, post.e98,
-                pre.e9c, post.e9c, pre.ea4, post.ea4, pre.ea8, post.ea8,
-                pre.bda4, post.bda4, pre.bda8, post.bda8, pre.bdc8, post.bdc8,
-                static_cast<unsigned long>(slot_e28_off));
+                "[NSC:P110A] MGR n=%u mgr=%p ctx=%p caller_off=0x%lx ret=%u "
+                "phase=%u->%u prev=%u->%u team=%u flag34=%u->%u "
+                "t0c=%u->%u t10=%u->%u t14=%d->%d t18=%d->%d t20=%u->%u",
+                n, manager, ctx, static_cast<unsigned long>(caller_off), ret,
+                pre.phase, post.phase, pre.prev_phase, post.prev_phase,
+                pre.team, pre.flag34, post.flag34,
+                pre.t0c, post.t0c, pre.t10, post.t10,
+                pre.t14, post.t14, pre.t18, post.t18, pre.t20, post.t20);
+            Logging.Log(
+                "[NSC:P110A] LEADER n=%u actor=%p valid=%u side=%u char=%u action=%u->%u "
+                "e94=%u->%u e98=%u->%u e9c=%u->%u bda4=%u->%u bda8=%u->%u bdc8=%u->%u",
+                n, leader, leader_valid ? 1u : 0u, leader_side, leader_cid,
+                leader_pre.action, leader_post.action,
+                leader_pre.e94, leader_post.e94, leader_pre.e98, leader_post.e98,
+                leader_pre.e9c, leader_post.e9c,
+                leader_pre.bda4, leader_post.bda4, leader_pre.bda8, leader_post.bda8,
+                leader_pre.bdc8, leader_post.bdc8);
+            Logging.Log(
+                "[NSC:P110A] PAIRED n=%u actor=%p valid=%u side=%u char=%u action=%u->%u "
+                "e94=%u->%u e98=%u->%u e9c=%u->%u bda4=%u->%u bda8=%u->%u bdc8=%u->%u "
+                "b968_ptr=%p b968=%u",
+                n, paired, paired_valid ? 1u : 0u, paired_side, paired_cid,
+                paired_pre.action, paired_post.action,
+                paired_pre.e94, paired_post.e94, paired_pre.e98, paired_post.e98,
+                paired_pre.e9c, paired_post.e9c,
+                paired_pre.bda4, paired_post.bda4, paired_pre.bda8, paired_post.bda8,
+                paired_pre.bdc8, paired_post.bdc8,
+                reinterpret_cast<void*>(paired_b968_ptr), paired_b968);
         }
         return ret;
     }
 };
 
-static bool InstallP109State137ProvenanceInternal() {
-    static constexpr uint32_t sigStateRequest[] = {
-        0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x2A0103F4,
-        0xAA0003F3, 0x34000282, 0xF9400268, 0xAA1303E0,
+static bool InstallP110CinematicManagerPhaseInternal() {
+    static constexpr uint32_t sigManagerEntry[] = {
+        0xD10183FF, 0xFD000BE8, 0xA90267FE, 0xA9035FF8,
+        0xA90457F6, 0xA9054FF4, 0xAA0003F6, 0xB9403020,
     };
-    static constexpr uint32_t sigSimpleSetter[] = {
-        0xB90E9C01, // 0x7A8A9C STR W1,[X0,#E9C]
-        0x52800028, // 0x7A8AA0 MOV W8,#1
-        0x52800021, // 0x7A8AA4 MOV W1,#1
-        0xB90EB008, // 0x7A8AA8 STR W8,[X0,#EB0]
+    static constexpr uint32_t sigType10Caller[] = {
+        0xB9403E88, 0x7100291F, 0x540002C1, 0x91004281,
+        0xAA1303E0, 0x940000AA, 0x34000240,
     };
-    static constexpr uint32_t sigCleanupProducer[] = {
-        0xF81E0FFE, 0xA9014FF4, 0xF9400008, 0x52800FA1,
-        0xAA0003F3, 0xF946F908, 0xD63F0100, 0xF9400268,
+    static constexpr uint32_t sigPhase2Gate[] = {
+        0xAA1503E0, 0x94011A39, 0xB4000080, 0x94011C51,
+        0x7100041F, 0x5400340C, 0xAA1603E0, 0x941BAC37, 0x52800069,
     };
-    static constexpr uint32_t sigStateDispatcher[] = {0xB94E9675};
-    static constexpr uint32_t sigDispatchCall[] = {0x2A1F03E1, 0xD63F0100};
-    static constexpr uint32_t sigController518[] = {0xF81A0FFD, 0xA9016FFE};
-    static constexpr uint32_t sigReplay707Call[] = {0x97FE08CD};
-    static constexpr uint32_t sigController520[] = {0xD10683FF};
-    static constexpr uint32_t sig710Producer[] = {0x528058C1};
-    static constexpr uint32_t sig710Call[] = {0x97FDFF32};
+    static constexpr uint32_t sigPhase3State137[] = {
+        0xB9403260, 0x9404C05E, 0xAA0003F6, 0x94011909,
+        0xF94002C8, 0xAA0003F7, 0x52801121, 0xAA1603E0,
+        0xF946F908, 0xD63F0100, 0xF94002E8,
+    };
+    static constexpr uint32_t sigB968Getter[] = {
+        0x52972D08, 0xF8686808, 0xB4000068, 0xB9400100,
+        0xD65F03C0, 0x2A1F03E0, 0xD65F03C0,
+    };
 
-    if (!MatchWords(kP109StateRequestOffset, sigStateRequest)) {
-        LogFingerprintFail("P109_STATE_REQUEST_7A89A4", kP109StateRequestOffset); return false;
+    if (!MatchWords(kP110ManagerOffset, sigManagerEntry)) {
+        LogFingerprintFail("P110_MANAGER_74F954", kP110ManagerOffset); return false;
     }
-    if (!MatchWords(kP109SimpleE9CSetterOffset, sigSimpleSetter)) {
-        LogFingerprintFail("P109_SIMPLE_E9C_SETTER_7A8A9C", kP109SimpleE9CSetterOffset); return false;
+    if (!MatchWords(0x74F698, sigType10Caller)) {
+        LogFingerprintFail("P110_TYPE10_CALLER_74F698", 0x74F698); return false;
     }
-    if (!MatchWords(0x7EB270, sigCleanupProducer)) {
-        LogFingerprintFail("P109_CLEANUP_PRODUCER_7EB270", 0x7EB270); return false;
+    if (!MatchWords(0x74FA9C, sigPhase2Gate)) {
+        LogFingerprintFail("P110_PHASE2_GATE_74FA9C", 0x74FA9C); return false;
     }
-    if (!MatchWords(0x7A8310, sigStateDispatcher) || !MatchWords(0x7A834C, sigDispatchCall)) {
-        LogFingerprintFail("P109_STATE_DISPATCH", 0x7A8310); return false;
+    if (!MatchWords(0x74FF54, sigPhase3State137)) {
+        LogFingerprintFail("P110_PHASE3_STATE137_74FF54", 0x74FF54); return false;
     }
-    if (!MatchWords(0x7E47B8, sigController518)) {
-        LogFingerprintFail("P109_CTRL518_7E47B8", 0x7E47B8); return false;
-    }
-    if (!MatchWords(0x7E4858, sigReplay707Call)) {
-        LogFingerprintFail("P109_CTRL518_PLAYACTION_7E4858", 0x7E4858); return false;
-    }
-    if (!MatchWords(0x7E64D4, sigController520) ||
-        !MatchWords(0x7E6EA8, sig710Producer) || !MatchWords(0x7E6EC4, sig710Call)) {
-        LogFingerprintFail("P109_CTRL520_710", 0x7E64D4); return false;
+    if (!MatchWords(0x796BEC, sigB968Getter)) {
+        LogFingerprintFail("P110_B968_GETTER_796BEC", 0x796BEC); return false;
     }
 
-    P109State137ProvenanceHook::InstallAtOffset(kP109StateRequestOffset);
+    P110CinematicManagerPhaseHook::InstallAtOffset(kP110ManagerOffset);
     return true;
 }
-} // anonymous namespace — P109A
+} // anonymous namespace — P110A
 
-void InstallP109State137ProvenanceProbe() {
+void InstallP110CinematicManagerPhaseProbe() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP109State137ProvenanceInternal();
+    const bool ok = InstallP110CinematicManagerPhaseInternal();
     Logging.Log(
-        "[NSC:P109A] READY parent_p96=1 readonly=1 state_request_7a89a4=1 "
-        "focus_states_125_136_137=1 alt_setter_7a8a9c_fingerprinted=1 "
-        "p108_mapping_retired=1 one_new_trampoline=1 preserve_orig=1 no_state_map=1 "
+        "[NSC:P110A] READY parent_p96=1 readonly=1 manager_74f954=1 unique_type10_caller_74f6ac=1 "
+        "phase2_gate_74fa9c=1 paired_b968_gate=1 phase3_req137_74ff7c=1 "
+        "p109_retired=1 one_new_trampoline=1 preserve_orig=1 no_state_map=1 "
         "no_direct_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1 probe_ok=%u",
         ok ? 1u : 0u);
 }

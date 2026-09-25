@@ -1,0 +1,81 @@
+manager_abi PASS
+caller_first PASS
+unexpected_passthrough PASS
+orig_two_textual_paths PASS
+focused_orig_unchanged PASS
+post_after_orig PASS
+entrypoint PASS
+decl PASS
+parent_p96 PASS
+ready PASS
+mgr_log PASS
+leader_log PASS
+paired_log PASS
+manager_offset PASS
+caller_return PASS
+resolve_actor PASS
+paired_actor PASS
+b968_read PASS
+one_p110_trampoline PASS
+no_p110_inline PASS
+p109_runtime_absent PASS
+p108_runtime_absent PASS
+p107_runtime_absent PASS
+p106_runtime_absent PASS
+p105_runtime_absent PASS
+p104_runtime_absent PASS
+p103_absent PASS
+p102_hold74_absent PASS
+p101_hold125_absent PASS
+victim_shadow_preserved PASS
+p109_retired PASS
+no_direct_actor_state_write PASS
+no_force710 PASS
+no_force708 PASS
+no_char281_branch PASS
+p110_log_bounds [('MGR', 361), ('LEADER', 300), ('PAIRED', 344), ('READY', 310)]
+p110_log_buffer_guard PASS
+paired main 1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0
+restore main 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+fp 0x74f954 d10183ff PASS
+fp 0x74f958 fd000be8 PASS
+fp 0x74f95c a90267fe PASS
+fp 0x74f960 a9035ff8 PASS
+fp 0x74f964 a90457f6 PASS
+fp 0x74f968 a9054ff4 PASS
+fp 0x74f96c aa0003f6 PASS
+fp 0x74f970 b9403020 PASS
+fp 0x74f698 b9403e88 PASS
+fp 0x74f69c 7100291f PASS
+fp 0x74f6a0 540002c1 PASS
+fp 0x74f6a4 91004281 PASS
+fp 0x74f6a8 aa1303e0 PASS
+fp 0x74f6ac 940000aa PASS
+fp 0x74f6b0 34000240 PASS
+fp 0x74fa9c aa1503e0 PASS
+fp 0x74faa0 94011a39 PASS
+fp 0x74faa4 b4000080 PASS
+fp 0x74faa8 94011c51 PASS
+fp 0x74faac 7100041f PASS
+fp 0x74fab0 5400340c PASS
+fp 0x74fabc 52800069 PASS
+fp 0x74ff54 b9403260 PASS
+fp 0x74ff58 9404c05e PASS
+fp 0x74ff60 94011909 PASS
+fp 0x74ff6c 52801121 PASS
+fp 0x74ff74 f946f908 PASS
+fp 0x74ff78 d63f0100 PASS
+fp 0x74ff7c f94002e8 PASS
+fp 0x796bec 52972d08 PASS
+fp 0x796bf0 f8686808 PASS
+fp 0x796bf4 b4000068 PASS
+fp 0x796bf8 b9400100 PASS
+fp 0x796bfc d65f03c0 PASS
+fp 0x796c00 2a1f03e0 PASS
+fp 0x796c04 d65f03c0 PASS
+call 0x74f6ac -> 0x74f954
+call 0x74faa0 -> 0x796384
+call 0x74faa8 -> 0x796bec
+direct_bl_manager ['0x74f6ac']
+push_enabled_workflows ['build-subsdk9-p110a.yml']
+P110A_DROPIN_SOURCE_VERIFY=PASS
