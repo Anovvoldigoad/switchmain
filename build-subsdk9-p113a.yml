@@ -1,8 +1,8 @@
-name: Retired P113A diagnostic
+name: Disabled P113A superseded by P116A
 on:
   workflow_dispatch:
 jobs:
-  retired:
+  disabled:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "P113A retired; use P114A"
+      - run: echo "P113A superseded by P116A"

@@ -7056,142 +7056,136 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P115B — boot-safe cinematic event-type preflight provenance (READ ONLY).
+// P116A — universal cinematic outer-caller census (READ ONLY).
 //
-// P114A proved successful vanilla reaches the type9 query at 0x77C4B0 with
-// ret=0, while failing custom Tobi never reaches that query. P115A attempted
-// three inline probes across event-type + actor-C48 + peer-C48 gates, but the
-// runtime aborted during hook installation because multiple new inline hooks
-// exhausted exlaunch trampoline allocation on this environment.
-//
-// P115B therefore narrows to exactly ONE extra inline hook at 0x77C474:
-//   LDR W8,[X20,#0x50]
-// It faithfully reproduces the native load and logs the raw/normalized event
-// type only for the generic UJ corridor. This answers whether failing custom
-// Tobi reaches the event-type gate at all, and whether type 10/11 is present.
-//
-// No virtual C48 call is intercepted. No branch, state, action, session,
-// event, or actor memory is modified. No character ID is special-cased.
+// P113 proved successful vanilla can reach main+0x7EF098 and create the
+// type10 cinematic session, while failing custom Tobi did not reach it in that
+// run. P114/P115 then over-specialized one upstream corridor at 0x77C5E8.
+// A full paired-main scan proves main+0x7EF098 has SIX direct BL callsites:
+//   0x0D6BDC, 0x0FBF60, 0x32F570, 0x753CB8, 0x77C5E8, 0x802634.
+// Therefore P116A returns to the known boot-safe whole-function boundary and
+// records the incoming caller for every native invocation. No caller is forced,
+// no session is created manually, and native Orig(actor) executes exactly once.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP115BEventTypeLoadOffset = 0x77C474;
-static constexpr ptrdiff_t kP115BActorC48CallOffset = 0x77C490;
-static constexpr ptrdiff_t kP115BPeerC48CallOffset = 0x77C4A4;
-static constexpr ptrdiff_t kP115BType9QueryCallOffset = 0x77C4B0;
-static constexpr ptrdiff_t kP115BOuterSetupCallOffset = 0x77C5E8;
-static constexpr uint32_t kP115BLogLimit = 1024u;
-static std::atomic<uint32_t> g_p115b_evt_logs{0};
+static constexpr ptrdiff_t kP116SessionSetupOuterOffset = 0x7EF098;
+static constexpr ptrdiff_t kP116SessionQueryOffset = 0x750860;
+static constexpr ptrdiff_t kP116Type10CreatorOffset = 0x7514AC;
+static constexpr ptrdiff_t kP116Type10CreatorCallsite = 0x7EF1B0;
+static constexpr uint32_t kP116LogLimit = 2048u;
+static std::atomic<uint32_t> g_p116_count{0};
 
-static uint32_t P115BReadAction(void* actor) {
-    if (!actor) return 0xFFFFFFFFu;
-    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
-    return *reinterpret_cast<const volatile uint32_t*>(b + 4712);
+using P116SessionQueryFn = uint32_t (*)(uint32_t);
+
+uint32_t P116QuerySessionType(uint32_t type) {
+    const uintptr_t base = exl::util::modules::GetTargetStart();
+    auto fn = reinterpret_cast<P116SessionQueryFn>(base + kP116SessionQueryOffset);
+    return fn ? fn(type) : 0u;
 }
 
-static uint32_t P115BReadE94(void* actor) {
-    if (!actor) return 0xFFFFFFFFu;
-    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
-    return *reinterpret_cast<const volatile uint32_t*>(b + 0xE94);
+uint32_t P116CallerBucket(ptrdiff_t caller_off) {
+    switch (caller_off) {
+        case 0x0D6BE0: return 1u;
+        case 0x0FBF64: return 2u;
+        case 0x32F574: return 3u;
+        case 0x753CBC: return 4u;
+        case 0x77C5EC: return 5u;
+        case 0x802638: return 6u;
+        default: return 0u;
+    }
 }
 
-static bool P115BFocusActor(void* actor) {
-    if (!actor) return false;
-    const uint32_t action = P115BReadAction(actor);
-    const uint32_t e94 = P115BReadE94(actor);
-    return (action >= 700u && action <= 710u) || e94 == 136u || e94 == 137u ||
-           P64QuerySemanticUltimateJutsu(actor);
-}
+HOOK_DEFINE_TRAMPOLINE(P116ACinematicOuterCallerCensusHook) {
+    static uint32_t Callback(void* actor) {
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        const uint32_t bucket = P116CallerBucket(caller_off);
 
-static void P115BReadIdentityLite(void* actor, uint32_t& side, uint32_t& cid,
-                                  uint32_t& action, uint32_t& e94) {
-    side = cid = action = e94 = 0xFFFFFFFFu;
-    if (!actor) return;
-    (void)ReadActorIdentity(actor, side, cid);
-    action = P115BReadAction(actor);
-    e94 = P115BReadE94(actor);
-}
+        uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, cid);
+        const P93CoreState pre = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
 
-HOOK_DEFINE_INLINE(P115BEventTypeLoadHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        auto* event = reinterpret_cast<const volatile uint8_t*>(ctx->X[20]);
-        // Faithfully reproduce the replaced native LDR W8,[X20,#0x50].
-        const uint32_t raw_type =
-            *reinterpret_cast<const volatile uint32_t*>(event + 0x50);
-        ctx->W[8] = raw_type;
+        void* peer = valid ? GetEventTargetActor(actor, 1) : nullptr;
+        uint32_t pside = 0xFFFFFFFFu, pcid = 0xFFFFFFFFu;
+        const bool pvalid = ReadActorIdentity(peer, pside, pcid);
+        const P93CoreState ppre = (pvalid && peer) ? ReadP93CoreState(peer) : P93CoreState{};
 
-        void* actor = reinterpret_cast<void*>(ctx->X[19]);
-        if (!P115BFocusActor(actor)) return;
-        void* peer = reinterpret_cast<void*>(ctx->X[23]);
+        const uint32_t s9_pre = P116QuerySessionType(9);
+        const uint32_t s10_pre = P116QuerySessionType(10);
+        const uint32_t ret = Orig(actor);
+        const uint32_t s9_post = P116QuerySessionType(9);
+        const uint32_t s10_post = P116QuerySessionType(10);
+        const P93CoreState post = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
 
-        uint32_t side, cid, action, e94;
-        uint32_t pside, pcid, paction, pe94;
-        P115BReadIdentityLite(actor, side, cid, action, e94);
-        P115BReadIdentityLite(peer, pside, pcid, paction, pe94);
-        const uint32_t normalized = raw_type & ~1u;
-        const uint32_t pass = normalized == 10u ? 1u : 0u;
-
-        const uint32_t n = g_p115b_evt_logs.fetch_add(1, std::memory_order_relaxed);
-        if (n < kP115BLogLimit) {
+        const uint32_t n = valid ? g_p116_count.fetch_add(1, std::memory_order_relaxed) : kP116LogLimit;
+        if (valid && n < kP116LogLimit) {
             Logging.Log(
-                "[NSC:P115B] EVT_GATE n=%u actor=%p side=%u char=%u action=%u e94=%u "
-                "peer=%p pside=%u pchar=%u paction=%u pe94=%u event=%p raw_type=%u norm_type=%u pass=%u",
-                n, actor, side, cid, action, e94,
-                peer, pside, pcid, paction, pe94,
-                reinterpret_cast<void*>(ctx->X[20]), raw_type, normalized, pass);
+                "[NSC:P116A] CALL n=%u actor=%p side=%u char=%u caller_off=0x%lx bucket=%u known=%u ret=%u "
+                "action=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u bda4=%u->%u bda8=%u->%u "
+                "s9=%u->%u s10=%u->%u",
+                n, actor, side, cid, static_cast<unsigned long>(caller_off), bucket, bucket ? 1u : 0u, ret,
+                pre.action, post.action, pre.e94, post.e94, pre.e98, post.e98, pre.e9c, post.e9c,
+                pre.bda4, post.bda4, pre.bda8, post.bda8, s9_pre, s9_post, s10_pre, s10_post);
+            Logging.Log(
+                "[NSC:P116A] PEER n=%u peer=%p pvalid=%u pside=%u pchar=%u paction=%u pe94=%u pe9c=%u",
+                n, peer, pvalid ? 1u : 0u, pside, pcid, ppre.action, ppre.e94, ppre.e9c);
         }
+        return ret;
     }
 };
 
-static bool InstallP115BEventGateInternal() {
-    static constexpr uint32_t sigEventTypeGate[] = {
-        0xB9405288, 0x121F7909, 0x7100293F, 0x54000B81,
+static bool InstallP116ACinematicOuterCallerCensusInternal() {
+    static constexpr uint32_t sigOuter[] = {
+        0xF81E0FFE, 0xA9014FF4, 0xAA0003F3, 0x940023EE,
     };
-    static constexpr uint32_t sigActorC48Gate[] = {
-        0xF9400268, 0xAA1303E0, 0xF9462508, 0xD63F0100, 0x34000AC0,
+    static constexpr uint32_t sigSessionQuery[] = {
+        0xB000CFE8, 0xF9404108, 0xF9400109, 0xB40001C9,
+        0x91002128, 0xF9400929, 0x14000002, 0xF9400529,
+        0xEB08013F, 0x54000100, 0xB9403D2A, 0x6B00015F,
+        0x54FFFF61, 0xB940392A, 0x35FFFF2A, 0x52800020,
     };
-    static constexpr uint32_t sigPeerC48Gate[] = {
-        0xF94002E8, 0xAA1703E0, 0xF9462508, 0xD63F0100, 0x34000A20,
+    static constexpr uint32_t sigType10Creator[] = {
+        0xA9BF4FFE, 0x9000CFE8, 0xF9404108, 0x2A0003E2,
+        0xF9400100, 0xB40000E0, 0x2A0103F3, 0x52800141,
+        0x2A1F03E3, 0x97FFFDEA, 0xB4000040, 0xB9003413,
     };
-    static constexpr uint32_t sigType9Query[] = {
-        0x52800120, 0x97FF50EC, 0x34000300,
-    };
-    static constexpr uint32_t sigOuterCall[] = {
-        0xAA1703E0, 0x9401CAAC, 0xB9405288,
-    };
+    static constexpr uint32_t sigCallD6BDC[] = {0x941C612F};
+    static constexpr uint32_t sigCallFBF60[] = {0x941BCC4E};
+    static constexpr uint32_t sigCall32F570[] = {0x9412FECA};
+    static constexpr uint32_t sigCall753CB8[] = {0x94026CF8};
+    static constexpr uint32_t sigCall77C5E8[] = {0x9401CAAC};
+    static constexpr uint32_t sigCall802634[] = {0x97FFB299};
 
-    if (!MatchWords(kP115BEventTypeLoadOffset, sigEventTypeGate)) {
-        LogFingerprintFail("P115B_EVENT_TYPE_GATE_77C474", kP115BEventTypeLoadOffset); return false;
+    if (!MatchWords(kP116SessionSetupOuterOffset, sigOuter)) {
+        LogFingerprintFail("P116_SESSION_OUTER_7EF098", kP116SessionSetupOuterOffset); return false;
     }
-    // Fingerprint downstream gates without hooking them, so the static corridor
-    // is still pinned to this exact v1.70 main.
-    if (!MatchWords(0x77C484, sigActorC48Gate)) {
-        LogFingerprintFail("P115B_ACTOR_C48_77C484", 0x77C484); return false;
+    if (!MatchWords(kP116SessionQueryOffset, sigSessionQuery)) {
+        LogFingerprintFail("P116_SESSION_QUERY_750860", kP116SessionQueryOffset); return false;
     }
-    if (!MatchWords(0x77C498, sigPeerC48Gate)) {
-        LogFingerprintFail("P115B_PEER_C48_77C498", 0x77C498); return false;
+    if (!MatchWords(kP116Type10CreatorOffset, sigType10Creator)) {
+        LogFingerprintFail("P116_TYPE10_CREATOR_7514AC", kP116Type10CreatorOffset); return false;
     }
-    if (!MatchWords(0x77C4AC, sigType9Query)) {
-        LogFingerprintFail("P115B_TYPE9_QUERY_77C4AC", 0x77C4AC); return false;
-    }
-    if (!MatchWords(0x77C5E4, sigOuterCall)) {
-        LogFingerprintFail("P115B_OUTER_SETUP_77C5E4", 0x77C5E4); return false;
+    if (!MatchWords(0x0D6BDC, sigCallD6BDC) || !MatchWords(0x0FBF60, sigCallFBF60) ||
+        !MatchWords(0x32F570, sigCall32F570) || !MatchWords(0x753CB8, sigCall753CB8) ||
+        !MatchWords(0x77C5E8, sigCall77C5E8) || !MatchWords(0x802634, sigCall802634)) {
+        LogFingerprintFail("P116_SIX_DIRECT_CALLERS", kP116SessionSetupOuterOffset); return false;
     }
 
-    P115BEventTypeLoadHook::InstallAtOffset(kP115BEventTypeLoadOffset);
+    P116ACinematicOuterCallerCensusHook::InstallAtOffset(kP116SessionSetupOuterOffset);
     return true;
 }
-} // anonymous namespace — P115B
+} // anonymous namespace — P116A
 
-void InstallP115BEventGateProbe() {
+void InstallP116ACinematicOuterCallerCensusProbe() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP115BEventGateInternal();
+    const bool ok = InstallP116ACinematicOuterCallerCensusInternal();
     Logging.Log(
-        "[NSC:P115B] READY parent_p96=1 readonly=1 event_gate_77c474=1 "
-        "actor_c48_fingerprint_only=1 peer_c48_fingerprint_only=1 type9_downstream_77c4b0=1 "
-        "outer_7ef098_downstream=1 one_inline_hook=1 one_extra_trampoline_budget=1 "
-        "native_ldr_replayed=1 no_virtual_call_intercept=1 no_branch_patch=1 "
-        "no_session_create=1 no_state_map=1 no_direct_state_write=1 no_force708=1 "
-        "no_force710=1 no_char281_branch=1 probe_ok=%u",
+        "[NSC:P116A] READY parent_p96=1 readonly=1 outer_7ef098=1 direct_callers=6 "
+        "caller_returns_d6be0_fbf64_32f574_753cbc_77c5ec_802638=1 session9_10_prepost=1 "
+        "type10_creator_7514ac=1 creator_callsite_7ef1b0=1 capture_lr_first=1 peer_vslot_dd0=1 "
+        "one_new_trampoline=1 preserve_orig_once=1 no_manual_session_create=1 no_state_map=1 "
+        "no_direct_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1 probe_ok=%u",
         ok ? 1u : 0u);
 }
 

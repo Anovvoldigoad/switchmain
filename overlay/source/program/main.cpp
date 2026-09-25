@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP115BEventGateProbe();
+    nsc::InstallP116ACinematicOuterCallerCensusProbe();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P115B boot-safe event gate provenance exception");
+    EXL_ABORT("NSC P116A cinematic outer caller census exception");
 }
