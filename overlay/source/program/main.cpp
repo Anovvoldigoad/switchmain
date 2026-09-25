@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP104BSiblingControllerGateTrace();
+    nsc::InstallP105ADualSiblingControllerTrace();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P104B sibling-controller two-gate proof exception");
+    EXL_ABORT("NSC P105A dual sibling-controller proof exception");
 }
