@@ -7056,40 +7056,33 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P105B — single-trampoline sibling-controller proof (boot-safe).
+// P106A — +0x520 entry proof, one-trampoline swap from P105B.
 //
-// P105A attempted two new whole-function trampolines (+0x4C0 and +0x520).
-// Runtime boot log proved exlaunch aborted while installing the second new
-// trampoline: AllocForTrampoline() exhausted the pinned hook JIT pool before
-// P105A READY. P104B had already proved this lineage can accommodate exactly
-// one additional whole-function trampoline.
+// Historical proof already retired the downstream cleanup chain as root:
+// state125 -> +0x4C0 mode0 -> action261 -> action74. P98/P101/P102 showed that
+// observing or suppressing those cleanup effects does not create action710.
 //
-// P105B therefore spends that one remaining trampoline only on the failing
-// controller:
-//   actor vtable +0x4C0 -> main+0x7DDD94, ABI (actor, mode), void
+// The remaining unanswered question is whether the custom action708 path ever
+// enters the native action710-producing sibling controller at actor vtable
+// +0x520 -> main+0x7E64D4. P106A spends exactly the same single-trampoline budget
+// as P105B, but moves it from +0x4C0 to +0x520. +0x4C0 is fully native again.
 //
-// The successful sibling +0x520 is NOT hooked. Its native producer remains
-// observable through the already-installed P50/P59 PlayAction trampoline:
-//   main+0x7E6EC4 -> PlayAction(710), return/caller main+0x7E6EC8.
-// Static v1.70 proof additionally shows +0x520 has exactly one direct BL caller,
-// main+0x488B28. Thus P105B can correlate vanilla +0x520 via existing logs
-// without consuming a second trampoline.
-//
-// X30/caller LR is captured before any helper. Native +0x4C0 executes exactly
-// once with the original (actor, mode). Only player-side focused action 700..711
-// samples are logged. No action/state/gate/mode/controller writes are performed.
+// ABI is (actor, mode) -> void, proven by the prior P105A static audit.
+// X30/caller is captured before helpers. Orig(actor, mode) executes exactly once
+// on the valid player path and exactly once on the early non-player path. Only
+// player-side action700..711 samples are logged. No state/action/mode writes.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP105BController4C0Offset = 0x7DDD94;
-static constexpr ptrdiff_t kP105BController520Offset = 0x7E64D4;
-static constexpr uint32_t kP105BLogLimit = 65536u;
-static std::atomic<uint32_t> g_p105b_seq{0};
+static constexpr ptrdiff_t kP106Controller520Offset = 0x7E64D4;
+static constexpr ptrdiff_t kP106Controller4C0Offset = 0x7DDD94;
+static constexpr uint32_t kP106LogLimit = 65536u;
+static std::atomic<uint32_t> g_p106_seq{0};
 
-static bool P105BFocusedAction(const P93CoreState& st) {
+static bool P106FocusedAction(const P93CoreState& st) {
     return st.action >= 700u && st.action <= 711u;
 }
 
-static void P105BReadVtableSlots(void* actor, ptrdiff_t& slot4c0_off, ptrdiff_t& slot520_off) {
+static void P106ReadVtableSlots(void* actor, ptrdiff_t& slot4c0_off, ptrdiff_t& slot520_off) {
     slot4c0_off = -1;
     slot520_off = -1;
     if (!actor) return;
@@ -7101,22 +7094,21 @@ static void P105BReadVtableSlots(void* actor, ptrdiff_t& slot4c0_off, ptrdiff_t&
     slot520_off = MainRelativeOffset(slot520);
 }
 
-static void P105BLog4C0(
+static void P106Log520(
     uint32_t seq, uint32_t phase, void* actor, uint32_t side, uint32_t cid,
     uint32_t mode, ptrdiff_t caller_off, const P93CoreState& pre,
     const P93CoreState& cur, ptrdiff_t slot4c0_off, ptrdiff_t slot520_off) {
     const ptrdiff_t callsite_off = caller_off >= 4 ? caller_off - 4 : -1;
     Logging.Log(
-        "[NSC:P105B] CTRL4C0 seq=%u phase=%u entry_off=0x%lx actor=%p side=%u char=%u "
-        "mode=%u caller_off=0x%lx callsite_off=0x%lx action=%u->%u "
+        "[NSC:P106A] CTRL520 seq=%u phase=%u actor=%p side=%u char=%u mode=%u "
+        "caller_off=0x%lx callsite_off=0x%lx action=%u->%u "
         "slot4c0_off=0x%lx slot520_off=0x%lx",
-        seq, phase, static_cast<unsigned long>(kP105BController4C0Offset), actor,
-        side, cid, mode, static_cast<unsigned long>(caller_off),
-        static_cast<unsigned long>(callsite_off), pre.action, cur.action,
-        static_cast<unsigned long>(slot4c0_off),
+        seq, phase, actor, side, cid, mode,
+        static_cast<unsigned long>(caller_off), static_cast<unsigned long>(callsite_off),
+        pre.action, cur.action, static_cast<unsigned long>(slot4c0_off),
         static_cast<unsigned long>(slot520_off));
     Logging.Log(
-        "[NSC:P105B] STATE4C0 seq=%u phase=%u "
+        "[NSC:P106A] STATE520 seq=%u phase=%u "
         "e60=%08x->%08x e70=%08x->%08x e90=%08x->%08x "
         "e94=%08x->%08x e98=%08x->%08x e9c=%08x->%08x "
         "ea0=%08x->%08x ea4=%08x->%08x "
@@ -7128,7 +7120,7 @@ static void P105BLog4C0(
         pre.bda4, cur.bda4, pre.bda8, cur.bda8, pre.bdc8, cur.bdc8);
 }
 
-HOOK_DEFINE_TRAMPOLINE(P105BController4C0Hook) {
+HOOK_DEFINE_TRAMPOLINE(P106Controller520Hook) {
     static void Callback(void* actor, uint32_t mode) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
@@ -7141,30 +7133,30 @@ HOOK_DEFINE_TRAMPOLINE(P105BController4C0Hook) {
             return;
         }
 
-        const uint32_t seq = g_p105b_seq.fetch_add(1, std::memory_order_relaxed);
+        const uint32_t seq = g_p106_seq.fetch_add(1, std::memory_order_relaxed);
         const P93CoreState pre = ReadP93CoreState(actor);
         ptrdiff_t slot4c0_off = -1, slot520_off = -1;
-        P105BReadVtableSlots(actor, slot4c0_off, slot520_off);
-        const bool enter_focused = P105BFocusedAction(pre);
-        if (enter_focused && seq < kP105BLogLimit) {
-            P105BLog4C0(seq, 0, actor, side, cid, mode, caller_off,
-                        pre, pre, slot4c0_off, slot520_off);
+        P106ReadVtableSlots(actor, slot4c0_off, slot520_off);
+        const bool enter_focused = P106FocusedAction(pre);
+        if (enter_focused && seq < kP106LogLimit) {
+            P106Log520(seq, 0, actor, side, cid, mode, caller_off,
+                       pre, pre, slot4c0_off, slot520_off);
         }
 
         Orig(actor, mode);
 
         const P93CoreState post = ReadP93CoreState(actor);
-        if ((enter_focused || P105BFocusedAction(post)) && seq < kP105BLogLimit) {
-            P105BLog4C0(seq, 1, actor, side, cid, mode, caller_off,
-                        pre, post, slot4c0_off, slot520_off);
+        if ((enter_focused || P106FocusedAction(post)) && seq < kP106LogLimit) {
+            P106Log520(seq, 1, actor, side, cid, mode, caller_off,
+                       pre, post, slot4c0_off, slot520_off);
         }
     }
 };
 
-static bool InstallP105BSingleTrampolineControllerTraceInternal() {
-    static constexpr uint32_t sig4c0[] = {
-        0xD10243FF, 0xF90023FE, 0xA90567FA, 0xA9065FF8,
-        0xA90757F6, 0xA9084FF4, 0x52809788, 0x72A00028,
+static bool InstallP106Controller520EntryProofInternal() {
+    static constexpr uint32_t sig520[] = {
+        0xD10683FF, 0xA9147BFD, 0xA9156FFC, 0xA91667FA,
+        0xA9175FF8, 0xA91857F6, 0xA9194FF4, 0x5280E408,
     };
     static constexpr uint32_t sig520Producer[] = {
         0x528058C1, // 0x7E6EA8 MOV W1,#710
@@ -7172,41 +7164,45 @@ static bool InstallP105BSingleTrampolineControllerTraceInternal() {
     static constexpr uint32_t sig520Call[] = {
         0x97FDFF32, // 0x7E6EC4 BL PlayAction
     };
-    static constexpr uint32_t sig520DirectWrapper[] = {
+    static constexpr uint32_t sigDirectWrapper[] = {
         0x940D766B, // 0x488B28 BL 0x7E64D4
     };
+    static constexpr uint32_t sig4c0[] = {
+        0xD10243FF, // +0x4C0 must remain native/unhooked
+    };
 
-    if (!MatchWords(kP105BController4C0Offset, sig4c0)) {
-        LogFingerprintFail("P105B_CTRL_4C0_7DDD94", kP105BController4C0Offset);
+    if (!MatchWords(kP106Controller520Offset, sig520)) {
+        LogFingerprintFail("P106_CTRL_520_7E64D4", kP106Controller520Offset);
         return false;
     }
     if (!MatchWords(0x7E6EA8, sig520Producer)) {
-        LogFingerprintFail("P105B_520_PRODUCER_7E6EA8", 0x7E6EA8);
+        LogFingerprintFail("P106_520_PRODUCER_7E6EA8", 0x7E6EA8);
         return false;
     }
     if (!MatchWords(0x7E6EC4, sig520Call)) {
-        LogFingerprintFail("P105B_520_PLAYACTION_7E6EC4", 0x7E6EC4);
+        LogFingerprintFail("P106_520_PLAYACTION_7E6EC4", 0x7E6EC4);
         return false;
     }
-    if (!MatchWords(0x488B28, sig520DirectWrapper)) {
-        LogFingerprintFail("P105B_520_DIRECT_WRAPPER_488B28", 0x488B28);
+    if (!MatchWords(0x488B28, sigDirectWrapper)) {
+        LogFingerprintFail("P106_520_DIRECT_WRAPPER_488B28", 0x488B28);
+        return false;
+    }
+    if (!MatchWords(kP106Controller4C0Offset, sig4c0)) {
+        LogFingerprintFail("P106_NATIVE_4C0_7DDD94", kP106Controller4C0Offset);
         return false;
     }
 
-    // Exactly ONE new trampoline. The +0x520 sibling remains native and is
-    // correlated using the existing PlayAction hook/caller 0x7E6EC8.
-    P105BController4C0Hook::InstallAtOffset(kP105BController4C0Offset);
+    // Exactly one new trampoline. P105B +0x4C0 hook is retired; +0x4C0 is native.
+    P106Controller520Hook::InstallAtOffset(kP106Controller520Offset);
     return true;
 }
-} // anonymous namespace — P105B
+} // anonymous namespace — P106A
 
-void InstallP105BSingleTrampolineControllerTrace() {
-    // Clean proven parent. P101/P102/P103/P104/P105A are deliberately absent.
+void InstallP106Controller520EntryProof() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP105BSingleTrampolineControllerTraceInternal();
+    const bool ok = InstallP106Controller520EntryProofInternal();
     Logging.Log(
-        "[NSC:P105B] READY parent_p96=1 ctrl4c0_7ddd94=1 "
-        "ctrl520_native_unhooked=1 ctrl520_playaction_caller_7e6ec8=1 "
+        "[NSC:P106A] READY parent_p96=1 ctrl520_7e64d4=1 ctrl4c0_native=1 "
         "one_new_trampoline=1 zero_new_inline_hooks=1 readonly=1 "
         "no_force708=1 no_force710=1 probe=%u",
         ok ? 1u : 0u);

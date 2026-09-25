@@ -1,0 +1,52 @@
+520_void_abi PASS
+520_caller_first PASS
+520_orig_paths PASS
+520_player_filter PASS
+520_pre_before_orig PASS
+520_post_after_orig PASS
+entrypoint PASS
+decl PASS
+parent_p96 PASS
+ready PASS
+ctrl520_log PASS
+state520_log PASS
+offset_520 PASS
+one_p106_trampoline PASS
+no_p106_inline PASS
+no_4c0_p106_hook PASS
+focused_700_711 PASS
+logs_mode PASS
+logs_caller PASS
+logs_vslots PASS
+p105b_runtime_absent PASS
+p105a_runtime_absent PASS
+p104_runtime_absent PASS
+p103_absent PASS
+p102_absent PASS
+p101_absent PASS
+victim_shadow_preserved PASS
+no_force710 PASS
+no_force708 PASS
+no_mode_assignment PASS
+no_actor_state_write PASS
+no_char281_branch PASS
+p106_log_bounds [('CTRL520', 278), ('STATE520', 320), ('READY', 165)]
+p106_log_buffer_guard PASS
+paired main 1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0
+restore main 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+fp 0x7e64d4 d10683ff PASS
+fp 0x7e64d8 a9147bfd PASS
+fp 0x7e64dc a9156ffc PASS
+fp 0x7e64e0 a91667fa PASS
+fp 0x7e64e4 a9175ff8 PASS
+fp 0x7e64e8 a91857f6 PASS
+fp 0x7e64ec a9194ff4 PASS
+fp 0x7e6ea8 528058c1 PASS
+fp 0x7e6ec4 97fdff32 PASS
+fp 0x488b28 940d766b PASS
+fp 0x7ddd94 d10243ff PASS
+call 0x7e6ec4 -> 0x766b8c
+call 0x488b28 -> 0x7e64d4
+direct_bl_520 ['0x488b28']
+push_enabled_workflows ['build-subsdk9-p106a.yml']
+P106A_DROPIN_SOURCE_VERIFY=PASS
