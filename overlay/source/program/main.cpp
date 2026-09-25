@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP107Post708StateBridge();
+    nsc::InstallP108Post708LifecycleBridge();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P107A post708 state bridge exception");
+    EXL_ABORT("NSC P108A post708 lifecycle bridge exception");
 }

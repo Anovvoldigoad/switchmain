@@ -7056,30 +7056,31 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P107A — exact post-708 cleanup-state bridge (functional candidate).
+// P108A — exact post-708 lifecycle-state restoration (functional candidate).
 //
-// P106A proved the missing native 710 controller is NOT entered by custom Tobi:
-// vanilla state137 dispatches through +0x520 and produces PlayAction710, while
-// custom post-708 cleanup requests state125 and the same generic state dispatcher
-// subsequently selects +0x4C0 -> action261. P98B previously proved the exact
-// state125 producer returns at main+0x7EB28C.
+// P107A proved that forcing the exact cleanup request 125 directly to state137
+// is sufficient to enter +0x520 and produce native action710, but it bypasses the
+// native state136 controller. Runtime then enters the cinematic with stale setup
+// state (notably E98=63/BDA4=1), producing broken stage/visibility/control/audio
+// lifecycle after 710.
 //
-// P107A does NOT hold state125 (P101 already falsified that) and does NOT force
-// action710. It maps only the exact native cleanup request 125 -> handoff state137
-// through the original state-request function main+0x7A89A4. Native validation,
-// native E9C store, native state commit, and native controller dispatch remain in
-// control. The policy is generic/data-driven: semantic UJ + generated membership
-// + exact action/state/caller fingerprint; no char281 gameplay branch.
+// Static v1.70 table proof: state125 -> vslot +0x4C0, state136 -> +0x518,
+// state137 -> +0x520. The +0x518 controller at main+0x7E47B8 contains the
+// 707/708 UJ corridor and native participant setup for actions136/138/137.
+// Therefore P108A maps only the exact proven post-708 cleanup request 125 -> 136
+// through the original state-request API, then leaves the native +0x518 -> +0x520
+// maturation and PlayAction710 fully untouched. No direct E94/E9C/control write,
+// no action710 force, and no char281 gameplay branch.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP107StateRequestOffset = 0x7A89A4;
-static constexpr ptrdiff_t kP107CleanupCallerReturn = 0x7EB28C;
-static constexpr uint32_t kP107CleanupState = 125u;
-static constexpr uint32_t kP107HandoffState = 137u;
-static constexpr uint32_t kP107LogLimit = 64u;
-static std::atomic<uint32_t> g_p107_count{0};
+static constexpr ptrdiff_t kP108StateRequestOffset = 0x7A89A4;
+static constexpr ptrdiff_t kP108CleanupCallerReturn = 0x7EB28C;
+static constexpr uint32_t kP108CleanupState = 125u;
+static constexpr uint32_t kP108SetupState = 136u;
+static constexpr uint32_t kP108LogLimit = 64u;
+static std::atomic<uint32_t> g_p108_count{0};
 
-HOOK_DEFINE_TRAMPOLINE(P107StateRequestBridgeHook) {
+HOOK_DEFINE_TRAMPOLINE(P108LifecycleStateBridgeHook) {
     static uint32_t Callback(void* actor, uint32_t requested_state,
                              uint32_t arg2, uint32_t arg3) {
         uintptr_t caller_lr = 0;
@@ -7088,7 +7089,7 @@ HOOK_DEFINE_TRAMPOLINE(P107StateRequestBridgeHook) {
 
         // This function is globally hot. Keep every unrelated state request on an
         // immediate native fast path before touching actor state.
-        if (caller_off != kP107CleanupCallerReturn || requested_state != kP107CleanupState) {
+        if (caller_off != kP108CleanupCallerReturn || requested_state != kP108CleanupState) {
             return Orig(actor, requested_state, arg2, arg3);
         }
 
@@ -7105,13 +7106,13 @@ HOOK_DEFINE_TRAMPOLINE(P107StateRequestBridgeHook) {
             pre.e94 == 63u && pre.e98 == 136u && pre.e9c == 0u &&
             pre.bda4 == 1u && pre.bda8 == 0u && pre.bdc8 == 0u;
 
-        const uint32_t mapped_state = bridge ? kP107HandoffState : requested_state;
+        const uint32_t mapped_state = bridge ? kP108SetupState : requested_state;
         const uint32_t ret = Orig(actor, mapped_state, arg2, arg3);
         const P93CoreState post = (valid && actor) ? ReadP93CoreState(actor) : P93CoreState{};
 
-        if (bridge && g_p107_count.fetch_add(1, std::memory_order_relaxed) < kP107LogLimit) {
+        if (bridge && g_p108_count.fetch_add(1, std::memory_order_relaxed) < kP108LogLimit) {
             Logging.Log(
-                "[NSC:P107A] BRIDGE actor=%p side=%u char=%u caller_off=0x%lx "
+                "[NSC:P108A] BRIDGE actor=%p side=%u char=%u caller_off=0x%lx "
                 "req=%u mapped=%u arg2=%u arg3=%u ret=%u action=%u->%u "
                 "e94=%u->%u e98=%u->%u e9c=%u->%u ea4=%08x->%08x "
                 "bda4=%u->%u bda8=%u->%u bdc8=%u->%u semantic=%u member=%u",
@@ -7126,7 +7127,7 @@ HOOK_DEFINE_TRAMPOLINE(P107StateRequestBridgeHook) {
     }
 };
 
-static bool InstallP107StateRequestBridgeInternal() {
+static bool InstallP108LifecycleStateBridgeInternal() {
     // main+0x7A89A4 state request implementation. W1=requested state.
     static constexpr uint32_t sigStateRequest[] = {
         0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x2A0103F4,
@@ -7145,54 +7146,80 @@ static bool InstallP107StateRequestBridgeInternal() {
         0x2A1F03E1, // 0x7A834C MOV W1,WZR
         0xD63F0100, // 0x7A8350 BLR X8
     };
-    // Native handoff controller and exact PlayAction710 producer remain untouched.
+    // Native state136 setup controller (+0x518) and its UJ/participant fingerprints.
+    static constexpr uint32_t sigController518[] = {0xF81A0FFD, 0xA9016FFE};
+    static constexpr uint32_t sigController518Action708[] = {0x52805894};
+    static constexpr uint32_t sigController518Participant136[] = {0x52801101};
+    static constexpr uint32_t sigController518Participant138[] = {0x52801141};
+    static constexpr uint32_t sigController518Participant137[] = {0x52801121};
+    // Native state137 handoff controller and exact PlayAction710 producer remain untouched.
     static constexpr uint32_t sigController520[] = {0xD10683FF};
     static constexpr uint32_t sig710Producer[] = {0x528058C1};
     static constexpr uint32_t sig710Call[] = {0x97FDFF32};
 
-    if (!MatchWords(kP107StateRequestOffset, sigStateRequest)) {
-        LogFingerprintFail("P107_STATE_REQUEST_7A89A4", kP107StateRequestOffset);
+    if (!MatchWords(kP108StateRequestOffset, sigStateRequest)) {
+        LogFingerprintFail("P108_STATE_REQUEST_7A89A4", kP108StateRequestOffset);
         return false;
     }
     if (!MatchWords(0x7EB270, sigCleanupProducer)) {
-        LogFingerprintFail("P107_CLEANUP_PRODUCER_7EB270", 0x7EB270);
+        LogFingerprintFail("P108_CLEANUP_PRODUCER_7EB270", 0x7EB270);
         return false;
     }
     if (!MatchWords(0x7A8310, sigStateDispatcher)) {
-        LogFingerprintFail("P107_STATE_DISPATCH_E94_7A8310", 0x7A8310);
+        LogFingerprintFail("P108_STATE_DISPATCH_E94_7A8310", 0x7A8310);
         return false;
     }
     if (!MatchWords(0x7A834C, sigDispatchCall)) {
-        LogFingerprintFail("P107_STATE_DISPATCH_CALL_7A834C", 0x7A834C);
+        LogFingerprintFail("P108_STATE_DISPATCH_CALL_7A834C", 0x7A834C);
+        return false;
+    }
+    if (!MatchWords(0x7E47B8, sigController518)) {
+        LogFingerprintFail("P108_NATIVE_CTRL518_7E47B8", 0x7E47B8);
+        return false;
+    }
+    if (!MatchWords(0x7E4828, sigController518Action708)) {
+        LogFingerprintFail("P108_CTRL518_ACTION708_7E4828", 0x7E4828);
+        return false;
+    }
+    if (!MatchWords(0x7E54A0, sigController518Participant136)) {
+        LogFingerprintFail("P108_CTRL518_PARTICIPANT136_7E54A0", 0x7E54A0);
+        return false;
+    }
+    if (!MatchWords(0x7E5504, sigController518Participant138)) {
+        LogFingerprintFail("P108_CTRL518_PARTICIPANT138_7E5504", 0x7E5504);
+        return false;
+    }
+    if (!MatchWords(0x7E5570, sigController518Participant137)) {
+        LogFingerprintFail("P108_CTRL518_PARTICIPANT137_7E5570", 0x7E5570);
         return false;
     }
     if (!MatchWords(0x7E64D4, sigController520)) {
-        LogFingerprintFail("P107_NATIVE_CTRL520_7E64D4", 0x7E64D4);
+        LogFingerprintFail("P108_NATIVE_CTRL520_7E64D4", 0x7E64D4);
         return false;
     }
     if (!MatchWords(0x7E6EA8, sig710Producer)) {
-        LogFingerprintFail("P107_NATIVE_710_PRODUCER_7E6EA8", 0x7E6EA8);
+        LogFingerprintFail("P108_NATIVE_710_PRODUCER_7E6EA8", 0x7E6EA8);
         return false;
     }
     if (!MatchWords(0x7E6EC4, sig710Call)) {
-        LogFingerprintFail("P107_NATIVE_710_CALL_7E6EC4", 0x7E6EC4);
+        LogFingerprintFail("P108_NATIVE_710_CALL_7E6EC4", 0x7E6EC4);
         return false;
     }
 
     // One diagnostic trampoline is replaced by one functional trampoline.
-    P107StateRequestBridgeHook::InstallAtOffset(kP107StateRequestOffset);
+    P108LifecycleStateBridgeHook::InstallAtOffset(kP108StateRequestOffset);
     return true;
 }
-} // anonymous namespace — P107A
+} // anonymous namespace — P108A
 
-void InstallP107Post708StateBridge() {
+void InstallP108Post708LifecycleBridge() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP107StateRequestBridgeInternal();
+    const bool ok = InstallP108LifecycleStateBridgeInternal();
     Logging.Log(
-        "[NSC:P107A] READY parent_p96=1 state_request_7a89a4=1 "
-        "exact_cleanup_caller_7eb28c=1 map125_to137=1 native_store_dispatch=1 "
+        "[NSC:P108A] READY parent_p96=1 state_request_7a89a4=1 "
+        "exact_cleanup_caller_7eb28c=1 map125_to136=1 native_setup518=1 native_store_dispatch=1 "
         "one_new_trampoline=1 no_direct_state_write=1 no_force708=1 no_force710=1 "
-        "no_char281_branch=1 candidate=%u",
+        "no_char281_branch=1 lifecycle_candidate=%u",
         ok ? 1u : 0u);
 }
 
