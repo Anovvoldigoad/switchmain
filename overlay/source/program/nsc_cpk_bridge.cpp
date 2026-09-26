@@ -631,8 +631,8 @@ static std::atomic<uint32_t> g_p93_core_logs{0};
 static constexpr uint32_t kP93CoreLimit = 65536;
 
 // P119A: final read-only UJ damage provenance correlation.
-// Reuses existing P93 trace callbacks to publish the most recent side-0 UJ
-// producer state, then pairs it with the victim damage record observed by the
+// Reuses existing P93 trace callbacks to publish the most recent UJ
+// producer state on either battle side, then pairs it with the victim damage record observed by the
 // already boot-safe P118B bucket5 getter hook. No gameplay write is performed.
 struct P119AttackerSnapshot {
     uintptr_t actor = 0;
@@ -661,9 +661,23 @@ static std::atomic<uint32_t> g_p119_attacker_ea4{0};
 static std::atomic<uint32_t> g_p119_attacker_semantic{0};
 static std::atomic<uint32_t> g_p119_attacker_trace_seq{0};
 
+// P120A one-shot gate bridge latch. Plugin-local state only; never written into game memory.
+// One latch per battle side prevents multi-hit custom UJ damage from creating duplicate
+// cinematic admission attempts while action707 is active. P93 clears the latch as soon
+// as the same attacker leaves action707.
+static std::atomic<uintptr_t> g_p120_bridged_actor[2];
+
+static void P120ObserveAttackerAction(void* actor, uint32_t side, uint32_t action) {
+    if (!actor || side > 1u || action == 707u) return;
+    const uintptr_t a = reinterpret_cast<uintptr_t>(actor);
+    if (g_p120_bridged_actor[side].load(std::memory_order_relaxed) == a) {
+        g_p120_bridged_actor[side].store(0u, std::memory_order_relaxed);
+    }
+}
+
 static void P119PublishAttackerSnapshot(void* actor, uint32_t side, uint32_t cid,
                                         bool semantic, const P93CoreState& st) {
-    if (!actor || side != 0u) return;
+    if (!actor || side > 1u) return;
     const bool uj_like = semantic ||
         (st.action >= 700u && st.action <= 740u) ||
         (st.e94 >= 135u && st.e94 <= 138u) ||
@@ -1157,6 +1171,7 @@ void P93TraceCore(const char* tag, void* actor, ptrdiff_t caller_off, int32_t co
     if (!(side == 0u || custom)) return;
     const P93CoreState st = ReadP93CoreState(actor);
     const bool semantic = P64QuerySemanticUltimateJutsu(actor);
+    P120ObserveAttackerAction(actor, side, st.action);
     const bool uj_state = (st.action >= 700u && st.action <= 740u) ||
                           (st.e94 >= 135u && st.e94 <= 138u) ||
                           (st.e98 >= 135u && st.e98 <= 138u) ||
@@ -7434,6 +7449,139 @@ void InstallP119AUjDamageProvenanceProbe() {
         "damage_name_index_raw=1 attacker_action_ea4=1 cinematic_gate10=1 one_new_trampoline_total=1 "
         "preserve_orig_once=1 no_event_cursor_write=1 no_damage_index_write=1 no_branch_patch=1 "
         "no_session_create=1 no_direct_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1 probe_ok=%u",
+        ok ? 1u : 0u);
+}
+
+
+// ============================================================================
+// P120A — FIRST CORRECTIVE PATCH / GENERIC CUSTOM-UJ CINEMATIC GATE BRIDGE
+//
+// P119 runtime proved the causal split at this exact bucket5 corridor:
+//   vanilla action707 -> victim DAMAGE_ID_SPATK_BEGIN_DIRECT -> raw10 -> gate pass
+//   custom semantic action707 -> victim appended custom damage -> non10 -> gate fail
+//
+// This patch replaces ONLY the native `LDR W8,[X20,#0x50]` at main+0x77C474.
+// Native raw type is always loaded first. It is overlaid to 10 in W8 only when:
+//   * the current event record belongs to the v1.70 appended custom damage range;
+//   * a coherent opposite-side custom semantic-UJ attacker snapshot exists;
+//   * that attacker is currently action707;
+//   * the attacker snapshot is fresh (P93 trace gap <= 16);
+//   * native raw type itself does not already satisfy the 10/11 gate;
+//   * this attacker has not already been bridged during the current action707.
+//
+// No event record, B9E4 cursor, action, session, state, damage table, or actor memory
+// is changed. The following native AND/CMP/B.NE instructions remain byte-identical.
+// ============================================================================
+namespace {
+static constexpr ptrdiff_t kP120GateLoadOffset = 0x77C474;
+static constexpr uint32_t kP120VanillaDamageCount = 1847u; // locked Switch v1.70 baseline
+static constexpr uint32_t kP120TraceGapMax = 16u;
+static constexpr uint32_t kP120LogLimit = 1024u;
+static std::atomic<uint32_t> g_p120_gate_logs{0};
+
+HOOK_DEFINE_INLINE(P120CustomUjCinematicGateHook) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        const uintptr_t event_addr = static_cast<uintptr_t>(ctx->X[20]);
+        const uintptr_t victim_addr = static_cast<uintptr_t>(ctx->X[19]);
+        const auto* event = reinterpret_cast<const volatile uint8_t*>(event_addr);
+
+        // Faithfully reproduce the replaced native instruction first.
+        const uint32_t native_raw =
+            *reinterpret_cast<const volatile uint32_t*>(event + 0x50u);
+        uint32_t out_raw = native_raw;
+
+        uint32_t victim_side = 0xFFFFFFFFu, victim_cid = 0xFFFFFFFFu;
+        const bool victim_valid = ReadActorIdentity(
+            reinterpret_cast<void*>(victim_addr), victim_side, victim_cid);
+
+        const uintptr_t main_base = reinterpret_cast<uintptr_t>(exl::util::modules::GetMainModuleInfo().m_Total.m_Start);
+        const auto* container = P118BGetEventContainer(main_base);
+        uint32_t count = 0u;
+        uintptr_t records_base = 0u;
+        int32_t idx = -1;
+        if (container) {
+            count = *reinterpret_cast<const volatile uint32_t*>(container + 0x50u);
+            records_base = *reinterpret_cast<const volatile uintptr_t*>(container + 0x48u);
+            if (records_base && event_addr >= records_base) {
+                const uintptr_t delta = event_addr - records_base;
+                if ((delta % kP118BRecordStride) == 0u) {
+                    const uintptr_t q = delta / kP118BRecordStride;
+                    if (q < count && q <= 0x7FFFFFFFu) idx = static_cast<int32_t>(q);
+                }
+            }
+        }
+
+        P119AttackerSnapshot atk{};
+        const bool have_atk = P119ReadAttackerSnapshot(atk);
+        const uint32_t now = g_p93_core_logs.load(std::memory_order_relaxed);
+        const uint32_t trace_gap = have_atk ? (now - atk.trace_seq) : 0xFFFFFFFFu;
+        const bool opposite_side = have_atk && victim_valid && atk.side <= 1u && victim_side <= 1u && atk.side != victim_side;
+        const bool custom_attacker = have_atk && atk.cid > kVanillaMaxCharId && atk.cid < 0x1000u;
+        const bool semantic707 = have_atk && atk.semantic != 0u && atk.action == 707u;
+        const bool fresh = have_atk && trace_gap <= kP120TraceGapMax;
+        const bool appended = idx >= static_cast<int32_t>(kP120VanillaDamageCount) && static_cast<uint32_t>(idx) < count;
+        const bool native_gate10 = ((native_raw & ~1u) == 10u);
+
+        bool one_shot = false;
+        if (opposite_side && custom_attacker && semantic707 && fresh && appended && !native_gate10) {
+            const uint32_t s = atk.side;
+            const uintptr_t a = atk.actor;
+            uintptr_t latched = g_p120_bridged_actor[s].load(std::memory_order_relaxed);
+            if (latched != a) {
+                g_p120_bridged_actor[s].store(a, std::memory_order_relaxed);
+                one_shot = true;
+                out_raw = 10u;
+            }
+        }
+
+        // The original LDR returned its value in W8. We substitute only this register.
+        ctx->W[8] = out_raw;
+
+        if (one_shot || (have_atk && semantic707 && custom_attacker && opposite_side)) {
+            const uint32_t n = g_p120_gate_logs.fetch_add(1u, std::memory_order_relaxed);
+            if (n < kP120LogLimit) {
+                Logging.Log(
+                    "[NSC:P120A] GATE n=%u bridge=%u atk=%p as=%u ac=%u aa=%u sem=%u ea4=%08x gap=%u "
+                    "vic=%p vs=%u vc=%u idx=%d count=%u appended=%u raw=%u out=%u",
+                    n, one_shot ? 1u : 0u,
+                    reinterpret_cast<void*>(atk.actor), atk.side, atk.cid, atk.action, atk.semantic, atk.ea4, trace_gap,
+                    reinterpret_cast<void*>(victim_addr), victim_side, victim_cid,
+                    idx, count, appended ? 1u : 0u, native_raw, out_raw);
+            }
+        }
+    }
+};
+
+static bool InstallP120CustomUjCinematicGateInternal() {
+    static constexpr uint32_t kExpected[] = {
+        0xB9405288, // 77C474 LDR W8,[X20,#0x50]
+        0x121F7909, // 77C478 AND W9,W8,#0xfffffffe
+        0x7100293F, // 77C47C CMP W9,#10
+        0x54000B81, // 77C480 B.NE
+        0xF9400268, // 77C484 LDR X8,[X19]
+        0xAA1303E0, // 77C488 MOV X0,X19
+        0xF9462508, // 77C48C LDR X8,[X8,#0xC48]
+        0xD63F0100, // 77C490 BLR X8
+    };
+    if (!MatchWords(kP120GateLoadOffset, kExpected)) {
+        LogFingerprintFail("P120_GATE_LOAD_77C474", kP120GateLoadOffset);
+        return false;
+    }
+
+    P120CustomUjCinematicGateHook::InstallAtOffset(kP120GateLoadOffset);
+    return true;
+}
+} // anonymous namespace — P120A
+
+void InstallP120ACustomUjCinematicGateBridge() {
+    InstallP96AActionDescriptorTransitionTrace();
+    const bool ok = InstallP120CustomUjCinematicGateInternal();
+    Logging.Log(
+        "[NSC:P120A] READY parent_p96=1 corrective=1 gate_77c474=1 native_load_replayed=1 "
+        "custom_semantic707=1 opposite_side=1 appended_damage=1 trace_gap16=1 one_shot_per_action707=1 "
+        "register_only_overlay=1 no_event_record_write=1 no_event_cursor_write=1 no_damage_table_write=1 "
+        "no_session_write=1 no_action_write=1 no_state_write=1 no_force708=1 no_force710=1 "
+        "no_char281_branch=1 one_new_inline_hook=1 zero_new_trampoline_hooks=1 patch_ok=%u",
         ok ? 1u : 0u);
 }
 

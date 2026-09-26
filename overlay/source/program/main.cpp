@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP119AUjDamageProvenanceProbe();
+    nsc::InstallP120ACustomUjCinematicGateBridge();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P119A UJ damage provenance exception");
+    EXL_ABORT("NSC P120A custom UJ cinematic gate bridge exception");
 }

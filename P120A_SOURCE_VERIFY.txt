@@ -1,0 +1,58 @@
+entrypoint PASS
+decl PASS
+ready PASS
+gate_log PASS
+gate_offset PASS
+native_ldr_replayed PASS
+semantic707 PASS
+generic_custom PASS
+opposite_side PASS
+fresh_gap PASS
+gap_is_16 PASS
+appended_threshold PASS
+appended_guard PASS
+native_gate_preserved PASS
+one_shot_latch PASS
+latch_reset PASS
+snapshot_both_sides PASS
+one_p120_inline PASS
+zero_p120_trampoline PASS
+one_p120_install PASS
+parent_p96 PASS
+no_p119_install PASS
+no_fixture_damage_string_literals PASS
+no_char281_branch PASS
+no_force708 PASS
+no_force710 PASS
+victim_shadow_preserved PASS
+no_direct_game_pointer_write PASS
+no_b9e4_write PASS
+no_session_create_call PASS
+no_action_setter_call PASS
+log_bound [NSC:P120A] GATE 302
+gate_lt_512 PASS
+log_bound [NSC:P120A] READY 443
+ready_lt_512 PASS
+paired main 1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0
+restore main 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+fp 0x77c474 b9405288 PASS
+fp 0x77c478 121f7909 PASS
+fp 0x77c47c 7100293f PASS
+fp 0x77c480 54000b81 PASS
+fp 0x77c484 f9400268 PASS
+fp 0x77c488 aa1303e0 PASS
+fp 0x77c48c f9462508 PASS
+fp 0x77c490 d63f0100 PASS
+fp 0x77c494 34000ac0 PASS
+fp 0x77c498 f94002e8 PASS
+fp 0x77c49c aa1703e0 PASS
+fp 0x77c4a0 f9462508 PASS
+fp 0x77c4a4 d63f0100 PASS
+fp 0x77c4a8 34000a20 PASS
+fp 0x77c4ac 52800120 PASS
+fp 0x77c4b0 97ff50ec PASS
+fp 0x77c5e4 aa1703e0 PASS
+fp 0x77c5e8 9401caac PASS
+fp 0x77c5ec b9405288 PASS
+push_enabled_workflows ['build-subsdk9-p120a.yml']
+P120A_DROPIN_SOURCE_VERIFY=PASS
