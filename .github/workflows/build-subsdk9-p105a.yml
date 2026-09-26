@@ -1,8 +1,0 @@
-name: DISABLED legacy P105A workflow
-on:
-  workflow_dispatch:
-jobs:
-  disabled:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "P105A is retired; use P105B workflow"

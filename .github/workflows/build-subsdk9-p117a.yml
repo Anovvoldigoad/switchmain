@@ -1,8 +1,0 @@
-name: P117A retired (manual only)
-on:
-  workflow_dispatch:
-jobs:
-  retired:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "P117A retired; use P118A"

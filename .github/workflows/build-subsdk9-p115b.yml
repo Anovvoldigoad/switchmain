@@ -1,8 +1,0 @@
-name: Disabled P115B superseded by P116A
-on:
-  workflow_dispatch:
-jobs:
-  disabled:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "P115B retired; use P116A universal cinematic outer caller census"

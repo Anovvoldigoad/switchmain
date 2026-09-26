@@ -1,8 +1,0 @@
-name: DISABLED legacy P104B workflow
-on:
-  workflow_dispatch:
-jobs:
-  disabled:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "P104B is retired; use P105B workflow"

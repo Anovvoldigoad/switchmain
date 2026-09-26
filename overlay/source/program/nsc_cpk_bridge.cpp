@@ -673,6 +673,9 @@ static std::atomic<uintptr_t> g_p123_armed_actor[2];
 static std::atomic<uintptr_t> g_p124_armed_actor[2];
 // P125A session-qualified P107 endpoint latch. Set only after native 0x7EF098 returns success.
 static std::atomic<uintptr_t> g_p125_session_actor[2];
+// P128A persistent gate-qualified actor latch. Unlike P124 reach latch, this is not
+// cleared by transient action changes; it survives until post-outer/cleanup proof.
+static std::atomic<uintptr_t> g_p128_gate_actor[2];
 
 static void P120ObserveAttackerAction(void* actor, uint32_t side, uint32_t action) {
     if (!actor || side > 1u || action == 707u) return;
@@ -7810,8 +7813,14 @@ HOOK_DEFINE_INLINE(P124GateHook) {
         }
         const bool appended = idx >= static_cast<int32_t>(kP124VanillaDamageCount) && static_cast<uint32_t>(idx) < count;
         const bool native_gate10 = ((native_raw & ~1u) == 10u);
+        const bool strict_candidate = custom && semantic && action==707u && opposite && appended && as<=1u;
+        if (strict_candidate) {
+            // P128A persistent proof latch: static gate cave will independently validate
+            // raw15/custom/action707 before entering the native corridor.
+            g_p128_gate_actor[as].store(attacker_addr,std::memory_order_relaxed);
+        }
         bool bridge=false;
-        if (custom && semantic && action==707u && opposite && appended && !native_gate10 && as<=1u) {
+        if (strict_candidate && !native_gate10) {
             const uintptr_t latched=g_p124_armed_actor[as].load(std::memory_order_relaxed);
             if (latched != attacker_addr) {
                 g_p124_armed_actor[as].store(attacker_addr,std::memory_order_relaxed);
@@ -8048,6 +8057,7 @@ void InstallP126AActorC48RejectBypassProbe() {
 // success plus mature E94/E98/BDA context. This is an A/B probe, not the final
 // generic policy if it succeeds.
 // ============================================================================
+
 void InstallP127AFullNativeCorridorAB() {
     InstallP125AP107GuidedSessionQualifiedState137Fallback();
     Logging.Log(
@@ -8056,6 +8066,106 @@ void InstallP127AFullNativeCorridorAB() {
         "native_actor_c48_call=1 native_peer_c48_call=1 native_type9_call=1 native_lookup_call=1 "
         "native_7ef098_call=1 p125_session_qualified_fallback=1 zero_new_hooks=1 zero_new_trampolines=1 "
         "no_direct_7ef098_call=1 no_force708=1 no_force710=1 no_char281_branch=1");
+}
+
+
+// ============================================================================
+// P128A — STATIC PRECISE GATE CAVE + PERSISTENT POST-OUTER PROOF
+//
+// P127 runtime kept Naruto/victim UJ safe, but custom still showed only the
+// P124 gate log and no post-outer/session proof even though all downstream
+// reject branches were statically opened in paired main.
+//
+// P128 removes dependence on callback register overlay for the first event-type
+// branch. Paired main redirects 0x77C480 into the now-unreachable 0x77C4B8 block.
+// The static cave:
+//   * preserves native raw10/raw11 admission,
+//   * admits raw15 ONLY for generic custom IDs (> vanilla max, <0x1000)
+//     while the attacker is action707,
+//   * rejects raw24 and all other values to native 0x77C5F0,
+//   * returns accepted traffic to native actor-C48 at 0x77C484.
+//
+// P127 downstream calls remain native and their reject branches remain A/B-open.
+// Runtime installs only gate + post-outer + cleanup hooks; old reach-marker hooks
+// are not installed. A persistent gate-qualified actor latch survives transient
+// action changes so post-outer proof cannot disappear because P93 clears P124.
+//
+// No direct 0x7EF098 call, no callback-side BL/BLR replay, no force708/710,
+// no char281 branch, and no game-memory field write.
+// ============================================================================
+namespace {
+static constexpr ptrdiff_t kP128PostOuterOffset = 0x77C5EC;
+static constexpr uint32_t kP128LogLimit = 128u;
+static std::atomic<uint32_t> g_p128_logs{0};
+
+HOOK_DEFINE_INLINE(P128PostOuterHook) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        const uint32_t outer_ret = ctx->W[0];
+        const uintptr_t attacker = static_cast<uintptr_t>(ctx->X[23]);
+        uint32_t side=0xFFFFFFFFu, cid=0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(reinterpret_cast<void*>(attacker), side, cid);
+        const bool custom = valid && cid > kVanillaMaxCharId && cid < 0x1000u;
+        const bool latched = valid && side <= 1u &&
+            g_p128_gate_actor[side].load(std::memory_order_relaxed) == attacker;
+
+        const uintptr_t event_addr = static_cast<uintptr_t>(ctx->X[20]);
+        const auto* event = reinterpret_cast<const volatile uint8_t*>(event_addr);
+        const uint32_t raw = event ? *reinterpret_cast<const volatile uint32_t*>(event + 0x50u) : 0u;
+        ctx->W[8] = raw; // exact replay: LDR W8,[X20,#0x50]
+
+        bool session_latch=false;
+        if (custom && latched && outer_ret != 0u && side <= 1u) {
+            g_p125_session_actor[side].store(attacker,std::memory_order_relaxed);
+            session_latch=true;
+        }
+        if (custom && latched) {
+            const uint32_t action=P124ReadAction(reinterpret_cast<void*>(attacker));
+            const uint32_t n=g_p128_logs.fetch_add(1u,std::memory_order_relaxed);
+            if(n<kP128LogLimit) Logging.Log(
+                "[NSC:P128A] POST_OUTER n=%u atk=%p side=%u char=%u action=%u ret=%u session_latch=%u raw=%u",
+                n,reinterpret_cast<void*>(attacker),side,cid,action,outer_ret,session_latch?1u:0u,raw);
+        }
+    }
+};
+
+static bool InstallP128PostOuter() {
+    static constexpr uint32_t e[]={0xB9405288};
+    if(!MatchWords(kP128PostOuterOffset,e)){LogFingerprintFail("P128_POST_OUTER",kP128PostOuterOffset);return false;}
+    P128PostOuterHook::InstallAtOffset(kP128PostOuterOffset);
+    return true;
+}
+
+static uint32_t P128RuntimeWord(uintptr_t base, ptrdiff_t off) {
+    return *reinterpret_cast<const volatile uint32_t*>(base + static_cast<uintptr_t>(off));
+}
+} // anonymous namespace — P128A
+
+void InstallP128AStaticPreciseGateCaveProof() {
+    InstallP81AOugiAwakeningPolicyBridge();
+    const bool p89=InstallP89Internal();
+    const bool gate=InstallP124Gate();
+    const bool post=InstallP128PostOuter();
+    const bool cleanup=InstallP125CleanupRequest();
+
+    const uintptr_t base = reinterpret_cast<uintptr_t>(exl::util::GetMainModuleInfo().m_Total.m_Start);
+    const uint32_t w480=P128RuntimeWord(base,0x77C480);
+    const uint32_t w4b8=P128RuntimeWord(base,0x77C4B8);
+    const uint32_t w4fc=P128RuntimeWord(base,0x77C4FC);
+    const uint32_t w500=P128RuntimeWord(base,0x77C500);
+    const uint32_t w494=P128RuntimeWord(base,0x77C494);
+    const uint32_t w4a8=P128RuntimeWord(base,0x77C4A8);
+    const uint32_t w4b4=P128RuntimeWord(base,0x77C4B4);
+    const uint32_t w520=P128RuntimeWord(base,0x77C520);
+    const uint32_t w5e8=P128RuntimeWord(base,0x77C5E8);
+
+    Logging.Log(
+        "[NSC:P128A] READY p89=%u gate=%u post_outer=%u cleanup=%u static_precise_gate_cave=1 "
+        "raw10_11_native=1 raw15_custom_action707=1 raw24_rejected=1 downstream_p127_ab_open=1 "
+        "persistent_gate_latch=1 no_after_actor_hook=1 no_after_peer_hook=1 no_type9_hook=1 "
+        "native_calls_once=1 no_direct_7ef098_call=1 no_force708=1 no_force710=1 no_char281_branch=1 "
+        "rt480=%08x rt4b8=%08x rt4fc=%08x rt500=%08x rt494=%08x rt4a8=%08x rt4b4=%08x rt520=%08x rt5e8=%08x",
+        p89?1u:0u,gate?1u:0u,post?1u:0u,cleanup?1u:0u,
+        w480,w4b8,w4fc,w500,w494,w4a8,w4b4,w520,w5e8);
 }
 
 } // namespace nsc

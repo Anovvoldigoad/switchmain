@@ -1,9 +1,0 @@
-name: Historical P107A (disabled)
-on:
-  workflow_dispatch:
-jobs:
-  disabled:
-    if: ${{ false }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo 'P107A direct 125-to-137 bridge retired after post-710 lifecycle regression; use P108A'

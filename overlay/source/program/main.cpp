@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP127AFullNativeCorridorAB();
+    nsc::InstallP128AStaticPreciseGateCaveProof();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P127A full native corridor A/B exception");
+    EXL_ABORT("NSC P128A static precise gate cave exception");
 }

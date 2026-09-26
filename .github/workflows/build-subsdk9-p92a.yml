@@ -1,8 +1,0 @@
-name: Historical build-subsdk9-p92a (manual only)
-on:
-  workflow_dispatch:
-jobs:
-  archived:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "build-subsdk9-p92a archived; current build is P93A."

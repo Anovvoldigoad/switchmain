@@ -1,8 +1,0 @@
-name: Disabled NSC P110A cinematic manager phase probe
-on:
-  workflow_dispatch:
-jobs:
-  disabled:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo 'P110A retired by P111A; manual stub only.'

@@ -1,8 +1,0 @@
-name: Disabled P113A superseded by P116A
-on:
-  workflow_dispatch:
-jobs:
-  disabled:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "P113A superseded by P116A"

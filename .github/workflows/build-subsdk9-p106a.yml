@@ -1,9 +1,0 @@
-name: Historical P106A (disabled)
-on:
-  workflow_dispatch:
-jobs:
-  disabled:
-    if: ${{ false }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo 'P106A retired after decisive result; use P107A'
