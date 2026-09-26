@@ -1,8 +1,6 @@
 name: Build NSC P118B event-table identity read-only probe
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -1,16 +1,18 @@
-name: Build NSC P118B event-table identity read-only probe
+name: Build NSC P119A final UJ damage provenance read-only probe
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest
     container: devkitpro/devkita64:latest
     steps:
       - uses: actions/checkout@v4
-      - name: Preflight P118B drop-in kit
+      - name: Preflight P119A drop-in kit
         run: |
           set -eux
-          python3 verify_p118b_source.py
+          python3 verify_p119a_source.py
       - name: Bootstrap pinned exlaunch
         run: |
           set -eux
@@ -23,12 +25,11 @@ jobs:
           set -eux
           chmod +x prepare_exlaunch.sh
           ./prepare_exlaunch.sh
-          grep -Fq '[NSC:P118B] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq '[NSC:P118B] CURSOR' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq '[NSC:P118B] TABLE' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq '[NSC:P118B] REC' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq 'P118BEventTableIdentityHook' exlaunch/source/program/nsc_cpk_bridge.cpp
-          grep -Fq 'nsc::InstallP118BEventTableIdentityProbe();' exlaunch/source/program/main.cpp
+          grep -Fq '[NSC:P119A] READY' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq '[NSC:P119A] LINK' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq '[NSC:P119A] DAMAGE' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq 'P119PublishAttackerSnapshot' exlaunch/source/program/nsc_cpk_bridge.cpp
+          grep -Fq 'nsc::InstallP119AUjDamageProvenanceProbe();' exlaunch/source/program/main.cpp
           ! grep -Fq '[NSC:P116A]' exlaunch/source/program/nsc_cpk_bridge.cpp
           ! grep -Fq '[NSC:P115' exlaunch/source/program/nsc_cpk_bridge.cpp
       - name: Build
@@ -39,10 +40,9 @@ jobs:
           set -eux
           ELF="$(find exlaunch -maxdepth 2 -type f -name '*_final.elf' -size +10k -print -quit)"
           test -n "$ELF"
-          grep -aFq '[NSC:P118B] READY' "$ELF"
-          grep -aFq '[NSC:P118B] CURSOR' "$ELF"
-          grep -aFq '[NSC:P118B] TABLE' "$ELF"
-          grep -aFq '[NSC:P118B] REC' "$ELF"
+          grep -aFq '[NSC:P119A] READY' "$ELF"
+          grep -aFq '[NSC:P119A] LINK' "$ELF"
+          grep -aFq '[NSC:P119A] DAMAGE' "$ELF"
           grep -aFq '[NSC:P96A] READY' "$ELF"
           grep -aFq '[NSC:P89A] READY' "$ELF"
           ! grep -aFq '[NSC:P116A]' "$ELF"
@@ -59,6 +59,6 @@ jobs:
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: NSC-P118B-event-table-identity-readonly
+          name: NSC-P119A-uj-damage-provenance-readonly
           path: artifact/
           if-no-files-found: error

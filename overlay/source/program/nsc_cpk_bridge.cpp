@@ -630,6 +630,86 @@ struct P93CoreState {
 static std::atomic<uint32_t> g_p93_core_logs{0};
 static constexpr uint32_t kP93CoreLimit = 65536;
 
+// P119A: final read-only UJ damage provenance correlation.
+// Reuses existing P93 trace callbacks to publish the most recent side-0 UJ
+// producer state, then pairs it with the victim damage record observed by the
+// already boot-safe P118B bucket5 getter hook. No gameplay write is performed.
+struct P119AttackerSnapshot {
+    uintptr_t actor = 0;
+    uint32_t side = 0xFFFFFFFFu;
+    uint32_t cid = 0xFFFFFFFFu;
+    uint32_t action = 0xFFFFFFFFu;
+    uint32_t e44 = 0;
+    uint32_t e94 = 0;
+    uint32_t e98 = 0;
+    uint32_t e9c = 0;
+    uint32_t ea4 = 0;
+    uint32_t semantic = 0;
+    uint32_t trace_seq = 0;
+};
+
+static std::atomic<uint32_t> g_p119_snapshot_version{0};
+static std::atomic<uintptr_t> g_p119_attacker_actor{0};
+static std::atomic<uint32_t> g_p119_attacker_side{0xFFFFFFFFu};
+static std::atomic<uint32_t> g_p119_attacker_cid{0xFFFFFFFFu};
+static std::atomic<uint32_t> g_p119_attacker_action{0xFFFFFFFFu};
+static std::atomic<uint32_t> g_p119_attacker_e44{0};
+static std::atomic<uint32_t> g_p119_attacker_e94{0};
+static std::atomic<uint32_t> g_p119_attacker_e98{0};
+static std::atomic<uint32_t> g_p119_attacker_e9c{0};
+static std::atomic<uint32_t> g_p119_attacker_ea4{0};
+static std::atomic<uint32_t> g_p119_attacker_semantic{0};
+static std::atomic<uint32_t> g_p119_attacker_trace_seq{0};
+
+static void P119PublishAttackerSnapshot(void* actor, uint32_t side, uint32_t cid,
+                                        bool semantic, const P93CoreState& st) {
+    if (!actor || side != 0u) return;
+    const bool uj_like = semantic ||
+        (st.action >= 700u && st.action <= 740u) ||
+        (st.e94 >= 135u && st.e94 <= 138u) ||
+        (st.e98 >= 135u && st.e98 <= 138u);
+    if (!uj_like) return;
+
+    // Simple seqlock: odd while publishing, even when snapshot is coherent.
+    uint32_t v = g_p119_snapshot_version.load(std::memory_order_relaxed);
+    if (v & 1u) ++v;
+    g_p119_snapshot_version.store(v + 1u, std::memory_order_release);
+    g_p119_attacker_actor.store(reinterpret_cast<uintptr_t>(actor), std::memory_order_relaxed);
+    g_p119_attacker_side.store(side, std::memory_order_relaxed);
+    g_p119_attacker_cid.store(cid, std::memory_order_relaxed);
+    g_p119_attacker_action.store(st.action, std::memory_order_relaxed);
+    g_p119_attacker_e44.store(st.e44, std::memory_order_relaxed);
+    g_p119_attacker_e94.store(st.e94, std::memory_order_relaxed);
+    g_p119_attacker_e98.store(st.e98, std::memory_order_relaxed);
+    g_p119_attacker_e9c.store(st.e9c, std::memory_order_relaxed);
+    g_p119_attacker_ea4.store(st.ea4, std::memory_order_relaxed);
+    g_p119_attacker_semantic.store(semantic ? 1u : 0u, std::memory_order_relaxed);
+    g_p119_attacker_trace_seq.store(g_p93_core_logs.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    g_p119_snapshot_version.store(v + 2u, std::memory_order_release);
+}
+
+static bool P119ReadAttackerSnapshot(P119AttackerSnapshot& out) {
+    for (uint32_t tries = 0; tries < 4u; ++tries) {
+        const uint32_t v0 = g_p119_snapshot_version.load(std::memory_order_acquire);
+        if (v0 & 1u) continue;
+        P119AttackerSnapshot s{};
+        s.actor = g_p119_attacker_actor.load(std::memory_order_relaxed);
+        s.side = g_p119_attacker_side.load(std::memory_order_relaxed);
+        s.cid = g_p119_attacker_cid.load(std::memory_order_relaxed);
+        s.action = g_p119_attacker_action.load(std::memory_order_relaxed);
+        s.e44 = g_p119_attacker_e44.load(std::memory_order_relaxed);
+        s.e94 = g_p119_attacker_e94.load(std::memory_order_relaxed);
+        s.e98 = g_p119_attacker_e98.load(std::memory_order_relaxed);
+        s.e9c = g_p119_attacker_e9c.load(std::memory_order_relaxed);
+        s.ea4 = g_p119_attacker_ea4.load(std::memory_order_relaxed);
+        s.semantic = g_p119_attacker_semantic.load(std::memory_order_relaxed);
+        s.trace_seq = g_p119_attacker_trace_seq.load(std::memory_order_relaxed);
+        const uint32_t v1 = g_p119_snapshot_version.load(std::memory_order_acquire);
+        if (v0 == v1 && !(v1 & 1u) && s.actor) { out = s; return true; }
+    }
+    return false;
+}
+
 P93CoreState ReadP93CoreState(void* actor) {
     P93CoreState st{};
     if (!actor) return st;
@@ -1082,6 +1162,7 @@ void P93TraceCore(const char* tag, void* actor, ptrdiff_t caller_off, int32_t co
                           (st.e98 >= 135u && st.e98 <= 138u) ||
                           (code >= 700 && code <= 740);
     if (!(semantic || uj_state)) return;
+    P119PublishAttackerSnapshot(actor, side, cid, semantic, st);
     const uint32_t n = g_p93_core_logs.fetch_add(1, std::memory_order_relaxed);
     if (n >= kP93CoreLimit) return;
     Logging.Log(
@@ -7095,6 +7176,8 @@ static constexpr uint32_t kP118BHeaderLogLimit = 4096u;
 static constexpr uint32_t kP118BRecordLogLimit = 32768u;
 static std::atomic<uint32_t> g_p118b_header_count{0};
 static std::atomic<uint32_t> g_p118b_record_count{0};
+static std::atomic<uint32_t> g_p119_damage_count{0};
+static constexpr uint32_t kP119DamageLogLimit = 8192u;
 
 using P118BEventNameFn = const char* (*)(uint32_t);
 
@@ -7229,8 +7312,36 @@ HOOK_DEFINE_TRAMPOLINE(P118BEventTableIdentityHook) {
                 global_a8, global_aa, global_ac);
         }
 
-        // Only dump a neighborhood for the UJ action corridor. This is generic
-        // action-state filtering, not a character-specific gameplay branch.
+        // P119A final provenance correlation: pair this victim-owned damage
+        // record with the latest coherent side-0 UJ producer snapshot emitted
+        // by existing P93 callbacks. This is diagnostic only.
+        P119AttackerSnapshot atk{};
+        const bool have_atk = P119ReadAttackerSnapshot(atk);
+        const uint32_t trace_now = g_p93_core_logs.load(std::memory_order_relaxed);
+        const uint32_t trace_gap = have_atk ? (trace_now - atk.trace_seq) : 0xFFFFFFFFu;
+        const bool pair_ok = have_atk && actor_valid && side != atk.side &&
+            (atk.action >= 700u && atk.action <= 740u) && trace_gap <= 16u;
+        if (pair_ok) {
+            const uint32_t pn = g_p119_damage_count.fetch_add(1, std::memory_order_relaxed);
+            if (pn < kP119DamageLogLimit) {
+                const uint32_t cinematic_gate =
+                    (raw_type != 0xFFFFFFFFu && ((raw_type & ~1u) == 10u)) ? 1u : 0u;
+                Logging.Log(
+                    "[NSC:P119A] LINK n=%u pair_ok=1 atk=%p atk_side=%u atk_char=%u atk_action=%u "
+                    "atk_sem=%u atk_e44=%08x atk_e94=%u atk_e98=%u atk_e9c=%u atk_ea4=%08x "
+                    "atk_trace=%u trace_gap=%u",
+                    pn, reinterpret_cast<void*>(atk.actor), atk.side, atk.cid, atk.action,
+                    atk.semantic, atk.e44, atk.e94, atk.e98, atk.e9c, atk.ea4, atk.trace_seq, trace_gap);
+                Logging.Log(
+                    "[NSC:P119A] DAMAGE n=%u victim=%p vic_side=%u vic_char=%u vic_action=%u "
+                    "cursor=%u ptr_idx=%d raw=%u gate10=%u count=%u end_delta=%d name='%s'",
+                    pn, actor, side, cid, action, direct_cursor, ptr_index, raw_type, cinematic_gate,
+                    count, end_delta, current_name);
+            }
+        }
+
+        // Historical P118B neighborhood dump retained for source continuity.
+        // P119A does not use it for the decision because X19 is victim-owned.
         if (actor_valid && action >= 700u && action <= 740u && records_base && count > 0u &&
             direct_cursor != 0xFFFFFFFFu) {
             for (int32_t d = -kP118BRadius; d <= kP118BRadius; ++d) {
@@ -7311,6 +7422,18 @@ void InstallP118BEventTableIdentityProbe() {
         "global_a8_aa_ac=1 neighborhood_pm32=1 stable_fields=1 one_new_trampoline=1 "
         "preserve_orig_once=1 no_event_cursor_write=1 no_branch_patch=1 no_session_create=1 "
         "no_direct_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1 probe_ok=%u",
+        ok ? 1u : 0u);
+}
+
+void InstallP119AUjDamageProvenanceProbe() {
+    InstallP96AActionDescriptorTransitionTrace();
+    const bool ok = InstallP118BEventTableIdentityInternal();
+    Logging.Log(
+        "[NSC:P119A] READY parent_p96=1 final_readonly=1 reuse_p118b_getter_hook=1 "
+        "attacker_snapshot_from_existing_p93=1 victim_x19_proven=1 pair_opposite_side=1 "
+        "damage_name_index_raw=1 attacker_action_ea4=1 cinematic_gate10=1 one_new_trampoline_total=1 "
+        "preserve_orig_once=1 no_event_cursor_write=1 no_damage_index_write=1 no_branch_patch=1 "
+        "no_session_create=1 no_direct_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1 probe_ok=%u",
         ok ? 1u : 0u);
 }
 

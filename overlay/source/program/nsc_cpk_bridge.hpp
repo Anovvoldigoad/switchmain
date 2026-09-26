@@ -37,4 +37,5 @@ void InstallP95AQueuedActionParentTrace();
 void InstallP96AActionDescriptorTransitionTrace();
 void InstallP88AWideUJAdmissionTrace();
 void InstallP118BEventTableIdentityProbe();
+void InstallP119AUjDamageProvenanceProbe();
 }

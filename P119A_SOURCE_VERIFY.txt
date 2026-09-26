@@ -1,0 +1,44 @@
+entrypoint PASS
+decl PASS
+ready PASS
+link PASS
+damage PASS
+snapshot_publish PASS
+snapshot_read PASS
+generic_side0 PASS
+uj_corridor PASS
+opposite_side_pair PASS
+trace_gap_guard PASS
+gate10 PASS
+cursor_name PASS
+reuse_p118b_install PASS
+one_p118_trampoline PASS
+no_p119_trampoline PASS
+no_p119_inline PASS
+parent_p96 PASS
+victim_shadow_preserved PASS
+no_direct_pointer_write PASS
+no_force710 PASS
+no_force708 PASS
+no_char281_branch PASS
+log_bound [NSC:P119A] LINK 286
+link_lt_512 PASS
+log_bound [NSC:P119A] DAMAGE 308
+damage_lt_512 PASS
+log_bound [NSC:P119A] READY 444
+ready_lt_512 PASS
+paired main 1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0
+restore main 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+fp 0x3f4b00 13003c08 PASS
+fp 0x3f4b60 13003c08 PASS
+fp 0x3f4bc0 f000ea68 PASS
+fp 0x77b584 52973c88 PASS
+fp 0x77b588 aa0003f3 PASS
+fp 0x77b58c 78686800 PASS
+fp 0x77b590 97f1e55c PASS
+fp 0x77b5a8 97f1e586 PASS
+fp 0x77b5ac 6b2022bf PASS
+bl 77b590 -> 0x3f4b00
+bl 77b5a8 -> 0x3f4bc0
+push_enabled_workflows ['build-subsdk9-p119a.yml']
+P119A_DROPIN_SOURCE_VERIFY=PASS
