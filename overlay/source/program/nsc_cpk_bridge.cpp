@@ -669,6 +669,10 @@ static std::atomic<uintptr_t> g_p120_bridged_actor[2];
 // P123A compact conditional corridor latch. Separate from P120 history so the
 // new runtime can run without P93/P119 snapshot dependency.
 static std::atomic<uintptr_t> g_p123_armed_actor[2];
+// P124A native-safe reach latch. Armed only by the custom semantic-707 appended-damage gate.
+static std::atomic<uintptr_t> g_p124_armed_actor[2];
+// P125A session-qualified P107 endpoint latch. Set only after native 0x7EF098 returns success.
+static std::atomic<uintptr_t> g_p125_session_actor[2];
 
 static void P120ObserveAttackerAction(void* actor, uint32_t side, uint32_t action) {
     if (!actor || side > 1u || action == 707u) return;
@@ -678,6 +682,9 @@ static void P120ObserveAttackerAction(void* actor, uint32_t side, uint32_t actio
     }
     if (g_p123_armed_actor[side].load(std::memory_order_relaxed) == a) {
         g_p123_armed_actor[side].store(0u, std::memory_order_relaxed);
+    }
+    if (g_p124_armed_actor[side].load(std::memory_order_relaxed) == a) {
+        g_p124_armed_actor[side].store(0u, std::memory_order_relaxed);
     }
 }
 
@@ -7703,42 +7710,38 @@ void InstallP122AStaticActorPeerC48BranchBypass() {
 
 
 // ============================================================================
-// P123A — COMPACT CONDITIONAL OUTER-CORRIDOR BRIDGE
+// P124A — NATIVE-SAFE UJ CORRIDOR REACH PROOF
 //
-// P120/P121B/P122 runtime proved:
-//   * appended custom semantic-UJ damage reaches main+0x77C474;
-//   * P120 register overlay raw15->10 works;
-//   * globally bypassing actor/peer C48 reject branches still does not produce
-//     the cinematic lifecycle or action710.
-// Static paired-main control flow proves two additional exits before 0x7EF098:
-//   0x77C4B0 type9 query -> 0x77C4B4 CBZ W0,0x77C514
-//   0x77C51C helper      -> 0x77C520 CBZ X0,0x77C59C
-// and only the zero/null route reaches 0x77C5E8 -> 0x7EF098.
+// P123A proved that replacing native BL/BLR callsites with callback-side calls
+// is too invasive: vanilla UJ can reach action710 yet later freeze, while Tobi
+// still emitted only the GATE marker. P124A retires those call-replay hooks.
 //
-// P123A removes the historical read-only P82/P84/P85/P88B parent hooks from
-// the INSTALL PATH (source remains retained) to free trampoline capacity. It
-// preserves the functional P50/P67/P81/P89 chain, then installs five narrowly
-// scoped inline callsite bridges. All native callees are invoked exactly once.
-// No game-memory field, event cursor, damage table, session, action or state is
-// written. The bridge is generic: custom id > vanilla max + semantic UJ +
-// action707 + opposite side + appended damage record. No char281 branch.
+// Native calls/branches remain byte-for-byte original. We hook only simple
+// non-call instructions that are executed *after* each gate and replay those
+// instructions exactly. This gives a one-run frontier map without changing LR
+// provenance of C48/type9/lookup/0x7EF098.
+//
+// Checkpoints:
+//   0x77C474 gate load      : conditional raw->10 register overlay + arm
+//   0x77C498 LDR X8,[X23]  : reached only if actor/victim C48 passed
+//   0x77C4AC MOV W0,#9     : reached only if peer C48 passed
+//   0x77C514 MOV X0,X19    : reached only on type9 == 0 branch
+//   0x77C5E4 MOV X0,X23    : immediately before native BL 0x7EF098
+//
+// No callsite BL/BLR is replaced or replayed from subsdk9. No game-memory write,
+// session/action/state write, force708/710, or char281 branch.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP123GateLoadOffset   = 0x77C474;
-static constexpr ptrdiff_t kP123ActorC48Offset   = 0x77C490;
-static constexpr ptrdiff_t kP123PeerC48Offset    = 0x77C4A4;
-static constexpr ptrdiff_t kP123Type9CallOffset  = 0x77C4B0;
-static constexpr ptrdiff_t kP123LookupCallOffset = 0x77C51C;
-static constexpr ptrdiff_t kP123Type9Target      = 0x750860;
-static constexpr ptrdiff_t kP123LookupTarget     = 0x7F78FC;
-static constexpr uint32_t kP123VanillaDamageCount = 1847u;
-static constexpr uint32_t kP123LogLimit = 1024u;
-static std::atomic<uint32_t> g_p123_logs{0};
+static constexpr ptrdiff_t kP124GateLoadOffset = 0x77C474;
+static constexpr ptrdiff_t kP124ActorPassOffset = 0x77C498;
+static constexpr ptrdiff_t kP124PeerPassOffset = 0x77C4AC;
+static constexpr ptrdiff_t kP124Type9ZeroOffset = 0x77C514;
+static constexpr ptrdiff_t kP124OuterReachOffset = 0x77C5E4;
+static constexpr uint32_t kP124VanillaDamageCount = 1847u;
+static constexpr uint32_t kP124LogLimit = 512u;
+static std::atomic<uint32_t> g_p124_logs{0};
 
-using P123Call8 = uint64_t (*)(uint64_t,uint64_t,uint64_t,uint64_t,
-                              uint64_t,uint64_t,uint64_t,uint64_t);
-
-static uint32_t P123ReadAction(void* actor) {
+static uint32_t P124ReadAction(void* actor) {
     if (!actor) return 0xFFFFFFFFu;
     const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
     const uintptr_t state = *reinterpret_cast<const volatile uintptr_t*>(b + 0x218u);
@@ -7746,45 +7749,34 @@ static uint32_t P123ReadAction(void* actor) {
     return *reinterpret_cast<const volatile uint32_t*>(state + 0x2Cu);
 }
 
-struct P123CorridorState {
+struct P124Focus {
     uintptr_t attacker = 0;
     uintptr_t victim = 0;
-    uint32_t attacker_side = 0xFFFFFFFFu;
-    uint32_t attacker_cid = 0xFFFFFFFFu;
-    uint32_t victim_side = 0xFFFFFFFFu;
-    uint32_t victim_cid = 0xFFFFFFFFu;
+    uint32_t as = 0xFFFFFFFFu, ac = 0xFFFFFFFFu;
+    uint32_t vs = 0xFFFFFFFFu, vc = 0xFFFFFFFFu;
     uint32_t action = 0xFFFFFFFFu;
-    bool semantic = false;
-    bool custom = false;
-    bool opposite = false;
-    bool armed = false;
-    bool active = false;
+    bool semantic = false, custom = false, opposite = false, armed = false, active = false;
 };
 
-static P123CorridorState P123ReadCorridor(exl::hook::nx64::InlineCtx* ctx) {
-    P123CorridorState q{};
+static P124Focus P124ReadFocus(exl::hook::nx64::InlineCtx* ctx) {
+    P124Focus q{};
     q.attacker = static_cast<uintptr_t>(ctx->X[23]);
     q.victim = static_cast<uintptr_t>(ctx->X[19]);
-    const bool av = ReadActorIdentity(reinterpret_cast<void*>(q.attacker), q.attacker_side, q.attacker_cid);
-    const bool vv = ReadActorIdentity(reinterpret_cast<void*>(q.victim), q.victim_side, q.victim_cid);
-    q.action = av ? P123ReadAction(reinterpret_cast<void*>(q.attacker)) : 0xFFFFFFFFu;
+    const bool av = ReadActorIdentity(reinterpret_cast<void*>(q.attacker), q.as, q.ac);
+    const bool vv = ReadActorIdentity(reinterpret_cast<void*>(q.victim), q.vs, q.vc);
+    q.action = av ? P124ReadAction(reinterpret_cast<void*>(q.attacker)) : 0xFFFFFFFFu;
     q.semantic = av && P64QuerySemanticUltimateJutsu(reinterpret_cast<void*>(q.attacker));
-    q.custom = av && q.attacker_cid > kVanillaMaxCharId && q.attacker_cid < 0x1000u;
-    q.opposite = av && vv && q.attacker_side <= 1u && q.victim_side <= 1u && q.attacker_side != q.victim_side;
-    q.armed = av && q.attacker_side <= 1u &&
-        g_p123_armed_actor[q.attacker_side].load(std::memory_order_relaxed) == q.attacker;
-    q.active = q.armed && q.custom && q.semantic && q.action == 707u && q.opposite;
+    q.custom = av && q.ac > kVanillaMaxCharId && q.ac < 0x1000u;
+    q.opposite = av && vv && q.as <= 1u && q.vs <= 1u && q.as != q.vs;
+    q.armed = av && q.as <= 1u && g_p124_armed_actor[q.as].load(std::memory_order_relaxed) == q.attacker;
+    // Do not require action==707 here. The latch itself was armed only during
+    // action707; keeping the reach guard action-agnostic prevents a native call
+    // from hiding the checkpoint if it advances action within the same corridor.
+    q.active = q.armed && q.custom && q.semantic && q.opposite;
     return q;
 }
 
-static uint64_t P123CallNative(uintptr_t target, exl::hook::nx64::InlineCtx* ctx) {
-    if (!target) return 0u;
-    auto fn = reinterpret_cast<P123Call8>(target);
-    return fn(ctx->X[0],ctx->X[1],ctx->X[2],ctx->X[3],
-              ctx->X[4],ctx->X[5],ctx->X[6],ctx->X[7]);
-}
-
-HOOK_DEFINE_INLINE(P123GateHook) {
+HOOK_DEFINE_INLINE(P124GateHook) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         const uintptr_t event_addr = static_cast<uintptr_t>(ctx->X[20]);
         const uintptr_t victim_addr = static_cast<uintptr_t>(ctx->X[19]);
@@ -7796,7 +7788,7 @@ HOOK_DEFINE_INLINE(P123GateHook) {
         uint32_t as=0xFFFFFFFFu, ac=0xFFFFFFFFu, vs=0xFFFFFFFFu, vc=0xFFFFFFFFu;
         const bool av = ReadActorIdentity(reinterpret_cast<void*>(attacker_addr), as, ac);
         const bool vv = ReadActorIdentity(reinterpret_cast<void*>(victim_addr), vs, vc);
-        const uint32_t action = av ? P123ReadAction(reinterpret_cast<void*>(attacker_addr)) : 0xFFFFFFFFu;
+        const uint32_t action = av ? P124ReadAction(reinterpret_cast<void*>(attacker_addr)) : 0xFFFFFFFFu;
         const bool semantic = av && P64QuerySemanticUltimateJutsu(reinterpret_cast<void*>(attacker_addr));
         const bool custom = av && ac > kVanillaMaxCharId && ac < 0x1000u;
         const bool opposite = av && vv && as <= 1u && vs <= 1u && as != vs;
@@ -7815,127 +7807,201 @@ HOOK_DEFINE_INLINE(P123GateHook) {
                 }
             }
         }
-        const bool appended = idx >= static_cast<int32_t>(kP123VanillaDamageCount) && static_cast<uint32_t>(idx) < count;
+        const bool appended = idx >= static_cast<int32_t>(kP124VanillaDamageCount) && static_cast<uint32_t>(idx) < count;
         const bool native_gate10 = ((native_raw & ~1u) == 10u);
         bool bridge=false;
         if (custom && semantic && action==707u && opposite && appended && !native_gate10 && as<=1u) {
-            const uintptr_t latched=g_p123_armed_actor[as].load(std::memory_order_relaxed);
+            const uintptr_t latched=g_p124_armed_actor[as].load(std::memory_order_relaxed);
             if (latched != attacker_addr) {
-                g_p123_armed_actor[as].store(attacker_addr,std::memory_order_relaxed);
-                out_raw=10u; bridge=true;
+                g_p124_armed_actor[as].store(attacker_addr,std::memory_order_relaxed);
+                g_p125_session_actor[as].store(0u,std::memory_order_relaxed);
+                out_raw=10u;
+                bridge=true;
             }
         }
-        ctx->W[8]=out_raw;
+        ctx->W[8]=out_raw; // exact replay of native LDR result, with narrow overlay
         if (bridge || (custom && semantic && action==707u && opposite)) {
-            const uint32_t n=g_p123_logs.fetch_add(1u,std::memory_order_relaxed);
-            if (n<kP123LogLimit) Logging.Log(
-                "[NSC:P123A] GATE n=%u bridge=%u atk=%p as=%u ac=%u action=%u sem=%u vic=%p vs=%u vc=%u idx=%d count=%u raw=%u out=%u",
+            const uint32_t n=g_p124_logs.fetch_add(1u,std::memory_order_relaxed);
+            if(n<kP124LogLimit) Logging.Log(
+                "[NSC:P124A] GATE n=%u bridge=%u atk=%p as=%u ac=%u action=%u sem=%u vic=%p vs=%u vc=%u idx=%d count=%u raw=%u out=%u",
                 n,bridge?1u:0u,reinterpret_cast<void*>(attacker_addr),as,ac,action,semantic?1u:0u,
                 reinterpret_cast<void*>(victim_addr),vs,vc,idx,count,native_raw,out_raw);
         }
     }
 };
 
-HOOK_DEFINE_INLINE(P123ActorC48Hook) {
+HOOK_DEFINE_INLINE(P124ActorPassHook) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        const uintptr_t target=static_cast<uintptr_t>(ctx->X[8]);
-        const uint32_t native_ret=static_cast<uint32_t>(P123CallNative(target,ctx));
-        const P123CorridorState q=P123ReadCorridor(ctx);
-        const bool bridge=q.active && native_ret==0u;
-        const uint32_t out=bridge?1u:native_ret;
-        ctx->W[0]=out;
-        if (q.active) { const uint32_t n=g_p123_logs.fetch_add(1u,std::memory_order_relaxed); if(n<kP123LogLimit) Logging.Log(
-            "[NSC:P123A] ACTOR_C48 n=%u bridge=%u atk=%p ac=%u vic=%p vc=%u native=%u out=%u",
-            n,bridge?1u:0u,reinterpret_cast<void*>(q.attacker),q.attacker_cid,reinterpret_cast<void*>(q.victim),q.victim_cid,native_ret,out); }
+        const uint32_t actor_ret = ctx->W[0];
+        const P124Focus q=P124ReadFocus(ctx);
+        const uintptr_t peer=q.attacker;
+        const uintptr_t vtbl = peer ? *reinterpret_cast<const volatile uintptr_t*>(peer) : 0u;
+        ctx->X[8]=vtbl; // exact replay: LDR X8,[X23]
+        if(q.active){ const uint32_t n=g_p124_logs.fetch_add(1u,std::memory_order_relaxed); if(n<kP124LogLimit) Logging.Log(
+            "[NSC:P124A] AFTER_ACTOR n=%u atk=%p ac=%u vic=%p vc=%u action=%u actor_ret=%u",
+            n,reinterpret_cast<void*>(q.attacker),q.ac,reinterpret_cast<void*>(q.victim),q.vc,q.action,actor_ret); }
     }
 };
 
-HOOK_DEFINE_INLINE(P123PeerC48Hook) {
+HOOK_DEFINE_INLINE(P124PeerPassHook) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        const uintptr_t target=static_cast<uintptr_t>(ctx->X[8]);
-        const uint32_t native_ret=static_cast<uint32_t>(P123CallNative(target,ctx));
-        const P123CorridorState q=P123ReadCorridor(ctx);
-        const bool bridge=q.active && native_ret==0u;
-        const uint32_t out=bridge?1u:native_ret;
-        ctx->W[0]=out;
-        if (q.active) { const uint32_t n=g_p123_logs.fetch_add(1u,std::memory_order_relaxed); if(n<kP123LogLimit) Logging.Log(
-            "[NSC:P123A] PEER_C48 n=%u bridge=%u atk=%p ac=%u native=%u out=%u",
-            n,bridge?1u:0u,reinterpret_cast<void*>(q.attacker),q.attacker_cid,native_ret,out); }
+        const uint32_t peer_ret=ctx->W[0];
+        const P124Focus q=P124ReadFocus(ctx);
+        ctx->W[0]=9u; // exact replay: MOV W0,#9
+        if(q.active){ const uint32_t n=g_p124_logs.fetch_add(1u,std::memory_order_relaxed); if(n<kP124LogLimit) Logging.Log(
+            "[NSC:P124A] AFTER_PEER n=%u atk=%p ac=%u action=%u peer_ret=%u",
+            n,reinterpret_cast<void*>(q.attacker),q.ac,q.action,peer_ret); }
     }
 };
 
-HOOK_DEFINE_INLINE(P123Type9Hook) {
+HOOK_DEFINE_INLINE(P124Type9ZeroHook) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        const uintptr_t base=reinterpret_cast<uintptr_t>(exl::util::GetMainModuleInfo().m_Total.m_Start);
-        const uint32_t native_ret=static_cast<uint32_t>(P123CallNative(base+kP123Type9Target,ctx));
-        const P123CorridorState q=P123ReadCorridor(ctx);
-        const bool bridge=q.active && native_ret!=0u;
-        const uint32_t out=bridge?0u:native_ret;
-        ctx->W[0]=out;
-        if (q.active) { const uint32_t n=g_p123_logs.fetch_add(1u,std::memory_order_relaxed); if(n<kP123LogLimit) Logging.Log(
-            "[NSC:P123A] TYPE9 n=%u bridge=%u atk=%p ac=%u native=%u out=%u",
-            n,bridge?1u:0u,reinterpret_cast<void*>(q.attacker),q.attacker_cid,native_ret,out); }
+        const P124Focus q=P124ReadFocus(ctx);
+        ctx->X[0]=ctx->X[19]; // exact replay: MOV X0,X19
+        if(q.active){ const uint32_t n=g_p124_logs.fetch_add(1u,std::memory_order_relaxed); if(n<kP124LogLimit) Logging.Log(
+            "[NSC:P124A] TYPE9_ZERO n=%u atk=%p ac=%u action=%u reached=1",
+            n,reinterpret_cast<void*>(q.attacker),q.ac,q.action); }
     }
 };
 
-HOOK_DEFINE_INLINE(P123LookupHook) {
+HOOK_DEFINE_INLINE(P124OuterReachHook) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        const uintptr_t base=reinterpret_cast<uintptr_t>(exl::util::GetMainModuleInfo().m_Total.m_Start);
-        const uint64_t native_ret=P123CallNative(base+kP123LookupTarget,ctx);
-        const P123CorridorState q=P123ReadCorridor(ctx);
-        const bool bridge=q.active && native_ret!=0u;
-        const uint64_t out=bridge?0u:native_ret;
-        ctx->X[0]=out;
-        if (q.active) { const uint32_t n=g_p123_logs.fetch_add(1u,std::memory_order_relaxed); if(n<kP123LogLimit) Logging.Log(
-            "[NSC:P123A] LOOKUP n=%u bridge=%u atk=%p ac=%u native=%p out=%p",
-            n,bridge?1u:0u,reinterpret_cast<void*>(q.attacker),q.attacker_cid,reinterpret_cast<void*>(native_ret),reinterpret_cast<void*>(out)); }
+        const P124Focus q=P124ReadFocus(ctx);
+        ctx->X[0]=ctx->X[23]; // exact replay: MOV X0,X23
+        if(q.active){ const uint32_t n=g_p124_logs.fetch_add(1u,std::memory_order_relaxed); if(n<kP124LogLimit) Logging.Log(
+            "[NSC:P124A] OUTER_REACH n=%u atk=%p ac=%u action=%u next=7ef098",
+            n,reinterpret_cast<void*>(q.attacker),q.ac,q.action); }
     }
 };
 
-static bool InstallP123Gate() {
-    static constexpr uint32_t e[]={0xB9405288,0x121F7909,0x7100293F,0x54000B81};
-    if(!MatchWords(kP123GateLoadOffset,e)){LogFingerprintFail("P123_GATE",kP123GateLoadOffset);return false;}
-    P123GateHook::InstallAtOffset(kP123GateLoadOffset); return true;
-}
-static bool InstallP123ActorC48() {
-    static constexpr uint32_t e[]={0xF9462508,0xD63F0100,0x34000AC0};
-    if(!MatchWords(0x77C48C,e)){LogFingerprintFail("P123_ACTOR_C48",kP123ActorC48Offset);return false;}
-    P123ActorC48Hook::InstallAtOffset(kP123ActorC48Offset); return true;
-}
-static bool InstallP123PeerC48() {
-    static constexpr uint32_t e[]={0xF9462508,0xD63F0100,0x34000A20};
-    if(!MatchWords(0x77C4A0,e)){LogFingerprintFail("P123_PEER_C48",kP123PeerC48Offset);return false;}
-    P123PeerC48Hook::InstallAtOffset(kP123PeerC48Offset); return true;
-}
-static bool InstallP123Type9() {
-    static constexpr uint32_t e[]={0x52800120,0x97FF50EC,0x34000300};
-    if(!MatchWords(0x77C4AC,e)){LogFingerprintFail("P123_TYPE9",kP123Type9CallOffset);return false;}
-    P123Type9Hook::InstallAtOffset(kP123Type9CallOffset); return true;
-}
-static bool InstallP123Lookup() {
-    static constexpr uint32_t e[]={0xAA1303E0,0x9400666E,0x9401ECF8,0xB40003E0};
-    if(!MatchWords(0x77C514,e)){LogFingerprintFail("P123_LOOKUP",kP123LookupCallOffset);return false;}
-    P123LookupHook::InstallAtOffset(kP123LookupCallOffset); return true;
-}
-} // anonymous namespace — P123A
+static bool InstallP124Gate(){ static constexpr uint32_t e[]={0xB9405288}; if(!MatchWords(kP124GateLoadOffset,e)){LogFingerprintFail("P124_GATE",kP124GateLoadOffset);return false;} P124GateHook::InstallAtOffset(kP124GateLoadOffset); return true; }
+static bool InstallP124ActorPass(){ static constexpr uint32_t e[]={0xF94002E8}; if(!MatchWords(kP124ActorPassOffset,e)){LogFingerprintFail("P124_AFTER_ACTOR",kP124ActorPassOffset);return false;} P124ActorPassHook::InstallAtOffset(kP124ActorPassOffset); return true; }
+static bool InstallP124PeerPass(){ static constexpr uint32_t e[]={0x52800120}; if(!MatchWords(kP124PeerPassOffset,e)){LogFingerprintFail("P124_AFTER_PEER",kP124PeerPassOffset);return false;} P124PeerPassHook::InstallAtOffset(kP124PeerPassOffset); return true; }
+static bool InstallP124Type9Zero(){ static constexpr uint32_t e[]={0xAA1303E0}; if(!MatchWords(kP124Type9ZeroOffset,e)){LogFingerprintFail("P124_TYPE9_ZERO",kP124Type9ZeroOffset);return false;} P124Type9ZeroHook::InstallAtOffset(kP124Type9ZeroOffset); return true; }
+static bool InstallP124OuterReach(){ static constexpr uint32_t e[]={0xAA1703E0,0x9401CAAC}; if(!MatchWords(kP124OuterReachOffset,e)){LogFingerprintFail("P124_OUTER_REACH",kP124OuterReachOffset);return false;} P124OuterReachHook::InstallAtOffset(kP124OuterReachOffset); return true; }
+} // anonymous namespace — P124A
 
-void InstallP123ACompactConditionalOuterCorridorBridge() {
-    // Compact functional parent: P81 includes P67/P50 victim-safe + semantic
-    // admission. Install the proven P89 bridge directly, skipping historical
-    // P82/P84/P85/P88B read-only hook layers that exhausted trampoline capacity.
+void InstallP124ANativeSafeUjCorridorReachProof() {
     InstallP81AOugiAwakeningPolicyBridge();
     const bool p89=InstallP89Internal();
-    const bool gate=InstallP123Gate();
-    const bool a=InstallP123ActorC48();
-    const bool p=InstallP123PeerC48();
-    const bool t9=InstallP123Type9();
-    const bool lk=InstallP123Lookup();
+    const bool gate=InstallP124Gate();
+    const bool a=InstallP124ActorPass();
+    const bool p=InstallP124PeerPass();
+    const bool t9=InstallP124Type9Zero();
+    const bool out=InstallP124OuterReach();
     Logging.Log(
-        "[NSC:P123A] READY compact_parent_p81=1 direct_p89=%u skip_p82_p84_p85_p88b=1 "
-        "gate=%u actor_c48=%u peer_c48=%u type9=%u lookup7f78fc=%u native_calls_once=1 "
-        "conditional_custom_semantic707=1 opposite_side=1 appended_damage=1 zero_game_memory_writes=1 "
-        "no_session_write=1 no_action_write=1 no_state_write=1 no_direct_7ef098_call=1 no_force708=1 no_force710=1 no_char281_branch=1",
-        p89?1u:0u,gate?1u:0u,a?1u:0u,p?1u:0u,t9?1u:0u,lk?1u:0u);
+        "[NSC:P124A] READY compact_parent_p81=1 direct_p89=%u gate=%u after_actor=%u after_peer=%u type9_zero=%u outer_reach=%u native_bl_blr_untouched=1 no_callback_native_calls=1 simple_instruction_replay_only=1 conditional_custom_semantic707=1 opposite_side=1 appended_damage=1 no_game_memory_write=1 no_session_write=1 no_action_write=1 no_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1",
+        p89?1u:0u,gate?1u:0u,a?1u:0u,p?1u:0u,t9?1u:0u,out?1u:0u);
+}
+
+
+// ============================================================================
+// P125A — P107-GUIDED, SESSION-QUALIFIED NATIVE STATE137 FALLBACK
+//
+// P107 proved a valuable endpoint fact: once custom Tobi reaches state137, the
+// native state137 controller produces PlayAction710/cinematic. P107 was unsafe
+// because it mapped attacker cleanup125->137 with stale setup context.
+//
+// P125 keeps the P124 native-safe corridor but replaces the pre-call OUTER_REACH
+// checkpoint with a post-call checkpoint at 0x77C5EC. Therefore the latch is set
+// only after the *native* 0x7EF098 call returns success. No BL/BLR is replaced.
+//
+// Only if that same custom semantic-UJ actor later reaches the proven cleanup
+// MOV W1,#125 at 0x7EB27C while the actor context already matches the mature
+// vanilla pre-state137 shape (E94=136,E98=135,E9C=0,BDA4=0,BDA8=0), P125 changes
+// the request register from125 to137. Native state-request validation/commit and
+// native state137 controller remain untouched.
+//
+// If native outer setup never succeeds, or context is stale like P107, request125
+// remains byte-for-byte native. No direct 7EF098 call, no force710, no game-memory
+// field write, no char281 branch.
+// ============================================================================
+namespace {
+static constexpr ptrdiff_t kP125PostOuterOffset = 0x77C5EC;
+static constexpr ptrdiff_t kP125CleanupRequestOffset = 0x7EB27C;
+static constexpr uint32_t kP125LogLimit = 256u;
+static std::atomic<uint32_t> g_p125_logs{0};
+
+HOOK_DEFINE_INLINE(P125PostOuterHook) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        const uint32_t outer_ret = ctx->W[0];
+        const P124Focus q = P124ReadFocus(ctx);
+        const uintptr_t event_addr = static_cast<uintptr_t>(ctx->X[20]);
+        const auto* event = reinterpret_cast<const volatile uint8_t*>(event_addr);
+        const uint32_t raw = event ? *reinterpret_cast<const volatile uint32_t*>(event + 0x50u) : 0u;
+        ctx->W[8] = raw; // exact replay: LDR W8,[X20,#0x50]
+
+        bool armed = false;
+        if (q.active && q.as <= 1u && outer_ret != 0u) {
+            g_p125_session_actor[q.as].store(q.attacker, std::memory_order_relaxed);
+            armed = true;
+        }
+        if (q.active) {
+            const uint32_t n = g_p125_logs.fetch_add(1u, std::memory_order_relaxed);
+            if (n < kP125LogLimit) Logging.Log(
+                "[NSC:P125A] POST_OUTER n=%u atk=%p side=%u char=%u action=%u ret=%u session_latch=%u raw=%u",
+                n, reinterpret_cast<void*>(q.attacker), q.as, q.ac, q.action, outer_ret, armed?1u:0u, raw);
+        }
+    }
+};
+
+HOOK_DEFINE_INLINE(P125CleanupRequestHook) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        void* actor = reinterpret_cast<void*>(static_cast<uintptr_t>(ctx->X[0]));
+        uint32_t side=0xFFFFFFFFu, cid=0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, cid);
+        const bool custom = valid && cid > kVanillaMaxCharId && cid < 0x1000u;
+        const bool semantic = valid && P64QuerySemanticUltimateJutsu(actor);
+        const uint32_t action = valid ? P124ReadAction(actor) : 0xFFFFFFFFu;
+        const P93CoreState st = valid ? ReadP93CoreState(actor) : P93CoreState{};
+        const uintptr_t a = reinterpret_cast<uintptr_t>(actor);
+        const bool session = valid && side <= 1u &&
+            g_p125_session_actor[side].load(std::memory_order_relaxed) == a;
+        const bool mature = st.e94 == 136u && st.e98 == 135u && st.e9c == 0u &&
+                            st.bda4 == 0u && st.bda8 == 0u;
+        const bool bridge = custom && semantic && action == 708u && session && mature;
+        const uint32_t out = bridge ? 137u : 125u;
+        ctx->W[1] = out; // replay native MOV W1,#125, narrowly overlay only after qualified session setup
+
+        if (bridge || (custom && semantic && action == 708u)) {
+            const uint32_t n = g_p125_logs.fetch_add(1u, std::memory_order_relaxed);
+            if (n < kP125LogLimit) Logging.Log(
+                "[NSC:P125A] CLEANUP n=%u bridge=%u actor=%p side=%u char=%u action=%u session=%u mature=%u e94=%u e98=%u e9c=%u bda4=%u bda8=%u native=125 out=%u",
+                n, bridge?1u:0u, actor, side, cid, action, session?1u:0u, mature?1u:0u,
+                st.e94, st.e98, st.e9c, st.bda4, st.bda8, out);
+        }
+        if (bridge && side <= 1u) {
+            g_p125_session_actor[side].store(0u, std::memory_order_relaxed);
+        }
+    }
+};
+
+static bool InstallP125PostOuter() {
+    static constexpr uint32_t e[]={0xB9405288};
+    if(!MatchWords(kP125PostOuterOffset,e)){LogFingerprintFail("P125_POST_OUTER",kP125PostOuterOffset);return false;}
+    P125PostOuterHook::InstallAtOffset(kP125PostOuterOffset);
+    return true;
+}
+static bool InstallP125CleanupRequest() {
+    static constexpr uint32_t e[]={0x52800FA1,0xAA0003F3,0xF946F908,0xD63F0100};
+    if(!MatchWords(kP125CleanupRequestOffset,e)){LogFingerprintFail("P125_CLEANUP_REQ",kP125CleanupRequestOffset);return false;}
+    P125CleanupRequestHook::InstallAtOffset(kP125CleanupRequestOffset);
+    return true;
+}
+} // anonymous namespace — P125A
+
+void InstallP125AP107GuidedSessionQualifiedState137Fallback() {
+    InstallP81AOugiAwakeningPolicyBridge();
+    const bool p89=InstallP89Internal();
+    const bool gate=InstallP124Gate();
+    const bool a=InstallP124ActorPass();
+    const bool p=InstallP124PeerPass();
+    const bool t9=InstallP124Type9Zero();
+    const bool post=InstallP125PostOuter();
+    const bool cleanup=InstallP125CleanupRequest();
+    Logging.Log(
+        "[NSC:P125A] READY compact_parent_p81=1 direct_p89=%u gate=%u after_actor=%u after_peer=%u type9_zero=%u post_outer=%u cleanup=%u p107_endpoint_reused_conditionally=1 native_7ef098_call_untouched=1 native_state_request_call_untouched=1 session_success_required=1 mature_e94_136_e98_135_required=1 stale_p107_context_rejected=1 no_callback_native_calls=1 no_direct_7ef098_call=1 no_force710=1 no_game_memory_field_write=1 no_char281_branch=1",
+        p89?1u:0u,gate?1u:0u,a?1u:0u,p?1u:0u,t9?1u:0u,post?1u:0u,cleanup?1u:0u);
 }
 
 } // namespace nsc
