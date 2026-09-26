@@ -1,0 +1,5 @@
+V2A-R1 COMPILE FIX
+- Root cause: nsc_runtime_v2.cpp included <program/loggers.hpp> before exlaunch lib.hpp.
+- Fix: include "lib.hpp" before <program/loggers.hpp>, matching nsc_cpk_bridge.cpp.
+- No resolver signatures, gameplay hooks, P128 logic, or main payload changed.
+- verify_runtime_v2a.py now checks logger include order.

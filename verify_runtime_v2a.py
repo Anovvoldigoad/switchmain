@@ -18,6 +18,7 @@ checks={
  'copies_resolver': 'nsc_runtime_v2.cpp' in prep and 'nsc_runtime_v2.hpp' in prep,
  'workflow_marker': 'NSC-RUNTIME-V2A-resolver-coexistence' in wf,
  'no_char281': '281' not in cpp,
+ 'logger_include_order': '#include "lib.hpp"' in cpp and cpp.index('#include "lib.hpp"') < cpp.index('#include <program/loggers.hpp>'),
 }
 
 def parse_arr(name):

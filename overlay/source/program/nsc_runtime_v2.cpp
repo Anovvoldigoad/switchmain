@@ -1,4 +1,5 @@
 #include "nsc_runtime_v2.hpp"
+#include "lib.hpp"
 #include <lib/util/modules.hpp>
 #include <program/loggers.hpp>
 #include <cstddef>
