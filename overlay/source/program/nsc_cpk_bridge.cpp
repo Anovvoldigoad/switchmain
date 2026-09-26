@@ -5065,7 +5065,7 @@ bool InstallEvent236Dispatcher() {
     };
     std::ptrdiff_t off = -1;
     if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::Event236, off)) {
-        Logging.Log("[NSC:V2C] HOOK_FAIL name=EVENT236 reason=resolver_unavailable");
+        Logging.Log("[NSC:V2D] HOOK_FAIL name=EVENT236 reason=resolver_unavailable");
         return false;
     }
     if (!MatchWords(off, kEvent236Expected)) {
@@ -5073,7 +5073,7 @@ bool InstallEvent236Dispatcher() {
         return false;
     }
     Event236Hook::InstallAtOffset(off);
-    Logging.Log("[NSC:V2C] HOOK name=EVENT236 source=resolver off=0x%lx installed=1",
+    Logging.Log("[NSC:V2D] HOOK name=EVENT236 source=resolver off=0x%lx installed=1",
                 static_cast<unsigned long>(off));
     return true;
 }
@@ -5163,7 +5163,7 @@ bool InstallCpkBridge() {
     };
     std::ptrdiff_t off = -1;
     if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::CpkBind, off)) {
-        Logging.Log("[NSC:V2C] HOOK_FAIL name=CPK_BIND reason=resolver_unavailable");
+        Logging.Log("[NSC:V2D] HOOK_FAIL name=CPK_BIND reason=resolver_unavailable");
         return false;
     }
     if (!MatchWords(off, kExpected)) {
@@ -5171,7 +5171,7 @@ bool InstallCpkBridge() {
         return false;
     }
     CpkBindHook::InstallAtOffset(off);
-    Logging.Log("[NSC:V2C] HOOK name=CPK_BIND source=resolver off=0x%lx installed=1",
+    Logging.Log("[NSC:V2D] HOOK name=CPK_BIND source=resolver off=0x%lx installed=1",
                 static_cast<unsigned long>(off));
     return true;
 }
@@ -5182,7 +5182,7 @@ bool InstallCharacodeGetterDynamic() {
     };
     std::ptrdiff_t off = -1;
     if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::CharacodeGetter, off)) {
-        Logging.Log("[NSC:V2C] HOOK_FAIL name=CHARACODE_GETTER reason=resolver_unavailable");
+        Logging.Log("[NSC:V2D] HOOK_FAIL name=CHARACODE_GETTER reason=resolver_unavailable");
         return false;
     }
     if (!MatchWords(off, kExpected)) {
@@ -5190,7 +5190,7 @@ bool InstallCharacodeGetterDynamic() {
         return false;
     }
     CharacodeGetterHook::InstallAtOffset(off);
-    Logging.Log("[NSC:V2C] HOOK name=CHARACODE_GETTER source=resolver off=0x%lx installed=1",
+    Logging.Log("[NSC:V2D] HOOK name=CHARACODE_GETTER source=resolver off=0x%lx installed=1",
                 static_cast<unsigned long>(off));
     return true;
 }
@@ -5306,7 +5306,7 @@ bool InstallPlayActionProbe() {
     };
     std::ptrdiff_t off = -1;
     if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::PlayAction, off)) {
-        Logging.Log("[NSC:V2C] HOOK_FAIL name=PLAY_ACTION reason=resolver_unavailable");
+        Logging.Log("[NSC:V2D] HOOK_FAIL name=PLAY_ACTION reason=resolver_unavailable");
         return false;
     }
     if (!MatchWords(off, kPlayActionExpected)) {
@@ -5314,7 +5314,7 @@ bool InstallPlayActionProbe() {
         return false;
     }
     PlayActionProbeHook::InstallAtOffset(off);
-    Logging.Log("[NSC:V2C] HOOK name=PLAY_ACTION source=resolver off=0x%lx installed=1",
+    Logging.Log("[NSC:V2D] HOOK name=PLAY_ACTION source=resolver off=0x%lx installed=1",
                 static_cast<unsigned long>(off));
     return true;
 }
@@ -5330,7 +5330,7 @@ bool InstallP57CentralSetterTrace() {
     };
     std::ptrdiff_t off = -1;
     if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::CentralSetter, off)) {
-        Logging.Log("[NSC:V2C] HOOK_FAIL name=CENTRAL_SETTER reason=resolver_unavailable");
+        Logging.Log("[NSC:V2D] HOOK_FAIL name=CENTRAL_SETTER reason=resolver_unavailable");
         return false;
     }
     if (!MatchWords(off, kSetterExpected)) {
@@ -5338,7 +5338,7 @@ bool InstallP57CentralSetterTrace() {
         return false;
     }
     CentralActionSetterHook::InstallAtOffset(off);
-    Logging.Log("[NSC:V2C] HOOK name=CENTRAL_SETTER source=resolver off=0x%lx installed=1",
+    Logging.Log("[NSC:V2D] HOOK name=CENTRAL_SETTER source=resolver off=0x%lx installed=1",
                 static_cast<unsigned long>(off));
     return true;
 }
@@ -7926,7 +7926,15 @@ HOOK_DEFINE_INLINE(P124OuterReachHook) {
     }
 };
 
-static bool InstallP124Gate(){ static constexpr uint32_t e[]={0xB9405288}; if(!MatchWords(kP124GateLoadOffset,e)){LogFingerprintFail("P124_GATE",kP124GateLoadOffset);return false;} P124GateHook::InstallAtOffset(kP124GateLoadOffset); return true; }
+static bool InstallP124Gate(){
+    static constexpr uint32_t e[]={0xB9405288};
+    std::ptrdiff_t off=-1;
+    if(!nsc::v2::GetDerivedUjGateLoadOffset(off)){ Logging.Log("[NSC:V2D] HOOK_FAIL name=UJ_GATE_LOAD reason=resolver_unavailable"); return false; }
+    if(!MatchWords(off,e)){LogFingerprintFail("P124_GATE_V2D_RESOLVED",off);return false;}
+    P124GateHook::InstallAtOffset(off);
+    Logging.Log("[NSC:V2D] HOOK name=UJ_GATE_LOAD source=resolver_derived off=0x%lx installed=1",static_cast<unsigned long>(off));
+    return true;
+}
 static bool InstallP124ActorPass(){ static constexpr uint32_t e[]={0xF94002E8}; if(!MatchWords(kP124ActorPassOffset,e)){LogFingerprintFail("P124_AFTER_ACTOR",kP124ActorPassOffset);return false;} P124ActorPassHook::InstallAtOffset(kP124ActorPassOffset); return true; }
 static bool InstallP124PeerPass(){ static constexpr uint32_t e[]={0x52800120}; if(!MatchWords(kP124PeerPassOffset,e)){LogFingerprintFail("P124_AFTER_PEER",kP124PeerPassOffset);return false;} P124PeerPassHook::InstallAtOffset(kP124PeerPassOffset); return true; }
 static bool InstallP124Type9Zero(){ static constexpr uint32_t e[]={0xAA1303E0}; if(!MatchWords(kP124Type9ZeroOffset,e)){LogFingerprintFail("P124_TYPE9_ZERO",kP124Type9ZeroOffset);return false;} P124Type9ZeroHook::InstallAtOffset(kP124Type9ZeroOffset); return true; }
@@ -8173,12 +8181,12 @@ static bool InstallP128PostOuter() {
     static constexpr uint32_t e[]={0xB9405288};
     std::ptrdiff_t off = -1;
     if (!nsc::v2::GetDerivedUjSessionPostOffset(off)) {
-        Logging.Log("[NSC:V2C] HOOK_FAIL name=UJ_SESSION_POST reason=resolver_unavailable");
+        Logging.Log("[NSC:V2D] HOOK_FAIL name=UJ_SESSION_POST reason=resolver_unavailable");
         return false;
     }
     if(!MatchWords(off,e)){LogFingerprintFail("P128_POST_OUTER_V2_RESOLVED",off);return false;}
     P128PostOuterHook::InstallAtOffset(off);
-    Logging.Log("[NSC:V2C] HOOK name=UJ_SESSION_POST source=resolver_derived off=0x%lx installed=1",
+    Logging.Log("[NSC:V2D] HOOK name=UJ_SESSION_POST source=resolver_derived off=0x%lx installed=1",
                 static_cast<unsigned long>(off));
     return true;
 }
@@ -8196,18 +8204,21 @@ void InstallP128AStaticPreciseGateCaveProof() {
     const bool cleanup=InstallP125CleanupRequest();
 
     const uintptr_t base = reinterpret_cast<uintptr_t>(exl::util::GetMainModuleInfo().m_Total.m_Start);
-    const uint32_t w480=P128RuntimeWord(base,0x77C480);
-    const uint32_t w4b8=P128RuntimeWord(base,0x77C4B8);
-    const uint32_t w4fc=P128RuntimeWord(base,0x77C4FC);
-    const uint32_t w500=P128RuntimeWord(base,0x77C500);
-    const uint32_t w494=P128RuntimeWord(base,0x77C494);
-    const uint32_t w4a8=P128RuntimeWord(base,0x77C4A8);
-    const uint32_t w4b4=P128RuntimeWord(base,0x77C4B4);
-    const uint32_t w520=P128RuntimeWord(base,0x77C520);
-    const uint32_t w5e8=P128RuntimeWord(base,0x77C5E8);
+    std::ptrdiff_t gateOff=-1, postOff=-1;
+    const bool gateResolved=nsc::v2::GetDerivedUjGateLoadOffset(gateOff);
+    const bool postResolved=nsc::v2::GetDerivedUjSessionPostOffset(postOff);
+    const uint32_t w480=gateResolved?P128RuntimeWord(base,gateOff+0x0C):0u;
+    const uint32_t w4b8=gateResolved?P128RuntimeWord(base,gateOff+0x44):0u;
+    const uint32_t w4fc=gateResolved?P128RuntimeWord(base,gateOff+0x88):0u;
+    const uint32_t w500=gateResolved?P128RuntimeWord(base,gateOff+0x8C):0u;
+    const uint32_t w494=gateResolved?P128RuntimeWord(base,gateOff+0x20):0u;
+    const uint32_t w4a8=gateResolved?P128RuntimeWord(base,gateOff+0x34):0u;
+    const uint32_t w4b4=gateResolved?P128RuntimeWord(base,gateOff+0x40):0u;
+    const uint32_t w520=gateResolved?P128RuntimeWord(base,gateOff+0xAC):0u;
+    const uint32_t w5e8=postResolved?P128RuntimeWord(base,postOff-4):0u;
 
     Logging.Log(
-        "[NSC:P128A] READY p89=%u gate=%u post_outer=%u cleanup=%u static_precise_gate_cave=1 "
+        "[NSC:P128A] READY p89=%u gate=%u post_outer=%u cleanup=%u runtime_precise_gate_cave=1 original_main_file=1 "
         "raw10_11_native=1 raw15_custom_action707=1 raw24_rejected=1 downstream_p127_ab_open=1 "
         "persistent_gate_latch=1 no_after_actor_hook=1 no_after_peer_hook=1 no_type9_hook=1 "
         "native_calls_once=1 no_direct_7ef098_call=1 no_force708=1 no_force710=1 no_char281_branch=1 "
