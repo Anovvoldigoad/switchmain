@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP121BStaticPeerC48BranchBypass();
+    nsc::InstallP122AStaticActorPeerC48BranchBypass();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P121B static peer C48 branch bypass exception");
+    EXL_ABORT("NSC P122A static actor+peer C48 bypass exception");
 }

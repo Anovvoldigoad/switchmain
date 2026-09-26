@@ -7639,4 +7639,60 @@ void InstallP121BStaticPeerC48BranchBypass() {
         ok ? 1u : 0u);
 }
 
+
+// ============================================================================
+// P122A — BOOT-SAFE STATIC ACTOR+PEER C48 READINESS BYPASS A/B
+//
+// Runtime result from P121B: P120A successfully promotes the first appended
+// custom semantic-UJ damage event from raw15 to W8=10, and P121B boots with the
+// peer reject branch at main+0x77C4A8 NOP'd, but custom UJ still takes the
+// natural 707->708 path with no cinematic/710. Because the actor C48 gate at
+// 0x77C490/0x77C494 executes before the peer C48 gate, P121B having no effect
+// strongly localizes the remaining readiness rejection to the actor/victim C48
+// gate or later. P122A keeps the peer bypass and additionally changes only:
+//     main+0x77C494: CBZ W0,0x77C5EC (0x34000AC0) -> NOP (0xD503201F)
+//
+// Both native C48 virtual calls remain intact and execute exactly once. No new
+// hooks/trampolines are installed beyond P120A's existing single gate hook.
+// This remains a causal A/B, not the final generic readiness implementation.
+// ============================================================================
+namespace {
+static constexpr ptrdiff_t kP122AActorRejectBranchOffset = 0x77C494;
+static constexpr ptrdiff_t kP122APeerRejectBranchOffset  = 0x77C4A8;
+
+static bool VerifyP122AActorPeerPatchedMain() {
+    static constexpr uint32_t kExpected[] = {
+        0xF9400268, // 77C484 LDR X8,[X19]
+        0xAA1303E0, // 77C488 MOV X0,X19
+        0xF9462508, // 77C48C LDR X8,[X8,#0xC48]
+        0xD63F0100, // 77C490 BLR X8 -- native actor C48 preserved
+        0xD503201F, // 77C494 NOP -- P122A actor reject bypass
+        0xF94002E8, // 77C498 LDR X8,[X23]
+        0xAA1703E0, // 77C49C MOV X0,X23
+        0xF9462508, // 77C4A0 LDR X8,[X8,#0xC48]
+        0xD63F0100, // 77C4A4 BLR X8 -- native peer C48 preserved
+        0xD503201F, // 77C4A8 NOP -- P121B/P122A peer reject bypass
+        0x52800120, // 77C4AC MOV W0,#9
+        0x97FF50EC, // 77C4B0 BL 0x750860 type9 query
+        0x34000300, // 77C4B4 CBZ W0,0x77C514
+    };
+    if (!MatchWords(0x77C484, kExpected)) {
+        LogFingerprintFail("P122A_STATIC_ACTOR_PEER_C48", kP122AActorRejectBranchOffset);
+        return false;
+    }
+    return true;
+}
+} // anonymous namespace — P122A
+
+void InstallP122AStaticActorPeerC48BranchBypass() {
+    InstallP121BStaticPeerC48BranchBypass();
+    const bool ok = VerifyP122AActorPeerPatchedMain();
+    Logging.Log(
+        "[NSC:P122A] READY parent_p121b=1 corrective_ab=1 static_main_patch=1 actor_c48_native_call_preserved=1 "
+        "peer_c48_native_call_preserved=1 actor_reject_cbz_77c494_nopped=1 peer_reject_cbz_77c4a8_nopped=1 "
+        "zero_new_hooks=1 zero_new_trampolines=1 no_actor_write=1 no_event_write=1 no_session_write=1 "
+        "no_action_write=1 no_state_write=1 no_7ef098_call=1 no_force708=1 no_force710=1 no_char281_branch=1 patch_ok=%u",
+        ok ? 1u : 0u);
+}
+
 } // namespace nsc
