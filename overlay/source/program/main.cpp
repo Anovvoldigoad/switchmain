@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP121ACustomUjPeerC48Bridge();
+    nsc::InstallP121BStaticPeerC48BranchBypass();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P121A custom UJ peer C48 bridge exception");
+    EXL_ABORT("NSC P121B static peer C48 branch bypass exception");
 }

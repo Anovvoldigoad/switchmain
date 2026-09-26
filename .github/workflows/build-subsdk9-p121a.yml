@@ -1,8 +1,6 @@
 name: Build NSC P121A corrective custom UJ peer C48 bridge
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest
