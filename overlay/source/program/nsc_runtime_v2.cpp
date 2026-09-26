@@ -8,19 +8,25 @@
 namespace nsc::v2 {
 namespace {
 
-// V2A is deliberately a coexistence/read-only proof.  The scan span is the
-// verified v1.70 .text size.  A later loader stage will query RX memory ranges
-// dynamically; this stage first proves the resolver/signature model without
-// changing the already-functional P128 gameplay path.
+// V2B keeps the proven V2A scanner and begins consuming resolved addresses for
+// real hook installation. The scan span is still the verified v1.70 .text size;
+// later loader work will discover executable ranges dynamically. P128 remains a
+// gameplay safety net while three hook entries migrate off hardcoded offsets.
 constexpr std::size_t kScanSpan = 0x12F5FD0;
 
 struct Pattern {
+    Anchor anchor;
     const char* name;
     const std::uint32_t* value;
     const std::uint32_t* mask;
     std::size_t count;
     std::ptrdiff_t v170_expected;
 };
+
+static std::ptrdiff_t g_resolved_offsets[static_cast<unsigned>(Anchor::Count)] = {
+    -1, -1, -1, -1, -1, -1, -1
+};
+static bool g_resolver_ready = false;
 
 bool MatchAt(std::uintptr_t base, std::size_t off, const Pattern& p) {
     const auto* q = reinterpret_cast<const volatile std::uint32_t*>(base + off);
@@ -99,34 +105,59 @@ static constexpr std::uint32_t kState137Mask[] = {
     0xFFFFFFFF,0xFC000000,0xFF00001F,0xFFFFFFFF,0xFFFFFFFF,0xFC000000};
 
 static constexpr Pattern kPatterns[] = {
-    {"CHARACODE_GETTER", kCharVal, kCharMask, ARRAY_COUNT(kCharVal), 0x3F4150},
-    {"CPK_BIND", kCpkVal, kCpkMask, ARRAY_COUNT(kCpkVal), 0x473190},
-    {"EVENT236", kEvent236Val, kEvent236Mask, ARRAY_COUNT(kEvent236Val), 0x816300},
-    {"PLAY_ACTION", kPlayVal, kPlayMask, ARRAY_COUNT(kPlayVal), 0x766B8C},
-    {"CENTRAL_SETTER", kSetterVal, kSetterMask, ARRAY_COUNT(kSetterVal), 0x766320},
-    {"UJ_SESSION_OUTER", kOuterVal, kOuterMask, ARRAY_COUNT(kOuterVal), 0x7EF098},
-    {"STATE137_CONTROLLER", kState137Val, kState137Mask, ARRAY_COUNT(kState137Val), 0x7E6EA8},
+    {Anchor::CharacodeGetter, "CHARACODE_GETTER", kCharVal, kCharMask, ARRAY_COUNT(kCharVal), 0x3F4150},
+    {Anchor::CpkBind, "CPK_BIND", kCpkVal, kCpkMask, ARRAY_COUNT(kCpkVal), 0x473190},
+    {Anchor::Event236, "EVENT236", kEvent236Val, kEvent236Mask, ARRAY_COUNT(kEvent236Val), 0x816300},
+    {Anchor::PlayAction, "PLAY_ACTION", kPlayVal, kPlayMask, ARRAY_COUNT(kPlayVal), 0x766B8C},
+    {Anchor::CentralSetter, "CENTRAL_SETTER", kSetterVal, kSetterMask, ARRAY_COUNT(kSetterVal), 0x766320},
+    {Anchor::UjSessionOuter, "UJ_SESSION_OUTER", kOuterVal, kOuterMask, ARRAY_COUNT(kOuterVal), 0x7EF098},
+    {Anchor::State137Controller, "STATE137_CONTROLLER", kState137Val, kState137Mask, ARRAY_COUNT(kState137Val), 0x7E6EA8},
 };
 
 } // namespace
 
-void InstallResolverCoexistenceProbe() {
+const char* AnchorName(Anchor anchor) {
+    for (const auto& p : kPatterns) {
+        if (p.anchor == anchor) return p.name;
+    }
+    return "UNKNOWN";
+}
+
+bool GetResolvedOffset(Anchor anchor, std::ptrdiff_t& out_offset) {
+    const unsigned i = static_cast<unsigned>(anchor);
+    if (!g_resolver_ready || i >= static_cast<unsigned>(Anchor::Count)) return false;
+    const std::ptrdiff_t off = g_resolved_offsets[i];
+    if (off < 0) return false;
+    out_offset = off;
+    return true;
+}
+
+void InstallResolverHookMigrationProbe() {
     const std::uintptr_t base = exl::util::modules::GetTargetStart();
+    for (auto& off : g_resolved_offsets) off = -1;
+    g_resolver_ready = false;
+
     std::uint32_t ok = 0;
-    Logging.Log("[NSC:V2A] RESOLVER_START base=%p span=0x%lx readonly=1 coexist_p128=1",
+    Logging.Log("[NSC:V2B] RESOLVER_START base=%p span=0x%lx coexist_p128=1 hook_migration=EVENT236,PLAY_ACTION,CENTRAL_SETTER",
                 reinterpret_cast<void*>(base), static_cast<unsigned long>(kScanSpan));
     for (const auto& p : kPatterns) {
         std::uint32_t hits = 0;
         const std::uintptr_t addr = ResolveUnique(base, p, hits);
         const std::ptrdiff_t off = addr ? static_cast<std::ptrdiff_t>(addr - base) : -1;
         const bool expected = addr && off == p.v170_expected;
-        if (addr) ++ok;
-        Logging.Log("[NSC:V2A] RESOLVE name=%s hits=%u addr=%p off=0x%lx v170_expected=0x%lx exact=%u",
+        if (addr) {
+            ++ok;
+            g_resolved_offsets[static_cast<unsigned>(p.anchor)] = off;
+        }
+        Logging.Log("[NSC:V2B] RESOLVE name=%s hits=%u addr=%p off=0x%lx v170_expected=0x%lx exact=%u",
                     p.name, hits, reinterpret_cast<void*>(addr),
                     static_cast<unsigned long>(off),
                     static_cast<unsigned long>(p.v170_expected), expected ? 1u : 0u);
     }
-    Logging.Log("[NSC:V2A] READY resolved=%u total=%u fail_closed=1 no_runtime_patch=1 no_new_hook=1",
+    // Publish only after every slot has been populated/finalized. Individual
+    // GetResolvedOffset() calls still fail for unresolved/ambiguous anchors.
+    g_resolver_ready = true;
+    Logging.Log("[NSC:V2B] READY resolved=%u total=%u fail_closed=1 migrated_hook_entries=3 no_offset_fallback=1 coexist_p128=1",
                 ok, static_cast<unsigned>(ARRAY_COUNT(kPatterns)));
 }
 

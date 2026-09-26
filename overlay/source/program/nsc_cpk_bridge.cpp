@@ -1,4 +1,5 @@
 #include "nsc_cpk_bridge.hpp"
+#include "nsc_runtime_v2.hpp"
 #include "p81_ougi_awake_ids.hpp"
 #include "condition_compat_generated.hpp"
 
@@ -5064,11 +5065,18 @@ bool InstallEvent236Dispatcher() {
         0xF81F0FFE, 0xF9400008, 0xF946E908, 0xD63F0100,
         0xB4000080, 0xF9400008, 0xF945E108, 0xD63F0100,
     };
-    if (!MatchWords(kEvent236Offset, kEvent236Expected)) {
-        LogFingerprintFail("EVENT236", kEvent236Offset);
+    std::ptrdiff_t off = -1;
+    if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::Event236, off)) {
+        Logging.Log("[NSC:V2B] HOOK_FAIL name=EVENT236 reason=resolver_unavailable");
         return false;
     }
-    Event236Hook::InstallAtOffset(kEvent236Offset);
+    if (!MatchWords(off, kEvent236Expected)) {
+        LogFingerprintFail("EVENT236_V2_RESOLVED", off);
+        return false;
+    }
+    Event236Hook::InstallAtOffset(off);
+    Logging.Log("[NSC:V2B] HOOK name=EVENT236 source=resolver off=0x%lx installed=1",
+                static_cast<unsigned long>(off));
     return true;
 }
 
@@ -5279,28 +5287,42 @@ bool InstallPlayActionProbe() {
         0xA9BE57FE, 0xA9014FF4, 0xB9529408, 0x2A0403F4,
         0xAA0003F3, 0x7100091F, 0x54000080, 0xB9528668,
     };
-    if (!MatchWords(kPlayActionProbeOffset, kPlayActionExpected)) {
-        LogFingerprintFail("PLAY_ACTION", kPlayActionProbeOffset);
+    std::ptrdiff_t off = -1;
+    if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::PlayAction, off)) {
+        Logging.Log("[NSC:V2B] HOOK_FAIL name=PLAY_ACTION reason=resolver_unavailable");
         return false;
     }
-    PlayActionProbeHook::InstallAtOffset(kPlayActionProbeOffset);
+    if (!MatchWords(off, kPlayActionExpected)) {
+        LogFingerprintFail("PLAY_ACTION_V2_RESOLVED", off);
+        return false;
+    }
+    PlayActionProbeHook::InstallAtOffset(off);
+    Logging.Log("[NSC:V2B] HOOK name=PLAY_ACTION source=resolver off=0x%lx installed=1",
+                static_cast<unsigned long>(off));
     return true;
 }
 
 bool InstallP57CentralSetterTrace() {
-    // Fingerprint the exact v1.70 function entry. These words also prove the
-    // 4-argument ABI used by the callback: prologue then w3/w2/x0/w1 saves.
+    // Fingerprint the resolved entry. These words also prove the 4-argument
+    // ABI used by the callback: prologue then w3/w2/x0/w1 saves.
     static constexpr uint32_t kSetterExpected[] = {
         0xD10303FF, 0x6D0523E9, 0xA9067BFD, 0xA9076FFC,
         0xA90867FA, 0xA9095FF8, 0xA90A57F6, 0xA90B4FF4,
         0xF9410C08, 0x4EA01C08, 0x2A0303F4, 0x2A0203F6,
         0xAA0003F3, 0x2A0103F5,
     };
-    if (!MatchWords(kCentralActionSetterOffset, kSetterExpected)) {
-        LogFingerprintFail("CENTRAL_SETTER", kCentralActionSetterOffset);
+    std::ptrdiff_t off = -1;
+    if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::CentralSetter, off)) {
+        Logging.Log("[NSC:V2B] HOOK_FAIL name=CENTRAL_SETTER reason=resolver_unavailable");
         return false;
     }
-    CentralActionSetterHook::InstallAtOffset(kCentralActionSetterOffset);
+    if (!MatchWords(off, kSetterExpected)) {
+        LogFingerprintFail("CENTRAL_SETTER_V2_RESOLVED", off);
+        return false;
+    }
+    CentralActionSetterHook::InstallAtOffset(off);
+    Logging.Log("[NSC:V2B] HOOK name=CENTRAL_SETTER source=resolver off=0x%lx installed=1",
+                static_cast<unsigned long>(off));
     return true;
 }
 

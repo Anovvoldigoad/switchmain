@@ -6,10 +6,10 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::v2::InstallResolverCoexistenceProbe();
+    nsc::v2::InstallResolverHookMigrationProbe();
     nsc::InstallP128AStaticPreciseGateCaveProof();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC V2A resolver coexistence exception");
+    EXL_ABORT("NSC V2B dynamic hook migration exception");
 }

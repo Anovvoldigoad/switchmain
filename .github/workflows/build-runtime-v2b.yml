@@ -1,4 +1,4 @@
-name: Build NSC Runtime V2A resolver coexistence
+name: Build NSC Runtime V2B dynamic hook migration
 on:
   workflow_dispatch:
   push:
@@ -12,7 +12,7 @@ jobs:
       - name: Verify source kit
         run: |
           set -eux
-          python3 verify_runtime_v2a.py
+          python3 verify_runtime_v2b.py
       - name: Bootstrap pinned exlaunch
         run: |
           set -eux
@@ -25,8 +25,8 @@ jobs:
           set -eux
           chmod +x prepare_exlaunch.sh
           ./prepare_exlaunch.sh
-          grep -Fq '[NSC:V2A] READY' exlaunch/source/program/nsc_runtime_v2.cpp
-          grep -Fq 'InstallResolverCoexistenceProbe' exlaunch/source/program/main.cpp
+          grep -Fq '[NSC:V2B] READY' exlaunch/source/program/nsc_runtime_v2.cpp
+          grep -Fq 'InstallResolverHookMigrationProbe' exlaunch/source/program/main.cpp
           grep -Fq 'InstallP128AStaticPreciseGateCaveProof' exlaunch/source/program/main.cpp
       - name: Build
         working-directory: exlaunch
@@ -36,8 +36,11 @@ jobs:
           set -eux
           ELF="$(find exlaunch -maxdepth 2 -type f -name '*_final.elf' -size +10k -print -quit)"
           test -n "$ELF"
-          grep -aFq '[NSC:V2A] READY' "$ELF"
-          grep -aFq '[NSC:V2A] RESOLVE' "$ELF"
+          grep -aFq '[NSC:V2B] READY' "$ELF"
+          grep -aFq '[NSC:V2B] RESOLVE' "$ELF"
+          grep -aFq '[NSC:V2B] HOOK name=EVENT236' "$ELF"
+          grep -aFq '[NSC:V2B] HOOK name=PLAY_ACTION' "$ELF"
+          grep -aFq '[NSC:V2B] HOOK name=CENTRAL_SETTER' "$ELF"
           grep -aFq '[NSC:P128A] READY' "$ELF"
       - name: Package
         run: |
@@ -52,6 +55,6 @@ jobs:
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: NSC-RUNTIME-V2A-resolver-coexistence
+          name: NSC-RUNTIME-V2B-dynamic-hook-entry-migration
           path: artifact/
           if-no-files-found: error
