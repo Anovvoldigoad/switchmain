@@ -376,6 +376,12 @@ constexpr ptrdiff_t kRejectedControlBlockOffset = 0x12A24;
 // D-pad-region boundary. No candidate is ever written.
 constexpr uint32_t kControlScanStart = 0x12800;
 constexpr uint32_t kControlScanEnd   = 0x12B20;
+
+// V2E / source-parity D-pad charge region. PC SC 1.70 uses actor+0x12B88.
+// Prior Switch layout audit established the corresponding Switch boundary at
+// actor+0x12B78 (PC->Switch -0x10 for this player-layout block).
+// Arrow layout is identical to MovesetPlus: Up +0, Down +4, Left +8, Right +12.
+constexpr ptrdiff_t kDpadChargeBaseOffset = 0x12B78;
 constexpr ptrdiff_t kActionPreOffset            = 0x7A8438;
 constexpr ptrdiff_t kActionEntryLookupOffset    = 0x3F5560;
 constexpr ptrdiff_t kActionNameCompareOffset    = 0x12F36E0;
@@ -1408,6 +1414,45 @@ void* GetEventTargetActor(void* actor, int16_t selector) {
     return fn ? fn(actor) : nullptr;
 }
 
+uint32_t HandleDpadChargeSourceParity(void* actor, int16_t enemy, int16_t arrow, float charge) {
+    // Exact MovesetPlus semantics for SC 1.70, translated to the independently
+    // recovered Switch player-layout base. In particular, DO NOT impose the old
+    // experimental abs(charge)<=16 cap: the real Tobi Izanagi event writes 100.0.
+    if (!actor || enemy < 0 || enemy > 1 || arrow < 0 || arrow > 4) return 1;
+    void* target = GetEventTargetActor(actor, enemy);
+    if (!target) return 1;
+
+    auto* base = reinterpret_cast<volatile float*>(
+        reinterpret_cast<uint8_t*>(target) + kDpadChargeBaseOffset);
+    float before[4] = {base[0], base[1], base[2], base[3]};
+
+    switch (arrow) {
+        case 0:
+            base[0] = charge;
+            base[1] = charge;
+            base[2] = charge;
+            base[3] = charge;
+            break;
+        case 1: base[0] = charge; break;
+        case 2: base[1] = charge; break;
+        case 3: base[2] = charge; break;
+        case 4: base[3] = charge; break;
+        default: break;
+    }
+
+    uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+    ReadActorIdentity(target, side, char_id);
+    Logging.Log(
+        "[NSC:V2E] DPAD17_APPLY actor=%p target=%p side=%u char=%u enemy=%d arrow=%d "
+        "charge_bits=%08x before=%08x/%08x/%08x/%08x after=%08x/%08x/%08x/%08x base_off=0x%lx source_parity=1",
+        actor, target, side, char_id, static_cast<int>(enemy), static_cast<int>(arrow),
+        FloatBits(charge), FloatBits(before[0]), FloatBits(before[1]),
+        FloatBits(before[2]), FloatBits(before[3]), FloatBits(base[0]),
+        FloatBits(base[1]), FloatBits(base[2]), FloatBits(base[3]),
+        static_cast<unsigned long>(kDpadChargeBaseOffset));
+    return 1;
+}
+
 uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
     const uintptr_t base = exl::util::modules::GetTargetStart();
     uint32_t stage_crc = 0;
@@ -2200,14 +2245,10 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
             }
 
             case 17: {
-                // P43A: explicit Kamui-candidate shadow. Previously fell through default.
-                // A/B next: only flip this to a proven native/port after sequence evidence.
-                if (g_event236_logs.load(std::memory_order_relaxed) < 4096) {
-                    Logging.Log("[NSC:P50A] OP17_SHADOW actor=%p side=%u char=%u p2=%d p3=%d p4bits=%08x",
-                                actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3),
-                                FloatBits(p4));
-                }
-                return 1;
+                // V2E: exact MovesetPlus me_change_dpad_charge semantics.
+                // Latest hardware log proves Tobi reaches op17 with p2=0,p3=4,charge=100.0
+                // while V2D still shadows it. This is the first causal D-pad parity fix.
+                return HandleDpadChargeSourceParity(actor, p2, p3, p4);
             }
 
             case 18: {
@@ -5626,7 +5667,7 @@ void InstallP50AConditionCompat() {
     const bool cond = InstallConditionCompat();
     Logging.Log("[NSC:P50A] READY cpk=%d char=%d event236=%d play=%d cond=%d installed_trampolines=6 "
                 "condition_native=%u condition_extra=%u condition_total=%u "
-                "event121_self=1 vis12_shadow=1 ctrl14_shadow=1 op15_shadow=1 op17_shadow=1 op18_shadow=1",
+                "event121_self=1 vis12_shadow=1 ctrl14_shadow=1 op15_shadow=1 op17_source_parity=1 op18_shadow=1",
                 cpk ? 1 : 0, charcode ? 1 : 0, event236 ? 1 : 0, play ? 1 : 0, cond ? 1 : 0,
                 condition_compat_generated::kNativeConditionCount,
                 condition_compat_generated::kExtraConditionCount,

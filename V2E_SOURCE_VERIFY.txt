@@ -1,0 +1,39 @@
+main_order PASS
+fail_closed_main PASS
+random_access_patcher PASS
+validate_before_write PASS
+thirty_word_plan PASS
+paired_file_disabled PASS
+runtime_gate_accessor PASS
+gate_hook_dynamic PASS
+uj_post_dynamic PASS
+six_core_dynamic PASS
+v2d_arch_markers PASS
+original_main_readme PASS
+workflow_only_v2e PASS
+workflow_original_main PASS
+workflow_not_reference_main PASS
+logger_include_order PASS
+no_char281_runtime PASS
+dpad17_base PASS
+dpad17_source_parity_handler PASS
+dpad17_arrow4 PASS
+dpad17_all_four PASS
+dpad17_no_abs16_cap PASS
+dpad17_case_live PASS
+dpad17_shadow_removed PASS
+opcode12_unchanged_shadow PASS
+opcode23_still_present PASS
+original_main_sha256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+reference_p128_main_sha256 904a0405d04360ff3969909cdd7197c9e8c2aba2467151a7eaad4c821fcebbff
+text_diff_words 30
+reference_delta_exact_30_words PASS
+offline_original_CHARACODE_GETTER PASS hits=0x3f4150
+offline_original_CPK_BIND PASS hits=0x473190
+offline_original_EVENT236 PASS hits=0x816300
+offline_original_PLAY_ACTION PASS hits=0x766b8c
+offline_original_CENTRAL_SETTER PASS hits=0x766320
+offline_original_UJ_SESSION_OUTER PASS hits=0x7ef098
+offline_original_STATE137_CONTROLLER PASS hits=0x7e6ea8
+source_contains_uj_runtime_delta PASS
+NSC_RUNTIME_V2E_SOURCE_VERIFY=PASS
