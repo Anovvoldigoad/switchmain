@@ -44,4 +44,5 @@ void InstallP122AStaticActorPeerC48BranchBypass();
 void InstallP123ACompactConditionalOuterCorridorBridge();
 void InstallP124ANativeSafeUjCorridorReachProof();
 void InstallP125AP107GuidedSessionQualifiedState137Fallback();
+void InstallP126AActorC48RejectBypassProbe();
 }

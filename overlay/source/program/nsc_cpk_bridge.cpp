@@ -8004,4 +8004,25 @@ void InstallP125AP107GuidedSessionQualifiedState137Fallback() {
         p89?1u:0u,gate?1u:0u,a?1u:0u,p?1u:0u,t9?1u:0u,post?1u:0u,cleanup?1u:0u);
 }
 
+
+// ============================================================================
+// P126A — SINGLE ACTOR-C48 REJECT BYPASS, P125 SESSION-QUALIFIED PARENT
+//
+// P125 runtime proved the custom semantic-UJ event reaches the raw->10 gate but
+// never reaches P124 AFTER_ACTOR, while cleanup remains session=0/mature=0.
+// Therefore the first proven native reject is main+0x77C494 after actor C48.
+//
+// Paired main changes ONLY 0x77C494 CBZ W0,0x77C5EC -> NOP. The actor C48
+// virtual call at0x77C490 remains native. Peer C48/type9/lookup/7EF098 and the
+// P125 session-qualified cleanup fallback remain untouched. Zero new hooks.
+// ============================================================================
+void InstallP126AActorC48RejectBypassProbe() {
+    InstallP125AP107GuidedSessionQualifiedState137Fallback();
+    Logging.Log(
+        "[NSC:P126A] READY parent_p125=1 static_main_patch=1 actor_c48_native_call_preserved=1 "
+        "actor_reject_cbz_77c494_nopped=1 peer_c48_native=1 peer_reject_native=1 type9_native=1 "
+        "lookup_native=1 native_7ef098=1 p125_session_qualified_fallback=1 zero_new_hooks=1 "
+        "zero_new_trampolines=1 no_direct_7ef098_call=1 no_force708=1 no_force710=1 no_char281_branch=1");
+}
+
 } // namespace nsc

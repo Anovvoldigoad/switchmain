@@ -5,9 +5,9 @@ extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
     exl::hook::Initialize();
-    nsc::InstallP125AP107GuidedSessionQualifiedState137Fallback();
+    nsc::InstallP126AActorC48RejectBypassProbe();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC P125A P107-guided session-qualified state137 fallback exception");
+    EXL_ABORT("NSC P126A actor-C48 reject bypass probe exception");
 }
