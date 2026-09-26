@@ -1,8 +1,6 @@
 name: Build NSC P122A boot-safe static actor+peer C48 bypass A/B
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest

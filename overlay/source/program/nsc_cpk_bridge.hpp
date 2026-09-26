@@ -41,4 +41,5 @@ void InstallP119AUjDamageProvenanceProbe();
 void InstallP120ACustomUjCinematicGateBridge();
 void InstallP121BStaticPeerC48BranchBypass();
 void InstallP122AStaticActorPeerC48BranchBypass();
+void InstallP123ACompactConditionalOuterCorridorBridge();
 }
