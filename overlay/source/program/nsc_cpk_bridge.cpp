@@ -7769,10 +7769,11 @@ static P124Focus P124ReadFocus(exl::hook::nx64::InlineCtx* ctx) {
     q.custom = av && q.ac > kVanillaMaxCharId && q.ac < 0x1000u;
     q.opposite = av && vv && q.as <= 1u && q.vs <= 1u && q.as != q.vs;
     q.armed = av && q.as <= 1u && g_p124_armed_actor[q.as].load(std::memory_order_relaxed) == q.attacker;
-    // Do not require action==707 here. The latch itself was armed only during
-    // action707; keeping the reach guard action-agnostic prevents a native call
-    // from hiding the checkpoint if it advances action within the same corridor.
-    q.active = q.armed && q.custom && q.semantic && q.opposite;
+    // The latch is armed only by the strict custom+semantic+action707+opposite-side
+    // appended-damage gate above. Downstream native helpers are allowed to mutate
+    // transient semantic/peer state, so do NOT re-require semantic/opposite here.
+    // Trust the already-qualified actor latch until P93 observes it leave action707.
+    q.active = q.armed && q.custom;
     return q;
 }
 
@@ -8023,6 +8024,38 @@ void InstallP126AActorC48RejectBypassProbe() {
         "actor_reject_cbz_77c494_nopped=1 peer_c48_native=1 peer_reject_native=1 type9_native=1 "
         "lookup_native=1 native_7ef098=1 p125_session_qualified_fallback=1 zero_new_hooks=1 "
         "zero_new_trampolines=1 no_direct_7ef098_call=1 no_force708=1 no_force710=1 no_char281_branch=1");
+}
+
+
+// ============================================================================
+// P127A — FULL NATIVE CORRIDOR A/B WITH ROBUST LATCH OBSERVABILITY
+//
+// P126 runtime confirmed the corrected appended-damage gate fires, but the
+// filtered AFTER_ACTOR marker still did not appear even though the paired main
+// had the actor reject branch NOP. This means the old downstream focus filter
+// was too strict to use as reach proof after native helpers mutate transient
+// state. P127 therefore trusts only the already-qualified P124 actor latch.
+//
+// For this causal A/B, the paired main preserves ALL native calls but opens the
+// four branch exits that can prevent the native 0x7EF098 session path:
+//   0x77C494 actor C48 reject       -> NOP
+//   0x77C4A8 peer C48 reject        -> NOP
+//   0x77C4B4 type9 result branch     -> unconditional B 0x77C514
+//   0x77C520 lookup result branch    -> unconditional B 0x77C59C
+//
+// Native C48/type9/lookup/0x7EF098 calls still execute exactly once from main.
+// P125's session-qualified P107 endpoint remains guarded by native 0x7EF098
+// success plus mature E94/E98/BDA context. This is an A/B probe, not the final
+// generic policy if it succeeds.
+// ============================================================================
+void InstallP127AFullNativeCorridorAB() {
+    InstallP125AP107GuidedSessionQualifiedState137Fallback();
+    Logging.Log(
+        "[NSC:P127A] READY parent_p125=1 robust_latched_focus=1 static_main_patch=1 "
+        "actor_reject_open=1 peer_reject_open=1 type9_zero_path_forced=1 lookup_null_path_forced=1 "
+        "native_actor_c48_call=1 native_peer_c48_call=1 native_type9_call=1 native_lookup_call=1 "
+        "native_7ef098_call=1 p125_session_qualified_fallback=1 zero_new_hooks=1 zero_new_trampolines=1 "
+        "no_direct_7ef098_call=1 no_force708=1 no_force710=1 no_char281_branch=1");
 }
 
 } // namespace nsc

@@ -1,0 +1,59 @@
+entrypoint PASS
+decl PASS
+ready PASS
+parent_p125 PASS
+robust_latch PASS
+strict_arm_still_present PASS
+zero_p127_inline PASS
+zero_p127_trampoline PASS
+zero_p127_installat PASS
+native_call_claims PASS
+branch_claims PASS
+p125_qualified PASS
+no_direct_outer PASS
+no_force710 PASS
+no_char281_branch PASS
+preserve_VIS_SHADOW PASS
+preserve_CTRL14_SHADOW PASS
+preserve_NSC_P89A_ACTOR_PRED PASS
+preserve_NSC_P124A_GATE PASS
+preserve_NSC_P124A_AFTER_ACTOR PASS
+preserve_NSC_P124A_AFTER_PEER PASS
+preserve_NSC_P124A_TYPE9_ZERO PASS
+preserve_NSC_P125A_POST_OUTER PASS
+preserve_NSC_P125A_CLEANUP PASS
+paired main 0dc14b32e125d5cef82225532b552722c8ddabb7b4b3ac1b93f500534f6c9367
+paired_hash PASS
+restore main 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+restore_hash PASS
+nso0 PASS
+text_uncompressed PASS
+fp 0x77c474 b9405288 PASS
+fp 0x77c478 121f7909 PASS
+fp 0x77c47c 7100293f PASS
+fp 0x77c480 54000b81 PASS
+fp 0x77c490 d63f0100 PASS
+fp 0x77c494 d503201f PASS
+fp 0x77c498 f94002e8 PASS
+fp 0x77c4a4 d63f0100 PASS
+fp 0x77c4a8 d503201f PASS
+fp 0x77c4ac 52800120 PASS
+fp 0x77c4b0 97ff50ec PASS
+fp 0x77c4b4 14000018 PASS
+fp 0x77c514 aa1303e0 PASS
+fp 0x77c51c 9401ecf8 PASS
+fp 0x77c520 1400001f PASS
+fp 0x77c59c f9400268 PASS
+fp 0x77c5e8 9401caac PASS
+fp 0x77c5ec b9405288 PASS
+fp 0x7eb27c 52800fa1 PASS
+fp 0x7eb288 d63f0100 PASS
+native_call_preserved_0x77c490 PASS
+native_call_preserved_0x77c4a4 PASS
+native_call_preserved_0x77c4b0 PASS
+native_call_preserved_0x77c51c PASS
+native_call_preserved_0x77c5e8 PASS
+push_enabled_workflows ['build-subsdk9-p127a.yml']
+only_p127_push PASS
+main_module_api PASS
+P127A_DROPIN_SOURCE_VERIFY=PASS
