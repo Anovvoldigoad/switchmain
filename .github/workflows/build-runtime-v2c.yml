@@ -1,4 +1,4 @@
-name: Build NSC Runtime V2B dynamic hook migration
+name: Build NSC Runtime V2C dynamic core migration
 on:
   workflow_dispatch:
   push:
@@ -12,7 +12,7 @@ jobs:
       - name: Verify source kit
         run: |
           set -eux
-          python3 verify_runtime_v2b.py
+          python3 verify_runtime_v2c.py
       - name: Bootstrap pinned exlaunch
         run: |
           set -eux
@@ -25,7 +25,7 @@ jobs:
           set -eux
           chmod +x prepare_exlaunch.sh
           ./prepare_exlaunch.sh
-          grep -Fq '[NSC:V2B] READY' exlaunch/source/program/nsc_runtime_v2.cpp
+          grep -Fq '[NSC:V2C] READY' exlaunch/source/program/nsc_runtime_v2.cpp
           grep -Fq 'InstallResolverHookMigrationProbe' exlaunch/source/program/main.cpp
           grep -Fq 'InstallP128AStaticPreciseGateCaveProof' exlaunch/source/program/main.cpp
       - name: Build
@@ -36,11 +36,14 @@ jobs:
           set -eux
           ELF="$(find exlaunch -maxdepth 2 -type f -name '*_final.elf' -size +10k -print -quit)"
           test -n "$ELF"
-          grep -aFq '[NSC:V2B] READY' "$ELF"
-          grep -aFq '[NSC:V2B] RESOLVE' "$ELF"
-          grep -aFq '[NSC:V2B] HOOK name=EVENT236' "$ELF"
-          grep -aFq '[NSC:V2B] HOOK name=PLAY_ACTION' "$ELF"
-          grep -aFq '[NSC:V2B] HOOK name=CENTRAL_SETTER' "$ELF"
+          grep -aFq '[NSC:V2C] READY' "$ELF"
+          grep -aFq '[NSC:V2C] RESOLVE' "$ELF"
+          grep -aFq '[NSC:V2C] HOOK name=EVENT236' "$ELF"
+          grep -aFq '[NSC:V2C] HOOK name=PLAY_ACTION' "$ELF"
+          grep -aFq '[NSC:V2C] HOOK name=CENTRAL_SETTER' "$ELF"
+          grep -aFq '[NSC:V2C] HOOK name=CPK_BIND' "$ELF"
+          grep -aFq '[NSC:V2C] HOOK name=CHARACODE_GETTER' "$ELF"
+          grep -aFq '[NSC:V2C] HOOK name=UJ_SESSION_POST' "$ELF"
           grep -aFq '[NSC:P128A] READY' "$ELF"
       - name: Package
         run: |
@@ -55,6 +58,6 @@ jobs:
           (cd artifact && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
-          name: NSC-RUNTIME-V2B-dynamic-hook-entry-migration
+          name: NSC-RUNTIME-V2C-dynamic-core-migration
           path: artifact/
           if-no-files-found: error

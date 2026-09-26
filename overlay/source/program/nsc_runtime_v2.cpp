@@ -8,10 +8,11 @@
 namespace nsc::v2 {
 namespace {
 
-// V2B keeps the proven V2A scanner and begins consuming resolved addresses for
-// real hook installation. The scan span is still the verified v1.70 .text size;
-// later loader work will discover executable ranges dynamically. P128 remains a
-// gameplay safety net while three hook entries migrate off hardcoded offsets.
+// V2C extends the proven V2B runtime resolver. Six active hook-entry decisions
+// now come from runtime discovery: EVENT236, PLAY_ACTION, CENTRAL_SETTER, CPK_BIND,
+// CHARACODE_GETTER, and the post-call continuation for UJ_SESSION_OUTER. The scan
+// span is still the verified v1.70 .text size; external-loader work will replace
+// this fixed span later. P128 remains the gameplay safety net during migration.
 constexpr std::size_t kScanSpan = 0x12F5FD0;
 
 struct Pattern {
@@ -27,6 +28,7 @@ static std::ptrdiff_t g_resolved_offsets[static_cast<unsigned>(Anchor::Count)] =
     -1, -1, -1, -1, -1, -1, -1
 };
 static bool g_resolver_ready = false;
+static std::ptrdiff_t g_uj_session_post_offset = -1;
 
 bool MatchAt(std::uintptr_t base, std::size_t off, const Pattern& p) {
     const auto* q = reinterpret_cast<const volatile std::uint32_t*>(base + off);
@@ -49,6 +51,38 @@ std::uintptr_t ResolveUnique(std::uintptr_t base, const Pattern& p, std::uint32_
         if (hits > 1) return 0; // fail closed: ambiguous signature
     }
     return hits == 1 ? found : 0;
+}
+
+
+bool DecodeBlTargetOffset(std::size_t call_off, std::uint32_t word, std::ptrdiff_t& out_target) {
+    if ((word & 0xFC000000u) != 0x94000000u) return false;
+    std::int64_t imm26 = static_cast<std::int64_t>(word & 0x03FFFFFFu);
+    if (imm26 & (1ll << 25)) imm26 -= (1ll << 26);
+    out_target = static_cast<std::ptrdiff_t>(call_off) +
+        static_cast<std::ptrdiff_t>(imm26 << 2);
+    return true;
+}
+
+std::ptrdiff_t ResolveUjSessionPostUnique(std::uintptr_t base, std::ptrdiff_t outer_off,
+                                          std::uint32_t& hits) {
+    hits = 0;
+    std::ptrdiff_t found = -1;
+    // Proven native corridor shape at v1.70:
+    //   MOV X0,X23 ; BL UJ_SESSION_OUTER ; LDR W8,[X20,#0x50]
+    // We bind to the resolved OUTER target rather than any absolute callsite.
+    for (std::size_t off = 4; off + 8 <= kScanSpan; off += 4) {
+        const auto* q = reinterpret_cast<const volatile std::uint32_t*>(base + off - 4);
+        const std::uint32_t prev = q[0];
+        const std::uint32_t call = q[1];
+        const std::uint32_t next = q[2];
+        if (prev != 0xAA1703E0u || next != 0xB9405288u) continue;
+        std::ptrdiff_t target = -1;
+        if (!DecodeBlTargetOffset(off, call, target) || target != outer_off) continue;
+        ++hits;
+        if (hits == 1) found = static_cast<std::ptrdiff_t>(off + 4);
+        if (hits > 1) return -1;
+    }
+    return hits == 1 ? found : -1;
 }
 
 #define ARRAY_COUNT(a) (sizeof(a) / sizeof((a)[0]))
@@ -132,13 +166,20 @@ bool GetResolvedOffset(Anchor anchor, std::ptrdiff_t& out_offset) {
     return true;
 }
 
+bool GetDerivedUjSessionPostOffset(std::ptrdiff_t& out_offset) {
+    if (!g_resolver_ready || g_uj_session_post_offset < 0) return false;
+    out_offset = g_uj_session_post_offset;
+    return true;
+}
+
 void InstallResolverHookMigrationProbe() {
     const std::uintptr_t base = exl::util::modules::GetTargetStart();
     for (auto& off : g_resolved_offsets) off = -1;
+    g_uj_session_post_offset = -1;
     g_resolver_ready = false;
 
     std::uint32_t ok = 0;
-    Logging.Log("[NSC:V2B] RESOLVER_START base=%p span=0x%lx coexist_p128=1 hook_migration=EVENT236,PLAY_ACTION,CENTRAL_SETTER",
+    Logging.Log("[NSC:V2C] RESOLVER_START base=%p span=0x%lx coexist_p128=1 hook_migration=EVENT236,PLAY_ACTION,CENTRAL_SETTER,CPK_BIND,CHARACODE_GETTER,UJ_SESSION_POST",
                 reinterpret_cast<void*>(base), static_cast<unsigned long>(kScanSpan));
     for (const auto& p : kPatterns) {
         std::uint32_t hits = 0;
@@ -149,16 +190,27 @@ void InstallResolverHookMigrationProbe() {
             ++ok;
             g_resolved_offsets[static_cast<unsigned>(p.anchor)] = off;
         }
-        Logging.Log("[NSC:V2B] RESOLVE name=%s hits=%u addr=%p off=0x%lx v170_expected=0x%lx exact=%u",
+        Logging.Log("[NSC:V2C] RESOLVE name=%s hits=%u addr=%p off=0x%lx v170_expected=0x%lx exact=%u",
                     p.name, hits, reinterpret_cast<void*>(addr),
                     static_cast<unsigned long>(off),
                     static_cast<unsigned long>(p.v170_expected), expected ? 1u : 0u);
     }
-    // Publish only after every slot has been populated/finalized. Individual
-    // GetResolvedOffset() calls still fail for unresolved/ambiguous anchors.
+    std::uint32_t post_hits = 0;
+    const std::ptrdiff_t outer_off =
+        g_resolved_offsets[static_cast<unsigned>(Anchor::UjSessionOuter)];
+    if (outer_off >= 0) {
+        g_uj_session_post_offset = ResolveUjSessionPostUnique(base, outer_off, post_hits);
+    }
+    Logging.Log("[NSC:V2C] DERIVE name=UJ_SESSION_POST hits=%u outer_off=0x%lx post_off=0x%lx exact_v170=%u",
+                post_hits, static_cast<unsigned long>(outer_off),
+                static_cast<unsigned long>(g_uj_session_post_offset),
+                g_uj_session_post_offset == 0x77C5EC ? 1u : 0u);
+
+    // Publish only after every slot and derived continuation are finalized.
     g_resolver_ready = true;
-    Logging.Log("[NSC:V2B] READY resolved=%u total=%u fail_closed=1 migrated_hook_entries=3 no_offset_fallback=1 coexist_p128=1",
-                ok, static_cast<unsigned>(ARRAY_COUNT(kPatterns)));
+    Logging.Log("[NSC:V2C] READY resolved=%u total=%u fail_closed=1 migrated_hook_entries=6 no_offset_fallback=1 coexist_p128=1 uj_post_derived=%u",
+                ok, static_cast<unsigned>(ARRAY_COUNT(kPatterns)),
+                g_uj_session_post_offset >= 0 ? 1u : 0u);
 }
 
 } // namespace nsc::v2

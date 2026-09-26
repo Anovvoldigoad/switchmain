@@ -11,5 +11,5 @@ extern "C" void exl_main(void* x0, void* x1) {
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC V2B dynamic hook migration exception");
+    EXL_ABORT("NSC V2C dynamic core migration exception");
 }

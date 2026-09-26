@@ -16,8 +16,6 @@ namespace nsc {
 namespace {
 
 // NSC Switch v1.70 main offsets.
-constexpr ptrdiff_t kCpkBindOffset           = 0x473190;
-constexpr ptrdiff_t kCharacodeGetterOffset   = 0x3F4150;
 constexpr ptrdiff_t kFileLoadRequestOffset   = 0x1206B4C; // nuccFileLoadList request/find-or-create
 constexpr ptrdiff_t kFileLoadCreateOffset    = 0x1206C9C; // create new nuccFileLoad object
 constexpr ptrdiff_t kFileLoadStatusOffset    = 0x1207EFC; // lookup path -> status, 4 if absent from list
@@ -5067,7 +5065,7 @@ bool InstallEvent236Dispatcher() {
     };
     std::ptrdiff_t off = -1;
     if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::Event236, off)) {
-        Logging.Log("[NSC:V2B] HOOK_FAIL name=EVENT236 reason=resolver_unavailable");
+        Logging.Log("[NSC:V2C] HOOK_FAIL name=EVENT236 reason=resolver_unavailable");
         return false;
     }
     if (!MatchWords(off, kEvent236Expected)) {
@@ -5075,7 +5073,7 @@ bool InstallEvent236Dispatcher() {
         return false;
     }
     Event236Hook::InstallAtOffset(off);
-    Logging.Log("[NSC:V2B] HOOK name=EVENT236 source=resolver off=0x%lx installed=1",
+    Logging.Log("[NSC:V2C] HOOK name=EVENT236 source=resolver off=0x%lx installed=1",
                 static_cast<unsigned long>(off));
     return true;
 }
@@ -5163,18 +5161,41 @@ bool InstallCpkBridge() {
         0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0xD000E6A8,
         0xF945ED08, 0xAA0003F5, 0xF9400100, 0xB4000200,
     };
-    if (!MatchWords(kCpkBindOffset, kExpected)) {
-        LogFingerprintFail("CPK_BIND", kCpkBindOffset);
+    std::ptrdiff_t off = -1;
+    if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::CpkBind, off)) {
+        Logging.Log("[NSC:V2C] HOOK_FAIL name=CPK_BIND reason=resolver_unavailable");
         return false;
     }
-    CpkBindHook::InstallAtOffset(kCpkBindOffset);
+    if (!MatchWords(off, kExpected)) {
+        LogFingerprintFail("CPK_BIND_V2_RESOLVED", off);
+        return false;
+    }
+    CpkBindHook::InstallAtOffset(off);
+    Logging.Log("[NSC:V2C] HOOK name=CPK_BIND source=resolver off=0x%lx installed=1",
+                static_cast<unsigned long>(off));
+    return true;
+}
+
+bool InstallCharacodeGetterDynamic() {
+    static constexpr uint32_t kExpected[] = {
+        0xF000EA68, 0xF9424508, 0xF9760908, 0x2A0003E1, 0xF9409500, 0x1410AC93,
+    };
+    std::ptrdiff_t off = -1;
+    if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::CharacodeGetter, off)) {
+        Logging.Log("[NSC:V2C] HOOK_FAIL name=CHARACODE_GETTER reason=resolver_unavailable");
+        return false;
+    }
+    if (!MatchWords(off, kExpected)) {
+        LogFingerprintFail("CHARACODE_GETTER_V2_RESOLVED", off);
+        return false;
+    }
+    CharacodeGetterHook::InstallAtOffset(off);
+    Logging.Log("[NSC:V2C] HOOK name=CHARACODE_GETTER source=resolver off=0x%lx installed=1",
+                static_cast<unsigned long>(off));
     return true;
 }
 
 [[maybe_unused]] bool InstallTraceHooks() {
-    static constexpr uint32_t kCharExpected[] = {
-        0xF000EA68, 0xF9424508, 0xF9760908, 0x2A0003E1, 0xF9409500, 0x1410AC93,
-    };
     static constexpr uint32_t kRequestExpected[] = {
         0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0xF9400008,
         0xAA0203F4, 0xAA0103F6, 0xAA0003F3, 0xF9400908,
@@ -5201,9 +5222,6 @@ bool InstallCpkBridge() {
     };
 
     bool ok = true;
-    if (!MatchWords(kCharacodeGetterOffset, kCharExpected)) {
-        LogFingerprintFail("CHAR", kCharacodeGetterOffset); ok = false;
-    }
     if (!MatchWords(kFileLoadRequestOffset, kRequestExpected)) {
         LogFingerprintFail("LOAD_REQ", kFileLoadRequestOffset); ok = false;
     }
@@ -5224,7 +5242,6 @@ bool InstallCpkBridge() {
     }
     if (!ok) return false;
 
-    CharacodeGetterHook::InstallAtOffset(kCharacodeGetterOffset);
     FileLoadRequestHook::InstallAtOffset(kFileLoadRequestOffset);
     FileLoadCreateHook::InstallAtOffset(kFileLoadCreateOffset);
     FileLoadStatusHook::InstallAtOffset(kFileLoadStatusOffset);
@@ -5289,7 +5306,7 @@ bool InstallPlayActionProbe() {
     };
     std::ptrdiff_t off = -1;
     if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::PlayAction, off)) {
-        Logging.Log("[NSC:V2B] HOOK_FAIL name=PLAY_ACTION reason=resolver_unavailable");
+        Logging.Log("[NSC:V2C] HOOK_FAIL name=PLAY_ACTION reason=resolver_unavailable");
         return false;
     }
     if (!MatchWords(off, kPlayActionExpected)) {
@@ -5297,7 +5314,7 @@ bool InstallPlayActionProbe() {
         return false;
     }
     PlayActionProbeHook::InstallAtOffset(off);
-    Logging.Log("[NSC:V2B] HOOK name=PLAY_ACTION source=resolver off=0x%lx installed=1",
+    Logging.Log("[NSC:V2C] HOOK name=PLAY_ACTION source=resolver off=0x%lx installed=1",
                 static_cast<unsigned long>(off));
     return true;
 }
@@ -5313,7 +5330,7 @@ bool InstallP57CentralSetterTrace() {
     };
     std::ptrdiff_t off = -1;
     if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::CentralSetter, off)) {
-        Logging.Log("[NSC:V2B] HOOK_FAIL name=CENTRAL_SETTER reason=resolver_unavailable");
+        Logging.Log("[NSC:V2C] HOOK_FAIL name=CENTRAL_SETTER reason=resolver_unavailable");
         return false;
     }
     if (!MatchWords(off, kSetterExpected)) {
@@ -5321,7 +5338,7 @@ bool InstallP57CentralSetterTrace() {
         return false;
     }
     CentralActionSetterHook::InstallAtOffset(off);
-    Logging.Log("[NSC:V2B] HOOK name=CENTRAL_SETTER source=resolver off=0x%lx installed=1",
+    Logging.Log("[NSC:V2C] HOOK name=CENTRAL_SETTER source=resolver off=0x%lx installed=1",
                 static_cast<unsigned long>(off));
     return true;
 }
@@ -5599,15 +5616,18 @@ void InstallP50AConditionCompat() {
     // Functional core: preserve the P48C Event236 compatibility behavior, add
     // the SC1.70 dynamic condition lookup port and custom Event121 SELF parity,
     // and keep only the already-proven PlayAction probe for UJ progression.
-    // Active trampolines: CpkBind + Event236 + PlayAction + ConditionGetter + Event121.
+    // Active P50 trampolines: CpkBind + CharacodeGetter + Event236 + PlayAction +
+    // ConditionGetter + Event121. V2C reclaims the later read-only P77 diagnostic
+    // trampoline, keeping total lineage trampoline pressure unchanged from V2B.
     const bool cpk = InstallCpkBridge();
+    const bool charcode = InstallCharacodeGetterDynamic();
     const bool event236 = InstallEvent236Dispatcher();
     const bool play = InstallPlayActionProbe();
     const bool cond = InstallConditionCompat();
-    Logging.Log("[NSC:P50A] READY cpk=%d event236=%d play=%d cond=%d installed_trampolines=5 "
+    Logging.Log("[NSC:P50A] READY cpk=%d char=%d event236=%d play=%d cond=%d installed_trampolines=6 "
                 "condition_native=%u condition_extra=%u condition_total=%u "
                 "event121_self=1 vis12_shadow=1 ctrl14_shadow=1 op15_shadow=1 op17_shadow=1 op18_shadow=1",
-                cpk ? 1 : 0, event236 ? 1 : 0, play ? 1 : 0, cond ? 1 : 0,
+                cpk ? 1 : 0, charcode ? 1 : 0, event236 ? 1 : 0, play ? 1 : 0, cond ? 1 : 0,
                 condition_compat_generated::kNativeConditionCount,
                 condition_compat_generated::kExtraConditionCount,
                 condition_compat_generated::kTotalConditionCount);
@@ -5990,15 +6010,15 @@ void InstallP77AAcceptanceProbe() {
         ok = false;
     }
 
-    if (ok) {
-        P77UjAcceptanceHook::InstallAtOffset(
-            kP77UjAcceptanceOffset);
-    }
+    // V2C reclaims this read-only diagnostic trampoline for the active
+    // CHARACODE_GETTER migration. P77 never modified native behavior; P67
+    // remains the behavioral baseline and P81 policy stays installed later.
 
     Logging.Log(
         "[NSC:P77A] READY "
         "baseline_p67=1 "
         "probe_ok=%u "
+        "probe_installed=0 trampoline_reclaimed_for_characode=1 "
         "uj=0x%lx "
         "uj_return=0x%lx "
         "semantic_focus=1 "
@@ -6056,7 +6076,7 @@ void InstallP78ASemanticAltRouteProbe() {
 
     Logging.Log(
         "[NSC:P78A] READY "
-        "baseline_p77=1 "
+        "baseline_p67=1 p77_probe_installed=0 "
         "probe_ok=%u "
         "alt=0x%lx "
         "alt_return=0x%lx "
@@ -6174,7 +6194,7 @@ void InstallP79ADualSubpredicateProbe() {
 
 
 void InstallP81AOugiAwakeningPolicyBridge() {
-    // P50/P67 compatibility + P77 native UJ acceptance.
+    // P67 compatibility; V2C reclaims the read-only P77 probe trampoline for CHARACODE_GETTER.
     InstallP77AAcceptanceProbe();
 
     static constexpr uint32_t
@@ -8116,7 +8136,6 @@ void InstallP127AFullNativeCorridorAB() {
 // no char281 branch, and no game-memory field write.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP128PostOuterOffset = 0x77C5EC;
 static constexpr uint32_t kP128LogLimit = 128u;
 static std::atomic<uint32_t> g_p128_logs{0};
 
@@ -8152,8 +8171,15 @@ HOOK_DEFINE_INLINE(P128PostOuterHook) {
 
 static bool InstallP128PostOuter() {
     static constexpr uint32_t e[]={0xB9405288};
-    if(!MatchWords(kP128PostOuterOffset,e)){LogFingerprintFail("P128_POST_OUTER",kP128PostOuterOffset);return false;}
-    P128PostOuterHook::InstallAtOffset(kP128PostOuterOffset);
+    std::ptrdiff_t off = -1;
+    if (!nsc::v2::GetDerivedUjSessionPostOffset(off)) {
+        Logging.Log("[NSC:V2C] HOOK_FAIL name=UJ_SESSION_POST reason=resolver_unavailable");
+        return false;
+    }
+    if(!MatchWords(off,e)){LogFingerprintFail("P128_POST_OUTER_V2_RESOLVED",off);return false;}
+    P128PostOuterHook::InstallAtOffset(off);
+    Logging.Log("[NSC:V2C] HOOK name=UJ_SESSION_POST source=resolver_derived off=0x%lx installed=1",
+                static_cast<unsigned long>(off));
     return true;
 }
 

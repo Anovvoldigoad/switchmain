@@ -1,0 +1,43 @@
+seven_anchors PASS
+resolver_accessor PASS
+uj_post_accessor PASS
+uj_post_shape PASS
+fail_closed_ambiguous PASS
+main_order PASS
+event_dynamic PASS
+play_dynamic PASS
+setter_dynamic PASS
+cpk_dynamic PASS
+char_dynamic PASS
+p50_char_active PASS
+p77_reclaimed PASS
+p128post_dynamic PASS
+no_cpk_absolute_constant PASS
+no_char_absolute_constant PASS
+no_p128post_absolute_constant PASS
+six_hook_markers PASS
+v2c_ready PASS
+coexists_p128 PASS
+workflow_only_v2c PASS
+workflow_verifier PASS
+logger_include_order PASS
+no_char281_in_runtime PASS
+offline_restore_CHARACODE_GETTER PASS hits=0x3f4150
+offline_restore_CPK_BIND PASS hits=0x473190
+offline_restore_EVENT236 PASS hits=0x816300
+offline_restore_PLAY_ACTION PASS hits=0x766b8c
+offline_restore_CENTRAL_SETTER PASS hits=0x766320
+offline_restore_UJ_SESSION_OUTER PASS hits=0x7ef098
+offline_restore_STATE137_CONTROLLER PASS hits=0x7e6ea8
+offline_restore_UJ_SESSION_POST PASS hits=0x77c5ec
+offline_paired_CHARACODE_GETTER PASS hits=0x3f4150
+offline_paired_CPK_BIND PASS hits=0x473190
+offline_paired_EVENT236 PASS hits=0x816300
+offline_paired_PLAY_ACTION PASS hits=0x766b8c
+offline_paired_CENTRAL_SETTER PASS hits=0x766320
+offline_paired_UJ_SESSION_OUTER PASS hits=0x7ef098
+offline_paired_STATE137_CONTROLLER PASS hits=0x7e6ea8
+offline_paired_UJ_SESSION_POST PASS hits=0x77c5ec
+paired_main_sha256 904a0405d04360ff3969909cdd7197c9e8c2aba2467151a7eaad4c821fcebbff
+restore_main_sha256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+NSC_RUNTIME_V2C_SOURCE_VERIFY=PASS
