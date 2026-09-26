@@ -1535,6 +1535,34 @@ uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2
     Logging.Log("[NSC:P50A] ACTION actor=%p target=%p mode=%u text=%s found=1 index=%u",
                 actor, target, action_mode ? 1u : 0u, text, index);
 
+    // V2F diagnostic A/B for opcode23 only. The exact PC source contract is:
+    //   SetActionImmediate(target, param3);
+    //   SetAnmDirect(target, resolved_pl_anm_index);
+    // V2E incorrectly fed the resolved PL_ANM index back into PlayAction, turning
+    // SPTYPE_ACTION10's animation index (930 in the Tobi fixture) into a full
+    // action-state transition. Hardware proves the resulting hybrid state is
+    // current action 930 while the immediate-action field remains 77.
+    //
+    // We do NOT guess a Switch SetAnmDirect address here. For one hardware A/B,
+    // preserve SetActionImmediate above and suppress only the un-source-parity
+    // PlayAction(index) call. This intentionally means the direct animation is
+    // absent in V2F; the sole question is whether disappearance is caused by the
+    // wrong action930 transition. No char-specific branch is used.
+    if (action_mode) {
+        const auto* tb = reinterpret_cast<const volatile uint8_t*>(target);
+        const uint32_t current_action = *reinterpret_cast<const volatile uint32_t*>(tb + 4712);
+        const uint32_t e94 = *reinterpret_cast<const volatile uint32_t*>(tb + 0xE94);
+        const uint32_t e98 = *reinterpret_cast<const volatile uint32_t*>(tb + 0xE98);
+        Logging.Log(
+            "[NSC:V2F] OP23_NO_PLAYACTION_AB actor=%p target=%p action_param=%d text=%s "
+            "pl_anm_index=%u current_action=%u e94=%u e98=%u playaction_suppressed=1 "
+            "setanmdirect_unresolved=1 diagnostic_only=1",
+            actor, target, static_cast<int>(param3), text, index,
+            current_action, e94, e98);
+        return 1;
+    }
+
+    // Opcode22 remains unchanged in this A/B so only opcode23 differs from V2E.
     using PlayFn = void (*)(void*, int32_t, int32_t, int32_t, int32_t, int32_t, float);
     reinterpret_cast<PlayFn>(base + kPlayActionOffset)(target, static_cast<int32_t>(index),
                                                        -1, 0, 0, 0, 1.0f);

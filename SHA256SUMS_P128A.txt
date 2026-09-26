@@ -1,2 +1,0 @@
-904a0405d04360ff3969909cdd7197c9e8c2aba2467151a7eaad4c821fcebbff  paired/atmosphere/contents/0100FA10190A0000/exefs/main
-2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9  restore/atmosphere/contents/0100FA10190A0000/exefs/main

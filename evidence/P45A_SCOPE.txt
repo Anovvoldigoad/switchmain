@@ -1,7 +1,0 @@
-P45A SCOPE (locked before hardware)
-===================================
-- Log-only at NORMAL_OUGI 0x6F44A0 and SPECIAL_OUGI_FINISH 0x6F4880
-- Table-dispatched combat action handlers
-- Dispatcher not yet bounded
-- Gameplay policy = P44A
-- After hardware log -> R55 checkpoint

@@ -1,5 +1,0 @@
-FILE = /storage/emulated/0/Downloads/deploy/atmosphere/contents/0100FA10190A0000/exefs/main
-SHA256 = 1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0
-SIZE = 26807159
-RANGE = 0x7E3000..0x7E5000
-

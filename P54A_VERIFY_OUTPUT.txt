@@ -1,8 +1,0 @@
-P54A_KIT_VERIFY=PASS
-restore_main_sha256=2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
-deploy_main_sha256=8219e048a23335197c7eeb3fe9d9016eab7d8a1c434dc24a0cd4cb541c45b6be
-build_id=48ece454b61412b9fb46fab2be3f5ef7b2804f39
-active_trampolines=7
-new_read_only_hooks=0x2A472C,0x2A51B8
-direct_setter_actions=98,100
-playaction_observed_extra=98,100,937,938

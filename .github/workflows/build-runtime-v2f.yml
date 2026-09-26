@@ -1,0 +1,56 @@
+name: Build NSC Runtime V2F Opcode23 A-B
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify source package
+        run: python3 verify_runtime_v2f.py
+
+      - name: Clone pinned exlaunch
+        run: |
+          git clone https://github.com/shadowninja108/exlaunch.git exlaunch
+          cd exlaunch
+          git checkout 229bbd6
+
+      - name: Apply V2F overlay
+        run: bash prepare_exlaunch.sh exlaunch
+
+      - name: Build
+        working-directory: exlaunch
+        run: make -j2
+
+      - name: Package original main + runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          SUBSDK="$(find exlaunch -type f -name subsdk9 -print -quit)"
+          test -n "$SUBSDK"
+          OUT="$GITHUB_WORKSPACE/out"
+          EXE="$OUT/atmosphere/contents/0100FA10190A0000/exefs"
+          REST="$OUT/restore/atmosphere/contents/0100FA10190A0000/exefs"
+          mkdir -p "$EXE" "$REST"
+          cp original/atmosphere/contents/0100FA10190A0000/exefs/main "$EXE/main"
+          cp "$SUBSDK" "$EXE/subsdk9"
+          cp original/atmosphere/contents/0100FA10190A0000/exefs/main "$REST/main"
+          cd "$OUT"
+          sha256sum atmosphere/contents/0100FA10190A0000/exefs/main \
+                    atmosphere/contents/0100FA10190A0000/exefs/subsdk9 \
+                    restore/atmosphere/contents/0100FA10190A0000/exefs/main > SHA256SUMS.txt
+          grep '2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9' SHA256SUMS.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NSC-RUNTIME-V2F-op23-no-playaction-ab
+          path: out/**
+          if-no-files-found: error

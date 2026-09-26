@@ -1,9 +1,0 @@
-P46A STATIC AUDIT
-=================
-Parent: P45A
-Delta: + PlayAction 0x766B8C log-only
-Gameplay: identical to P45A
-Fingerprint PLAY_ACTION:
-  A9BE57FE A9014FF4 B9529408 2A0403F4
-  AA0003F3 7100091F 54000080 B9528668
-Related state: PL_ACT_SPSKILL_DEMO_ATK (table 0x172C2A8)

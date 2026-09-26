@@ -1,4 +1,0 @@
-P47A STATIC AUDIT
-Parent: P46A
-Delta: PlayAction Callback returns int32_t; logs ret + actor fields
-Gameplay: identical (log-only)

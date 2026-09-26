@@ -1,3 +1,0 @@
-P47A SCOPE
-Log-only PlayAction return value + actor fields at 707/708/710 window
-Goal: identify why 707 fails on Tobi (char 281)

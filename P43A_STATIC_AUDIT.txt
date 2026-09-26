@@ -1,5 +1,0 @@
-P43A STATIC AUDIT
-=================
-Parent: P42A
-Delta: unfiltered OUGI_CORE / OUGI_CALLER / EVT13_AWAKE logs (all char IDs)
-Gameplay: identical to P42A (O14 shadow lock retained)

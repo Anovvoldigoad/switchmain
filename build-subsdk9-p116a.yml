@@ -1,8 +1,0 @@
-name: Disabled P116A superseded by P117A
-on:
-  workflow_dispatch:
-jobs:
-  disabled:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "P116A retired; use P117A action-event stream census"

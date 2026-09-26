@@ -1,8 +1,0 @@
-P44A STATIC AUDIT
-=================
-Parent: P43A
-Delta: + OugiFinishParam Create probe at text+0x4726E4 (log-only)
-Gameplay: identical to P43A (O14 shadow lock retained, ougi-core abandoned)
-Fingerprint Create:
-  D102C3FF A9057BFD A9066FFC A90767FA
-  A9085FF8 A90957F6 A90A4FF4 F000AFB3

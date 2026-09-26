@@ -1,7 +1,0 @@
-P50A_KIT_VERIFY=PASS
-restore_main_sha256=2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
-deploy_main_sha256=8219e048a23335197c7eeb3fe9d9016eab7d8a1c434dc24a0cd4cb541c45b6be
-build_id=48ece454b61412b9fb46fab2be3f5ef7b2804f39
-condition_count=512+5=517
-condition_names=SW_MTOB_XH,SW_MTOB_ST,YXNQ_MTOB,SW_MTOB_BREAK,WC_MTOB_BREAK
-active_trampolines=5
