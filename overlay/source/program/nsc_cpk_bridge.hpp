@@ -39,4 +39,5 @@ void InstallP88AWideUJAdmissionTrace();
 void InstallP118BEventTableIdentityProbe();
 void InstallP119AUjDamageProvenanceProbe();
 void InstallP120ACustomUjCinematicGateBridge();
+void InstallP121ACustomUjPeerC48Bridge();
 }

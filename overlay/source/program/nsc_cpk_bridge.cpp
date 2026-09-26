@@ -7585,4 +7585,106 @@ void InstallP120ACustomUjCinematicGateBridge() {
         ok ? 1u : 0u);
 }
 
+
+// ============================================================================
+// P121A — CORRECTIVE PEER-C48 READINESS BRIDGE
+//
+// P120A proved that a generic custom semantic-UJ damage event can be admitted
+// through the native type10/11 gate by overlaying only W8 at main+0x77C474.
+// Runtime still failed before the downstream cinematic lifecycle, so the next
+// native readiness barrier is peer vslot+0xC48 at main+0x77C4A4.
+//
+// This hook replaces ONLY the peer BLR instruction. The exact native virtual
+// target is called ONCE with the live X0..X7 argument registers. Its native W0
+// result is preserved unless ALL of the following are true:
+//   * P120A has armed the one-shot latch for this same peer actor/side;
+//   * the peer is a generic custom character (> vanilla max, <0x1000);
+//   * peer action is 707 and semantic-UJ is active;
+//   * native C48 returned 0.
+// In that narrow corridor only, W0 is overlaid to 1. No actor/event/session/
+// action/state memory is written, and 0x7EF098 / action710 are never called.
+// ============================================================================
+namespace {
+static constexpr ptrdiff_t kP121PeerC48CallOffset = 0x77C4A4;
+static constexpr uint32_t kP121LogLimit = 512u;
+static std::atomic<uint32_t> g_p121_logs{0};
+
+HOOK_DEFINE_INLINE(P121CustomUjPeerC48Hook) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        using C48Fn = uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t,
+                                  uint64_t, uint64_t, uint64_t, uint64_t);
+
+        const uintptr_t peer_addr = static_cast<uintptr_t>(ctx->X[0]);
+        const uintptr_t target = static_cast<uintptr_t>(ctx->X[8]);
+
+        uint32_t native_ret = 0u;
+        if (target != 0u) {
+            auto fn = reinterpret_cast<C48Fn>(target);
+            const uint64_t r = fn(
+                ctx->X[0], ctx->X[1], ctx->X[2], ctx->X[3],
+                ctx->X[4], ctx->X[5], ctx->X[6], ctx->X[7]);
+            native_ret = static_cast<uint32_t>(r);
+        }
+
+        uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(reinterpret_cast<void*>(peer_addr), side, cid);
+        const P93CoreState st = valid ? ReadP93CoreState(reinterpret_cast<void*>(peer_addr)) : P93CoreState{};
+        const bool semantic = valid && P64QuerySemanticUltimateJutsu(reinterpret_cast<void*>(peer_addr));
+        const bool custom = valid && cid > kVanillaMaxCharId && cid < 0x1000u;
+        const bool armed = valid && side <= 1u &&
+            g_p120_bridged_actor[side].load(std::memory_order_relaxed) == peer_addr;
+        const bool corridor = armed && custom && semantic && st.action == 707u;
+        const bool bridge = corridor && native_ret == 0u;
+        const uint32_t out = bridge ? 1u : native_ret;
+
+        // The replaced BLR returns its ABI result in W0.
+        ctx->W[0] = out;
+
+        if (corridor || bridge) {
+            const uint32_t n = g_p121_logs.fetch_add(1u, std::memory_order_relaxed);
+            if (n < kP121LogLimit) {
+                Logging.Log(
+                    "[NSC:P121A] PEER_C48 n=%u bridge=%u peer=%p side=%u char=%u action=%u sem=%u "
+                    "armed=%u target=%p native=%u out=%u",
+                    n, bridge ? 1u : 0u,
+                    reinterpret_cast<void*>(peer_addr), side, cid, st.action,
+                    semantic ? 1u : 0u, armed ? 1u : 0u,
+                    reinterpret_cast<void*>(target), native_ret, out);
+            }
+        }
+    }
+};
+
+static bool InstallP121PeerC48Internal() {
+    static constexpr uint32_t kExpected[] = {
+        0xF94002E8, // 77C498 LDR X8,[X23]
+        0xAA1703E0, // 77C49C MOV X0,X23
+        0xF9462508, // 77C4A0 LDR X8,[X8,#0xC48]
+        0xD63F0100, // 77C4A4 BLR X8
+        0x34000A20, // 77C4A8 CBZ W0,0x77C5EC
+        0x52800120, // 77C4AC MOV W0,#9
+        0x97FF50EC, // 77C4B0 BL 0x750860
+        0x34000300, // 77C4B4 CBZ W0,0x77C514
+    };
+    if (!MatchWords(0x77C498, kExpected)) {
+        LogFingerprintFail("P121_PEER_C48_77C4A4", kP121PeerC48CallOffset);
+        return false;
+    }
+    P121CustomUjPeerC48Hook::InstallAtOffset(kP121PeerC48CallOffset);
+    return true;
+}
+} // anonymous namespace — P121A
+
+void InstallP121ACustomUjPeerC48Bridge() {
+    InstallP120ACustomUjCinematicGateBridge();
+    const bool ok = InstallP121PeerC48Internal();
+    Logging.Log(
+        "[NSC:P121A] READY parent_p120=1 corrective=1 peer_c48_77c4a4=1 native_virtual_once=1 "
+        "live_x0_x7=1 p120_latch_same_actor=1 custom_semantic707=1 native_false_only=1 "
+        "return_register_overlay_only=1 no_actor_write=1 no_event_write=1 no_session_write=1 "
+        "no_action_write=1 no_state_write=1 no_7ef098_call=1 no_force708=1 no_force710=1 "
+        "no_char281_branch=1 second_corrective_inline_hook=1 patch_ok=%u",
+        ok ? 1u : 0u);
+}
+
 } // namespace nsc
