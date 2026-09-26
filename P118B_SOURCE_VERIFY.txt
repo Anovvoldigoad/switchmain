@@ -1,0 +1,88 @@
+hook_abi_u32_event_x0 PASS
+capture_lr_first PASS
+capture_x19_before_helpers PASS
+fast_passthrough_before_table_reads PASS
+orig_two_textual_paths PASS
+fast_orig_unchanged PASS
+focused_orig_once_at_end PASS
+entrypoint PASS
+decl PASS
+parent_p96 PASS
+ready PASS
+cursor_log PASS
+record_log PASS
+table_log PASS
+getter_offset PASS
+lookup_offset PASS
+name_offset PASS
+focused_return PASS
+root_global PASS
+record_stride PASS
+radius_32 PASS
+direct_cursor_read PASS
+count_read PASS
+records_base_read PASS
+names_base_read PASS
+global_a8_read PASS
+x19_actor PASS
+cursor_ptr_match PASS
+event_ptr_match PASS
+one_p118_trampoline PASS
+no_p118_inline PASS
+p118a_runtime_absent PASS
+p117_runtime_absent PASS
+p116_runtime_absent PASS
+p115_runtime_absent PASS
+victim_shadow_preserved PASS
+no_pointer_write PASS
+cursor_read_only PASS
+no_branch_patch PASS
+no_session_create PASS
+no_force710 PASS
+no_force708 PASS
+no_char281_branch PASS
+p118b_log_bound CURSOR 375
+cursor_log_lt_512 PASS
+p118b_log_bound TABLE 244
+table_log_lt_512 PASS
+p118b_log_bound REC 291
+rec_log_lt_512 PASS
+paired main 1adc4dfe948d616cbb7c6d9b3672842aba8e7d86bf0763e668505dff84234de0
+restore main 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+fp 0x3f4b00 13003c08 PASS
+fp 0x3f4b08 f000ea68 PASS
+fp 0x3f4b0c f9424508 PASS
+fp 0x3f4b10 f9760908 PASS
+fp 0x3f4b14 f9405d08 PASS
+fp 0x3f4b18 b9405109 PASS
+fp 0x3f4b24 f9402508 PASS
+fp 0x3f4b2c 52800c0a PASS
+fp 0x3f4b30 9b0a2120 PASS
+fp 0x3f4b60 13003c08 PASS
+fp 0x3f4b68 f000ea68 PASS
+fp 0x3f4b6c f9424508 PASS
+fp 0x3f4b70 f9760908 PASS
+fp 0x3f4b74 f9405d08 PASS
+fp 0x3f4b78 b9405109 PASS
+fp 0x3f4b84 f9402d08 PASS
+fp 0x3f4b8c 5280060a PASS
+fp 0x3f4b90 9b0a212a PASS
+fp 0x3f4bc0 f000ea68 PASS
+fp 0x3f4bcc f9405d08 PASS
+fp 0x3f4bd0 79415100 PASS
+fp 0x77b584 52973c88 PASS
+fp 0x77b588 aa0003f3 PASS
+fp 0x77b58c 78686800 PASS
+fp 0x77b590 97f1e55c PASS
+fp 0x77b5a0 79449375 PASS
+fp 0x77b5a4 aa0003f4 PASS
+fp 0x77b5a8 97f1e586 PASS
+fp 0x77b5ac 6b2022bf PASS
+bl 77b590 -> 0x3f4b00
+bl 77b5a8 -> 0x3f4bc0
+event_root_static_offset PASS
+name_getter_direct_callsites ['0x77bfe8']
+name_getter_native_single_caller PASS
+push_enabled_workflows ['build-subsdk9-p118b.yml']
+p118a_workflow_disabled PASS
+P118B_DROPIN_SOURCE_VERIFY=PASS

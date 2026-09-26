@@ -7056,118 +7056,217 @@ void InstallP96AActionDescriptorTransitionTrace() {
 
 
 // ============================================================================
-// P118A — action-event record neighborhood census at bucket5 dispatcher boundary (READ ONLY).
+// P118B — exact event cursor / table identity census at bucket5 boundary (READ ONLY).
 //
-// P117 proved the decisive upstream divergence: a successful vanilla action707
-// dispatches raw event type10, while the custom semantic UJ action707 dispatches
-// raw types15 and24 and never type10/11 before advancing to708. P118 keeps the
-// same boot-safe whole-function hook at main+0x3F4BC0, but adds the GLOBAL event
-// record index plus a read-only neighborhood census around the exact record.
+// P118A proved that the successful control selects a type10/11-family record,
+// while custom action707 selects raw15/raw24 and has no type10/11 within the
+// sampled +/-32 global record radius. That radius is NOT a proven logical block
+// boundary. P118B therefore stops inferring block identity from distance alone.
 //
-// main+0x3F4B00 is statically proven to be a pure bounds-checked lookup over the
-// global event-record array (stride 0x60): it reads count/base and returns either
-// base + index*0x60 or nullptr. P118 calls that native lookup only for diagnostics;
-// it never changes actor/event memory, cursor/index, branches, sessions, states,
-// or actions. The native getter Orig(event_x0) is still executed exactly once on
-// each runtime path. The ±4 raw-type window and nearest type10/11 within ±32 tell
-// us whether custom707 is selecting past an available cinematic event or whether
-// its local loaded event block lacks that trigger entirely.
+// Static v1.70 proof at main+0x77B560:
+//   0x77B588  MOV X19, X0                ; X19 = actor
+//   0x77B58C  LDRH W0, [X0,#0xB9E4]     ; direct actor event cursor
+//   0x77B590  BL main+0x3F4B00           ; record lookup
+//   ...
+//   0x77B5A8  BL main+0x3F4BC0           ; tiny global getter
+// Therefore, at the already boot-safe P117/P118 hook boundary, X19 still carries
+// the exact actor and event_x0 still carries the record returned for that cursor.
+//
+// main+0x3F4B00 proves the global container layout:
+//   global root @ main+0x2143488 -> +0x6C10 -> +0xB8 = container
+//   container+0x48 = event-record base, +0x50 = count, stride 0x60
+// main+0x3F4B60 is the matching bounds-checked index->event-name accessor over
+// container+0x58 (0x30-byte string records). P118B uses it only diagnostically.
+//
+// The probe logs direct cursor vs pointer-derived index, count/end-distance,
+// global A8/AA/AC halfwords, current event name, and a +/-32 record census with
+// event names + stable record fields. No gameplay state is modified.
 // ============================================================================
 namespace {
-static constexpr ptrdiff_t kP118EventGateGetterOffset = 0x3F4BC0;
-static constexpr ptrdiff_t kP118EventLookupOffset = 0x3F4B00;
-static constexpr ptrdiff_t kP118FocusedCallerReturn = 0x77B5AC;
-static constexpr ptrdiff_t kP118DispatcherEntryOffset = 0x77B560;
-static constexpr ptrdiff_t kP118EventLookupCallsite = 0x77B590;
-static constexpr ptrdiff_t kP118GateGetterCallsite = 0x77B5A8;
-static constexpr ptrdiff_t kP118Type10GateOffset = 0x77C474;
-static constexpr ptrdiff_t kP118OuterCallsite = 0x77C5E8;
-static constexpr uint32_t kP118RecordStride = 0x60u;
-static constexpr int32_t kP118NearRadius = 32;
-static constexpr uint32_t kP118LogLimit = 8192u;
-static std::atomic<uint32_t> g_p118_count{0};
+static constexpr ptrdiff_t kP118BEventGateGetterOffset = 0x3F4BC0;
+static constexpr ptrdiff_t kP118BEventLookupOffset = 0x3F4B00;
+static constexpr ptrdiff_t kP118BEventNameOffset = 0x3F4B60;
+static constexpr ptrdiff_t kP118BFocusedCallerReturn = 0x77B5AC;
+static constexpr ptrdiff_t kP118BDispatcherEntryOffset = 0x77B560;
+static constexpr ptrdiff_t kP118BEventRootGlobalOffset = 0x2143488;
+static constexpr uint32_t kP118BRecordStride = 0x60u;
+static constexpr int32_t kP118BRadius = 32;
+static constexpr uint32_t kP118BHeaderLogLimit = 4096u;
+static constexpr uint32_t kP118BRecordLogLimit = 32768u;
+static std::atomic<uint32_t> g_p118b_header_count{0};
+static std::atomic<uint32_t> g_p118b_record_count{0};
 
-using P118EventLookupFn = void* (*)(uint32_t);
+using P118BEventNameFn = const char* (*)(uint32_t);
 
-static uint32_t P118RawType(const void* event_ptr) {
-    if (!event_ptr) return 0xFFFFFFFFu;
-    const auto* b = reinterpret_cast<const volatile uint8_t*>(event_ptr);
-    return *reinterpret_cast<const volatile uint32_t*>(b + 0x50);
+static const volatile uint8_t* P118BGetEventContainer(uintptr_t main_base) {
+    const uintptr_t root = *reinterpret_cast<const volatile uintptr_t*>(
+        main_base + kP118BEventRootGlobalOffset);
+    if (!P96PlausiblePtr(root)) return nullptr;
+    const uintptr_t level2 = *reinterpret_cast<const volatile uintptr_t*>(root + 0x6C10u);
+    if (!P96PlausiblePtr(level2)) return nullptr;
+    const uintptr_t container = *reinterpret_cast<const volatile uintptr_t*>(level2 + 0xB8u);
+    if (!P96PlausiblePtr(container)) return nullptr;
+    return reinterpret_cast<const volatile uint8_t*>(container);
 }
 
-HOOK_DEFINE_TRAMPOLINE(P118AEventNeighborhoodCensusHook) {
+static uint32_t P118BRawType(const volatile uint8_t* rec) {
+    if (!rec) return 0xFFFFFFFFu;
+    return *reinterpret_cast<const volatile uint32_t*>(rec + 0x50u);
+}
+
+static void P118BCopyName(char* out, size_t out_size, const char* src) {
+    if (!out || out_size == 0) return;
+    size_t n = 0;
+    if (src) {
+        const volatile uint8_t* p = reinterpret_cast<const volatile uint8_t*>(src);
+        for (; n + 1 < out_size; ++n) {
+            const uint8_t c = p[n];
+            if (c == 0) break;
+            out[n] = (c >= 0x20 && c <= 0x7e) ? static_cast<char>(c) : '.';
+        }
+    }
+    out[n] = '\0';
+}
+
+HOOK_DEFINE_TRAMPOLINE(P118BEventTableIdentityHook) {
     static uint32_t Callback(void* event_x0) {
         uintptr_t caller_lr = 0;
+        uintptr_t caller_x19 = 0;
+        // Capture native live registers before any helper/function call.
         asm volatile("mov %0, x30" : "=r"(caller_lr));
+        asm volatile("mov %0, x19" : "=r"(caller_x19));
+
         const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
-        if (caller_off != kP118FocusedCallerReturn) {
+        if (caller_off != kP118BFocusedCallerReturn) {
             return Orig(event_x0);
         }
 
         const uintptr_t main_base = exl::util::modules::GetTargetStart();
-        const auto lookup = reinterpret_cast<P118EventLookupFn>(
-            main_base + kP118EventLookupOffset);
+        const auto name_for_index = reinterpret_cast<P118BEventNameFn>(
+            main_base + kP118BEventNameOffset);
+        const auto* container = P118BGetEventContainer(main_base);
 
-        void* event0 = lookup(0u);
-        int32_t event_index = -1;
-        if (event0 && event_x0) {
-            const uintptr_t base = reinterpret_cast<uintptr_t>(event0);
+        void* actor = reinterpret_cast<void*>(caller_x19);
+        uint32_t side = 0xFFFFFFFFu, cid = 0xFFFFFFFFu;
+        const bool actor_valid = ReadActorIdentity(actor, side, cid);
+        uint32_t action = 0xFFFFFFFFu;
+        uint32_t direct_cursor = 0xFFFFFFFFu;
+        if (actor_valid && actor) {
+            const auto* ab = reinterpret_cast<const volatile uint8_t*>(actor);
+            action = *reinterpret_cast<const volatile uint32_t*>(ab + 4712u);
+            direct_cursor = *reinterpret_cast<const volatile uint16_t*>(ab + 0xB9E4u);
+        }
+
+        uint32_t count = 0u;
+        uintptr_t records_base = 0u;
+        uintptr_t names_base = 0u;
+        uint32_t global_a8 = 0xFFFFFFFFu;
+        uint32_t global_aa = 0xFFFFFFFFu;
+        uint32_t global_ac = 0xFFFFFFFFu;
+        if (container) {
+            records_base = *reinterpret_cast<const volatile uintptr_t*>(container + 0x48u);
+            count = *reinterpret_cast<const volatile uint32_t*>(container + 0x50u);
+            names_base = *reinterpret_cast<const volatile uintptr_t*>(container + 0x58u);
+            global_a8 = *reinterpret_cast<const volatile uint16_t*>(container + 0xA8u);
+            global_aa = *reinterpret_cast<const volatile uint16_t*>(container + 0xAAu);
+            global_ac = *reinterpret_cast<const volatile uint16_t*>(container + 0xACu);
+        }
+
+        int32_t ptr_index = -1;
+        if (event_x0 && records_base) {
             const uintptr_t cur = reinterpret_cast<uintptr_t>(event_x0);
-            if (cur >= base) {
-                const uintptr_t delta = cur - base;
-                if ((delta % kP118RecordStride) == 0u) {
-                    const uintptr_t idx = delta / kP118RecordStride;
-                    if (idx <= 0x7FFFu) event_index = static_cast<int32_t>(idx);
+            if (cur >= records_base) {
+                const uintptr_t delta = cur - records_base;
+                if ((delta % kP118BRecordStride) == 0u) {
+                    const uintptr_t idx = delta / kP118BRecordStride;
+                    if (idx <= 0x7FFFu) ptr_index = static_cast<int32_t>(idx);
                 }
             }
         }
 
-        const uint32_t raw_type = P118RawType(event_x0);
-        const uint32_t norm_type = raw_type & 0xFFFFFFFEu;
-        const uint32_t type10_11 = (norm_type == 10u) ? 1u : 0u;
+        const bool cursor_in_range = direct_cursor != 0xFFFFFFFFu && direct_cursor < count;
+        const int32_t end_delta = cursor_in_range
+            ? static_cast<int32_t>(count - 1u - direct_cursor) : -1;
+        const uint32_t cursor_ptr_match =
+            (direct_cursor != 0xFFFFFFFFu && ptr_index >= 0 &&
+             direct_cursor == static_cast<uint32_t>(ptr_index)) ? 1u : 0u;
+        const uint32_t expected_ptr_match =
+            (cursor_in_range && records_base && event_x0 &&
+             reinterpret_cast<uintptr_t>(event_x0) ==
+                 records_base + static_cast<uintptr_t>(direct_cursor) * kP118BRecordStride)
+            ? 1u : 0u;
+
+        uint32_t raw_type = 0xFFFFFFFFu;
+        uint32_t payload28 = 0xFFFFFFFFu;
         uint64_t mask48 = 0u;
+        uint32_t field5c = 0xFFFFFFFFu;
         if (event_x0) {
-            const auto* b = reinterpret_cast<const volatile uint8_t*>(event_x0);
-            mask48 = *reinterpret_cast<const volatile uint64_t*>(b + 0x48);
+            const auto* eb = reinterpret_cast<const volatile uint8_t*>(event_x0);
+            payload28 = *reinterpret_cast<const volatile uint32_t*>(eb + 0x28u);
+            mask48 = *reinterpret_cast<const volatile uint64_t*>(eb + 0x48u);
+            raw_type = P118BRawType(eb);
+            field5c = *reinterpret_cast<const volatile uint32_t*>(eb + 0x5Cu);
         }
 
-        uint32_t near[9];
-        for (auto& v : near) v = 0xFFFFFFFFu;
-        int32_t nearest_type10_delta = 127;
-        if (event_index >= 0) {
-            for (int32_t d = -kP118NearRadius; d <= kP118NearRadius; ++d) {
-                const int32_t candidate = event_index + d;
-                if (candidate < 0 || candidate > 0x7FFF) continue;
-                void* rec = lookup(static_cast<uint32_t>(candidate));
-                if (!rec) continue;
-                const uint32_t t = P118RawType(rec);
-                if (d >= -4 && d <= 4) near[d + 4] = t;
-                if ((t & 0xFFFFFFFEu) == 10u) {
-                    const int32_t ad = d < 0 ? -d : d;
-                    const int32_t cur_ad = nearest_type10_delta < 0
-                        ? -nearest_type10_delta : nearest_type10_delta;
-                    if (nearest_type10_delta == 127 || ad < cur_ad)
-                        nearest_type10_delta = d;
-                }
+        char current_name[64]{};
+        if (cursor_in_range) P118BCopyName(current_name, sizeof(current_name), name_for_index(direct_cursor));
+
+        const uint32_t hn = g_p118b_header_count.fetch_add(1, std::memory_order_relaxed);
+        if (hn < kP118BHeaderLogLimit) {
+            Logging.Log(
+                "[NSC:P118B] CURSOR n=%u actor=%p actor_valid=%u side=%u char=%u action=%u "
+                "cursor=%u ptr_idx=%d cursor_ptr_match=%u event_ptr_match=%u raw=%u "
+                "payload28=%08x mask48=0x%lx f5c=%08x name='%s'",
+                hn, actor, actor_valid ? 1u : 0u, side, cid, action,
+                direct_cursor, ptr_index, cursor_ptr_match, expected_ptr_match, raw_type,
+                payload28, static_cast<unsigned long>(mask48), field5c, current_name);
+            Logging.Log(
+                "[NSC:P118B] TABLE n=%u actor=%p cursor=%u count=%u end_delta=%d "
+                "container=%p records=0x%lx names=0x%lx ga8=%u gaa=%u gac=%u",
+                hn, actor, direct_cursor, count, end_delta,
+                const_cast<void*>(reinterpret_cast<const volatile void*>(container)),
+                static_cast<unsigned long>(records_base), static_cast<unsigned long>(names_base),
+                global_a8, global_aa, global_ac);
+        }
+
+        // Only dump a neighborhood for the UJ action corridor. This is generic
+        // action-state filtering, not a character-specific gameplay branch.
+        if (actor_valid && action >= 700u && action <= 740u && records_base && count > 0u &&
+            direct_cursor != 0xFFFFFFFFu) {
+            for (int32_t d = -kP118BRadius; d <= kP118BRadius; ++d) {
+                const int32_t idx = static_cast<int32_t>(direct_cursor) + d;
+                if (idx < 0 || static_cast<uint32_t>(idx) >= count) continue;
+                const auto* rec = reinterpret_cast<const volatile uint8_t*>(
+                    records_base + static_cast<uintptr_t>(idx) * kP118BRecordStride);
+                char nm[48]{};
+                P118BCopyName(nm, sizeof(nm), name_for_index(static_cast<uint32_t>(idx)));
+                const uint32_t rn = g_p118b_record_count.fetch_add(1, std::memory_order_relaxed);
+                if (rn >= kP118BRecordLogLimit) break;
+                const uint32_t f0c = *reinterpret_cast<const volatile uint32_t*>(rec + 0x0Cu);
+                const uint32_t f20 = *reinterpret_cast<const volatile uint32_t*>(rec + 0x20u);
+                const uint32_t p28 = *reinterpret_cast<const volatile uint32_t*>(rec + 0x28u);
+                const uint32_t f2c = *reinterpret_cast<const volatile uint32_t*>(rec + 0x2Cu);
+                const uint32_t f30 = *reinterpret_cast<const volatile uint32_t*>(rec + 0x30u);
+                const uint32_t f3c = *reinterpret_cast<const volatile uint32_t*>(rec + 0x3Cu);
+                const uint64_t m48 = *reinterpret_cast<const volatile uint64_t*>(rec + 0x48u);
+                const uint32_t rt = P118BRawType(rec);
+                const uint32_t f5c_r = *reinterpret_cast<const volatile uint32_t*>(rec + 0x5Cu);
+                Logging.Log(
+                    "[NSC:P118B] REC n=%u actor=%p center=%u d=%d idx=%d raw=%u "
+                    "f0c=%08x f20=%08x p28=%08x f2c=%08x f30=%08x f3c=%08x "
+                    "mask48=0x%lx f5c=%08x name='%s'",
+                    rn, actor, direct_cursor, d, idx, rt,
+                    f0c, f20, p28, f2c, f30, f3c,
+                    static_cast<unsigned long>(m48), f5c_r, nm);
             }
         }
 
-        const uint32_t ret = Orig(event_x0);
-        const uint32_t n = g_p118_count.fetch_add(1, std::memory_order_relaxed);
-        if (n < kP118LogLimit) {
-            Logging.Log(
-                "[NSC:P118A] NEIGH n=%u event=%p idx=%d raw=%u norm=%u type10_11=%u gate_ret=%u near10_delta=%d "
-                "m4=%u m3=%u m2=%u m1=%u cur=%u p1=%u p2=%u p3=%u p4=%u mask48=0x%lx",
-                n, event_x0, event_index, raw_type, norm_type, type10_11, ret,
-                nearest_type10_delta,
-                near[0], near[1], near[2], near[3], near[4], near[5], near[6], near[7], near[8],
-                static_cast<unsigned long>(mask48));
-        }
-        return ret;
+        // Preserve native behavior exactly once at the hooked getter boundary.
+        return Orig(event_x0);
     }
 };
 
-static bool InstallP118AEventNeighborhoodCensusInternal() {
+static bool InstallP118BEventTableIdentityInternal() {
     static constexpr uint32_t sigGetter[] = {
         0xF000EA68, 0xF9424508, 0xF9760908, 0xF9405D08, 0x79415100, 0xD65F03C0,
     };
@@ -7175,62 +7274,43 @@ static bool InstallP118AEventNeighborhoodCensusInternal() {
         0x13003C08, 0x37F801A8, 0xF000EA68, 0xF9424508,
         0xF9760908, 0xF9405D08, 0xB9405109, 0x6B20213F,
     };
-    static constexpr uint32_t sigLookupStride[] = {
-        0xF9402508, 0x92403C09, 0x52800C0A, 0x9B0A2120, 0xD65F03C0,
+    static constexpr uint32_t sigNameLookup[] = {
+        0x13003C08, 0x37F80208, 0xF000EA68, 0xF9424508,
+        0xF9760908, 0xF9405D08, 0xB9405109, 0x6B20213F,
     };
-    static constexpr uint32_t sigDispatcher[] = {
-        0xFC180FEA, 0x6D0123E9, 0xA9027BFD, 0xA9036FFC,
-        0xA90467FA, 0xA9055FF8, 0xA90657F6, 0xA9074FF4,
+    static constexpr uint32_t sigDispatcherCursor[] = {
+        0x52973C88, 0xAA0003F3, 0x78686800, 0x97F1E55C,
+        0xB4000100, 0x5296F388, 0x8B08027B, 0x79449375,
+        0xAA0003F4, 0x97F1E586, 0x6B2022BF,
     };
-    static constexpr uint32_t sigLookupCall[] = {0x97F1E55C};
-    static constexpr uint32_t sigGateCallAndCmp[] = {
-        0x97F1E586, 0x6B2022BF, 0x54000161,
-    };
-    static constexpr uint32_t sigTypeGate[] = {
-        0xB9405288, 0x121F7909, 0x7100293F, 0x54000B81,
-    };
-    static constexpr uint32_t sigOuterCall[] = {0x9401CAAC};
 
-    if (!MatchWords(kP118EventGateGetterOffset, sigGetter)) {
-        LogFingerprintFail("P118_EVENT_GATE_GETTER_3F4BC0", kP118EventGateGetterOffset); return false;
+    if (!MatchWords(kP118BEventGateGetterOffset, sigGetter)) {
+        LogFingerprintFail("P118B_EVENT_GATE_GETTER_3F4BC0", kP118BEventGateGetterOffset); return false;
     }
-    if (!MatchWords(kP118EventLookupOffset, sigLookup)) {
-        LogFingerprintFail("P118_EVENT_LOOKUP_3F4B00", kP118EventLookupOffset); return false;
+    if (!MatchWords(kP118BEventLookupOffset, sigLookup)) {
+        LogFingerprintFail("P118B_EVENT_LOOKUP_3F4B00", kP118BEventLookupOffset); return false;
     }
-    if (!MatchWords(kP118EventLookupOffset + 0x24, sigLookupStride)) {
-        LogFingerprintFail("P118_EVENT_LOOKUP_STRIDE_3F4B24", kP118EventLookupOffset + 0x24); return false;
+    if (!MatchWords(kP118BEventNameOffset, sigNameLookup)) {
+        LogFingerprintFail("P118B_EVENT_NAME_3F4B60", kP118BEventNameOffset); return false;
     }
-    if (!MatchWords(kP118DispatcherEntryOffset, sigDispatcher)) {
-        LogFingerprintFail("P118_DISPATCHER_77B560", kP118DispatcherEntryOffset); return false;
-    }
-    if (!MatchWords(kP118EventLookupCallsite, sigLookupCall)) {
-        LogFingerprintFail("P118_EVENT_LOOKUP_CALL_77B590", kP118EventLookupCallsite); return false;
-    }
-    if (!MatchWords(kP118GateGetterCallsite, sigGateCallAndCmp)) {
-        LogFingerprintFail("P118_GATE_CALL_77B5A8", kP118GateGetterCallsite); return false;
-    }
-    if (!MatchWords(kP118Type10GateOffset, sigTypeGate)) {
-        LogFingerprintFail("P118_TYPE10_GATE_77C474", kP118Type10GateOffset); return false;
-    }
-    if (!MatchWords(kP118OuterCallsite, sigOuterCall)) {
-        LogFingerprintFail("P118_BUCKET5_OUTER_77C5E8", kP118OuterCallsite); return false;
+    if (!MatchWords(kP118BDispatcherEntryOffset + 0x24, sigDispatcherCursor)) {
+        LogFingerprintFail("P118B_DISPATCHER_CURSOR_77B584", kP118BDispatcherEntryOffset + 0x24); return false;
     }
 
-    P118AEventNeighborhoodCensusHook::InstallAtOffset(kP118EventGateGetterOffset);
+    P118BEventTableIdentityHook::InstallAtOffset(kP118BEventGateGetterOffset);
     return true;
 }
-} // anonymous namespace — P118A
+} // anonymous namespace — P118B
 
-void InstallP118AEventNeighborhoodCensusProbe() {
+void InstallP118BEventTableIdentityProbe() {
     InstallP96AActionDescriptorTransitionTrace();
-    const bool ok = InstallP118AEventNeighborhoodCensusInternal();
+    const bool ok = InstallP118BEventTableIdentityInternal();
     Logging.Log(
-        "[NSC:P118A] READY parent_p96=1 readonly=1 getter_3f4bc0=1 lookup_3f4b00=1 lookup_stride_60=1 "
-        "focus_caller_77b5ac=1 neighborhood_pm4=1 nearest_type10_pm32=1 dispatcher_77b560=1 "
-        "type10_11_gate_77c474=1 bucket5_outer_77c5e8=1 capture_lr_first=1 one_new_trampoline=1 "
-        "fast_passthrough_nonfocused=1 preserve_orig_once=1 no_event_cursor_write=1 no_branch_patch=1 "
-        "no_session_create=1 no_state_map=1 no_direct_state_write=1 no_force708=1 no_force710=1 "
-        "no_char281_branch=1 probe_ok=%u",
+        "[NSC:P118B] READY parent_p96=1 readonly=1 getter_3f4bc0=1 lookup_3f4b00=1 name_3f4b60=1 "
+        "direct_actor_x19=1 direct_cursor_b9e4=1 table_root_2143488=1 count_50=1 records_48=1 names_58=1 "
+        "global_a8_aa_ac=1 neighborhood_pm32=1 stable_fields=1 one_new_trampoline=1 "
+        "preserve_orig_once=1 no_event_cursor_write=1 no_branch_patch=1 no_session_create=1 "
+        "no_direct_state_write=1 no_force708=1 no_force710=1 no_char281_branch=1 probe_ok=%u",
         ok ? 1u : 0u);
 }
 
