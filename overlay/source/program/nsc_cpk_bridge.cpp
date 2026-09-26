@@ -7494,7 +7494,7 @@ HOOK_DEFINE_INLINE(P120CustomUjCinematicGateHook) {
         const bool victim_valid = ReadActorIdentity(
             reinterpret_cast<void*>(victim_addr), victim_side, victim_cid);
 
-        const uintptr_t main_base = reinterpret_cast<uintptr_t>(exl::util::modules::GetMainModuleInfo().m_Total.m_Start);
+        const uintptr_t main_base = reinterpret_cast<uintptr_t>(exl::util::GetMainModuleInfo().m_Total.m_Start);
         const auto* container = P118BGetEventContainer(main_base);
         uint32_t count = 0u;
         uintptr_t records_base = 0u;

@@ -95,3 +95,12 @@ Partial/FAIL interpretation:
   * bridge=1 but no cinematic: downstream C48/type9/outer setup becomes newly reachable; inspect that now-reached native corridor, do NOT return to B9E4 or damage table speculation.
   * patch_ok=0: deployment/fingerprint mismatch; do not test gameplay.
   * no bridge=1: one of the generic guards did not match; use GATE marker to identify which contract diverged.
+
+P120A R135 v2 compile-only correction
+------------------------------------
+First R135 drop-in failed GitHub Actions compilation because the P120 callback used:
+  exl::util::modules::GetMainModuleInfo()
+Pinned exlaunch 229bbd6 declares the API as:
+  exl::util::GetMainModuleInfo()
+V2 changes only that namespace qualification. Runtime guards and gameplay behavior are unchanged.
+The verifier now explicitly rejects the invalid namespace.

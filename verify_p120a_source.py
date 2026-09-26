@@ -100,4 +100,12 @@ for p in sorted((root/'.github/workflows').glob('*.yml')):
     ss=p.read_text()
     if re.search(r'^\s{2}push:\s*$',ss,re.M): push.append(p.name)
 print('push_enabled_workflows',push); assert push==['build-subsdk9-p120a.yml']
+
+# Compile-contract guard: exlaunch pinned 229bbd6 exposes GetMainModuleInfo in exl::util,
+# not exl::util::modules. Keep this check so CI cannot regress to the invalid namespace.
+assert 'exl::util::GetMainModuleInfo()' in cpp, 'main_module_info_api FAIL'
+assert 'exl::util::modules::GetMainModuleInfo()' not in cpp, 'main_module_info_bad_namespace FAIL'
+print('main_module_info_api PASS')
+print('main_module_info_bad_namespace_absent PASS')
+
 print('P120A_DROPIN_SOURCE_VERIFY=PASS')

@@ -63,3 +63,10 @@ No char281 or DMG_MTOB name branch. No event record/B9E4/damage-table/session/ac
 - `bridge=1` + cinematic succeeds: causal support that this compatibility gap is the missing custom semantic cinematic classification at the proven bucket5 gate. Continue regression/tightening, not more read-only exploration.
 - `bridge=1` + cinematic still fails: the patch has newly opened the downstream gate; inspect newly reached C48/type9/0x7EF098 path. Do not go back upstream to cursor/damage index.
 - no `bridge=1`: diagnose guard mismatch from P120 GATE/context, not session forcing.
+
+## R135 v2 compile-only correction
+The first P120A source drop-in failed CI compilation because the callback referenced
+`exl::util::modules::GetMainModuleInfo()`. Pinned exlaunch 229bbd6 declares
+`exl::util::GetMainModuleInfo()` in `mem_layout.hpp`. V2 corrects only this namespace;
+no gameplay semantics, hook site, guards, or mutation policy changed. The verifier now
+checks the correct API spelling and rejects the invalid namespace.
