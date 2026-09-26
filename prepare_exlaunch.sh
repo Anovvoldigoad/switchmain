@@ -6,6 +6,8 @@ if [[ ! -d "$EXL" ]]; then echo "[!] Missing exlaunch tree: $EXL"; exit 1; fi
 cp "$ROOT/overlay/source/program/main.cpp" "$EXL/source/program/main.cpp"
 cp "$ROOT/overlay/source/program/nsc_cpk_bridge.cpp" "$EXL/source/program/nsc_cpk_bridge.cpp"
 cp "$ROOT/overlay/source/program/nsc_cpk_bridge.hpp" "$EXL/source/program/nsc_cpk_bridge.hpp"
+cp "$ROOT/overlay/source/program/nsc_runtime_v2.cpp" "$EXL/source/program/nsc_runtime_v2.cpp"
+cp "$ROOT/overlay/source/program/nsc_runtime_v2.hpp" "$EXL/source/program/nsc_runtime_v2.hpp"
 cp "$ROOT/overlay/source/program/condition_compat_generated.hpp" "$EXL/source/program/condition_compat_generated.hpp"
 cp "$ROOT/overlay/source/program/p81_ougi_awake_ids.hpp" "$EXL/source/program/p81_ougi_awake_ids.hpp"
 python3 - "$EXL/config.mk" <<'PY'
@@ -19,5 +21,5 @@ s,n4=re.subn(r'(?m)^ELF_EXTRACT\s*:=.*$', 'ELF_EXTRACT := $(PWD)/p64f_final.elf'
 if (n1,n2,n3,n4)!=(1,1,1,1): raise SystemExit(f'config patch failed {(n1,n2,n3,n4)}')
 p.write_text(s)
 PY
-echo "[+] P123A compact conditional outer corridor bridge overlay prepared"
+echo "[+] NSC Runtime V2A resolver coexistence overlay prepared"
 grep -E '^(LOAD_KIND|PROGRAM_ID|CXX_FLAGS|ELF_EXTRACT)[[:space:]]*:=' "$EXL/config.mk"
