@@ -12,11 +12,11 @@ h=(root/'overlay/source/program/nsc_runtime_v2.hpp').read_text()
 bridge=(root/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
 main=(root/'overlay/source/program/main.cpp').read_text()
 prep=(root/'prepare_exlaunch.sh').read_text()
-wf=(root/'.github/workflows/build-runtime-v2i.yml').read_text()
+wf=(root/'.github/workflows/build-runtime-v2j.yml').read_text()
 sfx=(root/'overlay/source/program/nsc_sfx_list_generated.hpp').read_text()
 
 checks={
- 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();'),
+ 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallV2JDpadNativeConsumerProbe();'),
  'fail_closed_main': 'if (!nsc::v2::InstallOriginalMainRuntimePatches()) return;' in main,
  'random_access_patcher': '#include <lib/patch/random_access_patcher.hpp>' in rt and 'exl::patch::RandomAccessPatcher patcher;' in rt,
  'validate_before_write': rt.index('Validate ALL original words before the first write') < rt.index('patcher.Write<std::uint32_t>'),
@@ -30,8 +30,8 @@ checks={
     'HOOK name=CENTRAL_SETTER source=resolver','HOOK name=CPK_BIND source=resolver',
     'HOOK name=CHARACODE_GETTER source=resolver')),
  'v2d_arch_markers': '[NSC:V2D] RESOLVER_READY' in rt and '[NSC:V2D] RUNTIME_PATCH_READY' in rt,
- 'original_main_readme': '2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9' in (root/'README_RUNTIME_V2I.md').read_text(),
- 'workflow_only_v2i': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-V2I-activation-core-stage-audio-parity' in wf,
+ 'original_main_readme': '2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9' in (root/'README_RUNTIME_V2J.md').read_text(),
+ 'workflow_only_v2j': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-V2J-stage-native-post-dpad-consumer-probe' in wf,
  'workflow_original_main': 'original/atmosphere/contents/0100FA10190A0000/exefs/main' in wf,
  'workflow_not_reference_main': 'reference_p128/atmosphere/contents/0100FA10190A0000/exefs/main" "$OUT/atmosphere' not in wf,
  'prepare_copies_sfx_header': 'nsc_sfx_list_generated.hpp' in prep,
@@ -51,9 +51,10 @@ checks={
  'v2i_activation_no_global_damage_hack': 'force_no_damage' not in bridge.lower() and 'no_damage = true' not in bridge.lower(),
  'v2h_stage_enter_retained': '[NSC:V2H] STAGE2_ENTER' in bridge,
  'v2h_stage_fail_retained': '[NSC:V2H] STAGE2_FAIL' in bridge,
- 'v2i_stage_parity': '[NSC:V2I] STAGE2_PARITY' in bridge and 'fix_actor=1 fix_enemy=%u poststage=0 pc_source_parity=1' in bridge,
- 'v2i_stage_enemy_fix': 'reinterpret_cast<ActorFn>(base + kFixCharPositionOffset)(enemy);' in bridge,
- 'v2i_stage_no_poststage_call': 'reinterpret_cast<VoidFn>(base + kPostStageOffset)();' not in bridge[bridge.index('uint32_t HandleStageMove'):bridge.index('uint32_t HandleActionAnimation')],
+ 'v2j_stage_marker': '[NSC:V2J] STAGE2_SWITCH_NATIVE' in bridge and 'poststage=1 native_callsite=0x48e364' in bridge,
+ 'v2j_stage_enemy_fix': 'reinterpret_cast<ActorFn>(base + kFixCharPositionOffset)(enemy);' in bridge,
+ 'v2j_stage_poststage_call': 'reinterpret_cast<VoidFn>(base + kPostStageOffset)();' in bridge[bridge.index('uint32_t HandleStageMove'):bridge.index('uint32_t HandleActionAnimation')],
+ 'v2j_stage_old_v2i_marker_removed': '[NSC:V2I] STAGE2_PARITY' not in bridge,
  'v2i_op26_case': 'case 26: { // source me_play_voice_string' in bridge,
  'v2i_op26_play': '[NSC:V2I] OP26_PLAY' in bridge and 'native_813d88_contract=1' in bridge,
  'v2i_op26_source_index': 'nsc_sfx_list_generated::FindIndex(text)' in bridge and 'sfx_index + 0x7000' in bridge,
@@ -62,6 +63,12 @@ checks={
  'sfx_etc_l': '"S_PL_etc_l"' in sfx,
  'sfx_etc_m': '"S_PL_etc_m"' in sfx,
  'sfx_dmg_common': '"S_PL_DMG_cmn_vS_rv"' in sfx,
+ 'v2j_probe_declared': 'void InstallV2JDpadNativeConsumerProbe();' in (root/'overlay/source/program/nsc_cpk_bridge.hpp').read_text(),
+ 'v2j_probe_installed_after_p128': main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallV2JDpadNativeConsumerProbe();'),
+ 'v2j_probe_marker': '[NSC:V2J] DPAD_NATIVE_CONSUMER' in bridge and '[NSC:V2J] DPAD_NATIVE_READY' in bridge,
+ 'v2j_probe_dynamic_anchor': 'GetResolvedOffset(nsc::v2::Anchor::State137Controller,controller)' in bridge and 'kV2JDpadNativeConsumerDelta = 0x5FC' in bridge,
+ 'v2j_probe_exact_replay': 'ctx->W[8] = site_f30;' in bridge and 'replay_ldr_f30=1 gameplay_write=0' in bridge,
+ 'v2j_probe_no_char281': 'c19==281' not in bridge and 'c20==281' not in bridge,
  'p57_float_abi_preserved': 'int32_t a3, float rate)' in bridge and 'Orig(actor, action, a2, a3, rate);' in bridge,
  'v2g_direct_marker_removed': '[NSC:V2G] OP23_DIRECT_ANM' not in bridge,
  'v2f_marker_removed': '[NSC:V2F] OP23_NO_PLAYACTION_AB' not in bridge,
@@ -219,10 +226,22 @@ expect_words('static_switch_sound_event_813d88',0x813D88,[
  0xF81F0FFE,0x79C04828,0x11401D01,0xF9400008,0xF9481908,
  0x2A1F03E2,0xD63F0100,0x52800020,0xF84107FE,0xD65F03C0])
 
-# Ensure the stage handler's mutation section does not call the old extra PostStage.
-stage_src=bridge[bridge.index('uint32_t HandleStageMove'):bridge.index('uint32_t HandleActionAnimation')]
-if 'reinterpret_cast<VoidFn>(base + kPostStageOffset)();' in stage_src:
-    print('stage_poststage_removed FAIL');sys.exit(1)
-print('stage_poststage_removed PASS')
+# Switch-native stage transition proof used by V2J: default handler -> live
+# stage ID -> HandleStageChange -> FixCharPosition(actor) -> post-stage/member sweep.
+expect_words('static_switch_native_stage_transition',0x48E344,[
+ 0x9402A03E,0xB000E5A8,0xF9426108,0xF9400108,0xB9400900,
+ 0x94096AD6,0xAA1303E0,0x9400002B,0x940000AE])
 
-print('NSC_RUNTIME_V2I_SOURCE_VERIFY=PASS')
+# Native D-pad/F30 consumer proof. The runtime hook is installed only at the
+# third word (LDR W8,[X20,#0xF30]) after resolver-derived fingerprinting.
+expect_words('static_switch_dpad_f30_consumer',0x7E749C,[
+ 0x7100041F,0x54000161,0xB94F3288,0x34000128,
+ 0xF9400288,0xAA1403E0,0xF945D508,0xD63F0100,
+ 0xF9400288,0xAA1403E0,0xF945DD08,0xD63F0100])
+
+stage_src=bridge[bridge.index('uint32_t HandleStageMove'):bridge.index('uint32_t HandleActionAnimation')]
+if 'reinterpret_cast<VoidFn>(base + kPostStageOffset)();' not in stage_src:
+    print('stage_poststage_restored FAIL');sys.exit(1)
+print('stage_poststage_restored PASS')
+
+print('NSC_RUNTIME_V2J_SOURCE_VERIFY=PASS')
