@@ -10,7 +10,7 @@ uj_post_dynamic PASS
 six_core_dynamic PASS
 v2d_arch_markers PASS
 original_main_readme PASS
-workflow_only_v2j PASS
+workflow_only_v2k PASS
 workflow_original_main PASS
 workflow_not_reference_main PASS
 prepare_copies_sfx_header PASS
@@ -30,10 +30,9 @@ v2i_activation_exact_fixture PASS
 v2i_activation_no_global_damage_hack PASS
 v2h_stage_enter_retained PASS
 v2h_stage_fail_retained PASS
-v2j_stage_marker PASS
-v2j_stage_enemy_fix PASS
-v2j_stage_poststage_call PASS
-v2j_stage_old_v2i_marker_removed PASS
+v2i_stage_parity PASS
+v2i_stage_enemy_fix PASS
+v2i_stage_no_poststage_call PASS
 v2i_op26_case PASS
 v2i_op26_play PASS
 v2i_op26_source_index PASS
@@ -42,16 +41,16 @@ sfx_count_160 PASS
 sfx_etc_l PASS
 sfx_etc_m PASS
 sfx_dmg_common PASS
-v2j_probe_declared PASS
-v2j_probe_installed_after_p128 PASS
-v2j_probe_marker PASS
-v2j_probe_dynamic_anchor PASS
-v2j_probe_exact_replay PASS
-v2j_probe_no_char281 PASS
 p57_float_abi_preserved PASS
 v2g_direct_marker_removed PASS
 v2f_marker_removed PASS
 no_guessed_setanmdirect_offset PASS
+v2k_ready PASS
+v2k_passive_snapshot PASS
+v2k_stage_safe PASS
+v2k_no_v2j_inline_hook PASS
+v2k_no_poststage_call PASS
+v2k_audio_frozen PASS
 original_main_sha256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
 reference_p128_main_sha256 904a0405d04360ff3969909cdd7197c9e8c2aba2467151a7eaad4c821fcebbff
 text_diff_words 30
@@ -71,7 +70,5 @@ sfx_index_S_PL_etc_l PASS index=21
 sfx_index_S_PL_etc_m PASS index=22
 sfx_index_S_PL_DMG_cmn_vS_rv PASS index=153
 static_switch_sound_event_813d88 PASS off=0x813d88
-static_switch_native_stage_transition PASS off=0x48e344
-static_switch_dpad_f30_consumer PASS off=0x7e749c
-stage_poststage_restored PASS
-NSC_RUNTIME_V2J_SOURCE_VERIFY=PASS
+stage_poststage_removed PASS
+NSC_RUNTIME_V2K_SOURCE_VERIFY=PASS

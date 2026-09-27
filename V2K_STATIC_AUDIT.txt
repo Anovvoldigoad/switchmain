@@ -1,0 +1,49 @@
+NSC2Switch Runtime V2K — V2J Regression Audit / Recovery Plan
+Date: 2026-09-27
+Target: Storm Connections Switch v1.70
+Build ID: 48ece454b61412b9fb46fab2be3f5ef7b2804f39
+
+INPUT HARDWARE EVIDENCE — V2J
+- log32 SHA256: b04e8c1c6965b9a5f2f71218e8c38f10eaeeb20647095a4de56eafb9cceaab0f
+- compiled V2J artifact SHA256: 3e2e33924589941490c1655044123aaf0fcbffa72c23c8718d33faf635d694db
+- deployed main SHA256: 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+- deployed V2J subsdk9 SHA256: f46bf29275392c79ddbdbbe3681abd2e3cc6aec32c5ecfe46b8b52650c2730dc
+
+BOOT / ARCHITECTURE
+- resolver 7/7 PASS
+- exact runtime 30-word patch PASS
+- P128 READY / original main PASS
+- no resolver/fingerprint/patch fatal markers
+
+V2J HARDWARE RESULT
+User reports many regressions that are difficult to enumerate. Treat V2J as FAIL for gameplay stability.
+
+What V2J actually exercised:
+- DPAD_NATIVE_READY installed=1 at main+0x7E74A4.
+- ZERO DPAD_NATIVE_CONSUMER callbacks appear in the entire 10,770-line log.
+- No V2I IZANAGI_CORE_AB marker and no action77/SPTYPE_ACTION10 activation are present in log32.
+- Therefore this run does NOT provide a valid Right-D-pad Izanagi verdict and the V2J F30 consumer probe yielded no frontier evidence.
+- V2J STAGE2_SWITCH_NATIVE executed four times: custom STG_2TOB_UNI_LT and return STAGE_SI45A across two Tobi UJ cycles.
+- Each V2J stage transition executed poststage=1 / main+0x48E61C.
+- Opcode26 audio remained active.
+
+CAUSAL ROLLBACK DECISION
+V2J differs behaviorally from V2I in only two additions:
+1) an extra inline hook at main+0x7E74A4; it produced zero callbacks in log32, so it is removed as non-informative risk;
+2) an extra call to main+0x48E61C after custom StageMove; it executed four times while the user reported broad new regressions, so it is rolled back.
+
+V2K returns to the V2I gameplay baseline:
+HandleStageChange -> Fix actor -> Fix enemy -> RETURN (no 0x48E61C call)
+No V2J F30 inline hook.
+Audio op26 remains frozen because V2I/V2J hardware confirmed it works.
+UJ admission remains untouched.
+
+PASSIVE D-PAD EVIDENCE IN V2K
+V2K does not install a new inline hook. At the already-existing V2I action77/SPTYPE_ACTION10 activation point it logs actor+0xF30, all four D-pad charge words, E94, E98, and animation state before/after the existing V2I activation-core A/B. Marker: [NSC:V2K] DPAD_PASSIVE_SNAPSHOT.
+No extra gameplay write is introduced.
+
+EMULATOR SHUTDOWN ASSERTION
+log32 ends with host_memory.cpp Assertion Failed only after config writes, Oboe destruction, NVDRV unpin warning, and pipeline-cache serialization. Treat as shutdown/emulator artifact unless it reproduces during active gameplay.
+
+V2K SOURCE VERIFIER
+Final marker: NSC_RUNTIME_V2K_SOURCE_VERIFY=PASS

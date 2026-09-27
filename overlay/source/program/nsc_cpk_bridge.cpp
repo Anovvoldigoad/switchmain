@@ -1543,35 +1543,32 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
 
     using HandleFn = void (*)(uint32_t);
     using ActorFn = void (*)(void*);
-    using VoidFn = void (*)();
     reinterpret_cast<HandleFn>(base + kHandleStageChangeOffset)(stage_id_post_handler);
 
-    // V2J combines BOTH independently proven transition requirements instead
-    // of choosing PC parity OR Switch parity:
-    //   * UltimateStormAPI PC me_test_switch_stage fixes actor + enemy;
-    //   * native Switch v1.70 stage transition at main+0x48E358..0x48E364
-    //     calls HandleStageChange -> FixCharPosition(actor) -> main+0x48E61C.
-    // V2I omitted 0x48E61C and hardware still showed the battle map mixed with
-    // the requested STG_2TOB_UNI_LT even though the live stage ID changed.
-    // V2J therefore restores the proven Switch post-stage sweep AFTER fixing
-    // both participants. This is a stage-transition A/B, not a Tobi-specific fix.
+    // V2I source-parity correction from UltimateStormAPI PC v1.70
+    // me_test_switch_stage(): after HandleStageChange, fix BOTH participants.
+    // The previous Switch port also called kPostStageOffset, but the PC source
+    // has no corresponding call, so V2I deliberately removes that extra step.
     void* enemy = GetEventTargetActor(actor, 1);
     reinterpret_cast<ActorFn>(base + kFixCharPositionOffset)(actor);
     if (enemy) {
         reinterpret_cast<ActorFn>(base + kFixCharPositionOffset)(enemy);
     }
-    reinterpret_cast<VoidFn>(base + kPostStageOffset)();
 
     void* state_global_final = nullptr;
     void* state_final = nullptr;
     const uint32_t stage_id_final = read_stage_id(&state_global_final, &state_final);
     Logging.Log(
-        "[NSC:V2J] STAGE2_SWITCH_NATIVE actor=%p side=%u char=%u text=%s crc=%08x mode=%s "
+        "[NSC:V2I] STAGE2_PARITY actor=%p side=%u char=%u text=%s crc=%08x mode=%s "
         "manager=%p object=%p context=%p stage_id=%u->%u->%u enemy=%p "
-        "handle_called=1 fix_actor=1 fix_enemy=%u poststage=1 native_callsite=0x48e364",
+        "handle_called=1 fix_actor=1 fix_enemy=%u poststage=0 pc_source_parity=1",
         actor, side, char_id, text, stage_crc, param2 == 0 ? "specific" : "default",
         manager, object, stage_context, stage_id_pre, stage_id_post_handler,
         stage_id_final, enemy, enemy ? 1u : 0u);
+    Logging.Log(
+        "[NSC:V2K] STAGE_SAFE_BASELINE actor=%p side=%u char=%u text=%s stage_id=%u "
+        "v2j_poststage_removed=1 poststage=0 extra_stage_call=0",
+        actor, side, char_id, text, stage_id_final);
     return 1;
 }
 
@@ -1587,6 +1584,16 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
 bool V2IApplyIzanagiActivationCoreAB(void* actor, const char* text, int16_t action_param) {
     if (!actor || !text) return false;
     if (action_param != 77 || std::strcmp(text, "SPTYPE_ACTION10") != 0) return false;
+
+    const auto* actor_bytes = reinterpret_cast<const volatile uint8_t*>(actor);
+    const uint32_t f30_before = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0xF30);
+    const uint32_t e94_before = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0xE94);
+    const uint32_t e98_before = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0xE98);
+    const uint32_t anm_before = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0x1268);
+    const auto* charge_before_ptr = reinterpret_cast<const volatile uint32_t*>(actor_bytes + kDpadChargeBaseOffset);
+    const uint32_t charge_before[4] = {
+        charge_before_ptr[0], charge_before_ptr[1], charge_before_ptr[2], charge_before_ptr[3]
+    };
 
     const uintptr_t base = exl::util::modules::GetTargetStart();
     using OwnerFn = void* (*)(void*);
@@ -1623,6 +1630,21 @@ bool V2IApplyIzanagiActivationCoreAB(void* actor, const char* text, int16_t acti
         "animation930_suppressed=1 source_frame13_only=1 diagnostic_only=1",
         actor, side, char_id, text, static_cast<int>(action_param), kCond, resolved,
         owner, cond_applied ? 1u : 0u, apply_ret, FloatBits(charge[3]));
+
+    const uint32_t f30_after = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0xF30);
+    const uint32_t e94_after = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0xE94);
+    const uint32_t e98_after = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0xE98);
+    const uint32_t anm_after = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0x1268);
+    const auto* charge_after_ptr = reinterpret_cast<const volatile uint32_t*>(actor_bytes + kDpadChargeBaseOffset);
+    Logging.Log(
+        "[NSC:V2K] DPAD_PASSIVE_SNAPSHOT actor=%p side=%u char=%u f30=%u->%u "
+        "charge=%08x/%08x/%08x/%08x->%08x/%08x/%08x/%08x "
+        "e94=%u->%u e98=%u->%u anm1268=%u->%u extra_gameplay_write=0 "
+        "v2j_inline_hook=0",
+        actor, side, char_id, f30_before, f30_after,
+        charge_before[0], charge_before[1], charge_before[2], charge_before[3],
+        charge_after_ptr[0], charge_after_ptr[1], charge_after_ptr[2], charge_after_ptr[3],
+        e94_before, e94_after, e98_before, e98_after, anm_before, anm_after);
     return true;
 }
 
@@ -8478,113 +8500,11 @@ void InstallP128AStaticPreciseGateCaveProof() {
         w480,w4b8,w4fc,w500,w494,w4a8,w4b4,w520,w5e8);
 }
 
-
-// ============================================================================
-// V2J — native D-pad consumer boundary probe.
-//
-// PC UltimateStormAPI labels the actor+0xF30 path as the D-pad-animation
-// enable. Switch v1.70 independently contains a native consumer in the
-// STATE137 controller family:
-//
-//   0x7E749C CMP W0,#1
-//   0x7E74A0 B.NE 0x7E74CC
-//   0x7E74A4 LDR W8,[X20,#0xF30]   <-- probe/replay
-//   0x7E74A8 CBZ W8,0x7E74CC
-//   ... actor vtable +0xBA8 then +0xBB8 ...
-//
-// V2I hardware showed condition SW_MTOB_XH + Right charge 100 are not enough
-// for the advertised long-lived Izanagi protection. This read-only probe asks
-// whether the custom actor reaches the native F30 consumer at all and records
-// the exact actor identity/state at that boundary. The replaced instruction is
-// faithfully replayed into W8; no branch, return value, gameplay field, or
-// character-specific policy is changed.
-// ============================================================================
-namespace {
-constexpr ptrdiff_t kV2JDpadNativeConsumerDelta = 0x5FC;
-constexpr uint32_t kV2JDpadNativeConsumerLogLimit = 512u;
-std::atomic<uint32_t> g_v2j_dpad_native_logs{0};
-
-uint32_t V2JReadU32(void* actor, ptrdiff_t off, bool valid) {
-    if (!actor || !valid) return 0xFFFFFFFFu;
-    return *reinterpret_cast<const volatile uint32_t*>(
-        reinterpret_cast<const volatile uint8_t*>(actor) + off);
-}
-
-HOOK_DEFINE_INLINE(V2JDpadNativeConsumerHook) {
-    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        void* x20 = reinterpret_cast<void*>(static_cast<uintptr_t>(ctx->X[20]));
-        void* x19 = reinterpret_cast<void*>(static_cast<uintptr_t>(ctx->X[19]));
-
-        // Exact replay of the replaced native instruction:
-        //   LDR W8,[X20,#0xF30]
-        const uint32_t site_f30 = *reinterpret_cast<const volatile uint32_t*>(
-            reinterpret_cast<const volatile uint8_t*>(x20) + 0xF30);
-        ctx->W[8] = site_f30;
-
-        uint32_t s19=0xFFFFFFFFu,c19=0xFFFFFFFFu,s20=0xFFFFFFFFu,c20=0xFFFFFFFFu;
-        const bool v19=ReadActorIdentity(x19,s19,c19);
-        const bool v20=ReadActorIdentity(x20,s20,c20);
-        const bool custom19=v19 && c19>kVanillaMaxCharId && c19<0x1000u;
-        const bool custom20=v20 && c20>kVanillaMaxCharId && c20<0x1000u;
-        const uint32_t n=g_v2j_dpad_native_logs.fetch_add(1u,std::memory_order_relaxed);
-
-        if ((custom19 || custom20 || n < 32u) && n < kV2JDpadNativeConsumerLogLimit) {
-            const uint32_t f30_19=V2JReadU32(x19,0xF30,v19);
-            const uint32_t f30_20=V2JReadU32(x20,0xF30,v20);
-            const uint32_t right19=V2JReadU32(x19,kDpadChargeBaseOffset+12,v19);
-            const uint32_t right20=V2JReadU32(x20,kDpadChargeBaseOffset+12,v20);
-            const uint32_t e94_19=V2JReadU32(x19,0xE94,v19);
-            const uint32_t e94_20=V2JReadU32(x20,0xE94,v20);
-            const uint32_t e98_19=V2JReadU32(x19,0xE98,v19);
-            const uint32_t e98_20=V2JReadU32(x20,0xE98,v20);
-            const uint32_t anm19=V2JReadU32(x19,0x1268,v19);
-            const uint32_t anm20=V2JReadU32(x20,0x1268,v20);
-            Logging.Log(
-                "[NSC:V2J] DPAD_NATIVE_CONSUMER n=%u x19=%p v19=%u s19=%u c19=%u "
-                "x20=%p v20=%u s20=%u c20=%u site_f30=%u f30_19=%u f30_20=%u "
-                "right19=%08x right20=%08x e94_19=%u e94_20=%u e98_19=%u e98_20=%u "
-                "anm19=%u anm20=%u replay_ldr_f30=1 gameplay_write=0",
-                n,x19,v19?1u:0u,s19,c19,x20,v20?1u:0u,s20,c20,site_f30,
-                f30_19,f30_20,right19,right20,e94_19,e94_20,e98_19,e98_20,anm19,anm20);
-        }
-    }
-};
-
-bool InstallV2JDpadNativeConsumerInternal() {
-    std::ptrdiff_t controller=-1;
-    if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::State137Controller,controller)) {
-        Logging.Log("[NSC:V2J] DPAD_NATIVE_READY installed=0 reason=resolver_unavailable");
-        return false;
-    }
-    const std::ptrdiff_t off=controller+kV2JDpadNativeConsumerDelta;
-    static constexpr uint32_t expected[]={
-        0x7100041F,0x54000161,0xB94F3288,0x34000128,
-        0xF9400288,0xAA1403E0,0xF945D508,0xD63F0100,
-        0xF9400288,0xAA1403E0,0xF945DD08,0xD63F0100,
-    };
-    if (!MatchWords(off-8,expected)) {
-        LogFingerprintFail("V2J_DPAD_NATIVE_CONSUMER",off-8);
-        Logging.Log(
-            "[NSC:V2J] DPAD_NATIVE_READY installed=0 controller=0x%lx off=0x%lx reason=fingerprint",
-            static_cast<unsigned long>(controller),static_cast<unsigned long>(off));
-        return false;
-    }
-    V2JDpadNativeConsumerHook::InstallAtOffset(off);
+void InstallV2KRecoveryPassiveProbe() {
     Logging.Log(
-        "[NSC:V2J] DPAD_NATIVE_READY installed=1 controller=0x%lx off=0x%lx delta=0x%lx "
-        "fingerprint=1 replay_ldr_f30=1 read_only=1 no_char281_branch=1",
-        static_cast<unsigned long>(controller),static_cast<unsigned long>(off),
-        static_cast<unsigned long>(kV2JDpadNativeConsumerDelta));
-    return true;
-}
-} // anonymous namespace — V2J
-
-void InstallV2JDpadNativeConsumerProbe() {
-    const bool ok=InstallV2JDpadNativeConsumerInternal();
-    Logging.Log(
-        "[NSC:V2J] READY dpad_native_probe=%u stage_switch_post=1 opcode26_frozen=1 "
-        "v2i_activation_core_retained=1 damage_override=0 no_force_visible=1 no_char281_branch=1",
-        ok?1u:0u);
+        "[NSC:V2K] READY recovery_baseline=V2I v2j_stage_post=0 v2j_dpad_inline_hook=0 "
+        "opcode26_frozen=1 safe_op23=1 activation_core_retained=1 passive_dpad_snapshot=1 "
+        "damage_override=0 force_visible=0 no_char281_branch=1");
 }
 
 } // namespace nsc
