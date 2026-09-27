@@ -10,6 +10,7 @@ cp "$ROOT/overlay/source/program/nsc_runtime_v2.cpp" "$EXL/source/program/nsc_ru
 cp "$ROOT/overlay/source/program/nsc_runtime_v2.hpp" "$EXL/source/program/nsc_runtime_v2.hpp"
 cp "$ROOT/overlay/source/program/condition_compat_generated.hpp" "$EXL/source/program/condition_compat_generated.hpp"
 cp "$ROOT/overlay/source/program/p81_ougi_awake_ids.hpp" "$EXL/source/program/p81_ougi_awake_ids.hpp"
+cp "$ROOT/overlay/source/program/nsc_sfx_list_generated.hpp" "$EXL/source/program/nsc_sfx_list_generated.hpp"
 python3 - "$EXL/config.mk" <<'PY'
 from pathlib import Path
 import re, sys
@@ -17,9 +18,9 @@ p=Path(sys.argv[1]); s=p.read_text()
 s,n1=re.subn(r'(?m)^LOAD_KIND\s*:=.*$', 'LOAD_KIND := Module', s, count=1)
 s,n2=re.subn(r'(?m)^PROGRAM_ID\s*:=.*$', 'PROGRAM_ID := 0100FA10190A0000', s, count=1)
 s,n3=re.subn(r'(?m)^CXX_FLAGS\s*:=.*$', 'CXX_FLAGS := -Wno-non-c-typedef-for-linkage', s, count=1)
-s,n4=re.subn(r'(?m)^ELF_EXTRACT\s*:=.*$', 'ELF_EXTRACT := $(PWD)/runtime_v2g.elf', s, count=1)
+s,n4=re.subn(r'(?m)^ELF_EXTRACT\s*:=.*$', 'ELF_EXTRACT := $(PWD)/runtime_v2h.elf', s, count=1)
 if (n1,n2,n3,n4)!=(1,1,1,1): raise SystemExit(f'config patch failed {(n1,n2,n3,n4)}')
 p.write_text(s)
 PY
-echo "[+] NSC Runtime V2G opcode23 direct-animation overlay prepared"
+echo "[+] NSC Runtime V2H safe-op23 stage/audio probe overlay prepared"
 grep -E '^(LOAD_KIND|PROGRAM_ID|CXX_FLAGS|ELF_EXTRACT)[[:space:]]*:=' "$EXL/config.mk"

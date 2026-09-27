@@ -2,6 +2,7 @@
 #include "nsc_runtime_v2.hpp"
 #include "p81_ougi_awake_ids.hpp"
 #include "condition_compat_generated.hpp"
+#include "nsc_sfx_list_generated.hpp"
 
 #include "lib.hpp"
 #include <lib/hook/trampoline.hpp>
@@ -35,9 +36,10 @@ constexpr ptrdiff_t kNormalOugiOffset         = 0x6F44A0;  // NORMAL_OUGI combat
 constexpr ptrdiff_t kSpecialOugiFinishOffset  = 0x6F4880;  // SPECIAL_OUGI_FINISH combat action handler (end classifier)
 // P50A: keep only the proven PRE/POST PlayAction probe for UJ progression
 constexpr ptrdiff_t kPlayActionProbeOffset    = 0x766B8C;  // PlayAction → int32_t ret
-// P57A/V2G: direct-animation core behind actor vtable+0xF98. Static native
-// callsites prove main+0x766320 is called as (actor, PL_ANM, -1, 0, rate s0).
-// It writes the active animation index to actor+0x1268.
+// P57A/V2H: native action/animation state core behind actor vtable+0xF98.
+// V2G hardware falsified the earlier "safe SetAnmDirect" interpretation:
+// a direct call with 930 changes the actor's current 0x1268 state 928->930 and
+// reproduces disappearance. Keep this anchor for tracing/native UJ only.
 constexpr ptrdiff_t kCentralActionSetterOffset = 0x766320;
 // P59A: virtual action-mode dispatch family. 0x7B4680 is the canonical
 // thunk that loads actor->vtable+0xE40 and BRs to the class implementation.
@@ -1455,22 +1457,66 @@ uint32_t HandleDpadChargeSourceParity(void* actor, int16_t enemy, int16_t arrow,
 
 uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
     const uintptr_t base = exl::util::modules::GetTargetStart();
+    char text[31]{};
+    CopyEventText(text, event);
+    uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+    ReadActorIdentity(actor, side, char_id);
+
     uint32_t stage_crc = 0;
     if (param2 == 0) stage_crc = Crc30(event);
 
+    auto read_stage_id = [base](void** out_global, void** out_state) -> uint32_t {
+        auto* stage_state_global = *reinterpret_cast<void**>(base + kStageStateGlobalOffset);
+        if (out_global) *out_global = stage_state_global;
+        if (!stage_state_global) {
+            if (out_state) *out_state = nullptr;
+            return 0xFFFFFFFFu;
+        }
+        auto* stage_state = *reinterpret_cast<void**>(stage_state_global);
+        if (out_state) *out_state = stage_state;
+        if (!stage_state) return 0xFFFFFFFFu;
+        return *reinterpret_cast<volatile uint32_t*>(
+            reinterpret_cast<uint8_t*>(stage_state) + 0x8);
+    };
+
+    void* state_global_pre = nullptr;
+    void* state_pre = nullptr;
+    const uint32_t stage_id_pre = read_stage_id(&state_global_pre, &state_pre);
+
     auto* stage_global = *reinterpret_cast<void**>(base + kStageGlobalOffset);
-    if (!stage_global) return 1;
+    Logging.Log(
+        "[NSC:V2H] STAGE2_ENTER actor=%p side=%u char=%u p2=%d text=%s crc=%08x "
+        "stage_global=%p state_global_pre=%p state_pre=%p stage_id_pre=%u",
+        actor, side, char_id, static_cast<int>(param2), text, stage_crc,
+        stage_global, state_global_pre, state_pre, stage_id_pre);
+    if (!stage_global) {
+        Logging.Log("[NSC:V2H] STAGE2_FAIL text=%s reason=stage_global_null", text);
+        return 1;
+    }
+
     auto* manager = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(stage_global) + 0x60);
-    if (!manager) return 1;
+    if (!manager) {
+        Logging.Log("[NSC:V2H] STAGE2_FAIL text=%s reason=manager_null stage_global=%p", text, stage_global);
+        return 1;
+    }
 
     using LookupFn = void* (*)(void*, const char*);
     auto lookup = reinterpret_cast<LookupFn>(base + kStageObjectLookupOffset);
     auto* object = lookup(manager, reinterpret_cast<const char*>(base + kStageObjectNameOffset));
-    if (!object) return 1;
+    if (!object) {
+        Logging.Log("[NSC:V2H] STAGE2_FAIL text=%s reason=StageMove_object_null manager=%p", text, manager);
+        return 1;
+    }
     auto* object_inner = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(object) + 0x8);
-    if (!object_inner) return 1;
+    if (!object_inner) {
+        Logging.Log("[NSC:V2H] STAGE2_FAIL text=%s reason=object_inner_null object=%p", text, object);
+        return 1;
+    }
     auto* stage_context = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(object_inner) + 0x10);
-    if (!stage_context) return 1;
+    if (!stage_context) {
+        Logging.Log("[NSC:V2H] STAGE2_FAIL text=%s reason=stage_context_null inner=%p", text, object_inner);
+        return 1;
+    }
 
     if (param2 == 0) {
         using SpecificFn = void (*)(void*, uint32_t);
@@ -1480,18 +1526,41 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
         reinterpret_cast<DefaultFn>(base + kStageDefaultOffset)(stage_context);
     }
 
-    auto* stage_state_global = *reinterpret_cast<void**>(base + kStageStateGlobalOffset);
-    if (!stage_state_global) return 1;
-    auto* stage_state = *reinterpret_cast<void**>(stage_state_global);
-    if (!stage_state) return 1;
-    const uint32_t stage_id = *reinterpret_cast<volatile uint32_t*>(reinterpret_cast<uint8_t*>(stage_state) + 0x8);
+    void* state_global_post_handler = nullptr;
+    void* state_post_handler = nullptr;
+    const uint32_t stage_id_post_handler =
+        read_stage_id(&state_global_post_handler, &state_post_handler);
+    if (stage_id_post_handler == 0xFFFFFFFFu) {
+        Logging.Log(
+            "[NSC:V2H] STAGE2_FAIL text=%s reason=stage_state_unavailable_after_handler "
+            "context=%p state_global=%p state=%p",
+            text, stage_context, state_global_post_handler, state_post_handler);
+        return 1;
+    }
 
     using HandleFn = void (*)(uint32_t);
     using ActorFn = void (*)(void*);
     using VoidFn = void (*)();
-    reinterpret_cast<HandleFn>(base + kHandleStageChangeOffset)(stage_id);
+    reinterpret_cast<HandleFn>(base + kHandleStageChangeOffset)(stage_id_post_handler);
     reinterpret_cast<ActorFn>(base + kFixCharPositionOffset)(actor);
+
+    // Keep the pre-existing Switch port behavior unchanged in this diagnostic.
+    // PC v1.70 source fixes BOTH player and enemy and does not contain this
+    // PostStage call. V2H only records that gap; no stage mutation experiment yet.
+    void* enemy = GetEventTargetActor(actor, 1);
     reinterpret_cast<VoidFn>(base + kPostStageOffset)();
+
+    void* state_global_final = nullptr;
+    void* state_final = nullptr;
+    const uint32_t stage_id_final = read_stage_id(&state_global_final, &state_final);
+    Logging.Log(
+        "[NSC:V2H] STAGE2_DONE actor=%p side=%u char=%u text=%s crc=%08x mode=%s "
+        "manager=%p object=%p context=%p stage_id=%u->%u->%u enemy=%p "
+        "handle_called=1 fix_actor=1 fix_enemy=0 poststage=1 "
+        "pc_fix_enemy_gap=1 pc_poststage_extra=1 diagnostic_only=1",
+        actor, side, char_id, text, stage_crc, param2 == 0 ? "specific" : "default",
+        manager, object, stage_context, stage_id_pre, stage_id_post_handler,
+        stage_id_final, enemy);
     return 1;
 }
 
@@ -1544,46 +1613,31 @@ uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2
     Logging.Log("[NSC:P50A] ACTION actor=%p target=%p mode=%u text=%s found=1 index=%u",
                 actor, target, action_mode ? 1u : 0u, text, index);
 
-    // V2G: exact opcode23 operation split, based on both PC source and Switch
-    // v1.70 native callsites. Resolver anchor CENTRAL_SETTER is main+0x766320
-    // on the locked build. Native callsites invoke it as:
-    //   x0=actor, w1=PL_ANM index, w2=-1, w3=0, s0=1.0f
-    // and it writes the active animation index at actor+0x1268. 0x766B8C is a
-    // stronger PlayAction wrapper: it first dispatches vtable+0xF98 (766320),
-    // then enters additional stage2 logic at 0x766CAC. That extra stage is what
-    // V2F proved must not be substituted for SetAnmDirect.
+    // V2H: hardware rollback to the V2F-safe opcode23 A/B behavior.
+    // V2G proved that calling main+0x766320 with PL_ANM index930 is NOT a
+    // harmless SetAnmDirect equivalent: it changes current state 928->930 and
+    // reproduces disappearance. Preserve SetActionImmediate(param3) and name
+    // resolution, but suppress both 0x766320 and PlayAction while the true
+    // direct-animation primitive is unresolved.
     if (action_mode) {
-        std::ptrdiff_t direct_off = -1;
-        if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::CentralSetter, direct_off)) {
-            Logging.Log(
-                "[NSC:V2G] OP23_DIRECT_ANM_FAIL actor=%p target=%p action_param=%d text=%s "
-                "pl_anm_index=%u reason=central_setter_resolver_unavailable fail_closed=1",
-                actor, target, static_cast<int>(param3), text, index);
-            return 1;
-        }
-
-        using DirectAnmFn = void (*)(void*, int32_t, int32_t, int32_t, float);
-        reinterpret_cast<DirectAnmFn>(base + direct_off)(
-            target, static_cast<int32_t>(index), -1, 0, 1.0f);
-
         const auto* tb = reinterpret_cast<const volatile uint8_t*>(target);
-        const uint32_t anm1264_after = *reinterpret_cast<const volatile uint32_t*>(tb + 0x1264);
-        const uint32_t anm1268_after = *reinterpret_cast<const volatile uint32_t*>(tb + 0x1268);
-        const uint32_t e94_after = *reinterpret_cast<const volatile uint32_t*>(tb + 0xE94);
-        const uint32_t e98_after = *reinterpret_cast<const volatile uint32_t*>(tb + 0xE98);
+        const uint32_t state1268_after =
+            *reinterpret_cast<const volatile uint32_t*>(tb + 0x1268);
+        const uint32_t e94_after =
+            *reinterpret_cast<const volatile uint32_t*>(tb + 0xE94);
+        const uint32_t e98_after =
+            *reinterpret_cast<const volatile uint32_t*>(tb + 0xE98);
         Logging.Log(
-            "[NSC:V2G] OP23_DIRECT_ANM actor=%p target=%p action_param=%d text=%s "
-            "pl_anm_index=%u direct_off=0x%lx anm1264_after=%u anm1268=%u->%u "
-            "e94=%u->%u e98_after=%u direct_args_m1_0_rate1=1 "
-            "playaction_wrapper=0 stage2_766cac=0 source_parity_candidate=1",
+            "[NSC:V2H] OP23_SAFE_SUPPRESS actor=%p target=%p action_param=%d text=%s "
+            "pl_anm_index=%u state1268=%u->%u e94=%u->%u e98_after=%u "
+            "call_766320=0 playaction_wrapper=0 v2g_766320_rejected=1 "
+            "setanmdirect_unresolved=1 diagnostic_only=1",
             actor, target, static_cast<int>(param3), text, index,
-            static_cast<unsigned long>(direct_off), anm1264_after,
-            anm1268_before, anm1268_after, e94_before, e94_after, e98_after);
+            anm1268_before, state1268_after, e94_before, e94_after, e98_after);
         return 1;
     }
 
-    // Opcode22 is deliberately unchanged in V2G. It remains a control path
-    // while hardware validates opcode23 direct-animation parity first.
+    // Opcode22 remains unchanged as a control path. V2H only rolls back opcode23.
     using PlayFn = void (*)(void*, int32_t, int32_t, int32_t, int32_t, int32_t, float);
     reinterpret_cast<PlayFn>(base + kPlayActionOffset)(target, static_cast<int32_t>(index),
                                                        -1, 0, 0, 0, 1.0f);
@@ -2315,6 +2369,44 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
 
             case 23: // source me_play_action
                 return HandleActionAnimation(actor, event, p2, p3, true);
+
+            case 26: { // source me_play_voice_string — V2H read-only ABI probe
+                void* target = GetEventTargetActor(actor, p2);
+                char text[31]{};
+                CopyEventText(text, event);
+                const int32_t sfx_index = nsc_sfx_list_generated::FindIndex(text);
+                const uint32_t sound_command =
+                    sfx_index >= 0 ? static_cast<uint32_t>(sfx_index + 0x7000) : 0xFFFFFFFFu;
+                uintptr_t slot1000 = 0, slot1010 = 0, slot1020 = 0, slot1030 = 0;
+                if (target) {
+                    auto** vtable = *reinterpret_cast<void***>(target);
+                    if (vtable) {
+                        slot1000 = reinterpret_cast<uintptr_t>(vtable[0x1000 / sizeof(void*)]);
+                        slot1010 = reinterpret_cast<uintptr_t>(vtable[0x1010 / sizeof(void*)]);
+                        slot1020 = reinterpret_cast<uintptr_t>(vtable[0x1020 / sizeof(void*)]);
+                        slot1030 = reinterpret_cast<uintptr_t>(vtable[0x1030 / sizeof(void*)]);
+                    }
+                }
+                const uintptr_t main_base = exl::util::modules::GetTargetStart();
+                const auto rel = [main_base](uintptr_t p) -> unsigned long {
+                    return (p >= main_base && p < main_base + 0x12F5FD0u)
+                        ? static_cast<unsigned long>(p - main_base)
+                        : static_cast<unsigned long>(~0ul);
+                };
+                uint32_t tside = 0xFFFFFFFFu, tchar = 0xFFFFFFFFu;
+                ReadActorIdentity(target, tside, tchar);
+                Logging.Log(
+                    "[NSC:V2H] OP26_PROBE actor=%p target=%p side=%u char=%u enemy=%d text=%s "
+                    "sfx_index=%d command=%08x slot1000=%p/off=0x%lx slot1010=%p/off=0x%lx "
+                    "slot1020=%p/off=0x%lx slot1030=%p/off=0x%lx playback=0 read_only=1",
+                    actor, target, tside, tchar, static_cast<int>(p2), text,
+                    static_cast<int>(sfx_index), sound_command,
+                    reinterpret_cast<void*>(slot1000), rel(slot1000),
+                    reinterpret_cast<void*>(slot1010), rel(slot1010),
+                    reinterpret_cast<void*>(slot1020), rel(slot1020),
+                    reinterpret_cast<void*>(slot1030), rel(slot1030));
+                return 1;
+            }
 
             default:
                 // Valid MovesetPlus opcode but not yet Switch-proven: shadow/no-op.
@@ -4943,12 +5035,11 @@ HOOK_DEFINE_TRAMPOLINE(ActionModeBaseHook) {
     }
 };
 
-// P57A historical central-setter trace, corrected in V2G. Static and native
-// callsite provenance now identify main+0x766320 as the direct-animation core
-// behind vtable+0xF98. Its ABI is (actor, animation_index, a2, a3, float rate):
-// w1=index, w2=-1, w3=0, s0=1.0f at ordinary native callsites. The old P57
-// callback omitted s0; V2G preserves it explicitly so tracing cannot perturb
-// direct-animation semantics. No argument/actor field is modified.
+// P57A native 0x766320 trace, ABI-corrected in V2G and semantically corrected
+// again in V2H. Hardware proved that a direct opcode23 call with index930 changes
+// actor+0x1268 928->930 and reproduces disappearance, so this function is NOT
+// treated as a safe SetAnmDirect equivalent. Keep the five-argument ABI so the
+// tracer preserves native calls exactly; no argument/actor field is modified.
 HOOK_DEFINE_TRAMPOLINE(CentralActionSetterHook) {
     static void Callback(void* actor, int32_t action, int32_t a2, int32_t a3, float rate) {
         uintptr_t caller_lr = 0;
@@ -4991,7 +5082,7 @@ HOOK_DEFINE_TRAMPOLINE(CentralActionSetterHook) {
         if (log_this) {
             const uint32_t n = g_p57_setter_logs.fetch_add(1, std::memory_order_relaxed);
             if (n < 4096) {
-                Logging.Log("[NSC:P57A] DIRECT_ANM n=%u actor=%p valid=%u side=%u char=%u requested_anm=%d a2=%d a3=%d anm1268=%u->%u e94=%d->%d caller_lr=%p caller_main=%u caller_off=0x%lx call_m8=%08x call_m4=%08x",
+                Logging.Log("[NSC:P57A] CORE1268_CALL n=%u actor=%p valid=%u side=%u char=%u requested=%d a2=%d a3=%d anm1268=%u->%u e94=%d->%d caller_lr=%p caller_main=%u caller_off=0x%lx call_m8=%08x call_m4=%08x",
                             n, actor, valid ? 1u : 0u, side, char_id, action, a2, a3,
                             pre_anm1268, post_anm1268, pre_e94, post_e94,
                             reinterpret_cast<void*>(caller_lr), caller_off >= 0 ? 1u : 0u,
