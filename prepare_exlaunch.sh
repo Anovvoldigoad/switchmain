@@ -22,5 +22,5 @@ s,n4=re.subn(r'(?m)^ELF_EXTRACT\s*:=.*$', 'ELF_EXTRACT := $(PWD)/runtime_v2h.elf
 if (n1,n2,n3,n4)!=(1,1,1,1): raise SystemExit(f'config patch failed {(n1,n2,n3,n4)}')
 p.write_text(s)
 PY
-echo "[+] NSC Runtime V2H safe-op23 stage/audio probe overlay prepared"
+echo "[+] NSC Runtime V2I activation-core stage/audio parity overlay prepared"
 grep -E '^(LOAD_KIND|PROGRAM_ID|CXX_FLAGS|ELF_EXTRACT)[[:space:]]*:=' "$EXL/config.mk"

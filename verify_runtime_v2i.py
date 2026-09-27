@@ -12,7 +12,7 @@ h=(root/'overlay/source/program/nsc_runtime_v2.hpp').read_text()
 bridge=(root/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
 main=(root/'overlay/source/program/main.cpp').read_text()
 prep=(root/'prepare_exlaunch.sh').read_text()
-wf=(root/'.github/workflows/build-runtime-v2h.yml').read_text()
+wf=(root/'.github/workflows/build-runtime-v2i.yml').read_text()
 sfx=(root/'overlay/source/program/nsc_sfx_list_generated.hpp').read_text()
 
 checks={
@@ -30,8 +30,8 @@ checks={
     'HOOK name=CENTRAL_SETTER source=resolver','HOOK name=CPK_BIND source=resolver',
     'HOOK name=CHARACODE_GETTER source=resolver')),
  'v2d_arch_markers': '[NSC:V2D] RESOLVER_READY' in rt and '[NSC:V2D] RUNTIME_PATCH_READY' in rt,
- 'original_main_readme': '2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9' in (root/'README_RUNTIME_V2H.md').read_text(),
- 'workflow_only_v2h': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-V2H-safe-op23-stage-audio-probe' in wf,
+ 'original_main_readme': '2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9' in (root/'README_RUNTIME_V2I.md').read_text(),
+ 'workflow_only_v2i': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-V2I-activation-core-stage-audio-parity' in wf,
  'workflow_original_main': 'original/atmosphere/contents/0100FA10190A0000/exefs/main' in wf,
  'workflow_not_reference_main': 'reference_p128/atmosphere/contents/0100FA10190A0000/exefs/main" "$OUT/atmosphere' not in wf,
  'prepare_copies_sfx_header': 'nsc_sfx_list_generated.hpp' in prep,
@@ -43,18 +43,21 @@ checks={
  'dpad17_no_abs16_cap': 'IsFiniteAbsLe16(charge)' not in bridge and 'fabs' not in bridge[bridge.index('HandleDpadChargeSourceParity'):bridge.index('uint32_t HandleStageMove')],
  'opcode12_unchanged_shadow': 'VIS_SHADOW' in bridge,
  'opcode23_present': 'case 23: // source me_play_action' in bridge,
- 'v2h_op23_safe_marker': '[NSC:V2H] OP23_SAFE_SUPPRESS' in bridge and 'v2g_766320_rejected=1' in bridge,
- 'v2h_op23_no_766320_call': 'call_766320=0' in bridge,
- 'v2h_op23_no_playaction': 'playaction_wrapper=0' in bridge,
- 'v2h_stage_enter': '[NSC:V2H] STAGE2_ENTER' in bridge,
- 'v2h_stage_fail': '[NSC:V2H] STAGE2_FAIL' in bridge,
- 'v2h_stage_done': '[NSC:V2H] STAGE2_DONE' in bridge,
- 'v2h_stage_source_gap_logged': 'pc_fix_enemy_gap=1 pc_poststage_extra=1 diagnostic_only=1' in bridge,
- 'v2h_stage_no_enemy_mutation': 'fix_enemy=0 poststage=1' in bridge,
- 'v2h_op26_case': 'case 26: { // source me_play_voice_string' in bridge,
- 'v2h_op26_probe': '[NSC:V2H] OP26_PROBE' in bridge and 'playback=0 read_only=1' in bridge,
- 'v2h_op26_source_index': 'nsc_sfx_list_generated::FindIndex(text)' in bridge and 'sfx_index + 0x7000' in bridge,
- 'v2h_op26_slots_readonly': all(x in bridge for x in ('slot1000','slot1010','slot1020','slot1030')),
+ 'v2i_op23_safe_marker': '[NSC:V2I] OP23_SAFE_SUPPRESS' in bridge and 'full_animation_suppressed=1' in bridge,
+ 'v2i_op23_no_766320_call': 'call_766320=0' in bridge,
+ 'v2i_op23_no_playaction': 'playaction_wrapper=0' in bridge,
+'v2i_activation_core_ab': '[NSC:V2I] IZANAGI_CORE_AB' in bridge and 'V2IApplyIzanagiActivationCoreAB' in bridge,
+ 'v2i_activation_exact_fixture': 'action_param != 77' in bridge and 'std::strcmp(text, "SPTYPE_ACTION10")' in bridge and 'constexpr const char* kCond = "SW_MTOB_XH";' in bridge,
+ 'v2i_activation_no_global_damage_hack': 'force_no_damage' not in bridge.lower() and 'no_damage = true' not in bridge.lower(),
+ 'v2h_stage_enter_retained': '[NSC:V2H] STAGE2_ENTER' in bridge,
+ 'v2h_stage_fail_retained': '[NSC:V2H] STAGE2_FAIL' in bridge,
+ 'v2i_stage_parity': '[NSC:V2I] STAGE2_PARITY' in bridge and 'fix_actor=1 fix_enemy=%u poststage=0 pc_source_parity=1' in bridge,
+ 'v2i_stage_enemy_fix': 'reinterpret_cast<ActorFn>(base + kFixCharPositionOffset)(enemy);' in bridge,
+ 'v2i_stage_no_poststage_call': 'reinterpret_cast<VoidFn>(base + kPostStageOffset)();' not in bridge[bridge.index('uint32_t HandleStageMove'):bridge.index('uint32_t HandleActionAnimation')],
+ 'v2i_op26_case': 'case 26: { // source me_play_voice_string' in bridge,
+ 'v2i_op26_play': '[NSC:V2I] OP26_PLAY' in bridge and 'native_813d88_contract=1' in bridge,
+ 'v2i_op26_source_index': 'nsc_sfx_list_generated::FindIndex(text)' in bridge and 'sfx_index + 0x7000' in bridge,
+ 'v2i_op26_slot1030': 'vtable[0x1030 / sizeof(void*)]' in bridge and 'reinterpret_cast<SoundFn>(slot1030)(target, sound_command, 0)' in bridge,
  'sfx_count_160': 'kCount = 160' in sfx,
  'sfx_etc_l': '"S_PL_etc_l"' in sfx,
  'sfx_etc_m': '"S_PL_etc_m"' in sfx,
@@ -168,8 +171,10 @@ for off,(before,after) in expected.items():
     if off>=0x77C480 and f'0x{after:08X}u' not in rt:
         print('missing source replacement',hex(off),hex(after));sys.exit(1)
 print('source_contains_uj_runtime_delta PASS')
-# V2H keeps 0x766320 only as a traced native core. Hardware disproved using it
-# as opcode23 SetAnmDirect, so lock the observed write site as rejection evidence.
+# V2I keeps 0x766320 out of the safe opcode23 path. V2G proved that it runs
+# PL_ANM930 and its event stream but also reproduces the visual disappearance;
+# lock the observed 0x1268 animation-state write as evidence, without claiming
+# that the low-level animation primitive itself is semantically disproven.
 def words(off,n):
     return [struct.unpack_from('<I',o,off+4*i)[0] for i in range(n)]
 
@@ -188,13 +193,13 @@ expect_words('static_setaction_immediate_e94_e98',0x7A8464,[
  0x52808D09,0x72A00029,0xB94E940A,0xB90E9401,0xB90E980A])
 
 # Ensure opcode23's action-mode branch contains no 0x766320 resolver call or PlayAction.
-start=bridge.index('if (action_mode) {\n        const auto* tb', bridge.index('// V2H: hardware rollback'))
+start=bridge.index('if (action_mode) {\n        const auto* tb', bridge.index('// V2I: preserve the V2H/V2F-safe opcode23 suppression as the baseline.'))
 end=bridge.index('// Opcode22 remains unchanged as a control path.',start)
 op23=bridge[start:end]
 for forbidden in ('CentralSetter','DirectAnmFn','kPlayActionOffset','reinterpret_cast<PlayFn>'):
     if forbidden in op23:
-        print('v2h_opcode23_safe_branch FAIL forbidden='+forbidden);sys.exit(1)
-print('v2h_opcode23_safe_branch PASS')
+        print('v2i_opcode23_safe_branch FAIL forbidden='+forbidden);sys.exit(1)
+print('v2i_opcode23_safe_branch PASS')
 
 # Source SFX index sanity against the exact three generic UJ cues seen in log29.
 def parse_sfx_names(text):
@@ -209,4 +214,15 @@ for name,idx in expected_idx.items():
     print('sfx_index_'+name,'PASS' if ok else 'FAIL','index='+str(got))
     if not ok:sys.exit(1)
 
-print('NSC_RUNTIME_V2H_SOURCE_VERIFY=PASS')
+# Native Switch generic sound contract used by V2I opcode26.
+expect_words('static_switch_sound_event_813d88',0x813D88,[
+ 0xF81F0FFE,0x79C04828,0x11401D01,0xF9400008,0xF9481908,
+ 0x2A1F03E2,0xD63F0100,0x52800020,0xF84107FE,0xD65F03C0])
+
+# Ensure the stage handler's mutation section does not call the old extra PostStage.
+stage_src=bridge[bridge.index('uint32_t HandleStageMove'):bridge.index('uint32_t HandleActionAnimation')]
+if 'reinterpret_cast<VoidFn>(base + kPostStageOffset)();' in stage_src:
+    print('stage_poststage_removed FAIL');sys.exit(1)
+print('stage_poststage_removed PASS')
+
+print('NSC_RUNTIME_V2I_SOURCE_VERIFY=PASS')

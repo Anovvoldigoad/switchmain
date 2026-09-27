@@ -12,6 +12,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 namespace nsc {
 namespace {
@@ -36,10 +37,12 @@ constexpr ptrdiff_t kNormalOugiOffset         = 0x6F44A0;  // NORMAL_OUGI combat
 constexpr ptrdiff_t kSpecialOugiFinishOffset  = 0x6F4880;  // SPECIAL_OUGI_FINISH combat action handler (end classifier)
 // P50A: keep only the proven PRE/POST PlayAction probe for UJ progression
 constexpr ptrdiff_t kPlayActionProbeOffset    = 0x766B8C;  // PlayAction → int32_t ret
-// P57A/V2H: native action/animation state core behind actor vtable+0xF98.
-// V2G hardware falsified the earlier "safe SetAnmDirect" interpretation:
-// a direct call with 930 changes the actor's current 0x1268 state 928->930 and
-// reproduces disappearance. Keep this anchor for tracing/native UJ only.
+// P57A/V2I: native animation/state core behind actor vtable+0xF98.
+// V2G proved that driving PL_ANM930 through this entry executes the expected
+// downstream event stream (SW_MTOB_XH + op17 Right=100), but the actor becomes
+// visually absent on Switch. Therefore this entry is useful evidence but is
+// still not safe as the final opcode23 implementation until that visual/lifecycle
+// divergence is isolated.
 constexpr ptrdiff_t kCentralActionSetterOffset = 0x766320;
 // P59A: virtual action-mode dispatch family. 0x7B4680 is the canonical
 // thunk that loads actor->vtable+0xE40 and BRs to the class implementation.
@@ -1540,28 +1543,80 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
 
     using HandleFn = void (*)(uint32_t);
     using ActorFn = void (*)(void*);
-    using VoidFn = void (*)();
     reinterpret_cast<HandleFn>(base + kHandleStageChangeOffset)(stage_id_post_handler);
-    reinterpret_cast<ActorFn>(base + kFixCharPositionOffset)(actor);
 
-    // Keep the pre-existing Switch port behavior unchanged in this diagnostic.
-    // PC v1.70 source fixes BOTH player and enemy and does not contain this
-    // PostStage call. V2H only records that gap; no stage mutation experiment yet.
+    // V2I source-parity correction from UltimateStormAPI PC v1.70
+    // me_test_switch_stage(): after HandleStageChange, fix BOTH participants.
+    // The previous Switch port also called kPostStageOffset, but the PC source
+    // has no corresponding call, so V2I deliberately removes that extra step.
     void* enemy = GetEventTargetActor(actor, 1);
-    reinterpret_cast<VoidFn>(base + kPostStageOffset)();
+    reinterpret_cast<ActorFn>(base + kFixCharPositionOffset)(actor);
+    if (enemy) {
+        reinterpret_cast<ActorFn>(base + kFixCharPositionOffset)(enemy);
+    }
 
     void* state_global_final = nullptr;
     void* state_final = nullptr;
     const uint32_t stage_id_final = read_stage_id(&state_global_final, &state_final);
     Logging.Log(
-        "[NSC:V2H] STAGE2_DONE actor=%p side=%u char=%u text=%s crc=%08x mode=%s "
+        "[NSC:V2I] STAGE2_PARITY actor=%p side=%u char=%u text=%s crc=%08x mode=%s "
         "manager=%p object=%p context=%p stage_id=%u->%u->%u enemy=%p "
-        "handle_called=1 fix_actor=1 fix_enemy=0 poststage=1 "
-        "pc_fix_enemy_gap=1 pc_poststage_extra=1 diagnostic_only=1",
+        "handle_called=1 fix_actor=1 fix_enemy=%u poststage=0 pc_source_parity=1",
         actor, side, char_id, text, stage_crc, param2 == 0 ? "specific" : "default",
         manager, object, stage_context, stage_id_pre, stage_id_post_handler,
-        stage_id_final, enemy);
+        stage_id_final, enemy, enemy ? 1u : 0u);
     return 1;
+}
+
+// V2I controlled A/B for the Izanagi activation tail.  Hardware V2H proves
+// that suppressing PL_ANM930 keeps the actor visible but also prevents the
+// source frame-13 activation events from running.  The decoded source PL_ANM
+// SPTYPE_ACTION10 contains, at the same frame:
+//   Event121 SW_MTOB_XH (self), then Event236 op17 Right=100.0f.
+// This helper replays ONLY those two already-source-proven semantic events so
+// we can determine whether they are sufficient for long-lived protection while
+// keeping the problematic animation path suppressed.  It is diagnostic-only
+// and must not become the final generic opcode23 implementation.
+bool V2IApplyIzanagiActivationCoreAB(void* actor, const char* text, int16_t action_param) {
+    if (!actor || !text) return false;
+    if (action_param != 77 || std::strcmp(text, "SPTYPE_ACTION10") != 0) return false;
+
+    const uintptr_t base = exl::util::modules::GetTargetStart();
+    using OwnerFn = void* (*)(void*);
+    using ResolveFn = uint32_t (*)(const char*);
+    using ApplyFn = uint32_t (*)(void*, uint32_t, int32_t, float);
+    auto owner_fn = reinterpret_cast<OwnerFn>(base + kConditionOwnerOffset);
+    auto resolve_fn = reinterpret_cast<ResolveFn>(base + kConditionResolveOffset);
+    auto apply_fn = reinterpret_cast<ApplyFn>(base + kConditionApplyOffset);
+
+    constexpr const char* kCond = "SW_MTOB_XH";
+    const uint32_t resolved = resolve_fn(kCond);
+    void* owner = owner_fn(actor);
+    uint32_t apply_ret = 0;
+    bool cond_applied = false;
+    if (owner && resolved > 0 &&
+        resolved < condition_compat_generated::kTotalConditionCount) {
+        owner = owner_fn(actor);
+        if (owner) {
+            apply_ret = apply_fn(owner, resolved, -1, 0.0f);
+            cond_applied = true;
+        }
+    }
+
+    // Exact source Event236 op17 payload: enemy=0, arrow=4 (Right), 100.0f.
+    HandleDpadChargeSourceParity(actor, 0, 4, 100.0f);
+
+    auto* charge = reinterpret_cast<volatile float*>(
+        reinterpret_cast<uint8_t*>(actor) + kDpadChargeBaseOffset);
+    uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+    ReadActorIdentity(actor, side, char_id);
+    Logging.Log(
+        "[NSC:V2I] IZANAGI_CORE_AB actor=%p side=%u char=%u text=%s action_param=%d "
+        "cond=%s resolved=%u owner=%p cond_applied=%u apply_ret=%u right_bits=%08x "
+        "animation930_suppressed=1 source_frame13_only=1 diagnostic_only=1",
+        actor, side, char_id, text, static_cast<int>(action_param), kCond, resolved,
+        owner, cond_applied ? 1u : 0u, apply_ret, FloatBits(charge[3]));
+    return true;
 }
 
 uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2,
@@ -1613,7 +1668,7 @@ uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2
     Logging.Log("[NSC:P50A] ACTION actor=%p target=%p mode=%u text=%s found=1 index=%u",
                 actor, target, action_mode ? 1u : 0u, text, index);
 
-    // V2H: hardware rollback to the V2F-safe opcode23 A/B behavior.
+    // V2I: preserve the V2H/V2F-safe opcode23 suppression as the baseline.
     // V2G proved that calling main+0x766320 with PL_ANM index930 is NOT a
     // harmless SetAnmDirect equivalent: it changes current state 928->930 and
     // reproduces disappearance. Preserve SetActionImmediate(param3) and name
@@ -1628,12 +1683,12 @@ uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2
         const uint32_t e98_after =
             *reinterpret_cast<const volatile uint32_t*>(tb + 0xE98);
         Logging.Log(
-            "[NSC:V2H] OP23_SAFE_SUPPRESS actor=%p target=%p action_param=%d text=%s "
+            "[NSC:V2I] OP23_SAFE_SUPPRESS actor=%p target=%p action_param=%d text=%s "
             "pl_anm_index=%u state1268=%u->%u e94=%u->%u e98_after=%u "
-            "call_766320=0 playaction_wrapper=0 v2g_766320_rejected=1 "
-            "setanmdirect_unresolved=1 diagnostic_only=1",
+            "call_766320=0 playaction_wrapper=0 full_animation_suppressed=1 diagnostic_only=1",
             actor, target, static_cast<int>(param3), text, index,
             anm1268_before, state1268_after, e94_before, e94_after, e98_after);
+        V2IApplyIzanagiActivationCoreAB(target, text, param3);
         return 1;
     }
 
@@ -2370,24 +2425,33 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
             case 23: // source me_play_action
                 return HandleActionAnimation(actor, event, p2, p3, true);
 
-            case 26: { // source me_play_voice_string — V2H read-only ABI probe
+            case 26: { // source me_play_voice_string — V2I native Switch playback parity
                 void* target = GetEventTargetActor(actor, p2);
                 char text[31]{};
                 CopyEventText(text, event);
                 const int32_t sfx_index = nsc_sfx_list_generated::FindIndex(text);
                 const uint32_t sound_command =
                     sfx_index >= 0 ? static_cast<uint32_t>(sfx_index + 0x7000) : 0xFFFFFFFFu;
-                uintptr_t slot1000 = 0, slot1010 = 0, slot1020 = 0, slot1030 = 0;
-                if (target) {
+
+                uintptr_t slot1030 = 0;
+                uint32_t playback_ret = 0;
+                bool playback_called = false;
+                const uintptr_t main_base = exl::util::modules::GetTargetStart();
+                if (target && sfx_index >= 0) {
                     auto** vtable = *reinterpret_cast<void***>(target);
                     if (vtable) {
-                        slot1000 = reinterpret_cast<uintptr_t>(vtable[0x1000 / sizeof(void*)]);
-                        slot1010 = reinterpret_cast<uintptr_t>(vtable[0x1010 / sizeof(void*)]);
-                        slot1020 = reinterpret_cast<uintptr_t>(vtable[0x1020 / sizeof(void*)]);
                         slot1030 = reinterpret_cast<uintptr_t>(vtable[0x1030 / sizeof(void*)]);
+                        // Switch v1.70 native event callbacks around main+0x813D88
+                        // call actor vtable+0x1030 exactly as (actor, sound+0x7000, 0).
+                        // Fail closed if the slot is not inside the target main image.
+                        if (slot1030 >= main_base && slot1030 < main_base + 0x12F5FD0u) {
+                            using SoundFn = uint32_t (*)(void*, uint32_t, uint32_t);
+                            playback_ret = reinterpret_cast<SoundFn>(slot1030)(target, sound_command, 0);
+                            playback_called = true;
+                        }
                     }
                 }
-                const uintptr_t main_base = exl::util::modules::GetTargetStart();
+
                 const auto rel = [main_base](uintptr_t p) -> unsigned long {
                     return (p >= main_base && p < main_base + 0x12F5FD0u)
                         ? static_cast<unsigned long>(p - main_base)
@@ -2396,15 +2460,13 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 uint32_t tside = 0xFFFFFFFFu, tchar = 0xFFFFFFFFu;
                 ReadActorIdentity(target, tside, tchar);
                 Logging.Log(
-                    "[NSC:V2H] OP26_PROBE actor=%p target=%p side=%u char=%u enemy=%d text=%s "
-                    "sfx_index=%d command=%08x slot1000=%p/off=0x%lx slot1010=%p/off=0x%lx "
-                    "slot1020=%p/off=0x%lx slot1030=%p/off=0x%lx playback=0 read_only=1",
+                    "[NSC:V2I] OP26_PLAY actor=%p target=%p side=%u char=%u enemy=%d text=%s "
+                    "sfx_index=%d command=%08x slot1030=%p/off=0x%lx called=%u ret=%u "
+                    "native_813d88_contract=1",
                     actor, target, tside, tchar, static_cast<int>(p2), text,
                     static_cast<int>(sfx_index), sound_command,
-                    reinterpret_cast<void*>(slot1000), rel(slot1000),
-                    reinterpret_cast<void*>(slot1010), rel(slot1010),
-                    reinterpret_cast<void*>(slot1020), rel(slot1020),
-                    reinterpret_cast<void*>(slot1030), rel(slot1030));
+                    reinterpret_cast<void*>(slot1030), rel(slot1030),
+                    playback_called ? 1u : 0u, playback_ret);
                 return 1;
             }
 

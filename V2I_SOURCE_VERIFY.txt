@@ -10,7 +10,7 @@ uj_post_dynamic PASS
 six_core_dynamic PASS
 v2d_arch_markers PASS
 original_main_readme PASS
-workflow_only_v2h PASS
+workflow_only_v2i PASS
 workflow_original_main PASS
 workflow_not_reference_main PASS
 prepare_copies_sfx_header PASS
@@ -22,18 +22,21 @@ dpad17_arrow4 PASS
 dpad17_no_abs16_cap PASS
 opcode12_unchanged_shadow PASS
 opcode23_present PASS
-v2h_op23_safe_marker PASS
-v2h_op23_no_766320_call PASS
-v2h_op23_no_playaction PASS
-v2h_stage_enter PASS
-v2h_stage_fail PASS
-v2h_stage_done PASS
-v2h_stage_source_gap_logged PASS
-v2h_stage_no_enemy_mutation PASS
-v2h_op26_case PASS
-v2h_op26_probe PASS
-v2h_op26_source_index PASS
-v2h_op26_slots_readonly PASS
+v2i_op23_safe_marker PASS
+v2i_op23_no_766320_call PASS
+v2i_op23_no_playaction PASS
+v2i_activation_core_ab PASS
+v2i_activation_exact_fixture PASS
+v2i_activation_no_global_damage_hack PASS
+v2h_stage_enter_retained PASS
+v2h_stage_fail_retained PASS
+v2i_stage_parity PASS
+v2i_stage_enemy_fix PASS
+v2i_stage_no_poststage_call PASS
+v2i_op26_case PASS
+v2i_op26_play PASS
+v2i_op26_source_index PASS
+v2i_op26_slot1030 PASS
 sfx_count_160 PASS
 sfx_etc_l PASS
 sfx_etc_m PASS
@@ -56,8 +59,10 @@ offline_original_STATE137_CONTROLLER PASS hits=0x7e6ea8
 source_contains_uj_runtime_delta PASS
 static_766320_state_writes_rejection_evidence PASS off=0x766a50
 static_setaction_immediate_e94_e98 PASS off=0x7a8464
-v2h_opcode23_safe_branch PASS
+v2i_opcode23_safe_branch PASS
 sfx_index_S_PL_etc_l PASS index=21
 sfx_index_S_PL_etc_m PASS index=22
 sfx_index_S_PL_DMG_cmn_vS_rv PASS index=153
-NSC_RUNTIME_V2H_SOURCE_VERIFY=PASS
+static_switch_sound_event_813d88 PASS off=0x813d88
+stage_poststage_removed PASS
+NSC_RUNTIME_V2I_SOURCE_VERIFY=PASS
