@@ -35,9 +35,9 @@ constexpr ptrdiff_t kNormalOugiOffset         = 0x6F44A0;  // NORMAL_OUGI combat
 constexpr ptrdiff_t kSpecialOugiFinishOffset  = 0x6F4880;  // SPECIAL_OUGI_FINISH combat action handler (end classifier)
 // P50A: keep only the proven PRE/POST PlayAction probe for UJ progression
 constexpr ptrdiff_t kPlayActionProbeOffset    = 0x766B8C;  // PlayAction → int32_t ret
-// P57A: central actor action setter behind vtable+0xF98. Runtime P56B
-// proved vanilla UJ PlayAction(700..740) reaches main+0x766320. The PlayAction
-// wrapper calls this as (actor, action, a2, a3) and ignores its return value.
+// P57A/V2G: direct-animation core behind actor vtable+0xF98. Static native
+// callsites prove main+0x766320 is called as (actor, PL_ANM, -1, 0, rate s0).
+// It writes the active animation index to actor+0x1268.
 constexpr ptrdiff_t kCentralActionSetterOffset = 0x766320;
 // P59A: virtual action-mode dispatch family. 0x7B4680 is the canonical
 // thunk that loads actor->vtable+0xE40 and BRs to the class implementation.
@@ -1502,7 +1502,16 @@ uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2
     if (param2 == 1) target = GetEventTargetActor(actor, 1);
     if (!target || event[0] == 0) return 1;
 
+    // Opcode23 source parity is two distinct operations: request the action
+    // state first, then play the resolved PL_ANM directly. Keep a before-state
+    // snapshot so hardware can prove that these two mechanisms stay separate.
+    uint32_t e94_before = 0xFFFFFFFFu;
+    uint32_t anm1268_before = 0xFFFFFFFFu;
     if (action_mode) {
+        const auto* tb = reinterpret_cast<const volatile uint8_t*>(target);
+        e94_before = *reinterpret_cast<const volatile uint32_t*>(tb + 0xE94);
+        anm1268_before = *reinterpret_cast<const volatile uint32_t*>(tb + 0x1268);
+
         using PreFn = void (*)(void*, int32_t);
         reinterpret_cast<PreFn>(base + kActionPreOffset)(target, param3);
     }
@@ -1535,34 +1544,46 @@ uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2
     Logging.Log("[NSC:P50A] ACTION actor=%p target=%p mode=%u text=%s found=1 index=%u",
                 actor, target, action_mode ? 1u : 0u, text, index);
 
-    // V2F diagnostic A/B for opcode23 only. The exact PC source contract is:
-    //   SetActionImmediate(target, param3);
-    //   SetAnmDirect(target, resolved_pl_anm_index);
-    // V2E incorrectly fed the resolved PL_ANM index back into PlayAction, turning
-    // SPTYPE_ACTION10's animation index (930 in the Tobi fixture) into a full
-    // action-state transition. Hardware proves the resulting hybrid state is
-    // current action 930 while the immediate-action field remains 77.
-    //
-    // We do NOT guess a Switch SetAnmDirect address here. For one hardware A/B,
-    // preserve SetActionImmediate above and suppress only the un-source-parity
-    // PlayAction(index) call. This intentionally means the direct animation is
-    // absent in V2F; the sole question is whether disappearance is caused by the
-    // wrong action930 transition. No char-specific branch is used.
+    // V2G: exact opcode23 operation split, based on both PC source and Switch
+    // v1.70 native callsites. Resolver anchor CENTRAL_SETTER is main+0x766320
+    // on the locked build. Native callsites invoke it as:
+    //   x0=actor, w1=PL_ANM index, w2=-1, w3=0, s0=1.0f
+    // and it writes the active animation index at actor+0x1268. 0x766B8C is a
+    // stronger PlayAction wrapper: it first dispatches vtable+0xF98 (766320),
+    // then enters additional stage2 logic at 0x766CAC. That extra stage is what
+    // V2F proved must not be substituted for SetAnmDirect.
     if (action_mode) {
+        std::ptrdiff_t direct_off = -1;
+        if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::CentralSetter, direct_off)) {
+            Logging.Log(
+                "[NSC:V2G] OP23_DIRECT_ANM_FAIL actor=%p target=%p action_param=%d text=%s "
+                "pl_anm_index=%u reason=central_setter_resolver_unavailable fail_closed=1",
+                actor, target, static_cast<int>(param3), text, index);
+            return 1;
+        }
+
+        using DirectAnmFn = void (*)(void*, int32_t, int32_t, int32_t, float);
+        reinterpret_cast<DirectAnmFn>(base + direct_off)(
+            target, static_cast<int32_t>(index), -1, 0, 1.0f);
+
         const auto* tb = reinterpret_cast<const volatile uint8_t*>(target);
-        const uint32_t current_action = *reinterpret_cast<const volatile uint32_t*>(tb + 4712);
-        const uint32_t e94 = *reinterpret_cast<const volatile uint32_t*>(tb + 0xE94);
-        const uint32_t e98 = *reinterpret_cast<const volatile uint32_t*>(tb + 0xE98);
+        const uint32_t anm1264_after = *reinterpret_cast<const volatile uint32_t*>(tb + 0x1264);
+        const uint32_t anm1268_after = *reinterpret_cast<const volatile uint32_t*>(tb + 0x1268);
+        const uint32_t e94_after = *reinterpret_cast<const volatile uint32_t*>(tb + 0xE94);
+        const uint32_t e98_after = *reinterpret_cast<const volatile uint32_t*>(tb + 0xE98);
         Logging.Log(
-            "[NSC:V2F] OP23_NO_PLAYACTION_AB actor=%p target=%p action_param=%d text=%s "
-            "pl_anm_index=%u current_action=%u e94=%u e98=%u playaction_suppressed=1 "
-            "setanmdirect_unresolved=1 diagnostic_only=1",
+            "[NSC:V2G] OP23_DIRECT_ANM actor=%p target=%p action_param=%d text=%s "
+            "pl_anm_index=%u direct_off=0x%lx anm1264_after=%u anm1268=%u->%u "
+            "e94=%u->%u e98_after=%u direct_args_m1_0_rate1=1 "
+            "playaction_wrapper=0 stage2_766cac=0 source_parity_candidate=1",
             actor, target, static_cast<int>(param3), text, index,
-            current_action, e94, e98);
+            static_cast<unsigned long>(direct_off), anm1264_after,
+            anm1268_before, anm1268_after, e94_before, e94_after, e98_after);
         return 1;
     }
 
-    // Opcode22 remains unchanged in this A/B so only opcode23 differs from V2E.
+    // Opcode22 is deliberately unchanged in V2G. It remains a control path
+    // while hardware validates opcode23 direct-animation parity first.
     using PlayFn = void (*)(void*, int32_t, int32_t, int32_t, int32_t, int32_t, float);
     reinterpret_cast<PlayFn>(base + kPlayActionOffset)(target, static_cast<int32_t>(index),
                                                        -1, 0, 0, 0, 1.0f);
@@ -4922,14 +4943,14 @@ HOOK_DEFINE_TRAMPOLINE(ActionModeBaseHook) {
     }
 };
 
-// P57A central action-setter provenance cross-check. Runtime provenance:
-// actor vtable+0xF98 -> main+0x766320 for vanilla UJ action700..740. Static
-// ABI provenance saves w3/w2/x0/w1 as (actor, action, a2, a3). The PlayAction
-// wrapper does not consume a return value from this call, so Callback is void.
-// We log every valid generic custom actor request and vanilla UJ requests.
-// No action/argument/actor field is modified.
+// P57A historical central-setter trace, corrected in V2G. Static and native
+// callsite provenance now identify main+0x766320 as the direct-animation core
+// behind vtable+0xF98. Its ABI is (actor, animation_index, a2, a3, float rate):
+// w1=index, w2=-1, w3=0, s0=1.0f at ordinary native callsites. The old P57
+// callback omitted s0; V2G preserves it explicitly so tracing cannot perturb
+// direct-animation semantics. No argument/actor field is modified.
 HOOK_DEFINE_TRAMPOLINE(CentralActionSetterHook) {
-    static void Callback(void* actor, int32_t action, int32_t a2, int32_t a3) {
+    static void Callback(void* actor, int32_t action, int32_t a2, int32_t a3, float rate) {
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
 
@@ -4939,11 +4960,11 @@ HOOK_DEFINE_TRAMPOLINE(CentralActionSetterHook) {
         const bool vanilla_uj = valid && char_id <= kVanillaMaxCharId && action >= 700 && action <= 740;
         const bool log_this = custom || vanilla_uj;
 
-        uint32_t pre_action = 0xFFFFFFFFu;
+        uint32_t pre_anm1268 = 0xFFFFFFFFu;
         int32_t pre_e94 = 0x7FFFFFFF;
         if (actor) {
             const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
-            pre_action = *reinterpret_cast<const volatile uint32_t*>(b + 4712);
+            pre_anm1268 = *reinterpret_cast<const volatile uint32_t*>(b + 0x1268);
             pre_e94 = *reinterpret_cast<const volatile int32_t*>(b + 0xE94);
         }
 
@@ -4956,23 +4977,23 @@ HOOK_DEFINE_TRAMPOLINE(CentralActionSetterHook) {
         }
 
         P93TraceCore("CENTRAL_SETTER", actor, caller_off, action, 0);
-        Orig(actor, action, a2, a3);
+        Orig(actor, action, a2, a3, rate);
         P93TraceCore("CENTRAL_SETTER", actor, caller_off, action, 1);
 
-        uint32_t post_action = 0xFFFFFFFFu;
+        uint32_t post_anm1268 = 0xFFFFFFFFu;
         int32_t post_e94 = 0x7FFFFFFF;
         if (actor) {
             const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
-            post_action = *reinterpret_cast<const volatile uint32_t*>(b + 4712);
+            post_anm1268 = *reinterpret_cast<const volatile uint32_t*>(b + 0x1268);
             post_e94 = *reinterpret_cast<const volatile int32_t*>(b + 0xE94);
         }
 
         if (log_this) {
             const uint32_t n = g_p57_setter_logs.fetch_add(1, std::memory_order_relaxed);
             if (n < 4096) {
-                Logging.Log("[NSC:P57A] SETTER n=%u actor=%p valid=%u side=%u char=%u requested=%d a2=%d a3=%d pre=%u post=%u e94=%d->%d caller_lr=%p caller_main=%u caller_off=0x%lx call_m8=%08x call_m4=%08x",
+                Logging.Log("[NSC:P57A] DIRECT_ANM n=%u actor=%p valid=%u side=%u char=%u requested_anm=%d a2=%d a3=%d anm1268=%u->%u e94=%d->%d caller_lr=%p caller_main=%u caller_off=0x%lx call_m8=%08x call_m4=%08x",
                             n, actor, valid ? 1u : 0u, side, char_id, action, a2, a3,
-                            pre_action, post_action, pre_e94, post_e94,
+                            pre_anm1268, post_anm1268, pre_e94, post_e94,
                             reinterpret_cast<void*>(caller_lr), caller_off >= 0 ? 1u : 0u,
                             static_cast<unsigned long>(caller_off), call_m8, call_m4);
             }
@@ -5389,8 +5410,9 @@ bool InstallPlayActionProbe() {
 }
 
 bool InstallP57CentralSetterTrace() {
-    // Fingerprint the resolved entry. These words also prove the 4-argument
-    // ABI used by the callback: prologue then w3/w2/x0/w1 saves.
+    // Fingerprint the resolved direct-animation entry. Besides the integer
+    // argument saves, word 9 (MOV V8.16B,V0.16B) proves the incoming FP rate in
+    // s0 is live and must be preserved by the trampoline callback.
     static constexpr uint32_t kSetterExpected[] = {
         0xD10303FF, 0x6D0523E9, 0xA9067BFD, 0xA9076FFC,
         0xA90867FA, 0xA9095FF8, 0xA90A57F6, 0xA90B4FF4,

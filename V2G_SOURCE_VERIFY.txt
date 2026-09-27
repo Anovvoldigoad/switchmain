@@ -10,7 +10,7 @@ uj_post_dynamic PASS
 six_core_dynamic PASS
 v2d_arch_markers PASS
 original_main_readme PASS
-workflow_only_v2f PASS
+workflow_only_v2g PASS
 workflow_original_main PASS
 workflow_not_reference_main PASS
 logger_include_order PASS
@@ -24,10 +24,15 @@ dpad17_case_live PASS
 dpad17_shadow_removed PASS
 opcode12_unchanged_shadow PASS
 opcode23_still_present PASS
-v2f_op23_ab_marker PASS
-v2f_op23_suppresses_wrong_playaction PASS
-v2f_opcode22_control_unchanged PASS
-v2f_no_guessed_setanmdirect_offset PASS
+v2g_op23_direct_marker PASS
+v2g_resolved_direct_target PASS
+v2g_direct_native_abi PASS
+v2g_no_op23_playaction_wrapper PASS
+v2g_opcode22_control_unchanged PASS
+v2g_p57_float_abi PASS
+v2g_p57_comment_corrected PASS
+v2g_old_ab_marker_removed PASS
+v2g_no_guessed_setanmdirect_offset PASS
 original_main_sha256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
 reference_p128_main_sha256 904a0405d04360ff3969909cdd7197c9e8c2aba2467151a7eaad4c821fcebbff
 text_diff_words 30
@@ -40,4 +45,11 @@ offline_original_CENTRAL_SETTER PASS hits=0x766320
 offline_original_UJ_SESSION_OUTER PASS hits=0x7ef098
 offline_original_STATE137_CONTROLLER PASS hits=0x7e6ea8
 source_contains_uj_runtime_delta PASS
-NSC_RUNTIME_V2F_SOURCE_VERIFY=PASS
+static_direct_anm_entry PASS off=0x766320
+static_direct_anm_state_writes PASS off=0x766a50
+static_playaction_wrapper_split PASS off=0x766bc4
+static_native_direct_call_936 PASS off=0x79a98
+static_native_direct_call_934 PASS off=0x7b638
+static_setaction_immediate_e94_e98 PASS off=0x7a8464
+opcode23_direct_branch_no_wrapper PASS
+NSC_RUNTIME_V2G_SOURCE_VERIFY=PASS

@@ -12,7 +12,7 @@ h=(root/'overlay/source/program/nsc_runtime_v2.hpp').read_text()
 bridge=(root/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
 main=(root/'overlay/source/program/main.cpp').read_text()
 prep=(root/'prepare_exlaunch.sh').read_text()
-wf=(root/'.github/workflows/build-runtime-v2f.yml').read_text()
+wf=(root/'.github/workflows/build-runtime-v2g.yml').read_text()
 
 checks={
  'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();'),
@@ -29,8 +29,8 @@ checks={
     'HOOK name=CENTRAL_SETTER source=resolver','HOOK name=CPK_BIND source=resolver',
     'HOOK name=CHARACODE_GETTER source=resolver')),
  'v2d_arch_markers': '[NSC:V2D] RESOLVER_READY' in rt and '[NSC:V2D] RUNTIME_PATCH_READY' in rt,
- 'original_main_readme': '2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9' in (root/'README_RUNTIME_V2F.md').read_text(),
- 'workflow_only_v2f': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-V2F-op23-no-playaction-ab' in wf,
+ 'original_main_readme': '2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9' in (root/'README_RUNTIME_V2G.md').read_text(),
+ 'workflow_only_v2g': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-V2G-op23-direct-anm' in wf,
  'workflow_original_main': 'original/atmosphere/contents/0100FA10190A0000/exefs/main' in wf,
  'workflow_not_reference_main': 'reference_p128/atmosphere/contents/0100FA10190A0000/exefs/main" "$OUT/atmosphere' not in wf,
  'logger_include_order': rt.index('#include "lib.hpp"') < rt.index('#include <program/loggers.hpp>'),
@@ -44,10 +44,15 @@ checks={
  'dpad17_shadow_removed': 'OP17_SHADOW' not in bridge and 'op17_source_parity=1' in bridge,
  'opcode12_unchanged_shadow': 'VIS_SHADOW' in bridge,
  'opcode23_still_present': 'case 23: // source me_play_action' in bridge,
- 'v2f_op23_ab_marker': '[NSC:V2F] OP23_NO_PLAYACTION_AB' in bridge,
- 'v2f_op23_suppresses_wrong_playaction': 'playaction_suppressed=1' in bridge and 'setanmdirect_unresolved=1' in bridge,
- 'v2f_opcode22_control_unchanged': 'Opcode22 remains unchanged in this A/B' in bridge,
- 'v2f_no_guessed_setanmdirect_offset': 'kSetAnmDirectOffset' not in bridge,
+ 'v2g_op23_direct_marker': '[NSC:V2G] OP23_DIRECT_ANM' in bridge and 'source_parity_candidate=1' in bridge,
+ 'v2g_resolved_direct_target': 'GetResolvedOffset(nsc::v2::Anchor::CentralSetter, direct_off)' in bridge,
+ 'v2g_direct_native_abi': 'using DirectAnmFn = void (*)(void*, int32_t, int32_t, int32_t, float);' in bridge and 'target, static_cast<int32_t>(index), -1, 0, 1.0f);' in bridge,
+ 'v2g_no_op23_playaction_wrapper': 'playaction_wrapper=0 stage2_766cac=0' in bridge,
+ 'v2g_opcode22_control_unchanged': 'Opcode22 is deliberately unchanged in V2G' in bridge,
+ 'v2g_p57_float_abi': 'int32_t a3, float rate)' in bridge and 'Orig(actor, action, a2, a3, rate);' in bridge,
+ 'v2g_p57_comment_corrected': 'direct-animation core' in bridge and 'actor+0x1268' in bridge,
+ 'v2g_old_ab_marker_removed': '[NSC:V2F] OP23_NO_PLAYACTION_AB' not in bridge,
+ 'v2g_no_guessed_setanmdirect_offset': 'kSetAnmDirectOffset' not in bridge,
 }
 for k,v in checks.items(): print(k,'PASS' if v else 'FAIL')
 if not all(checks.values()): sys.exit(1)
@@ -117,8 +122,25 @@ def parse_arr(name):
     return [int(x,16) for x in re.findall(r'0x[0-9A-Fa-f]+',m.group(1))]
 def scan(text,vals,masks):
     out=[]
-    for off in range(0,len(text)-4*len(vals)+1,4):
-        if all((struct.unpack_from('<I',text,off+4*i)[0]&m)==(v&m) for i,(v,m) in enumerate(zip(vals,masks))): out.append(off)
+    limit=len(text)-4*len(vals)+1
+    # Almost every resolver pattern begins with a fully fixed AArch64 word.
+    # Use that as an indexed byte needle instead of rescanning ~5M words per
+    # pattern; fall back to aligned scanning only for masked first words.
+    if masks[0] == 0xFFFFFFFF:
+        needle=struct.pack('<I',vals[0])
+        pos=text.find(needle)
+        while pos != -1:
+            if pos % 4 == 0 and pos < limit:
+                if all((struct.unpack_from('<I',text,pos+4*i)[0]&m)==(v&m) for i,(v,m) in enumerate(zip(vals,masks))):
+                    out.append(pos)
+            pos=text.find(needle,pos+1)
+        return out
+    for off in range(0,limit,4):
+        w=struct.unpack_from('<I',text,off)[0]
+        if (w&masks[0]) != (vals[0]&masks[0]):
+            continue
+        if all((struct.unpack_from('<I',text,off+4*i)[0]&m)==(v&m) for i,(v,m) in enumerate(zip(vals,masks))):
+            out.append(off)
     return out
 specs=[
  ('CHARACODE_GETTER','kCharVal','kCharMask',0x3F4150),('CPK_BIND','kCpkVal','kCpkMask',0x473190),
@@ -135,4 +157,48 @@ for off,(before,after) in expected.items():
     if off>=0x77C480 and f'0x{after:08X}u' not in rt:
         print('missing source replacement',hex(off),hex(after));sys.exit(1)
 print('source_contains_uj_runtime_delta PASS')
-print('NSC_RUNTIME_V2F_SOURCE_VERIFY=PASS')
+# Locked-build static proof for the direct-animation target used by V2G.
+def words(off,n):
+    return [struct.unpack_from('<I',o,off+4*i)[0] for i in range(n)]
+
+def expect_words(name,off,expected_words):
+    got=words(off,len(expected_words)); ok=got==expected_words
+    print(name,'PASS' if ok else 'FAIL','off='+hex(off))
+    if not ok:
+        print(' got     ',[f'{x:08X}' for x in got])
+        print(' expected',[f'{x:08X}' for x in expected_words])
+        sys.exit(1)
+
+# Entry captures v0/s0 and the integer arguments; w1 becomes preserved w21.
+expect_words('static_direct_anm_entry',0x766320,[
+ 0xD10303FF,0x6D0523E9,0xA9067BFD,0xA9076FFC,0xA90867FA,0xA9095FF8,
+ 0xA90A57F6,0xA90B4FF4,0xF9410C08,0x4EA01C08,0x2A0303F4,0x2A0203F6,
+ 0xAA0003F3,0x2A0103F5])
+# Successful tail: valid flag, duration, actor subobject, requested index -> +0x1268,
+# incoming s0 copy -> +0x126C, and auxiliary arg -> +0x1274.
+expect_words('static_direct_anm_state_writes',0x766A50,[
+ 0xB9126668,0x1E380008,0xB9127268,0xF9410E68,
+ 0xB9126A75,0xBD126E68,0xB9127674,0xB900311F])
+# PlayAction wrapper proves the split: virtual+F98 first, then extra BL 0x766CAC.
+expect_words('static_playaction_wrapper_split',0x766BC4,[
+ 0xF9400268,0xAA1303E0,0xF947CD08,0xD63F0100,
+ 0xAA1303E0,0x2A1403E1,0x52800022,0x94000033])
+# Native direct caller: s0=1.0, w1=936, w2=-1, w3=0, BL 0x766320.
+expect_words('static_native_direct_call_936',0x79A98,[
+ 0x1E2E1000,0x52807501,0x12800002,0xAA1303E0,0x2A1F03E3,0x941BB21D])
+# Second independent caller with animation 934.
+expect_words('static_native_direct_call_934',0x7B638,[
+ 0x1E2E1000,0x528074C1,0x12800002,0xAA1303E0,0x2A1F03E3,0x941BAB35])
+# SetActionImmediate independently writes requested action to +E94 and old value to +E98.
+expect_words('static_setaction_immediate_e94_e98',0x7A8464,[
+ 0x52808D09,0x72A00029,0xB94E940A,0xB90E9401,0xB90E980A])
+
+# Ensure opcode23's direct branch itself does not call the PlayAction wrapper.
+start=bridge.index('if (action_mode) {\n        std::ptrdiff_t direct_off')
+end=bridge.index('// Opcode22 is deliberately unchanged in V2G',start)
+op23_direct=bridge[start:end]
+if 'kPlayActionOffset' in op23_direct or 'reinterpret_cast<PlayFn>' in op23_direct:
+    print('opcode23_direct_branch_no_wrapper FAIL');sys.exit(1)
+print('opcode23_direct_branch_no_wrapper PASS')
+
+print('NSC_RUNTIME_V2G_SOURCE_VERIFY=PASS')
