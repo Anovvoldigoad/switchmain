@@ -1,0 +1,25 @@
+R169 UJ707 WHIFF RELEASE AUDIT
+================================
+
+Hardware discriminator from uzuy_log(6):
+- R168 runtime loaded, but UJ_MISS_ANM_BOUNCE never fired.
+- Real whiff path is 74 -> 700 -> 707.
+- action 707 entered at ~137.582 s and remained until ~169.903 s.
+- first movement PlayAction(77) changed 707 -> 77 and released the stuck visual.
+- R168's 740 -> 74 filter therefore targeted the hit/cinematic cleanup path, not the whiff path.
+
+Cross-run boundary:
+- hit path: 700 -> 707 -> 710 before cleanup/cinematic.
+- whiff path: 700 -> 707, then native phase fields settle:
+  e94/e98: 136/135 -> 8/136 -> 8/8, while e9c=0 and bda4=1.
+- once terminal 8/8 is reached and ea4>=100, R169 performs a two-tick
+  direct animation release: 707 -> 77, then next P81 tick 77/78 -> 74.
+- if native state leaves 707 first (including 710 hit), the latch is cancelled.
+
+Safety:
+- No char_id 281 hardcode.
+- Arms only from custom semantic UJ PlayAction 700 -> 707.
+- No full PlayAction injection in the release.
+- Stage/CPK/P128/voice/D-pad unchanged.
+- R167/R168 experiments retired.
+- Original main SHA and exact 30-word runtime delta preserved.

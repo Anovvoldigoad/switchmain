@@ -198,6 +198,17 @@ constexpr ptrdiff_t kP81UjPolicyCallerReturnOffset =
 
 std::atomic<uint32_t> g_p81_policy_seq{0};
 
+// R169 — true UJ whiff cleanup state machine.
+// Hardware R168 proved the miss never reaches the old 740->74 boundary.
+// The actual miss path is 74->700->707, and action 707 can persist until
+// player movement forces 707->77.  Arm only from the exact custom semantic
+// UJ 700->707 handoff, then wait for the terminal native phase markers
+// e94=8/e98=8/e9c=0 before a two-tick direct-animation release 707->77->74.
+std::atomic<uintptr_t> g_r169_whiff_actor{0};
+std::atomic<uint32_t> g_r169_whiff_phase{0}; // 0=idle, 1=armed707, 2=pushed77
+std::atomic<uint32_t> g_r169_whiff_seq{0};
+
+
 // R165 read-only Event150/voice provenance probe.
 std::atomic<uint32_t> g_r165_event150_logs{0};
 std::atomic<uint32_t> g_r165_native_voice_logs{0};
@@ -2823,7 +2834,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         }
 
         uint32_t pre_action = 0xFFFFFFFFu;
-        uint32_t pre_e60 = 0xFFFFFFFFu, pre_e80 = 0xFFFFFFFFu, pre_e98 = 0xFFFFFFFFu, pre_e9c = 0xFFFFFFFFu, pre_ea0 = 0xFFFFFFFFu;
+        uint32_t pre_e60 = 0xFFFFFFFFu, pre_e80 = 0xFFFFFFFFu, pre_e94 = 0xFFFFFFFFu, pre_e98 = 0xFFFFFFFFu, pre_e9c = 0xFFFFFFFFu, pre_ea0 = 0xFFFFFFFFu;
         uint32_t pre_ea4 = 0xFFFFFFFFu, pre_bda4 = 0xFFFFFFFFu, pre_bdc8 = 0xFFFFFFFFu;
         uint32_t pre_106f4 = 0xFFFFFFFFu, pre_123e0 = 0xFFFFFFFFu, pre_123e4 = 0xFFFFFFFFu;
         const uintptr_t setter_target = ReadActionSetterTarget(actor);
@@ -2833,6 +2844,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             pre_action = *reinterpret_cast<const volatile uint32_t*>(pb + 4712);
             pre_e60 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE60);
             pre_e80 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE80);
+            pre_e94 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE94);
             pre_e98 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE98);
             pre_e9c = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE9C);
             pre_ea0 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xEA0);
@@ -2844,40 +2856,13 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             pre_123e4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E4);
         }
 
-        // R168: R167 hardware proved that changing the cleanup PlayAction(74)
-        // argument from a2=-1 to a2=0 is NOT sufficient: the call fires, the
-        // logical action and ANM1268 both become 74, yet the visible Kamui clip
-        // remains stale until the first real movement transition 74->77.
-        //
-        // Preserve the native cleanup PlayAction completely unchanged. After
-        // that exact whiff cleanup returns, R168 cache-busts ONLY the direct
-        // animation core (actor vtable+0xF98 == main+0x766320): 77 then 74,
-        // both with the hardware-proven direct ABI (-1,0,rate1). This avoids
-        // full PlayAction side effects/events and does not move the actor.
+        // R169: R167/R168 cleanup experiments are retired. Preserve every
+        // native PlayAction argument unchanged. The real whiff is action 707,
+        // not 740->74.  This hook only arms a latch when a custom semantic UJ
+        // enters 707 from 700; the release itself happens later in the existing
+        // P81 per-frame policy hook after terminal native phase markers appear.
         const bool semantic_uj = custom && P64QuerySemanticUltimateJutsu(actor);
-        const bool r168_miss_bounce =
-            semantic_uj &&
-            index == 74 &&
-            a2 == -1 &&
-            pre_action == 740u &&
-            caller_off == 0x798F34 &&
-            pre_e80 == 1u &&
-            pre_bda4 == 1u;
-        const int32_t effective_a2 = a2; // R167 -1->0 experiment retired.
-
-        uint32_t r168_anm_pre = 0xFFFFFFFFu;
-        if (r168_miss_bounce && actor) {
-            r168_anm_pre = *reinterpret_cast<const volatile uint32_t*>(
-                reinterpret_cast<const volatile uint8_t*>(actor) + 0x1268);
-            Logging.Log(
-                "[NSC:R168] UJ_MISS_ANM_BOUNCE phase=arm actor=%p side=%u char=%u "
-                "caller_off=0x%lx index=%d a2=%d preserved=1 pre=%u anm1268=%u "
-                "e80=%u bda4=%u semantic=%u direct77_74_pending=1",
-                actor, side, char_id, static_cast<unsigned long>(caller_off),
-                index, a2, pre_action, r168_anm_pre, pre_e80, pre_bda4,
-                semantic_uj ? 1u : 0u);
-        }
-
+        const int32_t effective_a2 = a2;
         P93TraceCore("PLAYACTION", actor, caller_off, index, 0);
         const int32_t ret = Orig(actor, index, effective_a2, a3, a4, a5, rate);
         P93TraceCore("PLAYACTION", actor, caller_off, index, 1);
@@ -2899,6 +2884,36 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             post_106f4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x106F4);
             post_123e0 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E0);
             post_123e4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E4);
+        }
+
+        // R169 arm/cancel latch.  The exact whiff candidate entry proven by
+        // hardware is PlayAction(707) from action 700 on a custom semantic UJ.
+        // A native hit path leaves 707 for 710 and clears the latch before the
+        // terminal whiff release can run.
+        if (custom && semantic_uj && actor && ret == 1 &&
+            index == 707 && pre_action == 700u && post_action == 707u) {
+            const uint32_t seq = g_r169_whiff_seq.fetch_add(1, std::memory_order_relaxed) + 1u;
+            g_r169_whiff_actor.store(reinterpret_cast<uintptr_t>(actor), std::memory_order_relaxed);
+            g_r169_whiff_phase.store(1u, std::memory_order_release);
+            Logging.Log(
+                "[NSC:R169] UJ707_WHIFF phase=arm seq=%u actor=%p side=%u char=%u "
+                "pre=%u post=%u caller_off=0x%lx e80=%u e94=%u e98=%u e9c=%u bda4=%u",
+                seq, actor, side, char_id, pre_action, post_action,
+                static_cast<unsigned long>(caller_off),
+                pre_e80, pre_e94, post_e98, post_e9c, post_bda4);
+        } else if (actor &&
+                   g_r169_whiff_actor.load(std::memory_order_relaxed) ==
+                       reinterpret_cast<uintptr_t>(actor) &&
+                   (index == 710 || index == 740 || index == 74) &&
+                   post_action != 707u) {
+            const uint32_t old_phase = g_r169_whiff_phase.exchange(0u, std::memory_order_acq_rel);
+            g_r169_whiff_actor.store(0u, std::memory_order_relaxed);
+            if (old_phase != 0u) {
+                Logging.Log(
+                    "[NSC:R169] UJ707_WHIFF phase=cancel-native actor=%p side=%u char=%u "
+                    "index=%d post=%u old_phase=%u",
+                    actor, side, char_id, index, post_action, old_phase);
+            }
         }
 
         // P91A: focused zero-extra handoff-state trace. Reuse the proven P50
@@ -2938,48 +2953,6 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
                 "ea0=%08x ea4=%08x ea8=%08x eac=%08x eb0=%08x eb4=%08x eb8=%08x ebc=%08x",
                 actor, side, char_id, index, static_cast<unsigned long>(caller_off),
                 q[16],q[17],q[18],q[19],q[20],q[21],q[22],q[23],q[24],q[25],q[26],q[27],q[28],q[29],q[30],q[31]);
-        }
-
-        if (r168_miss_bounce) {
-            std::ptrdiff_t direct_off = 0;
-            const bool direct_ok =
-                nsc::v2::GetResolvedOffset(nsc::v2::Anchor::CentralSetter, direct_off) &&
-                direct_off == kCentralActionSetterOffset &&
-                setter_off == kCentralActionSetterOffset;
-            uint32_t anm_after_cleanup = 0xFFFFFFFFu;
-            uint32_t anm_after_77 = 0xFFFFFFFFu;
-            uint32_t anm_after_74 = 0xFFFFFFFFu;
-            uint32_t action_after_77 = 0xFFFFFFFFu;
-            uint32_t action_after_74 = post_action;
-            if (actor) {
-                const auto* rb = reinterpret_cast<const volatile uint8_t*>(actor);
-                anm_after_cleanup = *reinterpret_cast<const volatile uint32_t*>(rb + 0x1268);
-            }
-            if (direct_ok && actor && ret == 1 && post_action == 74u) {
-                using DirectAnmFn = void (*)(void*, int32_t, int32_t, int32_t, float);
-                auto direct = reinterpret_cast<DirectAnmFn>(
-                    exl::util::modules::GetTargetStart() + direct_off);
-                direct(actor, 77, -1, 0, 1.0f);
-                {
-                    const auto* rb = reinterpret_cast<const volatile uint8_t*>(actor);
-                    action_after_77 = *reinterpret_cast<const volatile uint32_t*>(rb + 4712);
-                    anm_after_77 = *reinterpret_cast<const volatile uint32_t*>(rb + 0x1268);
-                }
-                direct(actor, 74, -1, 0, 1.0f);
-                {
-                    const auto* rb = reinterpret_cast<const volatile uint8_t*>(actor);
-                    action_after_74 = *reinterpret_cast<const volatile uint32_t*>(rb + 4712);
-                    anm_after_74 = *reinterpret_cast<const volatile uint32_t*>(rb + 0x1268);
-                }
-            }
-            Logging.Log(
-                "[NSC:R168] UJ_MISS_ANM_BOUNCE phase=post actor=%p side=%u char=%u "
-                "native_cleanup_ret=%d pre=%u cleanup_post=%u direct_ok=%u direct_off=0x%x "
-                "anm=%u->%u->%u->%u action77=%u action74=%u "
-                "full_playaction_bounce=0 movement_events=0 stage_change=0 voice_change=0",
-                actor, side, char_id, ret, pre_action, post_action, direct_ok ? 1u : 0u,
-                static_cast<unsigned int>(direct_off), r168_anm_pre, anm_after_cleanup, anm_after_77, anm_after_74,
-                action_after_77, action_after_74);
         }
 
         if (p59_log) {
@@ -3375,10 +3348,19 @@ HOOK_DEFINE_TRAMPOLINE(P81OugiAwakeningPolicyHook) {
                 ContainsOugiAwakeningId(
                     char_id);
 
+        uint32_t action =
+            0xFFFFFFFFu;
+        uint32_t e80 =
+            0xFFFFFFFFu;
         uint32_t e94 =
             0xFFFFFFFFu;
-
+        uint32_t e98 =
+            0xFFFFFFFFu;
         uint32_t e9c =
+            0xFFFFFFFFu;
+        uint32_t ea4 =
+            0xFFFFFFFFu;
+        uint32_t bda4 =
             0xFFFFFFFFu;
 
         if (actor) {
@@ -3387,15 +3369,100 @@ HOOK_DEFINE_TRAMPOLINE(P81OugiAwakeningPolicyHook) {
                     const volatile uint8_t*>(
                     actor);
 
+            action =
+                *reinterpret_cast<
+                    const volatile uint32_t*>(
+                    b + 4712);
+            e80 =
+                *reinterpret_cast<
+                    const volatile uint32_t*>(
+                    b + 0xE80);
             e94 =
                 *reinterpret_cast<
                     const volatile uint32_t*>(
                     b + 0xE94);
+            e98 =
+                *reinterpret_cast<
+                    const volatile uint32_t*>(
+                    b + 0xE98);
 
             e9c =
                 *reinterpret_cast<
                     const volatile uint32_t*>(
                     b + 0xE9C);
+            ea4 =
+                *reinterpret_cast<
+                    const volatile uint32_t*>(
+                    b + 0xEA4);
+            bda4 =
+                *reinterpret_cast<
+                    const volatile uint32_t*>(
+                    b + 0xBDA4);
+        }
+
+        // R169 terminal-whiff release.  The native phases settle from
+        // 136/135 -> 8/136 -> 8/8.  Hardware shows genuine hits transition
+        // 707->710; a miss instead remains 707 with e94=e98=8,e9c=0,bda4=1.
+        // Give the terminal phase at least one native tick (ea4>=100), then
+        // switch only the direct animation core to 77.  On the next P81 tick,
+        // return it to 74, guaranteeing a rendered/ticked boundary between
+        // the two clips without invoking movement PlayAction/events.
+        if (valid && semantic && actor &&
+            g_r169_whiff_actor.load(std::memory_order_relaxed) ==
+                reinterpret_cast<uintptr_t>(actor)) {
+            uint32_t phase = g_r169_whiff_phase.load(std::memory_order_acquire);
+            using DirectAnmFn = void (*)(void*, int32_t, int32_t, int32_t, float);
+            auto direct = reinterpret_cast<DirectAnmFn>(
+                exl::util::modules::GetTargetStart() + kCentralActionSetterOffset);
+
+            if (phase == 1u) {
+                if (action != 707u) {
+                    g_r169_whiff_phase.store(0u, std::memory_order_release);
+                    g_r169_whiff_actor.store(0u, std::memory_order_relaxed);
+                    Logging.Log(
+                        "[NSC:R169] UJ707_WHIFF phase=cancel-state actor=%p side=%u char=%u "
+                        "action=%u e94=%u e98=%u e9c=%u bda4=%u",
+                        actor, side, char_id, action, e94, e98, e9c, bda4);
+                } else if (e80 == 1u && e94 == 8u && e98 == 8u &&
+                           e9c == 0u && bda4 == 1u &&
+                           ea4 != 0xFFFFFFFFu && ea4 >= 100u) {
+                    direct(actor, 77, -1, 0, 1.0f);
+                    const auto* rb = reinterpret_cast<const volatile uint8_t*>(actor);
+                    const uint32_t post77 =
+                        *reinterpret_cast<const volatile uint32_t*>(rb + 4712);
+                    const uint32_t anm77 =
+                        *reinterpret_cast<const volatile uint32_t*>(rb + 0x1268);
+                    g_r169_whiff_phase.store(2u, std::memory_order_release);
+                    Logging.Log(
+                        "[NSC:R169] UJ707_WHIFF phase=release77 actor=%p side=%u char=%u "
+                        "pre=707 post=%u anm=%u e80=%u e94=%u e98=%u e9c=%u ea4=%u bda4=%u",
+                        actor, side, char_id, post77, anm77,
+                        e80, e94, e98, e9c, ea4, bda4);
+                    action = post77;
+                }
+            } else if (phase == 2u) {
+                // Do not override a native transition if something else already
+                // consumed the one-tick 77 state.
+                if (action == 77u || action == 78u) {
+                    direct(actor, 74, -1, 0, 1.0f);
+                    const auto* rb = reinterpret_cast<const volatile uint8_t*>(actor);
+                    const uint32_t post74 =
+                        *reinterpret_cast<const volatile uint32_t*>(rb + 4712);
+                    const uint32_t anm74 =
+                        *reinterpret_cast<const volatile uint32_t*>(rb + 0x1268);
+                    Logging.Log(
+                        "[NSC:R169] UJ707_WHIFF phase=release74 actor=%p side=%u char=%u "
+                        "pre=%u post=%u anm=%u one_tick_bounce=1",
+                        actor, side, char_id, action, post74, anm74);
+                } else {
+                    Logging.Log(
+                        "[NSC:R169] UJ707_WHIFF phase=release74-skip actor=%p side=%u char=%u "
+                        "action=%u native_transition_won=1",
+                        actor, side, char_id, action);
+                }
+                g_r169_whiff_phase.store(0u, std::memory_order_release);
+                g_r169_whiff_actor.store(0u, std::memory_order_relaxed);
+            }
         }
 
         // +0x1288:
@@ -8825,13 +8892,13 @@ bool InstallR166SoundDispatchReadOnlyProbe() {
     return true;
 }
 
-void InstallR168CustomUjMissAnimationBounce() {
+void InstallR169CustomUj707WhiffRelease() {
     Logging.Log(
-        "[NSC:R168] READY custom_uj_miss_animation_bounce=1 inherited_playaction_hook=1 "
-        "exact_cleanup_caller=0x798f34 index74=1 pre740=1 native_a2_preserved=1 "
-        "require_semantic_uj=1 require_e80_1=1 require_bda4_1=1 "
-        "direct_animation_bounce_77_74=1 full_playaction_bounce=0 voice_probe=0 "
-        "voice_mutation=0 stage_change=0 p128_change=0 dpad_change=0");
+        "[NSC:R169] READY custom_uj707_whiff_release=1 arm_700_707=1 "
+        "terminal_e94_8_e98_8=1 require_e9c_0=1 require_e80_1=1 "
+        "require_bda4_1=1 require_ea4_ge100=1 two_tick_direct_77_74=1 "
+        "full_playaction_injection=0 r167_retired=1 r168_retired=1 "
+        "voice_probe=0 voice_mutation=0 stage_change=0 p128_change=0 dpad_change=0");
 }
 
 bool InstallV2NStageRegistryProof() {

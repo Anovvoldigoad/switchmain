@@ -12,29 +12,31 @@ h=(root/'overlay/source/program/nsc_runtime_v2.hpp').read_text()
 bridge=(root/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
 main=(root/'overlay/source/program/main.cpp').read_text()
 prep=(root/'prepare_exlaunch.sh').read_text()
-wf=(root/'.github/workflows/build-runtime-r168.yml').read_text()
+wf=(root/'.github/workflows/build-runtime-r169.yml').read_text()
 sfx=(root/'overlay/source/program/nsc_sfx_list_generated.hpp').read_text()
 
 checks={
- 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR168CustomUjMissAnimationBounce();') < main.index('InstallV2MStageSafeTraceHooks();') < main.index('InstallV2NStageRegistryProof();') < main.index('InstallV2PPassiveOrderProbe();'),
+ 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR169CustomUj707WhiffRelease();') < main.index('InstallV2MStageSafeTraceHooks();') < main.index('InstallV2NStageRegistryProof();') < main.index('InstallV2PPassiveOrderProbe();'),
  'fail_closed_main': 'if (!nsc::v2::InstallOriginalMainRuntimePatches()) return;' in main,
  'voice_probes_not_installed': 'InstallR165Event150VoiceReadOnlyProbe();' not in main and 'InstallR166SoundDispatchReadOnlyProbe();' not in main,
- 'r168_ready_installed': 'InstallR168CustomUjMissAnimationBounce();' in main and '[NSC:R168] READY custom_uj_miss_animation_bounce=1' in bridge,
- 'r168_exact_filter': all(x in bridge for x in ('index == 74','a2 == -1','pre_action == 740u','caller_off == 0x798F34','pre_e80 == 1u','pre_bda4 == 1u')),
- 'r168_direct_bounce': 'direct(actor, 77, -1, 0, 1.0f);' in bridge and 'direct(actor, 74, -1, 0, 1.0f);' in bridge and 'full_playaction_bounce=0 movement_events=0' in bridge,
- 'r168_semantic_custom_filter': 'const bool semantic_uj = custom && P64QuerySemanticUltimateJutsu(actor);' in bridge,
- 'r168_native_cleanup_preserved': 'const int32_t effective_a2 = a2; // R167 -1->0 experiment retired.' in bridge and 'Orig(actor, index, effective_a2, a3, a4, a5, rate)' in bridge,
- 'r168_markers': '[NSC:R168] UJ_MISS_ANM_BOUNCE phase=arm' in bridge and '[NSC:R168] UJ_MISS_ANM_BOUNCE phase=post' in bridge,
- 'r168_no_char281_branch': 'char_id == 281' not in bridge and 'char==281' not in bridge and 'char = 281' not in bridge,
- 'r168_no_voice_mutation': 'voice_probe=0' in bridge and 'voice_mutation=0' in bridge,
+ 'r169_ready_installed': 'InstallR169CustomUj707WhiffRelease();' in main and '[NSC:R169] READY custom_uj707_whiff_release=1' in bridge,
+ 'r169_arm_700_707': all(x in bridge for x in ('index == 707','pre_action == 700u','post_action == 707u','g_r169_whiff_phase.store(1u')),
+ 'r169_terminal_filter': all(x in bridge for x in ('e80 == 1u','e94 == 8u','e98 == 8u','e9c == 0u','bda4 == 1u','ea4 >= 100u')),
+ 'r169_two_tick_release': 'direct(actor, 77, -1, 0, 1.0f);' in bridge and 'g_r169_whiff_phase.store(2u' in bridge and 'direct(actor, 74, -1, 0, 1.0f);' in bridge and 'one_tick_bounce=1' in bridge,
+ 'r169_native_playaction_preserved': 'const int32_t effective_a2 = a2;' in bridge and 'Orig(actor, index, effective_a2, a3, a4, a5, rate)' in bridge,
+ 'r169_hit_cancel': '(index == 710 || index == 740 || index == 74)' in bridge and 'phase=cancel-native' in bridge,
+ 'r169_markers': '[NSC:R169] UJ707_WHIFF phase=arm' in bridge and '[NSC:R169] UJ707_WHIFF phase=release77' in bridge and '[NSC:R169] UJ707_WHIFF phase=release74' in bridge,
+ 'r169_no_char281_branch': 'char_id == 281' not in bridge and 'char==281' not in bridge and 'char = 281' not in bridge,
+ 'r169_no_voice_mutation': 'voice_probe=0' in bridge and 'voice_mutation=0' in bridge,
+ 'r168_runtime_marker_removed': '[NSC:R168]' not in bridge,
  'thirty_word_plan': 'WordPatch plan[30]' in rt and 'condition_words=5 p67_words=1 p128_words=24' in rt,
  'validate_before_write': rt.index('Validate ALL original words before the first write') < rt.index('patcher.Write<std::uint32_t>'),
  'paired_file_disabled': 'paired_main_file=0' in rt,
  'resolver_7_markers': '[NSC:V2D] RESOLVER_READY' in rt and '[NSC:V2D] RUNTIME_PATCH_READY' in rt,
- 'workflow_only_r168': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-R168-uj-miss-animation-bounce' in wf,
+ 'workflow_only_r169': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-R169-uj707-whiff-release' in wf,
  'workflow_original_main': 'original/atmosphere/contents/0100FA10190A0000/exefs/main' in wf,
  'workflow_not_reference_main': 'reference_p128/atmosphere/contents/0100FA10190A0000/exefs/main" "$OUT/atmosphere' not in wf,
- 'prepare_r168_elf': 'runtime_r168.elf' in prep,
+ 'prepare_r169_elf': 'runtime_r169.elf' in prep,
  'p128_retained': '[NSC:P128A] READY' in bridge and 'no_force708=1' in bridge and 'no_force710=1' in bridge,
  'op23_safe': '[NSC:V2H] OP23_SAFE_SUPPRESS' in bridge and 'call_766320=0' in bridge and 'playaction_wrapper=0' in bridge,
  'stage_actor_enemy_parity': '[NSC:V2I] STAGE2_PARITY' in bridge and 'fix_actor=1 fix_enemy=%u poststage=0 pc_source_parity=1' in bridge,
@@ -122,7 +124,7 @@ for name,vn,mn,exp in specs:
     print('offline_original_'+name,'PASS' if ok else 'FAIL','hits='+','.join(hex(x) for x in hits[:4]))
     if not ok:sys.exit(1)
 
-# R168 static contracts in original v1.70 main.
+# R169 uses the same proven PlayAction/CentralSetter contracts in original v1.70 main.
 def words(off,n):
     return [struct.unpack_from('<I',o,off+4*i)[0] for i in range(n)]
 cleanup=words(0x798F1C,8)
@@ -131,8 +133,8 @@ refresh=words(0x63A500,8)
 refresh_exp=[0xF9401A60,0x1E2E1000,0x52800941,0x2A1F03E2,0x2A1F03E3,0x2A1F03E4,0x9404B19D,0xF9401A60]
 play=words(0x766B8C,20)
 play_exp=[0xA9BE57FE,0xA9014FF4,0xB9529408,0x2A0403F4,0xAA0003F3,0x7100091F,0x54000080,0xB9528668,0x7100051F,0x540000A1,0x2A1F03E2,0x52800028,0xB9129E68,0xB912867F,0xF9400268,0xAA1303E0,0xF947CD08,0xD63F0100,0xAA1303E0,0x2A1403E1]
-print('r168_cleanup_caller_fingerprint','PASS' if cleanup==cleanup_exp else 'FAIL')
-print('r168_native_refresh_fingerprint','PASS' if refresh==refresh_exp else 'FAIL')
-print('r168_playaction_fingerprint','PASS' if play==play_exp else 'FAIL')
+print('r169_cleanup_caller_fingerprint','PASS' if cleanup==cleanup_exp else 'FAIL')
+print('r169_native_refresh_fingerprint','PASS' if refresh==refresh_exp else 'FAIL')
+print('r169_playaction_fingerprint','PASS' if play==play_exp else 'FAIL')
 if cleanup!=cleanup_exp or refresh!=refresh_exp or play!=play_exp: sys.exit(1)
-print('NSC_RUNTIME_R168_SOURCE_VERIFY=PASS')
+print('NSC_RUNTIME_R169_SOURCE_VERIFY=PASS')

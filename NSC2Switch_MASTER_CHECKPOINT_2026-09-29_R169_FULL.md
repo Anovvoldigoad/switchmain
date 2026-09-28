@@ -3569,3 +3569,28 @@ After that cleanup, no PlayAction occurred for roughly 50 seconds. The first sub
 Preserve native cleanup PlayAction(74,-1) unchanged. On the exact R167 miss signature and only after successful cleanup, call the resolved direct-animation core main+0x766320 twice: animation77 then animation74, both with a2=-1,a3=0,rate=1.0. No full PlayAction bounce is injected.
 
 Expected marker: `[NSC:R168] UJ_MISS_ANM_BOUNCE phase=post ... anm=740->74->77->74 ... full_playaction_bounce=0 movement_events=0`
+
+
+# R169 UPDATE — TRUE UJ707 WHIFF RELEASE
+
+## Hardware result that retires R168
+R168 loaded successfully, but no `[NSC:R168] UJ_MISS_ANM_BOUNCE` marker fired in the whiff run. The real miss path did not enter 740. It entered `700 -> 707` and remained at action 707 for ~32 seconds until user movement invoked native `PlayAction(77)`, which immediately changed 707 -> 77 and released the stuck visual.
+
+## Cross-run discriminator
+Hit/cinematic path: `700 -> 707 -> 710 -> ... -> 740 -> 74`.
+Whiff bug path: `700 -> 707`, then internal phases settle `e94/e98 = 136/135 -> 8/136 -> 8/8`, `e9c=0`, `bda4=1`, and action 707 does not self-exit.
+
+## R169 behavior
+- arm only on custom semantic UJ `700 -> 707`;
+- wait for terminal whiff signature `action=707,e80=1,e94=8,e98=8,e9c=0,bda4=1,ea4>=100`;
+- if native path leaves 707 first (notably 710 hit), cancel the latch;
+- terminal whiff: direct animation `77`, then one P81 tick later direct animation `74`;
+- no full PlayAction injection;
+- no stage, voice, P128, D-pad, or CPK changes.
+
+## Expected hardware markers
+`[NSC:R169] UJ707_WHIFF phase=arm ...`
+`[NSC:R169] UJ707_WHIFF phase=release77 ...`
+`[NSC:R169] UJ707_WHIFF phase=release74 ...`
+
+R167 and R168 animation-cleanup hypotheses are retired.
