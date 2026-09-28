@@ -12,20 +12,20 @@ h=(root/'overlay/source/program/nsc_runtime_v2.hpp').read_text()
 bridge=(root/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
 main=(root/'overlay/source/program/main.cpp').read_text()
 prep=(root/'prepare_exlaunch.sh').read_text()
-wf=(root/'.github/workflows/build-runtime-v2p.yml').read_text()
+wf=(root/'.github/workflows/build-runtime-r165.yml').read_text()
 sfx=(root/'overlay/source/program/nsc_sfx_list_generated.hpp').read_text()
 
 checks={
- 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallV2MStageSafeTraceHooks();') < main.index('InstallV2NStageRegistryProof();') < main.index('InstallV2PPassiveOrderProbe();'),
+ 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR165Event150VoiceReadOnlyProbe();') < main.index('InstallV2MStageSafeTraceHooks();') < main.index('InstallV2NStageRegistryProof();') < main.index('InstallV2PPassiveOrderProbe();'),
  'fail_closed_main': 'if (!nsc::v2::InstallOriginalMainRuntimePatches()) return;' in main,
  'thirty_word_plan': 'WordPatch plan[30]' in rt and 'condition_words=5 p67_words=1 p128_words=24' in rt,
  'validate_before_write': rt.index('Validate ALL original words before the first write') < rt.index('patcher.Write<std::uint32_t>'),
  'paired_file_disabled': 'paired_main_file=0' in rt,
  'resolver_7_markers': '[NSC:V2D] RESOLVER_READY' in rt and '[NSC:V2D] RUNTIME_PATCH_READY' in rt,
- 'workflow_only_v2p': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-V2P-stageinfo-cpk-order-probe' in wf,
+ 'workflow_only_r165': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-R165-event150-voice-readonly-probe' in wf,
  'workflow_original_main': 'original/atmosphere/contents/0100FA10190A0000/exefs/main' in wf,
  'workflow_not_reference_main': 'reference_p128/atmosphere/contents/0100FA10190A0000/exefs/main" "$OUT/atmosphere' not in wf,
- 'prepare_v2p_elf': 'runtime_v2p.elf' in prep,
+ 'prepare_r165_elf': 'runtime_r165.elf' in prep,
  'no_char281_runtime': 'char_id == 281' not in bridge and 'char==281' not in bridge and 'char = 281' not in bridge,
  'p128_retained': '[NSC:P128A] READY' in bridge and 'no_force708=1' in bridge and 'no_force710=1' in bridge,
  'op23_safe': '[NSC:V2H] OP23_SAFE_SUPPRESS' in bridge and 'call_766320=0' in bridge and 'playaction_wrapper=0' in bridge,
@@ -46,6 +46,13 @@ checks={
  'v2p_no_reindex': '[NSC:V2O]' not in bridge and 'STAGE_REINDEX' not in bridge and 'kStageInfoReloadOffset' not in bridge and 'ReloadFn' not in bridge,
  'v2p_no_direct_loader_call': '0x835FAC' not in bridge and '0x835fac' not in bridge,
  'v2p_no_new_stageinfo_trampoline': 'StageInfoHook' not in bridge and 'StageInfoLoaderHook' not in bridge,
+ 'r165_event150_offset': 'kEvent150Offset           = 0x813ECC' in bridge,
+ 'r165_mevoice_offset': 'kNativeMeVoiceOffset      = 0x813D88' in bridge,
+ 'r165_event150_hook': '[NSC:R165] EVT150 phase=pre' in bridge and '[NSC:R165] EVT150 phase=post' in bridge,
+ 'r165_native_voice_hook': '[NSC:R165] ME_VOICE phase=pre' in bridge and '[NSC:R165] ME_VOICE phase=post' in bridge,
+ 'r165_readonly_ready': '[NSC:R165] READY installed=1' in bridge and 'voice_mutation=0' in bridge and 'sound_registry_mutation=0' in bridge,
+ 'r165_no_play_in_probe': 'R165Event150ProbeHook' in bridge and 'R165NativeMeVoiceProbeHook' in bridge,
+ 'r165_called_from_main': 'InstallR165Event150VoiceReadOnlyProbe();' in main,
  'sfx_count_160': 'kCount = 160' in sfx,
 }
 for k,v in checks.items(): print(k,'PASS' if v else 'FAIL')
@@ -125,4 +132,12 @@ for name,vn,mn,exp in specs:
     print('offline_original_'+name,'PASS' if ok else 'FAIL','hits='+','.join(hex(x) for x in hits[:4]))
     if not ok:sys.exit(1)
 
-print('NSC_RUNTIME_V2P_SOURCE_VERIFY=PASS')
+# Exact R165 handler fingerprints in original text.
+e150=[struct.unpack_from('<I',o,0x813ECC+4*i)[0] for i in range(8)]
+e150_exp=[0xD101C3FF,0xA90557FE,0xA9064FF4,0x9000C988,0xF9426108,0xF9400108,0xB94A9108,0x7100311F]
+mev=[struct.unpack_from('<I',o,0x813D88+4*i)[0] for i in range(8)]
+mev_exp=[0xF81F0FFE,0x79C04828,0x11401D01,0xF9400008,0xF9481908,0x2A1F03E2,0xD63F0100,0x52800020]
+print('r165_event150_fingerprint','PASS' if e150==e150_exp else 'FAIL')
+print('r165_mevoice_fingerprint','PASS' if mev==mev_exp else 'FAIL')
+if e150!=e150_exp or mev!=mev_exp:sys.exit(1)
+print('NSC_RUNTIME_R165_SOURCE_VERIFY=PASS')

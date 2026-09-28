@@ -47,6 +47,7 @@ void InstallP125AP107GuidedSessionQualifiedState137Fallback();
 void InstallP126AActorC48RejectBypassProbe();
 void InstallP127AFullNativeCorridorAB();
 void InstallP128AStaticPreciseGateCaveProof();
+bool InstallR165Event150VoiceReadOnlyProbe();
 bool InstallV2MStageSafeTraceHooks();
 bool InstallV2NStageRegistryProof();
 void InstallV2PPassiveOrderProbe();

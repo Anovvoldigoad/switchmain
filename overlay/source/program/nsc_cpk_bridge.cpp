@@ -24,6 +24,13 @@ constexpr ptrdiff_t kChunkBinaryOffset        = 0x3EAE70;  // ccGetChunkBinary(f
 constexpr ptrdiff_t kLoadRequestProcessOffset = 0x106F404; // nuccLoadRequest process/open/read path
 constexpr ptrdiff_t kFileOpenOffset           = 0x1170FB0; // low-level file open request; returns 1/0
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
+// R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
+// as a named character-voice cue. Native Switch v1.70 event-table proof maps
+// event150 to the stock ME_SET_CAPTION callback at main+0x813ECC.
+constexpr ptrdiff_t kEvent150Offset           = 0x813ECC;  // native ME_SET_CAPTION; custom API voice container
+// Native comparator: event-table name ME_VOICE. It consumes event+0x24 as a
+// signed voice index, adds 0x7000 and calls actor vtable+0x1030.
+constexpr ptrdiff_t kNativeMeVoiceOffset      = 0x813D88;  // native ME_VOICE
 constexpr ptrdiff_t kEvent235Offset           = 0x8162D4;  // native ME_ENEMY_DISP_ON callback
 constexpr ptrdiff_t kEvent13Offset            = 0x810614;  // native awakening-condition event callback
 constexpr ptrdiff_t kEvent121Offset           = 0x8134F8;  // native ME_ADD_CONDITION_PARAM callback
@@ -189,6 +196,11 @@ constexpr ptrdiff_t kP81UjPolicyCallerReturnOffset =
     0x7F458C;
 
 std::atomic<uint32_t> g_p81_policy_seq{0};
+
+// R165 read-only Event150/voice provenance probe.
+std::atomic<uint32_t> g_r165_event150_logs{0};
+std::atomic<uint32_t> g_r165_native_voice_logs{0};
+constexpr uint32_t kR165VoiceLogLimit = 1024u;
 
 // ============================================================================
 // P82A — full downstream UJ corridor trace.
@@ -2357,6 +2369,98 @@ HOOK_DEFINE_TRAMPOLINE(PostStageHook) {
         if (n < 256) Logging.Log("[NSC:P50A] POST_STAGE phase=0");
         Orig();
         if (n < 256) Logging.Log("[NSC:P50A] POST_STAGE phase=1");
+    }
+};
+
+// ============================================================================
+// R165 — READ-ONLY EVENT150 / NATIVE VOICE PROVENANCE PROBE
+//
+// Static event-table proof from original NSC Switch v1.70:
+//   Event121 -> main+0x8134F8 (known ME_ADD_CONDITION_PARAM anchor)
+//   event records advance with 0x30-byte registration stride
+//   121 + 29 = Event150 -> main+0x813ECC
+//   registration name following that callback is ME_SET_CAPTION.
+//
+// Tobi source PRM serializes named voice cues as Event150, e.g.
+//   frame44  type0x96 "mtob_ougi_001"
+//   frame114 type0x96 "mtob_ougi_002"
+//   frame166 type0x96 "mtob_ougi_003"
+// UltimateStormAPI on PC repurposes this vanilla caption event. Switch currently
+// has no Event150 compatibility shim, so R165 only observes the boundary.
+// No event data, actor state, return value, sound command, stage state or P128
+// latch is modified here.
+// ============================================================================
+HOOK_DEFINE_TRAMPOLINE(R165Event150ProbeHook) {
+    static uint32_t Callback(void* actor, void* event_ptr) {
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const bool custom = valid && side <= 1u &&
+            char_id > kVanillaMaxCharId && char_id < 0x1000u;
+        const auto* event = reinterpret_cast<const uint8_t*>(event_ptr);
+        char text[31]{};
+        int16_t p24 = 0, p26 = 0;
+        uint16_t p28 = 0;
+        uint32_t p2c = 0;
+        if (event) {
+            CopyEventText(text, event);
+            p24 = *reinterpret_cast<const int16_t*>(event + 0x24);
+            p26 = *reinterpret_cast<const int16_t*>(event + 0x26);
+            p28 = *reinterpret_cast<const uint16_t*>(event + 0x28);
+            p2c = *reinterpret_cast<const uint32_t*>(event + 0x2C);
+        }
+        const uint32_t n = g_r165_event150_logs.fetch_add(1u, std::memory_order_relaxed);
+        if (custom && n < kR165VoiceLogLimit) {
+            Logging.Log(
+                "[NSC:R165] EVT150 phase=pre n=%u actor=%p side=%u char=%u event=%p "
+                "cue=%s p24=%d p26=%d p28=%u p2c=%08x readonly=1",
+                n, actor, side, char_id, event_ptr, text,
+                static_cast<int>(p24), static_cast<int>(p26),
+                static_cast<unsigned>(p28), p2c);
+        }
+        const uint32_t ret = Orig(actor, event_ptr);
+        if (custom && n < kR165VoiceLogLimit) {
+            Logging.Log(
+                "[NSC:R165] EVT150 phase=post n=%u actor=%p side=%u char=%u cue=%s "
+                "ret=%u native_me_set_caption=1 voice_dispatch_mutation=0",
+                n, actor, side, char_id, text, ret);
+        }
+        return ret;
+    }
+};
+
+// Comparator for the game's genuine ME_VOICE event. This is NOT used to play
+// custom Event150 cues in R165. It tells us whether intermittent audible Tobi
+// lines come through an already-native voice path. Native contract:
+//   command = sign_extend(event+0x24) + 0x7000
+//   actor->vtable+0x1030(actor, command, 0)
+HOOK_DEFINE_TRAMPOLINE(R165NativeMeVoiceProbeHook) {
+    static uint32_t Callback(void* actor, void* event_ptr) {
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const bool custom = valid && side <= 1u &&
+            char_id > kVanillaMaxCharId && char_id < 0x1000u;
+        const auto* event = reinterpret_cast<const uint8_t*>(event_ptr);
+        const int16_t voice_index = event
+            ? *reinterpret_cast<const int16_t*>(event + 0x24) : 0;
+        const uint32_t command = static_cast<uint32_t>(
+            static_cast<int32_t>(voice_index) + 0x7000);
+        const uint32_t n = g_r165_native_voice_logs.fetch_add(1u, std::memory_order_relaxed);
+        if (custom && n < kR165VoiceLogLimit) {
+            Logging.Log(
+                "[NSC:R165] ME_VOICE phase=pre n=%u actor=%p side=%u char=%u event=%p "
+                "voice_index=%d command=%08x readonly=1",
+                n, actor, side, char_id, event_ptr,
+                static_cast<int>(voice_index), command);
+        }
+        const uint32_t ret = Orig(actor, event_ptr);
+        if (custom && n < kR165VoiceLogLimit) {
+            Logging.Log(
+                "[NSC:R165] ME_VOICE phase=post n=%u actor=%p side=%u char=%u "
+                "voice_index=%d command=%08x ret=%u native_path=1",
+                n, actor, side, char_id,
+                static_cast<int>(voice_index), command, ret);
+        }
+        return ret;
     }
 };
 
@@ -8538,6 +8642,39 @@ static uint32_t P128RuntimeWord(uintptr_t base, ptrdiff_t off) {
     return *reinterpret_cast<const volatile uint32_t*>(base + static_cast<uintptr_t>(off));
 }
 } // anonymous namespace — P128A
+
+bool InstallR165Event150VoiceReadOnlyProbe() {
+    // main+0x813ECC native ME_SET_CAPTION callback (serialized Event150).
+    static constexpr uint32_t kEvent150Expected[] = {
+        0xD101C3FF, 0xA90557FE, 0xA9064FF4, 0x9000C988,
+        0xF9426108, 0xF9400108, 0xB94A9108, 0x7100311F,
+    };
+    // main+0x813D88 native ME_VOICE callback.
+    static constexpr uint32_t kMeVoiceExpected[] = {
+        0xF81F0FFE, 0x79C04828, 0x11401D01, 0xF9400008,
+        0xF9481908, 0x2A1F03E2, 0xD63F0100, 0x52800020,
+    };
+    const bool e150_ok = MatchWords(kEvent150Offset, kEvent150Expected);
+    const bool voice_ok = MatchWords(kNativeMeVoiceOffset, kMeVoiceExpected);
+    if (!e150_ok) LogFingerprintFail("R165_EVENT150_ME_SET_CAPTION", kEvent150Offset);
+    if (!voice_ok) LogFingerprintFail("R165_NATIVE_ME_VOICE", kNativeMeVoiceOffset);
+    if (!(e150_ok && voice_ok)) {
+        Logging.Log(
+            "[NSC:R165] READY installed=0 event150=%u native_voice=%u fail_closed=1 "
+            "readonly=1 voice_mutation=0 stage_change=0 p128_change=0 dpad_change=0",
+            e150_ok ? 1u : 0u, voice_ok ? 1u : 0u);
+        return false;
+    }
+    R165Event150ProbeHook::InstallAtOffset(kEvent150Offset);
+    R165NativeMeVoiceProbeHook::InstallAtOffset(kNativeMeVoiceOffset);
+    Logging.Log(
+        "[NSC:R165] READY installed=1 event150_off=0x%lx native_me_voice_off=0x%lx "
+        "event150_native=ME_SET_CAPTION readonly=1 voice_mutation=0 sound_registry_mutation=0 "
+        "stage_change=0 p128_change=0 dpad_change=0",
+        static_cast<unsigned long>(kEvent150Offset),
+        static_cast<unsigned long>(kNativeMeVoiceOffset));
+    return true;
+}
 
 bool InstallV2NStageRegistryProof() {
     static constexpr uint32_t kRegistryExpected[] = {

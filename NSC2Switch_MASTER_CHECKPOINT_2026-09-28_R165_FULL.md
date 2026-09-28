@@ -3176,3 +3176,288 @@ GitHub Actions artifact name:
 3. If registration remains missing, fix StageInfo packaging/semantic merge PC-side.
 4. After UJ stage is correct: Event150 Tobi voice.
 5. D-pad/Izanagi last.
+
+
+---
+
+# R163 — V2P HARDWARE PASS + FINAL CPK TOC ROOT CAUSE
+
+Date: 2026-09-28
+
+## Hardware / artifact result
+V2P is stable and passive. Custom CPK bind succeeds before the native StageInfo requests. V2P hardware log proves:
+- Tobi_Switch.cpk bind success at 7.359046s.
+- native data/stage/StageInfo.bin.xfbin request at 10.078413s with cpk_bound=1.
+- native AdvStageInfo request immediately after, also with cpk_bound=1.
+- therefore StageInfo-before-CPK ordering hypothesis is RETIRED.
+- V2N later reports STG_2TOB_UNI_LT key 0x01D1CA7E found=0.
+- vanilla STAGE_SI45A key 0x2BCB5498 found=1 on the same registry chain.
+- no Unmapped InvalidateNCE flood in the V2P run.
+
+## Final CPK forensic audit
+User supplied the exact mounted Tobi_Switch.cpk.
+SHA256: e61bdb5faf60be186828769a1d064c98f0682ed02f39c6b9929eaab8e7ef69b7
+Size: 174006320 bytes.
+CRI CPK TOC: 93 files.
+
+The final package contains ZERO stage registration files:
+- data/stage/StageInfo.bin.xfbin ABSENT.
+- data/stage/AdvStageInfo.bin.xfbin ABSENT.
+- data/stage/stageFilter.xfbin ABSENT.
+- stage_config.ini ABSENT.
+- Stages/STG_2TOB_UNI_LT/... ABSENT.
+
+The ASCII STG_2TOB_UNI_LT appears three times, all inside data/spc/mtobprm.bin.xfbin as event/content references; this is not stage registry metadata.
+
+## Root cause boundary — PROVEN
+The authored .unse contained Stages/STG_2TOB_UNI_LT/data/stage/StageInfo.bin.xfbin and historical compiler analysis observed a temporary/static 181->182 merge. The final CPK omits that merged StageInfo from its TOC.
+
+Therefore the active defect is:
+**compiler/staging/packaging drops the merged global StageInfo before final CPK emission.**
+
+Retired hypotheses:
+- wrong Event236 CRC;
+- wrong numeric stage ID;
+- invalid V2N registry chain;
+- CPK bind failure;
+- CPK binds after StageInfo initialization;
+- runtime StageInfo reindex required;
+- manual PostStage required.
+
+## Next action
+Patch/rebuild the CPK compiler pipeline so the final Tobi_Switch.cpk TOC contains:
+`data/stage/StageInfo.bin.xfbin`
+with the merged custom STG_2TOB_UNI_LT record (historically expected 182 records).
+
+Static gate before hardware:
+1. final CPK TOC has global StageInfo path;
+2. extracted global StageInfo contains STG_2TOB_UNI_LT;
+3. merged record count / structure validates;
+4. Tobi SPC/audio/UI payload remains intact.
+
+Then test with the current safe V2P/V2N runtime. Expected decisive marker:
+`[NSC:V2N] STAGE_REGISTRY ... text=STG_2TOB_UNI_LT ... found=1`
+
+V2O direct `main+0x835FAC` runtime reload remains permanently retired.
+
+---
+
+# R164 — FULL STAGEINFO MERGER RECOVERY + SURGICAL 94-FILE CPK FIX
+
+Date: 2026-09-28
+
+## Scope lock
+R164 changes ONLY stage-registration packaging.
+Frozen and untouched:
+- P128/raw15/session;
+- icon path (already hardware PASS from P23A early loose charicon_s.gfx);
+- generic opcode26 audio;
+- Event150 voice;
+- D-pad/Izanagi;
+- V2O runtime reindex remains permanently retired.
+
+## Exact source provenance recovered
+User-supplied current Tobi `.unse`:
+- SHA256 `8287a62466e9cbad0efc40129b9421d0ab90639b4ca7928b5103abbeaf7782a0`
+- exact hash match to the historical project Tobi source.
+
+Recovered project Alpha7 source includes the semantic StageInfo merger in `nsc_message_stage.py`:
+- NUCC StageInfo version `1010`;
+- fixed stage record size `0x130`;
+- nested path records `8` bytes;
+- nested object records `0xB0` bytes;
+- custom stage fragment must contain exactly one record;
+- exact stage-name match replaces existing record; otherwise append;
+- all relative pointers / arrays / strings rebuilt;
+- output is round-trip parsed and validated.
+
+## Icon architecture cross-check
+The earlier hardware-PASS icon fix used this pattern:
+1. known NSC v1.70 global `charicon_s.gfx` baseline;
+2. fail-closed layout/count validation;
+3. add custom `BaseIcon=mtob` registration;
+4. rebuild the global resource deterministically;
+5. emit it at the exact early path consumed by the game.
+
+R164 applies the same architecture to StageInfo without modifying the solved icon path:
+1. known NSC v1.70 global StageInfo baseline;
+2. semantic parse/validation;
+3. append/replace authored custom stage record;
+4. rebuild all pointers/counts;
+5. emit merged GLOBAL `data/stage/StageInfo.bin.xfbin` before CPK packaging.
+
+## Baseline + fragment + golden merge proof
+Recovered NSC v1.70 global StageInfo baseline:
+- count `181`
+- SHA256 `679c259ae0336617b817260d834ae9124dcaa8584a484e40b3b60856de93d0c5`
+
+Current Tobi authored fragment:
+- path `Stages/STG_2TOB_UNI_LT/data/stage/StageInfo.bin.xfbin`
+- count `1`
+- SHA256 `285cbb90bbec583feb14d1d7b884bac104903beb88741a79f89c5dc9a0eab9eb`
+- stage `STG_2TOB_UNI_LT`
+- 3 file paths:
+  - `data/spc/mtobspl3_e.xfbin`
+  - `data/stage/sd_decal_type01.xfbin`
+  - `data/stage/lensFlare/oprism_lensFlare.xfbin`
+- 1 object.
+
+R164 semantic merge result:
+- `181 -> 182`
+- `STG_2TOB_UNI_LT` appended at index `181`
+- size `649906`
+- SHA256 `54bc7af2b64bc426c2152facc0ccec621f7dc2d9a32f1359ba87008ad511bb89`
+
+This hash is BIT-IDENTICAL to the historical Alpha7 golden StageInfo output. Therefore the merger has been recovered exactly for this input/baseline.
+
+## Exact prior packaging defect confirmed
+The user's original helper `decrypt_unse_resources.py` builds `cpk_input/` exclusively from `Resources/Files/*`; authored `Stages/*` content is retained only in `compile_stage/`.
+Therefore the semantic StageInfo merge could exist during compiler analysis but still be absent from the final CPK if its output was never explicitly injected into `cpk_input/data/stage/StageInfo.bin.xfbin`.
+
+R164 full compiler path fixes this by explicitly emitting the merged global StageInfo into that path.
+
+## Faster current Tobi path: surgical CPK injection
+Original mounted `Tobi_Switch.cpk`:
+- SHA256 `e61bdb5faf60be186828769a1d064c98f0682ed02f39c6b9929eaab8e7ef69b7`
+- CpkMode `1`
+- alignment `512`
+- `93` TOC rows
+- all 93 payloads uncompressed (`FileSize == ExtractSize`)
+- `TocOffset=0x800`
+- `ContentOffset=0x4000`
+- original TOC ends around `0x1AFE`, leaving safe reserved metadata space before content.
+
+Rather than repacking all assets, R164 performs a constrained one-row TOC expansion and appends the golden merged StageInfo. Original offsets and payload bytes remain unchanged.
+
+Added row:
+- ID `93`
+- `data/stage/StageInfo.bin.xfbin`
+- FileSize / ExtractSize `649906`
+- FileOffset `0xA5F1A00` relative to `TocOffset`
+- absolute payload offset `0xA5F2200`.
+
+Output `Tobi_Switch_R164_STAGEINFO_FIXED.cpk`:
+- files / TOC rows: `94`
+- size `174656690`
+- SHA256 `87f0157dc8fabcc31ffdf2b91749bf3f5e1dbe1a3481426f0de9521524419fd5`
+- `ContentSize=174640306`, exactly `EOF-ContentOffset`
+- `EnabledPackedSize=174614881`, exactly sum of all 94 FileSize values
+- first 93 TOC rows semantically unchanged
+- first 93 payloads BYTE-IDENTICAL
+- new StageInfo payload SHA exact golden `54bc7af2...bb89`.
+
+Fast path was run twice from the exact user `.unse` + exact original CPK. Both outputs were byte-identical with SHA `87f0157d...19fd5`.
+
+Static gates:
+- `R164_STAGEINFO_FAST_MERGE=PASS`
+- `R164_CPK_STAGEINFO_INJECT=PASS`
+- `OLD_PAYLOADS_IDENTICAL=PASS`
+- `R164_FAST_DETERMINISTIC=PASS`
+
+## R164 hardware test protocol
+Keep the current safe V2P/V2N runtime EXACTLY unchanged.
+Replace ONLY the mounted `Tobi_Switch.cpk` with R164 fixed CPK.
+Fresh boot.
+Do not press D-pad.
+Select Tobi and execute UJ once.
+Capture full Uzuy log.
+
+Primary expected discriminator:
+`[NSC:V2N] STAGE_REGISTRY ... text=STG_2TOB_UNI_LT ... found=1`
+
+Interpretation:
+1. `found=1` + Kamui cinematic stage renders correctly => stage root fixed; freeze stage path and move next to dedicated Event150 voice.
+2. `found=1` but visual map still mixes => registration is solved; inspect successful descriptor/environment path downstream of `main+0x536088` and `main+0x83C500`.
+3. `found=0` => do NOT revive V2O. Trace which concrete file source satisfies `data/stage/StageInfo.bin.xfbin`; the corrected CPK itself is statically proven to contain the right global file.
+
+## R164 artifacts
+- `Tobi_Switch_R164_STAGEINFO_FIXED.cpk`
+- `NSC_STAGEINFO_MERGER_R164.zip`
+- `R164_STATIC_AUDIT.txt` inside kit
+- `NSC2Switch_MASTER_CHECKPOINT_2026-09-28_R164_FULL.md`
+
+
+---
+
+# R165 — EVENT150 / CHARACTER VOICE READ-ONLY PROVENANCE PROBE
+Date: 2026-09-28
+
+## Hardware state entering R165
+User tested R164 corrected CPK and confirms the Kamui cinematic stage no longer mixes with the battle map. Therefore the R164 StageInfo semantic merge / CPK injection is hardware PASS and is frozen.
+
+Remaining user-reported issue: Tobi character voice is intermittent / frequently absent.
+
+The R164/new log continues to show successful delivery of the authored Tobi audio containers; this is not treated as a missing-file problem.
+
+## New static proof — Event150 is a PC API hijack
+Exact Tobi `mtobprm.bin.xfbin` from the active R164 CPK contains:
+- frame44, event type 0x0096 (150), cue `mtob_ougi_001`;
+- frame114, event type 0x0096 (150), cue `mtob_ougi_002`;
+- frame166, event type 0x0096 (150), cue `mtob_ougi_003`;
+- the sequence exists in both Tobi UJ demo action variants.
+
+Original Switch v1.70 native registration proof:
+- Event121 is already locked to callback main+0x8134F8.
+- Native event registrations advance at 0x30-byte stride in the registration table.
+- 150 - 121 = 29 entries.
+- Event150 therefore maps to callback main+0x813ECC.
+- The registration name associated with this callback is `ME_SET_CAPTION`.
+
+Conclusion: UltimateStormAPI/ModdingAPI PC repurposes vanilla Event150 / ME_SET_CAPTION as a named character-voice container. Stock Switch has no compatibility shim for that custom semantic.
+
+## Native ME_VOICE comparator
+Original Switch callback main+0x813D88 is associated with `ME_VOICE`.
+Fingerprint:
+`F81F0FFE 79C04828 11401D01 F9400008 F9481908 2A1F03E2 D63F0100 52800020`
+
+Semantics:
+- read signed int16 at event+0x24;
+- add 0x7000;
+- call actor vtable+0x1030(actor, command, 0);
+- return handled=1.
+
+This is a useful comparator for any Tobi lines that are already audible through genuine native voice events.
+
+## R165 runtime change
+Read-only hooks only:
+1. `R165Event150ProbeHook` at main+0x813ECC
+   - custom actors only for logging;
+   - captures cue string from event[0..29] plus fields at +0x24/+0x26/+0x28/+0x2C;
+   - calls Orig unchanged;
+   - logs native return.
+2. `R165NativeMeVoiceProbeHook` at main+0x813D88
+   - logs voice_index and computed command;
+   - calls Orig unchanged;
+   - logs native return.
+
+No:
+- voice playback injection;
+- Character Sound Entry mutation;
+- ACB/AWB mutation;
+- Event150 return override;
+- stage change;
+- P128 change;
+- opcode26 change;
+- D-pad change.
+
+## Decisive markers
+`[NSC:R165] EVT150 phase=pre ... cue=mtob_ougi_001/...`
+`[NSC:R165] ME_VOICE phase=pre ... command=...`
+
+Decision tree:
+A. Event150 mtob cue appears, ME_VOICE does not: missing UltimateStormAPI Event150 named-voice dispatcher is proven. Next port the PC semantic generically.
+B. Both appear: trace Character Sound Entry / ACB lookup and compare commands on audible vs silent calls.
+C. Source-authored UJ produces no Event150 marker: move one boundary upstream into PRM event dispatch/registration; do not patch audio banks blindly.
+
+## Static verifier
+`NSC_RUNTIME_R165_SOURCE_VERIFY=PASS`
+- original main exact SHA256 retained;
+- P128 reference exact 30-word delta retained;
+- resolver signatures unchanged/unique;
+- Event150 and ME_VOICE exact fingerprints verified;
+- voice probe declares no mutation.
+
+## Locked priority after R165
+1. Test R165 once with R164 CPK unchanged.
+2. Use result to implement generic Event150 named-voice compatibility OR Character Sound Entry/ACB expansion, not both blindly.
+3. D-pad/Izanagi remains paused until voice path is isolated/fixed.

@@ -1,0 +1,30 @@
+NSC2Switch R165 STATIC VOICE AUDIT
+Date: 2026-09-28
+
+Hardware input:
+- R164 corrected StageInfo packaging fixes Kamui stage; user confirms battle map no longer mixes.
+- Tobi voice remains intermittent.
+- mtob_pl.xfbin, mtob_ev.xfbin and mtob_ev_spl.xfbin load/open successfully in prior/new logs.
+
+Source PRM proof from exact Tobi R164 CPK:
+- mtob_ougi_001 serialized record contains frame 0x002C (44), type 0x0096 (150).
+- mtob_ougi_002: frame 0x0072 (114), type 0x0096.
+- mtob_ougi_003: frame 0x00A6 (166), type 0x0096.
+- the sequence occurs twice for the two UJ demo actions.
+
+Native event-table proof:
+- known Event121 callback: main+0x8134F8.
+- native registration table stride between event callbacks: 0x30 bytes.
+- event150 = 121 + 29 entries -> callback main+0x813ECC.
+- associated native registration name is ME_SET_CAPTION.
+- exact callback fingerprint:
+  D101C3FF A90557FE A9064FF4 9000C988 F9426108 F9400108 B94A9108 7100311F
+
+Native ME_VOICE comparator:
+- main+0x813D88.
+- exact fingerprint:
+  F81F0FFE 79C04828 11401D01 F9400008 F9481908 2A1F03E2 D63F0100 52800020
+- semantics: voice command = int16(event+0x24) + 0x7000; then actor vtable+0x1030(actor,command,0).
+
+Conclusion:
+UltimateStormAPI PC repurposes Event150 for named character voice cues. Stock Switch executes the native ME_SET_CAPTION semantic unless a compatibility shim replaces it. R165 is read-only and proves runtime arrival before any voice-registration mutation is attempted.

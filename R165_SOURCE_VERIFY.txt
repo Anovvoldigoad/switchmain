@@ -1,0 +1,53 @@
+main_order PASS
+fail_closed_main PASS
+thirty_word_plan PASS
+validate_before_write PASS
+paired_file_disabled PASS
+resolver_7_markers PASS
+workflow_only_r165 PASS
+workflow_original_main PASS
+workflow_not_reference_main PASS
+prepare_r165_elf PASS
+no_char281_runtime PASS
+p128_retained PASS
+op23_safe PASS
+stage_actor_enemy_parity PASS
+no_manual_poststage_stagebridge PASS
+op26_playback_retained PASS
+v2m_graph PASS
+v2m_resource_trace PASS
+v2m_hooks_passive PASS
+v2n_registry_constants PASS
+v2n_registry_probe PASS
+v2n_pre_post PASS
+v2p_ready PASS
+v2p_stageinfo_pre PASS
+v2p_stageinfo_post PASS
+v2p_cpk_bound PASS
+v2p_exact_stageinfo_paths PASS
+v2p_no_reindex PASS
+v2p_no_direct_loader_call PASS
+v2p_no_new_stageinfo_trampoline PASS
+r165_event150_offset PASS
+r165_mevoice_offset PASS
+r165_event150_hook PASS
+r165_native_voice_hook PASS
+r165_readonly_ready PASS
+r165_no_play_in_probe PASS
+r165_called_from_main PASS
+sfx_count_160 PASS
+original_main_sha256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+reference_p128_main_sha256 904a0405d04360ff3969909cdd7197c9e8c2aba2467151a7eaad4c821fcebbff
+text_diff_words 30
+reference_delta_exact_30_words PASS
+stage_registry_fingerprint PASS
+offline_original_CHARACODE_GETTER PASS hits=0x3f4150
+offline_original_CPK_BIND PASS hits=0x473190
+offline_original_EVENT236 PASS hits=0x816300
+offline_original_PLAY_ACTION PASS hits=0x766b8c
+offline_original_CENTRAL_SETTER PASS hits=0x766320
+offline_original_UJ_SESSION_OUTER PASS hits=0x7ef098
+offline_original_STATE137_CONTROLLER PASS hits=0x7e6ea8
+r165_event150_fingerprint PASS
+r165_mevoice_fingerprint PASS
+NSC_RUNTIME_R165_SOURCE_VERIFY=PASS
