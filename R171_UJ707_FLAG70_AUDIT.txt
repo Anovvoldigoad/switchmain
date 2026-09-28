@@ -1,0 +1,27 @@
+R171 UJ707 FLAG70 RELEASE AUDIT
+
+HARDWARE INPUT (R170): PASS
+- exact R170 runtime loaded
+- UJ707 gate caller = main+0x7E48E8
+- ret=0 while stuck
+- reason=anim_flag70
+- flags70=0x0001 across captured action707 frames
+- busy1264=0
+- native timer advances normally
+- actor later reaches E94/E98=8/8 while action remains707
+
+SUCCESSFUL HIT SAFETY EVIDENCE:
+- action707 -> 710 occurs with E94/E98=137/136 and BDA4=0
+- therefore exact whiff signature E94/E98=8/8 + BDA4=1 does not overlap proven hit handoff
+
+R171 MUTATION:
+- only anim+0x70 bit0 cleared
+- all other flag bits preserved
+- only exact custom semantic/member whiff terminal
+- timing_pass required
+- Orig(actor) called once
+- no direct action/state/session/control writes
+- force708=0
+- force710=0
+- no 77/74 bounce
+- stage/voice/P128/D-pad unchanged

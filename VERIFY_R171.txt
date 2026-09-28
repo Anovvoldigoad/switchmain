@@ -1,0 +1,27 @@
+main_order PASS
+fail_closed_main PASS
+r169_not_installed PASS
+r170_not_installed PASS
+r171_installed PASS
+r171_exact_caller PASS
+r171_exact_terminal PASS
+r171_semantic_member_guard PASS
+r171_only_flag_write PASS
+r171_native_gate_once PASS
+r171_no_force PASS
+stage_trace_hooks_omitted PASS
+voice_probes_not_installed PASS
+p128_retained PASS
+thirty_word_plan PASS
+validate_before_write PASS
+workflow_r171 PASS
+prepare_r171_elf PASS
+original_main_sha256 PASS
+reference_delta_30_words PASS 30
+r171_gate_fingerprint PASS
+r171_707_handler_fingerprint PASS
+r171_inner_blocker_fingerprint PASS
+r171_flag70_fingerprint PASS
+r171_timer_fields_fingerprint PASS
+stage_registry_fingerprint PASS
+NSC_RUNTIME_R171_SOURCE_VERIFY=PASS

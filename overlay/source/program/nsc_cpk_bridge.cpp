@@ -198,13 +198,14 @@ constexpr ptrdiff_t kP81UjPolicyCallerReturnOffset =
 
 std::atomic<uint32_t> g_p81_policy_seq{0};
 
-// R170 — read-only native 707->708 completion-gate provenance.
-// Static v1.70 proof: UJ state handler main+0x7E48E4 calls main+0x769A4C
-// while current action is 707. A zero result keeps 707; nonzero proceeds to
-// lookup and native vslot+0xF98 transition to action708. No action mutation.
-std::atomic<uint32_t> g_r170_gate_logs{0};
-constexpr uint32_t kR170GateLogLimit = 4096u;
-constexpr ptrdiff_t kR170Uj707GateCallerReturnOffset = 0x7E48E8;
+// R171 — native UJ707 loop-flag release.
+// R170 hardware proof isolated the blocker to anim+0x70 bit0. R171 clears only
+// that bit on the exact terminal custom-UJ whiff signature, after the native
+// timing predicate is already satisfied, then lets the original 0x769A4C gate
+// and caller perform the natural 707->708 transition. No action/state force.
+std::atomic<uint32_t> g_r171_gate_logs{0};
+constexpr uint32_t kR171GateLogLimit = 4096u;
+constexpr ptrdiff_t kR171Uj707GateCallerReturnOffset = 0x7E48E8;
 
 
 // R165 read-only Event150/voice provenance probe.
@@ -2852,7 +2853,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             pre_123e4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E4);
         }
 
-        // R170: R167/R168/R169 action-mutation experiments are retired.
+        // R171: R167/R168/R169 action-mutation experiments remain retired.
         // Preserve every native PlayAction argument unchanged while the exact
         // native 707 completion gate is observed read-only.
         const int32_t effective_a2 = a2;
@@ -2879,7 +2880,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             post_123e4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E4);
         }
 
-        // R170: no whiff action mutation. Preserve the exact native 707 state
+        // R171: no PlayAction whiff mutation here. Preserve the exact native 707 state
         // so the native 707->708 completion gate can be observed without masking it.
 
         // P91A: focused zero-extra handoff-state trace. Reuse the proven P50
@@ -3335,7 +3336,7 @@ HOOK_DEFINE_TRAMPOLINE(P81OugiAwakeningPolicyHook) {
                     b + 0xE9C);
         }
 
-        // R170: R169 direct 707->77->74 release is retired. No action/animation
+        // R171: R169 direct 707->77->74 release remains retired. No action/animation
         // mutation is performed here; the native 707 completion path is left intact.
 
         // +0x1288:
@@ -5532,9 +5533,9 @@ HOOK_DEFINE_TRAMPOLINE(ActionLookupProbeHook) {
 // P50A: completion/timing gate used by the 707/708/709 state handler.
 // Fingerprint @ 0x769A4C:
 //   FC1D0FE8 A90157FE A9024FF4 AA0003F3 F9410C00 B4000160 97F34520 D000CEC8
-HOOK_DEFINE_TRAMPOLINE(ActionGateProbeHook) {
+HOOK_DEFINE_TRAMPOLINE(ActionGateFlagReleaseHook) {
     static uint32_t Callback(void* actor) {
-        // Capture native caller before any helper call. The exact UJ707 caller is
+        // Capture native caller before helper calls. Exact UJ707 gate caller:
         // main+0x7E48E8 (BL at 0x7E48E4).
         uintptr_t caller_lr = 0;
         asm volatile("mov %0, x30" : "=r"(caller_lr));
@@ -5553,7 +5554,7 @@ HOOK_DEFINE_TRAMPOLINE(ActionGateProbeHook) {
         uint32_t end78 = 0xFFFFFFFFu;
         uint32_t duration_bits = 0;
         uint32_t e80 = 0xFFFFFFFFu, e94 = 0xFFFFFFFFu, e98 = 0xFFFFFFFFu;
-        uint32_t e9c = 0xFFFFFFFFu, ea4 = 0xFFFFFFFFu, bda4 = 0xFFFFFFFFu;
+        uint32_t e9c = 0xFFFFFFFFu, bda4 = 0xFFFFFFFFu;
 
         if (actor) {
             const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
@@ -5564,7 +5565,6 @@ HOOK_DEFINE_TRAMPOLINE(ActionGateProbeHook) {
             e94 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE94);
             e98 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE98);
             e9c = *reinterpret_cast<const volatile uint32_t*>(b + 0xE9C);
-            ea4 = *reinterpret_cast<const volatile uint32_t*>(b + 0xEA4);
             bda4 = *reinterpret_cast<const volatile uint32_t*>(b + 0xBDA4);
             if (anim) {
                 const auto* a = reinterpret_cast<const volatile uint8_t*>(anim);
@@ -5576,61 +5576,80 @@ HOOK_DEFINE_TRAMPOLINE(ActionGateProbeHook) {
             }
         }
 
+        // Reconstruct the native timing predicate before any mutation.
+        uint32_t tick_num = 0, tick_div = 0, scaled = 0;
+        const uintptr_t base = exl::util::modules::GetTargetStart();
+        const uintptr_t clock_root =
+            *reinterpret_cast<const volatile uintptr_t*>(base + 0x2143658);
+        if (clock_root) {
+            const uintptr_t clock_obj =
+                *reinterpret_cast<const volatile uintptr_t*>(clock_root);
+            if (clock_obj) {
+                tick_div = *reinterpret_cast<const volatile uint8_t*>(clock_obj + 0xA02);
+            }
+        }
+        const uintptr_t tick_ptr =
+            *reinterpret_cast<const volatile uintptr_t*>(base + 0x2143718);
+        if (tick_ptr) {
+            tick_num = *reinterpret_cast<const volatile uint32_t*>(tick_ptr);
+        }
+
+        union { uint32_t u; float f; } duration{};
+        duration.u = duration_bits;
+        if (tick_div != 0u) {
+            const uint32_t ratio = tick_num / tick_div;
+            const float sf = duration.f * static_cast<float>(ratio);
+            if (sf > 0.0f) scaled = static_cast<uint32_t>(sf);
+        }
+        const uint64_t lhs = static_cast<uint64_t>(frame74) + scaled;
+        const uint32_t timing_pass =
+            (anim != 0 && lhs >= static_cast<uint64_t>(end78)) ? 1u : 0u;
+
+        bool semantic = false;
+        bool member = false;
+        if (custom && actor) {
+            semantic = P64QuerySemanticUltimateJutsu(actor);
+            member = p81_data::ContainsOugiAwakeningId(char_id);
+        }
+
+        // Exact whiff-terminal guard. Successful Tobi UJ hardware evidence
+        // reaches 710 from 707 while E94/E98 are 137/136 and BDA4=0, so it
+        // cannot satisfy this 8/8 + BDA4=1 release signature.
+        const bool exact_whiff_terminal =
+            custom && side == 0u && semantic && member &&
+            caller_off == kR171Uj707GateCallerReturnOffset &&
+            action == 707u && e80 == 1u && e94 == 8u && e98 == 8u &&
+            e9c == 0u && bda4 == 1u && busy1264 == 0u &&
+            anim != 0u && inner50 != 0u && (flags70 & 1u) != 0u &&
+            timing_pass != 0u;
+
+        const uint16_t flags_before = flags70;
+        uint16_t flags_after = flags70;
+        if (exact_whiff_terminal) {
+            flags_after = static_cast<uint16_t>(flags70 & static_cast<uint16_t>(~1u));
+            auto* a = reinterpret_cast<volatile uint8_t*>(anim);
+            *reinterpret_cast<volatile uint16_t*>(a + 0x70) = flags_after;
+        }
+
+        // Native-first transition ownership is preserved: R171 changes only
+        // the proven blocking animation bit, then calls the original gate once.
         const uint32_t ret = Orig(actor);
 
         if (custom && side == 0u && action == 707u &&
-            caller_off == kR170Uj707GateCallerReturnOffset) {
-            // main+0x438E48's only nonzero path is:
-            //   anim+0x50 != 0 && (*(u16*)(anim+0x70) & 1) != 0.
-            const uint32_t flag_block = (inner50 != 0 && (flags70 & 1u)) ? 1u : 0u;
-
-            // Reconstruct the final timing predicate from the same read-only
-            // fields used by main+0x769A4C. This is diagnostic only.
-            uint32_t tick_num = 0, tick_div = 0, scaled = 0;
-            const uintptr_t base = exl::util::modules::GetTargetStart();
-            const uintptr_t clock_root =
-                *reinterpret_cast<const volatile uintptr_t*>(base + 0x2143658);
-            if (clock_root) {
-                const uintptr_t clock_obj =
-                    *reinterpret_cast<const volatile uintptr_t*>(clock_root);
-                if (clock_obj) tick_div =
-                    *reinterpret_cast<const volatile uint8_t*>(clock_obj + 0xA02);
-            }
-            const uintptr_t tick_ptr =
-                *reinterpret_cast<const volatile uintptr_t*>(base + 0x2143718);
-            if (tick_ptr) tick_num =
-                *reinterpret_cast<const volatile uint32_t*>(tick_ptr);
-
-            union { uint32_t u; float f; } duration{};
-            duration.u = duration_bits;
-            if (tick_div != 0u) {
-                const uint32_t ratio = tick_num / tick_div;
-                const float sf = duration.f * static_cast<float>(ratio);
-                if (sf > 0.0f) scaled = static_cast<uint32_t>(sf);
-            }
-            const uint64_t lhs = static_cast<uint64_t>(frame74) + scaled;
-            const uint32_t timing_pass =
-                (anim != 0 && lhs >= static_cast<uint64_t>(end78)) ? 1u : 0u;
-
-            const char* reason = "timing";
-            if (!anim) reason = "no_anim";
-            else if (flag_block) reason = "anim_flag70";
-            else if (busy1264 != 0u) reason = "actor1264";
-            else if (timing_pass) reason = "pass";
-
-            const uint32_t n = g_r170_gate_logs.fetch_add(1, std::memory_order_relaxed);
-            if (n < kR170GateLogLimit) {
+            caller_off == kR171Uj707GateCallerReturnOffset) {
+            const uint32_t n = g_r171_gate_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < kR171GateLogLimit) {
                 Logging.Log(
-                    "[NSC:R170] UJ707_GATE n=%u actor=%p side=%u char=%u ret=%u reason=%s "
-                    "caller_off=0x%lx action=%u anim=0x%lx inner50=0x%lx flags70=%04x "
-                    "busy1264=%u frame74=%u end78=%u duration_bits=%08x tick_num=%u tick_div=%u "
-                    "scaled=%u timing_pass=%u e80=%u e94=%u e98=%u e9c=%u ea4=%u bda4=%u readonly=1",
-                    n, actor, side, char_id, ret, reason,
-                    static_cast<unsigned long>(caller_off), action,
-                    static_cast<unsigned long>(anim), static_cast<unsigned long>(inner50),
-                    static_cast<unsigned>(flags70), busy1264, frame74, end78, duration_bits,
-                    tick_num, tick_div, scaled, timing_pass,
-                    e80, e94, e98, e9c, ea4, bda4);
+                    "[NSC:R171] UJ707_FLAG_RELEASE n=%u actor=%p side=%u char=%u "
+                    "match=%u ret=%u flags70=%04x->%04x timing_pass=%u "
+                    "frame74=%u end78=%u scaled=%u busy1264=%u "
+                    "e80=%u e94=%u e98=%u e9c=%u bda4=%u semantic=%u member=%u "
+                    "force708=0 force710=0 native_gate_once=1",
+                    n, actor, side, char_id, exact_whiff_terminal ? 1u : 0u, ret,
+                    static_cast<unsigned>(flags_before), static_cast<unsigned>(flags_after),
+                    timing_pass, frame74, end78, scaled, busy1264,
+                    e80, e94, e98, e9c, bda4,
+                    semantic ? 1u : 0u, member ? 1u : 0u);
             }
         }
         return ret;
@@ -8851,24 +8870,25 @@ bool InstallR166SoundDispatchReadOnlyProbe() {
     return true;
 }
 
-bool InstallR170Uj707NativeGateProbe() {
+bool InstallR171Uj707Flag70Release() {
     static constexpr uint32_t kGateExpected[] = {
         0xFC1D0FE8, 0xA90157FE, 0xA9024FF4, 0xAA0003F3,
         0xF9410C00, 0xB4000160, 0x97F34520, 0xD000CEC8,
     };
     const bool ok = MatchWords(kActionGateOffset, kGateExpected);
     if (!ok) {
-        LogFingerprintFail("R170_UJ707_NATIVE_GATE", kActionGateOffset);
+        LogFingerprintFail("R171_UJ707_FLAG70_RELEASE", kActionGateOffset);
         Logging.Log(
-            "[NSC:R170] READY installed=0 fail_closed=1 readonly=1 r169_mutation=0 "
-            "stage_trace_hooks=0 voice_probe=0 p128_change=0 dpad_change=0");
+            "[NSC:R171] READY installed=0 fail_closed=1 flag70_release=0 "
+            "force708=0 force710=0 stage_trace_hooks=0 voice_probe=0 p128_change=0 dpad_change=0");
         return false;
     }
-    ActionGateProbeHook::InstallAtOffset(kActionGateOffset);
+    ActionGateFlagReleaseHook::InstallAtOffset(kActionGateOffset);
     Logging.Log(
-        "[NSC:R170] READY installed=1 native_707_gate=0x769a4c exact_caller=0x7e48e8 "
-        "static_707_to_708_proof=1 readonly=1 r169_mutation=0 force708=0 force710=0 "
-        "direct77_74=0 stage_trace_hooks=0 voice_probe=0 p128_change=0 dpad_change=0");
+        "[NSC:R171] READY installed=1 native_707_gate=0x769a4c exact_caller=0x7e48e8 "
+        "root_fix_anim_flag70=1 exact_whiff_terminal_8_8=1 timing_guard=1 semantic_guard=1 "
+        "membership_guard=1 native_transition_only=1 force708=0 force710=0 direct77_74=0 "
+        "stage_trace_hooks=0 voice_probe=0 p128_change=0 dpad_change=0");
     return true;
 }
 

@@ -11,25 +11,27 @@ rt=(root/'overlay/source/program/nsc_runtime_v2.cpp').read_text()
 bridge=(root/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
 main=(root/'overlay/source/program/main.cpp').read_text()
 prep=(root/'prepare_exlaunch.sh').read_text()
-wf=(root/'.github/workflows/build-runtime-r170.yml').read_text()
+wf=(root/'.github/workflows/build-runtime-r171.yml').read_text()
 
 checks={
- 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR170Uj707NativeGateProbe();') < main.index('InstallV2NStageRegistryProof();'),
+ 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR171Uj707Flag70Release();') < main.index('InstallV2NStageRegistryProof();'),
  'fail_closed_main': 'if (!nsc::v2::InstallOriginalMainRuntimePatches()) return;' in main,
  'r169_not_installed': 'InstallR169CustomUj707WhiffRelease();' not in main,
- 'r169_runtime_mutation_removed': '[NSC:R169] UJ707_WHIFF' not in bridge and 'direct(actor, 77, -1, 0, 1.0f);' not in bridge and 'direct(actor, 74, -1, 0, 1.0f);' not in bridge,
- 'r170_installed': 'InstallR170Uj707NativeGateProbe();' in main and '[NSC:R170] READY installed=1 native_707_gate=0x769a4c' in bridge,
- 'r170_exact_caller': 'kR170Uj707GateCallerReturnOffset = 0x7E48E8' in bridge and 'caller_off == kR170Uj707GateCallerReturnOffset' in bridge,
- 'r170_readonly_orig': 'const uint32_t ret = Orig(actor);' in bridge and 'readonly=1' in bridge,
- 'r170_reason_fields': all(x in bridge for x in ('busy1264','flags70','frame74','end78','duration_bits','tick_num','tick_div','timing_pass','reason=%s')),
- 'r170_no_force': 'force708=0 force710=0' in bridge and 'direct77_74=0' in bridge,
+ 'r170_not_installed': 'InstallR170Uj707NativeGateProbe();' not in main,
+ 'r171_installed': 'InstallR171Uj707Flag70Release();' in main and '[NSC:R171] READY installed=1 native_707_gate=0x769a4c' in bridge,
+ 'r171_exact_caller': 'kR171Uj707GateCallerReturnOffset = 0x7E48E8' in bridge and 'caller_off == kR171Uj707GateCallerReturnOffset' in bridge,
+ 'r171_exact_terminal': all(x in bridge for x in ('action == 707u','e80 == 1u','e94 == 8u','e98 == 8u','e9c == 0u','bda4 == 1u','busy1264 == 0u','timing_pass != 0u')),
+ 'r171_semantic_member_guard': 'P64QuerySemanticUltimateJutsu(actor)' in bridge and 'p81_data::ContainsOugiAwakeningId(char_id)' in bridge,
+ 'r171_only_flag_write': '*reinterpret_cast<volatile uint16_t*>(a + 0x70) = flags_after;' in bridge and 'flags70 & static_cast<uint16_t>(~1u)' in bridge,
+ 'r171_native_gate_once': 'const uint32_t ret = Orig(actor);' in bridge and 'native_gate_once=1' in bridge,
+ 'r171_no_force': 'force708=0 force710=0' in bridge and 'direct77_74=0' in bridge,
  'stage_trace_hooks_omitted': 'InstallV2MStageSafeTraceHooks();' not in main,
  'voice_probes_not_installed': 'InstallR165Event150VoiceReadOnlyProbe();' not in main and 'InstallR166SoundDispatchReadOnlyProbe();' not in main,
  'p128_retained': '[NSC:P128A] READY' in bridge and 'no_force708=1' in bridge and 'no_force710=1' in bridge,
  'thirty_word_plan': 'WordPatch plan[30]' in rt and 'condition_words=5 p67_words=1 p128_words=24' in rt,
  'validate_before_write': rt.index('Validate ALL original words before the first write') < rt.index('patcher.Write<std::uint32_t>'),
- 'workflow_r170': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-R170-uj707-native-gate-probe' in wf,
- 'prepare_r170_elf': 'runtime_r170.elf' in prep,
+ 'workflow_r171': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-R171-uj707-flag70-release' in wf,
+ 'prepare_r171_elf': 'runtime_r171.elf' in prep,
 }
 for k,v in checks.items(): print(k,'PASS' if v else 'FAIL')
 if not all(checks.values()): sys.exit(1)
@@ -66,11 +68,11 @@ blocker_exp=[0xF9402808,0xB4000068,0x9100E000,0x14351C9E,0x2A1F03E0,0xD65F03C0]
 flag_exp=[0x79407008,0x12000100,0xD65F03C0]
 timing_exp=[0xB9407400,0xD65F03C0,0xB9407800,0xD65F03C0]
 for name,got,exp in [
- ('r170_gate_fingerprint',words(0x769A4C,8),gate_exp),
- ('r170_707_handler_fingerprint',words(0x7E48C4,25),handler_exp),
- ('r170_inner_blocker_fingerprint',words(0x438E48,6),blocker_exp),
- ('r170_flag70_fingerprint',words(0x11800CC,3),flag_exp),
- ('r170_timer_fields_fingerprint',words(0x43BC70,4),timing_exp),
+ ('r171_gate_fingerprint',words(0x769A4C,8),gate_exp),
+ ('r171_707_handler_fingerprint',words(0x7E48C4,25),handler_exp),
+ ('r171_inner_blocker_fingerprint',words(0x438E48,6),blocker_exp),
+ ('r171_flag70_fingerprint',words(0x11800CC,3),flag_exp),
+ ('r171_timer_fields_fingerprint',words(0x43BC70,4),timing_exp),
 ]:
     ok=got==exp; print(name,'PASS' if ok else 'FAIL')
     if not ok: sys.exit(1)
@@ -80,4 +82,4 @@ reg_exp=[0xF8408C09,0xB40001A9,0xAA0003E8,0xB940212A,0x6B01015F,0x1A9F27EA,0x9A8
 ok=words(0x8364F8,8)==reg_exp
 print('stage_registry_fingerprint','PASS' if ok else 'FAIL')
 if not ok: sys.exit(1)
-print('NSC_RUNTIME_R170_SOURCE_VERIFY=PASS')
+print('NSC_RUNTIME_R171_SOURCE_VERIFY=PASS')
