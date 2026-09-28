@@ -10,7 +10,7 @@ uj_post_dynamic PASS
 six_core_dynamic PASS
 v2d_arch_markers PASS
 original_main_readme PASS
-workflow_only_v2k PASS
+workflow_only_v2l PASS
 workflow_original_main PASS
 workflow_not_reference_main PASS
 prepare_copies_sfx_header PASS
@@ -51,6 +51,18 @@ v2k_stage_safe PASS
 v2k_no_v2j_inline_hook PASS
 v2k_no_poststage_call PASS
 v2k_audio_frozen PASS
+v2l_main_call PASS
+v2l_stage_ready PASS
+v2l_stage_graph PASS
+v2l_stage_trace_window PASS
+v2l_request_trace PASS
+v2l_file_open_trace PASS
+v2l_stage_handle_observe PASS
+v2l_poststage_observe_only PASS
+v2l_no_stage_post_call PASS
+v2l_no_dpad_behavior_change PASS
+v2l_no_voice_behavior_change PASS
+v2l_no_p128_behavior_change PASS
 original_main_sha256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
 reference_p128_main_sha256 904a0405d04360ff3969909cdd7197c9e8c2aba2467151a7eaad4c821fcebbff
 text_diff_words 30
@@ -71,4 +83,4 @@ sfx_index_S_PL_etc_m PASS index=22
 sfx_index_S_PL_DMG_cmn_vS_rv PASS index=153
 static_switch_sound_event_813d88 PASS off=0x813d88
 stage_poststage_removed PASS
-NSC_RUNTIME_V2K_SOURCE_VERIFY=PASS
+NSC_RUNTIME_V2L_SOURCE_VERIFY=PASS

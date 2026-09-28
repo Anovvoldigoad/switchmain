@@ -12,7 +12,7 @@ h=(root/'overlay/source/program/nsc_runtime_v2.hpp').read_text()
 bridge=(root/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
 main=(root/'overlay/source/program/main.cpp').read_text()
 prep=(root/'prepare_exlaunch.sh').read_text()
-wf=(root/'.github/workflows/build-runtime-v2k.yml').read_text()
+wf=(root/'.github/workflows/build-runtime-v2l.yml').read_text()
 sfx=(root/'overlay/source/program/nsc_sfx_list_generated.hpp').read_text()
 
 checks={
@@ -30,8 +30,8 @@ checks={
     'HOOK name=CENTRAL_SETTER source=resolver','HOOK name=CPK_BIND source=resolver',
     'HOOK name=CHARACODE_GETTER source=resolver')),
  'v2d_arch_markers': '[NSC:V2D] RESOLVER_READY' in rt and '[NSC:V2D] RUNTIME_PATCH_READY' in rt,
- 'original_main_readme': '2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9' in (root/'README_RUNTIME_V2K.md').read_text(),
- 'workflow_only_v2k': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-V2K-recovery-passive-dpad' in wf,
+ 'original_main_readme': '2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9' in (root/'README_RUNTIME_V2L.md').read_text(),
+ 'workflow_only_v2l': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-V2L-stage-resource-environment-trace' in wf,
  'workflow_original_main': 'original/atmosphere/contents/0100FA10190A0000/exefs/main' in wf,
  'workflow_not_reference_main': 'reference_p128/atmosphere/contents/0100FA10190A0000/exefs/main" "$OUT/atmosphere' not in wf,
  'prepare_copies_sfx_header': 'nsc_sfx_list_generated.hpp' in prep,
@@ -72,6 +72,19 @@ checks={
  'v2k_no_v2j_inline_hook': 'InstallV2JDpadNativeConsumerProbe' not in main and 'DPAD_NATIVE_CONSUMER' not in bridge and 'DPAD_NATIVE_READY' not in bridge,
  'v2k_no_poststage_call': 'reinterpret_cast<VoidFn>(base + kPostStageOffset)();' not in bridge[bridge.index('uint32_t HandleStageMove'):bridge.index('uint32_t HandleActionAnimation')],
  'v2k_audio_frozen': '[NSC:V2I] OP26_PLAY' in bridge and 'slot1030' in bridge,
+ 'v2l_main_call': 'InstallV2LStageOnlyTraceHooks();' in main,
+ 'v2l_stage_ready': '[NSC:V2L] READY stage_only=1 installed=1' in bridge,
+ 'v2l_stage_graph': '[NSC:V2L] STAGE_GRAPH' in bridge and 'readonly=1' in bridge,
+ 'v2l_stage_trace_window': '[NSC:V2L] STAGE_TRACE_ARM' in bridge and '[NSC:V2L] STAGE_TRACE_DISARM' in bridge,
+ 'v2l_request_trace': 'FileLoadRequestHook::InstallAtOffset(kFileLoadRequestOffset);' in bridge,
+ 'v2l_file_open_trace': 'FileOpenHook::InstallAtOffset(kFileOpenOffset);' in bridge,
+ 'v2l_stage_handle_observe': 'StageHandleHook::InstallAtOffset(kHandleStageChangeOffset);' in bridge,
+ 'v2l_poststage_observe_only': 'PostStageHook::InstallAtOffset(kPostStageOffset);' in bridge and 'manual_poststage_call=0' in bridge,
+ 'v2l_no_stage_post_call': 'reinterpret_cast<VoidFn>(base + kPostStageOffset)();' not in bridge[bridge.index('uint32_t HandleStageMove'):bridge.index('uint32_t HandleActionAnimation')],
+ 'v2l_no_dpad_behavior_change': 'dpad_change=0' in bridge,
+ 'v2l_no_voice_behavior_change': 'voice_change=0' in bridge,
+ 'v2l_no_p128_behavior_change': 'p128_change=0' in bridge,
+
 }
 
 for k,v in checks.items(): print(k,'PASS' if v else 'FAIL')
@@ -231,4 +244,4 @@ if 'reinterpret_cast<VoidFn>(base + kPostStageOffset)();' in stage_src:
     print('stage_poststage_removed FAIL');sys.exit(1)
 print('stage_poststage_removed PASS')
 
-print('NSC_RUNTIME_V2K_SOURCE_VERIFY=PASS')
+print('NSC_RUNTIME_V2L_SOURCE_VERIFY=PASS')

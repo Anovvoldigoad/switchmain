@@ -427,6 +427,8 @@ std::atomic<uint32_t> g_event235_logs{0};
 std::atomic<uint32_t> g_stage_handle_logs{0};
 std::atomic<uint32_t> g_fix_char_logs{0};
 std::atomic<uint32_t> g_post_stage_logs{0};
+std::atomic<uint32_t> g_v2l_stage_asset_trace_active{0};
+std::atomic<uint32_t> g_v2l_stage_move_count{0};
 std::atomic<uint32_t> g_event13_logs{0};
 std::atomic<uint32_t> g_event121_logs{0};
 std::atomic<uint32_t> g_ougi_core_logs{0};
@@ -566,11 +568,26 @@ bool PathContainsTrackedCustom(const char* path) {
 
 bool IsInterestingPath(const char* path) {
     if (!path || !*path) return false;
-    // P35A preserves P31: trace every file path containing a discovered
-    // custom characode, not just the parent prm_load manifest.
-    if (PathContainsTrackedCustom(path)) return true;
-    // Fixture fallback only, for ordering before ID281 has been observed.
-    return BoundedContains(path, "mtob", 512, 8);
+
+    // V2L stage-only resource tracer.  Keep the always-on filter narrow so
+    // preloaded Kamui assets can still be observed before the actual opcode2
+    // transition.  While a custom StageMove sequence is active, widen the
+    // filter to XFBIN/stage resources so asynchronous loads are not missed.
+    const bool known_stage_asset =
+        BoundedContains(path, "mtobspl", 512, 8) ||
+        BoundedContains(path, "2tob", 512, 4) ||
+        BoundedContains(path, "c_sta_11", 512, 8) ||
+        BoundedContains(path, "STG_2TOB", 512, 8);
+    if (known_stage_asset) return true;
+
+    if (g_v2l_stage_asset_trace_active.load(std::memory_order_relaxed) != 0u) {
+        if (BoundedContains(path, ".xfbin", 512, 6) ||
+            BoundedContains(path, "stage", 512, 5) ||
+            BoundedContains(path, "Stage", 512, 5)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool IsInterestingChunk(const char* path, const char* key) {
@@ -1458,6 +1475,45 @@ uint32_t HandleDpadChargeSourceParity(void* actor, int16_t enemy, int16_t arrow,
     return 1;
 }
 
+
+void V2LLogStageGraph(const char* phase, const char* text,
+                      void* stage_global, void* manager, void* object,
+                      void* object_inner, void* stage_context,
+                      void* state_global, void* stage_state, uint32_t stage_id) {
+    auto q = [](void* p, ptrdiff_t off) -> uintptr_t {
+        if (!p) return 0;
+        return *reinterpret_cast<const volatile uintptr_t*>(
+            reinterpret_cast<const uint8_t*>(p) + off);
+    };
+
+    // Read-only snapshot of already-proven live objects.  The selected ranges
+    // stay within offsets that the current stage path already dereferences or
+    // the first few pointer-sized fields of the object.  No pointer is followed
+    // beyond the proven graph and no game memory is modified.
+    Logging.Log(
+        "[NSC:V2L] STAGE_GRAPH phase=%s text=%s stage=%u "
+        "sg=%p sg00=%lx sg08=%lx sg10=%lx sg18=%lx sg20=%lx sg28=%lx sg30=%lx sg38=%lx sg40=%lx sg48=%lx sg50=%lx sg58=%lx sg60=%lx "
+        "mgr=%p mgr00=%lx mgr08=%lx obj=%p obj00=%lx obj08=%lx inner=%p inner00=%lx inner08=%lx inner10=%lx "
+        "ctx=%p ctx00=%lx ctx08=%lx ctx10=%lx ctx18=%lx stateg=%p state=%p state00=%lx state08=%lx readonly=1",
+        phase ? phase : "?", text ? text : "<null>", stage_id,
+        stage_global,
+        static_cast<unsigned long>(q(stage_global,0x00)), static_cast<unsigned long>(q(stage_global,0x08)),
+        static_cast<unsigned long>(q(stage_global,0x10)), static_cast<unsigned long>(q(stage_global,0x18)),
+        static_cast<unsigned long>(q(stage_global,0x20)), static_cast<unsigned long>(q(stage_global,0x28)),
+        static_cast<unsigned long>(q(stage_global,0x30)), static_cast<unsigned long>(q(stage_global,0x38)),
+        static_cast<unsigned long>(q(stage_global,0x40)), static_cast<unsigned long>(q(stage_global,0x48)),
+        static_cast<unsigned long>(q(stage_global,0x50)), static_cast<unsigned long>(q(stage_global,0x58)),
+        static_cast<unsigned long>(q(stage_global,0x60)),
+        manager, static_cast<unsigned long>(q(manager,0x00)), static_cast<unsigned long>(q(manager,0x08)),
+        object, static_cast<unsigned long>(q(object,0x00)), static_cast<unsigned long>(q(object,0x08)),
+        object_inner, static_cast<unsigned long>(q(object_inner,0x00)), static_cast<unsigned long>(q(object_inner,0x08)),
+        static_cast<unsigned long>(q(object_inner,0x10)),
+        stage_context, static_cast<unsigned long>(q(stage_context,0x00)), static_cast<unsigned long>(q(stage_context,0x08)),
+        static_cast<unsigned long>(q(stage_context,0x10)), static_cast<unsigned long>(q(stage_context,0x18)),
+        state_global, stage_state,
+        static_cast<unsigned long>(q(stage_state,0x00)), static_cast<unsigned long>(q(stage_state,0x08)));
+}
+
 uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
     const uintptr_t base = exl::util::modules::GetTargetStart();
     char text[31]{};
@@ -1467,6 +1523,15 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
 
     uint32_t stage_crc = 0;
     if (param2 == 0) stage_crc = Crc30(event);
+
+
+    const uint32_t stage_move_seq = g_v2l_stage_move_count.fetch_add(1, std::memory_order_relaxed) + 1u;
+    const uint32_t trace_was_active = g_v2l_stage_asset_trace_active.load(std::memory_order_relaxed);
+    if (trace_was_active == 0u) {
+        g_v2l_stage_asset_trace_active.store(1u, std::memory_order_relaxed);
+    }
+    Logging.Log("[NSC:V2L] STAGE_TRACE_ARM seq=%u text=%s was_active=%u active=1",
+                stage_move_seq, text, trace_was_active);
 
     auto read_stage_id = [base](void** out_global, void** out_state) -> uint32_t {
         auto* stage_state_global = *reinterpret_cast<void**>(base + kStageStateGlobalOffset);
@@ -1521,6 +1586,9 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
         return 1;
     }
 
+    V2LLogStageGraph("pre_specific", text, stage_global, manager, object, object_inner,
+                     stage_context, state_global_pre, state_pre, stage_id_pre);
+
     if (param2 == 0) {
         using SpecificFn = void (*)(void*, uint32_t);
         reinterpret_cast<SpecificFn>(base + kStageSpecificOffset)(stage_context, stage_crc);
@@ -1533,6 +1601,9 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
     void* state_post_handler = nullptr;
     const uint32_t stage_id_post_handler =
         read_stage_id(&state_global_post_handler, &state_post_handler);
+    V2LLogStageGraph("post_specific", text, stage_global, manager, object, object_inner,
+                     stage_context, state_global_post_handler, state_post_handler,
+                     stage_id_post_handler);
     if (stage_id_post_handler == 0xFFFFFFFFu) {
         Logging.Log(
             "[NSC:V2H] STAGE2_FAIL text=%s reason=stage_state_unavailable_after_handler "
@@ -1544,6 +1615,12 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
     using HandleFn = void (*)(uint32_t);
     using ActorFn = void (*)(void*);
     reinterpret_cast<HandleFn>(base + kHandleStageChangeOffset)(stage_id_post_handler);
+    {
+        void* sg = nullptr; void* st = nullptr;
+        const uint32_t sid = read_stage_id(&sg, &st);
+        V2LLogStageGraph("post_handle", text, stage_global, manager, object, object_inner,
+                         stage_context, sg, st, sid);
+    }
 
     // V2I source-parity correction from UltimateStormAPI PC v1.70
     // me_test_switch_stage(): after HandleStageChange, fix BOTH participants.
@@ -1558,6 +1635,8 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
     void* state_global_final = nullptr;
     void* state_final = nullptr;
     const uint32_t stage_id_final = read_stage_id(&state_global_final, &state_final);
+    V2LLogStageGraph("post_fix", text, stage_global, manager, object, object_inner,
+                     stage_context, state_global_final, state_final, stage_id_final);
     Logging.Log(
         "[NSC:V2I] STAGE2_PARITY actor=%p side=%u char=%u text=%s crc=%08x mode=%s "
         "manager=%p object=%p context=%p stage_id=%u->%u->%u enemy=%p "
@@ -1569,6 +1648,13 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
         "[NSC:V2K] STAGE_SAFE_BASELINE actor=%p side=%u char=%u text=%s stage_id=%u "
         "v2j_poststage_removed=1 poststage=0 extra_stage_call=0",
         actor, side, char_id, text, stage_id_final);
+    // Keep the widened asynchronous asset trace active from the first custom
+    // StageMove through the second StageMove (normally cinematic entry -> exit).
+    // This is diagnostic state only; it does not alter game memory or stage flow.
+    if (trace_was_active != 0u) {
+        g_v2l_stage_asset_trace_active.store(0u, std::memory_order_relaxed);
+        Logging.Log("[NSC:V2L] STAGE_TRACE_DISARM seq=%u text=%s active=0", stage_move_seq, text);
+    }
     return 1;
 }
 
@@ -8498,6 +8584,53 @@ void InstallP128AStaticPreciseGateCaveProof() {
         "rt480=%08x rt4b8=%08x rt4fc=%08x rt500=%08x rt494=%08x rt4a8=%08x rt4b4=%08x rt520=%08x rt5e8=%08x",
         p89?1u:0u,gate?1u:0u,post?1u:0u,cleanup?1u:0u,
         w480,w4b8,w4fc,w500,w494,w4a8,w4b4,w520,w5e8);
+}
+
+
+bool InstallV2LStageOnlyTraceHooks() {
+    // Read-only hooks only.  V2L intentionally does NOT call PostStage and does
+    // not change StageMove semantics.  We only observe native stage calls and
+    // resource requests/opens to find the missing environment lifecycle edge.
+    static constexpr uint32_t kRequestExpected[] = {
+        0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0xF9400008,
+        0xAA0203F4, 0xAA0103F6, 0xAA0003F3, 0xF9400908,
+    };
+    static constexpr uint32_t kFileOpenExpected[] = {
+        0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x6F00E400,
+        0xAA0003F6, 0xB0007ED7, 0x3C838EC0, 0xB90106C2,
+    };
+    static constexpr uint32_t kHandleExpected[] = {
+        0xF81E0FFE, 0xA9014FF4, 0x9000D334, 0xF944C694,
+        0x2A0003F3, 0xF9400280, 0x97FFE41A, 0xF000D2C8,
+    };
+    static constexpr uint32_t kPostExpected[] = {
+        0xA9BF4FFE, 0x2A1F03E0, 0x2A1F03E1, 0x940FC6CA,
+        0xB4000100, 0x52800021, 0xAA0003F3, 0x940BC56F,
+    };
+
+    bool request_ok=MatchWords(kFileLoadRequestOffset,kRequestExpected);
+    bool open_ok=MatchWords(kFileOpenOffset,kFileOpenExpected);
+    bool handle_ok=MatchWords(kHandleStageChangeOffset,kHandleExpected);
+    bool post_ok=MatchWords(kPostStageOffset,kPostExpected);
+    if(!request_ok) LogFingerprintFail("V2L_LOAD_REQ",kFileLoadRequestOffset);
+    if(!open_ok) LogFingerprintFail("V2L_FILE_OPEN",kFileOpenOffset);
+    if(!handle_ok) LogFingerprintFail("V2L_STAGE_HANDLE",kHandleStageChangeOffset);
+    if(!post_ok) LogFingerprintFail("V2L_POST_STAGE",kPostStageOffset);
+    if(!(request_ok&&open_ok&&handle_ok&&post_ok)) {
+        Logging.Log("[NSC:V2L] READY stage_only=1 installed=0 request=%u open=%u handle=%u post=%u fail_closed=1",
+                    request_ok?1u:0u,open_ok?1u:0u,handle_ok?1u:0u,post_ok?1u:0u);
+        return false;
+    }
+
+    FileLoadRequestHook::InstallAtOffset(kFileLoadRequestOffset);
+    FileOpenHook::InstallAtOffset(kFileOpenOffset);
+    StageHandleHook::InstallAtOffset(kHandleStageChangeOffset);
+    PostStageHook::InstallAtOffset(kPostStageOffset);
+    Logging.Log(
+        "[NSC:V2L] READY stage_only=1 installed=1 resource_request_trace=1 file_open_trace=1 "
+        "stage_handle_trace=1 poststage_observe_only=1 stage_graph=1 gameplay_write=0 "
+        "manual_poststage_call=0 dpad_change=0 voice_change=0 p128_change=0");
+    return true;
 }
 
 void InstallV2KRecoveryPassiveProbe() {
