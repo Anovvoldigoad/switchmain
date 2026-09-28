@@ -10,6 +10,7 @@ extern "C" void exl_main(void* x0, void* x1) {
     if (!nsc::v2::InstallOriginalMainRuntimePatches()) return;
     nsc::InstallP128AStaticPreciseGateCaveProof();
     nsc::InstallR165Event150VoiceReadOnlyProbe();
+    nsc::InstallR166SoundDispatchReadOnlyProbe();
     nsc::InstallV2MStageSafeTraceHooks();
     nsc::InstallV2NStageRegistryProof();
     nsc::InstallV2PPassiveOrderProbe();

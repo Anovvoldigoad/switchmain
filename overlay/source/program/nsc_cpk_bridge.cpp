@@ -31,6 +31,7 @@ constexpr ptrdiff_t kEvent150Offset           = 0x813ECC;  // native ME_SET_CAPT
 // Native comparator: event-table name ME_VOICE. It consumes event+0x24 as a
 // signed voice index, adds 0x7000 and calls actor vtable+0x1030.
 constexpr ptrdiff_t kNativeMeVoiceOffset      = 0x813D88;  // native ME_VOICE
+constexpr ptrdiff_t kSoundDispatch1030Offset   = 0x635DA0;  // actor vtable+0x1030 concrete sound dispatcher
 constexpr ptrdiff_t kEvent235Offset           = 0x8162D4;  // native ME_ENEMY_DISP_ON callback
 constexpr ptrdiff_t kEvent13Offset            = 0x810614;  // native awakening-condition event callback
 constexpr ptrdiff_t kEvent121Offset           = 0x8134F8;  // native ME_ADD_CONDITION_PARAM callback
@@ -201,6 +202,12 @@ std::atomic<uint32_t> g_p81_policy_seq{0};
 std::atomic<uint32_t> g_r165_event150_logs{0};
 std::atomic<uint32_t> g_r165_native_voice_logs{0};
 constexpr uint32_t kR165VoiceLogLimit = 1024u;
+
+// R166 read-only concrete actor sound-dispatch provenance probe.
+std::atomic<uint32_t> g_r166_sound_dispatch_logs{0};
+std::atomic<uint32_t> g_r166_last_evt150_seq{0xFFFFFFFFu};
+std::atomic<uint32_t> g_r166_last_evt150_crc{0u};
+constexpr uint32_t kR166SoundLogLimit = 4096u;
 
 // ============================================================================
 // P82A — full downstream UJ corridor trace.
@@ -2409,6 +2416,10 @@ HOOK_DEFINE_TRAMPOLINE(R165Event150ProbeHook) {
             p2c = *reinterpret_cast<const uint32_t*>(event + 0x2C);
         }
         const uint32_t n = g_r165_event150_logs.fetch_add(1u, std::memory_order_relaxed);
+        if (custom) {
+            g_r166_last_evt150_seq.store(n, std::memory_order_relaxed);
+            g_r166_last_evt150_crc.store(event ? Crc30(event) : 0u, std::memory_order_relaxed);
+        }
         if (custom && n < kR165VoiceLogLimit) {
             Logging.Log(
                 "[NSC:R165] EVT150 phase=pre n=%u actor=%p side=%u char=%u event=%p "
@@ -2461,6 +2472,45 @@ HOOK_DEFINE_TRAMPOLINE(R165NativeMeVoiceProbeHook) {
                 static_cast<int>(voice_index), command, ret);
         }
         return ret;
+    }
+};
+
+// R166 — concrete actor sound-dispatch provenance probe.
+// main+0x635DA0 is the hardware-proven concrete function currently stored in
+// actor vtable+0x1030 for Tobi and vanilla battle actors. Generic opcode26
+// already calls this exact slot successfully. R166 observes every call for a
+// custom actor and preserves the original function/arguments exactly.
+HOOK_DEFINE_TRAMPOLINE(R166SoundDispatchProbeHook) {
+    static void Callback(void* actor, uint32_t command, uint32_t arg2) {
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(actor, side, char_id);
+        const bool custom = valid && side <= 1u &&
+            char_id > kVanillaMaxCharId && char_id < 0x1000u;
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+        const uint32_t n = g_r166_sound_dispatch_logs.fetch_add(1u, std::memory_order_relaxed);
+        const uint32_t last_e150 = g_r166_last_evt150_seq.load(std::memory_order_relaxed);
+        const uint32_t last_crc = g_r166_last_evt150_crc.load(std::memory_order_relaxed);
+        const int32_t index7000 = (command >= 0x7000u && command <= 0x7FFFu)
+            ? static_cast<int32_t>(command - 0x7000u) : -1;
+        if (custom && n < kR166SoundLogLimit) {
+            Logging.Log(
+                "[NSC:R166] SOUND1030 phase=pre n=%u actor=%p side=%u char=%u "
+                "command=%08x index7000=%d arg2=%u caller_lr=%p caller_off=0x%lx "
+                "last_evt150=%u last_evt150_crc=%08x readonly=1",
+                n, actor, side, char_id, command, index7000, arg2,
+                reinterpret_cast<void*>(caller_lr), static_cast<unsigned long>(caller_off),
+                last_e150, last_crc);
+        }
+        Orig(actor, command, arg2);
+        if (custom && n < kR166SoundLogLimit) {
+            Logging.Log(
+                "[NSC:R166] SOUND1030 phase=post n=%u actor=%p side=%u char=%u "
+                "command=%08x index7000=%d arg2=%u last_evt150=%u "
+                "voice_mutation=0 registry_mutation=0",
+                n, actor, side, char_id, command, index7000, arg2, last_e150);
+        }
     }
 };
 
@@ -8673,6 +8723,28 @@ bool InstallR165Event150VoiceReadOnlyProbe() {
         "stage_change=0 p128_change=0 dpad_change=0",
         static_cast<unsigned long>(kEvent150Offset),
         static_cast<unsigned long>(kNativeMeVoiceOffset));
+    return true;
+}
+
+bool InstallR166SoundDispatchReadOnlyProbe() {
+    static constexpr uint32_t kSoundDispatchExpected[] = {
+        0xA9BE57FE, 0xA9014FF4, 0xF9400008, 0x2A0203F4,
+        0x2A0103F3, 0xAA0003F5, 0xF9462508, 0xD63F0100,
+    };
+    const bool ok = MatchWords(kSoundDispatch1030Offset, kSoundDispatchExpected);
+    if (!ok) {
+        LogFingerprintFail("R166_SOUND1030_DISPATCH", kSoundDispatch1030Offset);
+        Logging.Log(
+            "[NSC:R166] READY installed=0 sound1030=0 fail_closed=1 readonly=1 "
+            "voice_mutation=0 registry_mutation=0 stage_change=0 p128_change=0 dpad_change=0");
+        return false;
+    }
+    R166SoundDispatchProbeHook::InstallAtOffset(kSoundDispatch1030Offset);
+    Logging.Log(
+        "[NSC:R166] READY installed=1 sound1030_off=0x%lx readonly=1 "
+        "capture_all_custom_commands=1 correlate_last_evt150=1 voice_mutation=0 "
+        "registry_mutation=0 stage_change=0 p128_change=0 dpad_change=0",
+        static_cast<unsigned long>(kSoundDispatch1030Offset));
     return true;
 }
 

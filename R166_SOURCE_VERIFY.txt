@@ -4,10 +4,10 @@ thirty_word_plan PASS
 validate_before_write PASS
 paired_file_disabled PASS
 resolver_7_markers PASS
-workflow_only_r165 PASS
+workflow_only_r166 PASS
 workflow_original_main PASS
 workflow_not_reference_main PASS
-prepare_r165_elf PASS
+prepare_r166_elf PASS
 no_char281_runtime PASS
 p128_retained PASS
 op23_safe PASS
@@ -35,6 +35,10 @@ r165_native_voice_hook PASS
 r165_readonly_ready PASS
 r165_no_play_in_probe PASS
 r165_called_from_main PASS
+r166_sound_offset PASS
+r166_sound_hook PASS
+r166_readonly_ready PASS
+r166_called_from_main PASS
 sfx_count_160 PASS
 original_main_sha256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
 reference_p128_main_sha256 904a0405d04360ff3969909cdd7197c9e8c2aba2467151a7eaad4c821fcebbff
@@ -50,4 +54,5 @@ offline_original_UJ_SESSION_OUTER PASS hits=0x7ef098
 offline_original_STATE137_CONTROLLER PASS hits=0x7e6ea8
 r165_event150_fingerprint PASS
 r165_mevoice_fingerprint PASS
-NSC_RUNTIME_R165_SOURCE_VERIFY=PASS
+r166_sound1030_fingerprint PASS
+NSC_RUNTIME_R166_SOURCE_VERIFY=PASS

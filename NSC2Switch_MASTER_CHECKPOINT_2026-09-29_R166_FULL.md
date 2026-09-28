@@ -3461,3 +3461,48 @@ C. Source-authored UJ produces no Event150 marker: move one boundary upstream in
 1. Test R165 once with R164 CPK unchanged.
 2. Use result to implement generic Event150 named-voice compatibility OR Character Sound Entry/ACB expansion, not both blindly.
 3. D-pad/Izanagi remains paused until voice path is isolated/fixed.
+
+---
+
+# R166 — R165 AUDIBLE-VOICE HARDWARE RUN / SOUND1030 PROVENANCE PROBE
+
+Date: 2026-09-29
+
+## Hardware input
+- `NSC-RUNTIME-R165-event150-voice-readonly-probe.zip`
+  SHA256 `2534876bf434fabcd9408e698d7083785d5f7a11f219d269d6c426430dfec650`
+- `uzuy_log(2).txt`
+  SHA256 `6b1ade65f758bf26c54e99198c3baab3bbed75abf52d1c56a4c3cf7b85082d28`
+- User verdict: Tobi voice was audible in this run.
+
+## Decisive result
+R165 was installed read-only (`voice_mutation=0`). Tobi audio assets loaded/opened successfully. The UJ executed Event150 named cues `mtob_ougi_001`, `mtob_ougi_002`, `mtob_ougi_003`; victory also executed `mtob_win00`.
+
+However the complete hardware log contains zero `[NSC:R165] ME_VOICE` markers.
+
+Therefore the audible Tobi voice in this run did not traverse the hooked native `ME_VOICE` callback at `main+0x813D88`, and R165 did not cause the voice to appear. The previous assumption that Event150 should directly flow through native ME_VOICE is retired.
+
+## R166 probe
+Hardware-proven actor vtable slot +0x1030 resolves to `main+0x635DA0`; generic opcode26 playback already succeeds through this function.
+
+R166 adds one read-only trampoline at that concrete dispatcher and logs custom-actor calls:
+- command;
+- `command-0x7000` index when applicable;
+- arg2;
+- best-effort caller LR/module offset;
+- last Event150 sequence and cue CRC.
+
+The hook always calls `Orig(actor, command, arg2)` and performs zero sound/registry/gameplay mutation.
+
+Fingerprint at `main+0x635DA0`:
+`A9BE57FE A9014FF4 F9400008 2A0203F4 2A0103F3 AA0003F5 F9462508 D63F0100`
+
+Expected marker:
+`[NSC:R166] SOUND1030 phase=pre ... command=... index7000=... last_evt150=...`
+
+## Locked state
+- R164 StageInfo/CPK fix: hardware PASS; keep unchanged.
+- R165 Event150 probe retained read-only.
+- Native ME_VOICE hypothesis as the sole named-voice route: FALSE for this audible run.
+- P128 remains frozen.
+- D-pad/Izanagi remains paused until dedicated voice path is resolved.

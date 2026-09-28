@@ -12,20 +12,20 @@ h=(root/'overlay/source/program/nsc_runtime_v2.hpp').read_text()
 bridge=(root/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
 main=(root/'overlay/source/program/main.cpp').read_text()
 prep=(root/'prepare_exlaunch.sh').read_text()
-wf=(root/'.github/workflows/build-runtime-r165.yml').read_text()
+wf=(root/'.github/workflows/build-runtime-r166.yml').read_text()
 sfx=(root/'overlay/source/program/nsc_sfx_list_generated.hpp').read_text()
 
 checks={
- 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR165Event150VoiceReadOnlyProbe();') < main.index('InstallV2MStageSafeTraceHooks();') < main.index('InstallV2NStageRegistryProof();') < main.index('InstallV2PPassiveOrderProbe();'),
+ 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR165Event150VoiceReadOnlyProbe();') < main.index('InstallR166SoundDispatchReadOnlyProbe();') < main.index('InstallV2MStageSafeTraceHooks();') < main.index('InstallV2NStageRegistryProof();') < main.index('InstallV2PPassiveOrderProbe();'),
  'fail_closed_main': 'if (!nsc::v2::InstallOriginalMainRuntimePatches()) return;' in main,
  'thirty_word_plan': 'WordPatch plan[30]' in rt and 'condition_words=5 p67_words=1 p128_words=24' in rt,
  'validate_before_write': rt.index('Validate ALL original words before the first write') < rt.index('patcher.Write<std::uint32_t>'),
  'paired_file_disabled': 'paired_main_file=0' in rt,
  'resolver_7_markers': '[NSC:V2D] RESOLVER_READY' in rt and '[NSC:V2D] RUNTIME_PATCH_READY' in rt,
- 'workflow_only_r165': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-R165-event150-voice-readonly-probe' in wf,
+ 'workflow_only_r166': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-R166-sound1030-readonly-probe' in wf,
  'workflow_original_main': 'original/atmosphere/contents/0100FA10190A0000/exefs/main' in wf,
  'workflow_not_reference_main': 'reference_p128/atmosphere/contents/0100FA10190A0000/exefs/main" "$OUT/atmosphere' not in wf,
- 'prepare_r165_elf': 'runtime_r165.elf' in prep,
+ 'prepare_r166_elf': 'runtime_r166.elf' in prep,
  'no_char281_runtime': 'char_id == 281' not in bridge and 'char==281' not in bridge and 'char = 281' not in bridge,
  'p128_retained': '[NSC:P128A] READY' in bridge and 'no_force708=1' in bridge and 'no_force710=1' in bridge,
  'op23_safe': '[NSC:V2H] OP23_SAFE_SUPPRESS' in bridge and 'call_766320=0' in bridge and 'playaction_wrapper=0' in bridge,
@@ -53,6 +53,10 @@ checks={
  'r165_readonly_ready': '[NSC:R165] READY installed=1' in bridge and 'voice_mutation=0' in bridge and 'sound_registry_mutation=0' in bridge,
  'r165_no_play_in_probe': 'R165Event150ProbeHook' in bridge and 'R165NativeMeVoiceProbeHook' in bridge,
  'r165_called_from_main': 'InstallR165Event150VoiceReadOnlyProbe();' in main,
+ 'r166_sound_offset': 'kSoundDispatch1030Offset   = 0x635DA0' in bridge,
+ 'r166_sound_hook': '[NSC:R166] SOUND1030 phase=pre' in bridge and '[NSC:R166] SOUND1030 phase=post' in bridge,
+ 'r166_readonly_ready': '[NSC:R166] READY installed=1' in bridge and 'capture_all_custom_commands=1' in bridge and 'voice_mutation=0' in bridge and 'registry_mutation=0' in bridge,
+ 'r166_called_from_main': 'InstallR166SoundDispatchReadOnlyProbe();' in main,
  'sfx_count_160': 'kCount = 160' in sfx,
 }
 for k,v in checks.items(): print(k,'PASS' if v else 'FAIL')
@@ -140,4 +144,9 @@ mev_exp=[0xF81F0FFE,0x79C04828,0x11401D01,0xF9400008,0xF9481908,0x2A1F03E2,0xD63
 print('r165_event150_fingerprint','PASS' if e150==e150_exp else 'FAIL')
 print('r165_mevoice_fingerprint','PASS' if mev==mev_exp else 'FAIL')
 if e150!=e150_exp or mev!=mev_exp:sys.exit(1)
-print('NSC_RUNTIME_R165_SOURCE_VERIFY=PASS')
+
+snd=[struct.unpack_from('<I',o,0x635DA0+4*i)[0] for i in range(8)]
+snd_exp=[0xA9BE57FE,0xA9014FF4,0xF9400008,0x2A0203F4,0x2A0103F3,0xAA0003F5,0xF9462508,0xD63F0100]
+print('r166_sound1030_fingerprint','PASS' if snd==snd_exp else 'FAIL')
+if snd!=snd_exp:sys.exit(1)
+print('NSC_RUNTIME_R166_SOURCE_VERIFY=PASS')
