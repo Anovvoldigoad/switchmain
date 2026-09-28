@@ -395,6 +395,15 @@ constexpr ptrdiff_t kStageGlobalOffset          = 0x2143648;
 constexpr ptrdiff_t kStageStateGlobalOffset     = 0x21434C0;
 constexpr ptrdiff_t kStageObjectNameOffset      = 0x1A1E84D;
 
+// V2N: native Switch stage descriptor registry proof. Static v1.70
+// StageSpecific worker main+0x535FBC stores the requested stage ID, then
+// resolves descriptor = lookup([runtime_root+0x6C10]+0x148, stage_id) at
+// main+0x8364F8. A null descriptor skips the environment setup branch.
+constexpr ptrdiff_t kStageRuntimeRootOffset      = 0x2143488;
+constexpr ptrdiff_t kStageRegistryLookupOffset   = 0x8364F8;
+constexpr ptrdiff_t kStageRegistryOwnerOffset    = 0x6C10;
+constexpr ptrdiff_t kStageRegistryMapOffset      = 0x148;
+
 constexpr uint32_t kVanillaMaxCharId = 280;
 constexpr uint32_t kFirstCustomCharId = 281;
 constexpr int kModCpkPriority = 32;
@@ -429,6 +438,8 @@ std::atomic<uint32_t> g_fix_char_logs{0};
 std::atomic<uint32_t> g_post_stage_logs{0};
 std::atomic<uint32_t> g_v2m_stage_asset_trace_active{0};
 std::atomic<uint32_t> g_v2m_stage_move_count{0};
+std::atomic<uint32_t> g_v2n_stage_registry_ready{0};
+std::atomic<uint32_t> g_v2n_stage_registry_logs{0};
 std::atomic<uint32_t> g_event13_logs{0};
 std::atomic<uint32_t> g_event121_logs{0};
 std::atomic<uint32_t> g_ougi_core_logs{0};
@@ -1536,6 +1547,40 @@ void V2MLogStageGraph(const char* phase, const char* text, uintptr_t base) {
         g.state_global, g.stage_state);
 }
 
+void V2NProbeStageRegistry(const char* phase, const char* text, uintptr_t base, uint32_t key) {
+    if (g_v2n_stage_registry_ready.load(std::memory_order_acquire) == 0u) return;
+    if (key == 0u || key == 0xFFFFFFFFu) return;
+
+    // Read-only duplicate of the exact native lookup used by StageSpecific.
+    // No insertion, no descriptor mutation, no stage-state write.
+    void* runtime_root = *reinterpret_cast<void**>(base + kStageRuntimeRootOffset);
+    void* registry_owner = nullptr;
+    void* registry_map = nullptr;
+    void* result = nullptr;
+    if (runtime_root) {
+        registry_owner = *reinterpret_cast<void**>(
+            reinterpret_cast<uint8_t*>(runtime_root) + kStageRegistryOwnerOffset);
+    }
+    if (registry_owner) {
+        registry_map = *reinterpret_cast<void**>(
+            reinterpret_cast<uint8_t*>(registry_owner) + kStageRegistryMapOffset);
+    }
+    if (registry_map) {
+        using RegistryLookupFn = void* (*)(void*, uint32_t);
+        auto fn = reinterpret_cast<RegistryLookupFn>(base + kStageRegistryLookupOffset);
+        result = fn(registry_map, key);
+    }
+
+    const uint32_t n = g_v2n_stage_registry_logs.fetch_add(1u, std::memory_order_relaxed);
+    if (n < 64u) {
+        Logging.Log(
+            "[NSC:V2N] STAGE_REGISTRY phase=%s text=%s key=%08x root=%p owner=%p map=%p "
+            "result=%p found=%u readonly_lookup=1 insert=0 mutation=0",
+            phase ? phase : "?", text ? text : "<null>", key,
+            runtime_root, registry_owner, registry_map, result, result ? 1u : 0u);
+    }
+}
+
 uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
     const uintptr_t base = exl::util::modules::GetTargetStart();
     char text[31]{};
@@ -1620,6 +1665,7 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
     }
 
     if (param2 == 0) {
+        V2NProbeStageRegistry("pre_specific", text, base, stage_crc);
         using SpecificFn = void (*)(void*, uint32_t);
         reinterpret_cast<SpecificFn>(base + kStageSpecificOffset)(stage_context, stage_crc);
     } else {
@@ -1641,6 +1687,8 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
         disarm_on_failed_transition();
         return 1;
     }
+
+    V2NProbeStageRegistry("post_specific", text, base, stage_id_post_handler);
 
     using HandleFn = void (*)(uint32_t);
     using ActorFn = void (*)(void*);
@@ -8611,6 +8659,30 @@ void InstallP128AStaticPreciseGateCaveProof() {
         w480,w4b8,w4fc,w500,w494,w4a8,w4b4,w520,w5e8);
 }
 
+
+bool InstallV2NStageRegistryProof() {
+    // main+0x8364F8 is the exact uint32 stage-id -> descriptor map lookup used
+    // by StageSpecific at main+0x536080.  V2N only calls it read-only.
+    static constexpr uint32_t kRegistryExpected[] = {
+        0xF8408C09, 0xB40001A9, 0xAA0003E8, 0xB940212A,
+        0x6B01015F, 0x1A9F27EA, 0x9A893108, 0xF86A5929,
+    };
+    const bool ok = MatchWords(kStageRegistryLookupOffset, kRegistryExpected);
+    if (!ok) {
+        LogFingerprintFail("V2N_STAGE_REGISTRY_LOOKUP", kStageRegistryLookupOffset);
+        g_v2n_stage_registry_ready.store(0u, std::memory_order_release);
+        Logging.Log(
+            "[NSC:V2N] READY stage_registry_probe=0 fail_closed=1 readonly=1 "
+            "dpad_change=0 voice_change=0 p128_change=0");
+        return false;
+    }
+    g_v2n_stage_registry_ready.store(1u, std::memory_order_release);
+    Logging.Log(
+        "[NSC:V2N] READY stage_registry_probe=1 lookup_off=0x%lx exact_fingerprint=1 "
+        "readonly=1 duplicate_lookup_only=1 insert=0 mutation=0 dpad_change=0 voice_change=0 p128_change=0",
+        static_cast<unsigned long>(kStageRegistryLookupOffset));
+    return true;
+}
 
 bool InstallV2MStageSafeTraceHooks() {
     // Diagnostic hooks only.  Every callback forwards to Orig unchanged.

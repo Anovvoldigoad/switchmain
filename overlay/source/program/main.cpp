@@ -11,6 +11,7 @@ extern "C" void exl_main(void* x0, void* x1) {
     nsc::InstallP128AStaticPreciseGateCaveProof();
     nsc::InstallV2KRecoveryPassiveProbe();
     nsc::InstallV2MStageSafeTraceHooks();
+    nsc::InstallV2NStageRegistryProof();
 }
 
 extern "C" NORETURN void exl_exception_entry() {

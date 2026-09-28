@@ -1,0 +1,23 @@
+v2k_baseline PASS
+v2m_safe_trace_retained PASS
+v2n_main_call PASS
+v2n_ready PASS
+registry_offset PASS
+root_offset PASS
+owner_offset PASS
+exact_fingerprint PASS
+pre_post_probe PASS
+readonly_only PASS
+no_registry_insert PASS
+no_v2j_post_call PASS
+op23_safe_retained PASS
+op26_retained PASS
+p128_retained PASS
+workflow_v2n PASS
+workflow_original_main PASS
+prepare_v2n_elf PASS
+no_char281_branch PASS
+original_main_sha256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+reference_p128_main_sha256 904a0405d04360ff3969909cdd7197c9e8c2aba2467151a7eaad4c821fcebbff
+reference_delta_exact_30_words PASS
+NSC_RUNTIME_V2N_SOURCE_VERIFY=PASS
