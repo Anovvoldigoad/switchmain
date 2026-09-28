@@ -18,9 +18,9 @@ p=Path(sys.argv[1]); s=p.read_text()
 s,n1=re.subn(r'(?m)^LOAD_KIND\s*:=.*$', 'LOAD_KIND := Module', s, count=1)
 s,n2=re.subn(r'(?m)^PROGRAM_ID\s*:=.*$', 'PROGRAM_ID := 0100FA10190A0000', s, count=1)
 s,n3=re.subn(r'(?m)^CXX_FLAGS\s*:=.*$', 'CXX_FLAGS := -Wno-non-c-typedef-for-linkage', s, count=1)
-s,n4=re.subn(r'(?m)^ELF_EXTRACT\s*:=.*$', 'ELF_EXTRACT := $(PWD)/runtime_r166.elf', s, count=1)
+s,n4=re.subn(r'(?m)^ELF_EXTRACT\s*:=.*$', 'ELF_EXTRACT := $(PWD)/runtime_r167.elf', s, count=1)
 if (n1,n2,n3,n4)!=(1,1,1,1): raise SystemExit(f'config patch failed {(n1,n2,n3,n4)}')
 p.write_text(s)
 PY
-echo "[+] NSC R166 Sound1030 read-only probe overlay prepared"
+echo "[+] NSC R167 custom UJ miss animation refresh overlay prepared"
 grep -E '^(LOAD_KIND|PROGRAM_ID|CXX_FLAGS|ELF_EXTRACT)[[:space:]]*:=' "$EXL/config.mk"

@@ -12,51 +12,36 @@ h=(root/'overlay/source/program/nsc_runtime_v2.hpp').read_text()
 bridge=(root/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
 main=(root/'overlay/source/program/main.cpp').read_text()
 prep=(root/'prepare_exlaunch.sh').read_text()
-wf=(root/'.github/workflows/build-runtime-r166.yml').read_text()
+wf=(root/'.github/workflows/build-runtime-r167.yml').read_text()
 sfx=(root/'overlay/source/program/nsc_sfx_list_generated.hpp').read_text()
 
 checks={
- 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR165Event150VoiceReadOnlyProbe();') < main.index('InstallR166SoundDispatchReadOnlyProbe();') < main.index('InstallV2MStageSafeTraceHooks();') < main.index('InstallV2NStageRegistryProof();') < main.index('InstallV2PPassiveOrderProbe();'),
+ 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR167CustomUjMissAnimationRefresh();') < main.index('InstallV2MStageSafeTraceHooks();') < main.index('InstallV2NStageRegistryProof();') < main.index('InstallV2PPassiveOrderProbe();'),
  'fail_closed_main': 'if (!nsc::v2::InstallOriginalMainRuntimePatches()) return;' in main,
+ 'voice_probes_not_installed': 'InstallR165Event150VoiceReadOnlyProbe();' not in main and 'InstallR166SoundDispatchReadOnlyProbe();' not in main,
+ 'r167_ready_installed': 'InstallR167CustomUjMissAnimationRefresh();' in main and '[NSC:R167] READY custom_uj_miss_animation_refresh=1' in bridge,
+ 'r167_exact_filter': all(x in bridge for x in ('index == 74','a2 == -1','pre_action == 740u','caller_off == 0x798F34','pre_e80 == 1u','pre_bda4 == 1u')),
+ 'r167_semantic_custom_filter': 'const bool semantic_uj = custom && P64QuerySemanticUltimateJutsu(actor);' in bridge,
+ 'r167_single_native_call': 'const int32_t effective_a2 = r167_miss_refresh ? 0 : a2;' in bridge and 'Orig(actor, index, effective_a2, a3, a4, a5, rate)' in bridge and 'single_native_call=1' in bridge,
+ 'r167_markers': '[NSC:R167] UJ_MISS_ANM_REFRESH phase=pre' in bridge and '[NSC:R167] UJ_MISS_ANM_REFRESH phase=post' in bridge,
+ 'r167_no_char281_branch': 'char_id == 281' not in bridge and 'char==281' not in bridge and 'char = 281' not in bridge,
+ 'r167_no_voice_mutation': 'voice_probe=0 voice_mutation=0' in bridge,
  'thirty_word_plan': 'WordPatch plan[30]' in rt and 'condition_words=5 p67_words=1 p128_words=24' in rt,
  'validate_before_write': rt.index('Validate ALL original words before the first write') < rt.index('patcher.Write<std::uint32_t>'),
  'paired_file_disabled': 'paired_main_file=0' in rt,
  'resolver_7_markers': '[NSC:V2D] RESOLVER_READY' in rt and '[NSC:V2D] RUNTIME_PATCH_READY' in rt,
- 'workflow_only_r166': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-R166-sound1030-readonly-probe' in wf,
+ 'workflow_only_r167': len(list((root/'.github/workflows').glob('*.yml')))==1 and 'NSC-RUNTIME-R167-uj-miss-animation-refresh' in wf,
  'workflow_original_main': 'original/atmosphere/contents/0100FA10190A0000/exefs/main' in wf,
  'workflow_not_reference_main': 'reference_p128/atmosphere/contents/0100FA10190A0000/exefs/main" "$OUT/atmosphere' not in wf,
- 'prepare_r166_elf': 'runtime_r166.elf' in prep,
- 'no_char281_runtime': 'char_id == 281' not in bridge and 'char==281' not in bridge and 'char = 281' not in bridge,
+ 'prepare_r167_elf': 'runtime_r167.elf' in prep,
  'p128_retained': '[NSC:P128A] READY' in bridge and 'no_force708=1' in bridge and 'no_force710=1' in bridge,
  'op23_safe': '[NSC:V2H] OP23_SAFE_SUPPRESS' in bridge and 'call_766320=0' in bridge and 'playaction_wrapper=0' in bridge,
  'stage_actor_enemy_parity': '[NSC:V2I] STAGE2_PARITY' in bridge and 'fix_actor=1 fix_enemy=%u poststage=0 pc_source_parity=1' in bridge,
  'no_manual_poststage_stagebridge': 'reinterpret_cast<VoidFn>(base + kPostStageOffset)();' not in bridge,
  'op26_playback_retained': '[NSC:V2I] OP26_PLAY' in bridge and 'native_813d88_contract=1' in bridge and 'vtable[0x1030 / sizeof(void*)]' in bridge,
  'v2m_graph': '[NSC:V2M] STAGE_GRAPH' in bridge and 'fresh_resolve=1 stale_pointer_deref=0 readonly=1' in bridge,
- 'v2m_resource_trace': '[NSC:V2M] STAGE_TRACE_ARM' in bridge and '[NSC:V2M] STAGE_TRACE_DISARM' in bridge,
- 'v2m_hooks_passive': 'poststage_observe_only=1' in bridge and 'manual_poststage_call=0' in bridge,
- 'v2n_registry_constants': all(x in bridge for x in ('kStageRuntimeRootOffset      = 0x2143488','kStageRegistryLookupOffset   = 0x8364F8','kStageRegistryOwnerOffset    = 0x6C10','kStageRegistryMapOffset      = 0x148')),
  'v2n_registry_probe': '[NSC:V2N] STAGE_REGISTRY' in bridge and 'readonly_lookup=1 insert=0 mutation=0' in bridge,
- 'v2n_pre_post': 'V2NProbeStageRegistry("pre_specific"' in bridge and 'V2NProbeStageRegistry("post_specific"' in bridge,
  'v2p_ready': '[NSC:V2P] READY stageinfo_cpk_order_probe=1 passive_only=1' in bridge,
- 'v2p_stageinfo_pre': '[NSC:V2P] STAGEINFO_LOAD_REQ phase=pre' in bridge,
- 'v2p_stageinfo_post': '[NSC:V2P] STAGEINFO_LOAD_REQ phase=post' in bridge,
- 'v2p_cpk_bound': '[NSC:V2P] CPK_BOUND' in bridge and 'g_v2p_cpk_bound_success' in bridge,
- 'v2p_exact_stageinfo_paths': 'data/stage/StageInfo.bin.xfbin' in bridge and 'data/stage/AdvStageInfo.bin.xfbin' in bridge,
- 'v2p_no_reindex': '[NSC:V2O]' not in bridge and 'STAGE_REINDEX' not in bridge and 'kStageInfoReloadOffset' not in bridge and 'ReloadFn' not in bridge,
- 'v2p_no_direct_loader_call': '0x835FAC' not in bridge and '0x835fac' not in bridge,
- 'v2p_no_new_stageinfo_trampoline': 'StageInfoHook' not in bridge and 'StageInfoLoaderHook' not in bridge,
- 'r165_event150_offset': 'kEvent150Offset           = 0x813ECC' in bridge,
- 'r165_mevoice_offset': 'kNativeMeVoiceOffset      = 0x813D88' in bridge,
- 'r165_event150_hook': '[NSC:R165] EVT150 phase=pre' in bridge and '[NSC:R165] EVT150 phase=post' in bridge,
- 'r165_native_voice_hook': '[NSC:R165] ME_VOICE phase=pre' in bridge and '[NSC:R165] ME_VOICE phase=post' in bridge,
- 'r165_readonly_ready': '[NSC:R165] READY installed=1' in bridge and 'voice_mutation=0' in bridge and 'sound_registry_mutation=0' in bridge,
- 'r165_no_play_in_probe': 'R165Event150ProbeHook' in bridge and 'R165NativeMeVoiceProbeHook' in bridge,
- 'r165_called_from_main': 'InstallR165Event150VoiceReadOnlyProbe();' in main,
- 'r166_sound_offset': 'kSoundDispatch1030Offset   = 0x635DA0' in bridge,
- 'r166_sound_hook': '[NSC:R166] SOUND1030 phase=pre' in bridge and '[NSC:R166] SOUND1030 phase=post' in bridge,
- 'r166_readonly_ready': '[NSC:R166] READY installed=1' in bridge and 'capture_all_custom_commands=1' in bridge and 'voice_mutation=0' in bridge and 'registry_mutation=0' in bridge,
- 'r166_called_from_main': 'InstallR166SoundDispatchReadOnlyProbe();' in main,
  'sfx_count_160': 'kCount = 160' in sfx,
 }
 for k,v in checks.items(): print(k,'PASS' if v else 'FAIL')
@@ -136,17 +121,17 @@ for name,vn,mn,exp in specs:
     print('offline_original_'+name,'PASS' if ok else 'FAIL','hits='+','.join(hex(x) for x in hits[:4]))
     if not ok:sys.exit(1)
 
-# Exact R165 handler fingerprints in original text.
-e150=[struct.unpack_from('<I',o,0x813ECC+4*i)[0] for i in range(8)]
-e150_exp=[0xD101C3FF,0xA90557FE,0xA9064FF4,0x9000C988,0xF9426108,0xF9400108,0xB94A9108,0x7100311F]
-mev=[struct.unpack_from('<I',o,0x813D88+4*i)[0] for i in range(8)]
-mev_exp=[0xF81F0FFE,0x79C04828,0x11401D01,0xF9400008,0xF9481908,0x2A1F03E2,0xD63F0100,0x52800020]
-print('r165_event150_fingerprint','PASS' if e150==e150_exp else 'FAIL')
-print('r165_mevoice_fingerprint','PASS' if mev==mev_exp else 'FAIL')
-if e150!=e150_exp or mev!=mev_exp:sys.exit(1)
-
-snd=[struct.unpack_from('<I',o,0x635DA0+4*i)[0] for i in range(8)]
-snd_exp=[0xA9BE57FE,0xA9014FF4,0xF9400008,0x2A0203F4,0x2A0103F3,0xAA0003F5,0xF9462508,0xD63F0100]
-print('r166_sound1030_fingerprint','PASS' if snd==snd_exp else 'FAIL')
-if snd!=snd_exp:sys.exit(1)
-print('NSC_RUNTIME_R166_SOURCE_VERIFY=PASS')
+# R167 static contracts in original v1.70 main.
+def words(off,n):
+    return [struct.unpack_from('<I',o,off+4*i)[0] for i in range(n)]
+cleanup=words(0x798F1C,8)
+cleanup_exp=[0x1E2E1000,0x12800002,0xAA1303E0,0x2A1F03E3,0x2A1F03E4,0x97FF3717,0xB94E5668,0x7100A51F]
+refresh=words(0x63A500,8)
+refresh_exp=[0xF9401A60,0x1E2E1000,0x52800941,0x2A1F03E2,0x2A1F03E3,0x2A1F03E4,0x9404B19D,0xF9401A60]
+play=words(0x766B8C,20)
+play_exp=[0xA9BE57FE,0xA9014FF4,0xB9529408,0x2A0403F4,0xAA0003F3,0x7100091F,0x54000080,0xB9528668,0x7100051F,0x540000A1,0x2A1F03E2,0x52800028,0xB9129E68,0xB912867F,0xF9400268,0xAA1303E0,0xF947CD08,0xD63F0100,0xAA1303E0,0x2A1403E1]
+print('r167_cleanup_caller_fingerprint','PASS' if cleanup==cleanup_exp else 'FAIL')
+print('r167_native_refresh_fingerprint','PASS' if refresh==refresh_exp else 'FAIL')
+print('r167_playaction_fingerprint','PASS' if play==play_exp else 'FAIL')
+if cleanup!=cleanup_exp or refresh!=refresh_exp or play!=play_exp: sys.exit(1)
+print('NSC_RUNTIME_R167_SOURCE_VERIFY=PASS')

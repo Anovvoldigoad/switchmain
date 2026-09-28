@@ -3506,3 +3506,53 @@ Expected marker:
 - Native ME_VOICE hypothesis as the sole named-voice route: FALSE for this audible run.
 - P128 remains frozen.
 - D-pad/Izanagi remains paused until dedicated voice path is resolved.
+
+---
+
+# R167 UPDATE — CUSTOM UJ MISS ANIMATION REFRESH
+
+## Priority change
+Voice investigation is intentionally paused at user request. R165/R166 voice probes are not installed in R167 to reduce runtime/log overhead. Current priority is the Kamui UJ whiff animation loop.
+
+## New hardware proof (uzuy_log(4).txt)
+A clean single-UJ whiff reproduces the stale visual animation. At cleanup the custom actor is still semantic-UJ qualified and reports `action=740 e80=1 bda4=1`. Native UJ cleanup at caller return `main+0x798F34` calls `PlayAction(74,a2=-1)` and returns successfully with logical action `74`. No later PlayAction occurs before shutdown, while the visible Kamui animation continues looping according to hardware observation.
+
+The same `e80=1,bda4=1` cleanup signature existed in the first UJ of uzuy_log(3). A separate prior UJ cleanup had `e80=0,bda4=0`, which is deliberately excluded.
+
+## R167 functional change
+R167 reuses the already-proven PlayAction trampoline. On the exact custom-UJ miss cleanup signature only:
+- semantic UJ active
+- custom actor (`char_id > vanilla max`, `<0x1000`)
+- index 74
+- incoming a2 -1
+- pre-action 740
+- caller return main+0x798F34
+- e80 1
+- bda4 1
+
+R167 forwards `effective_a2=0` to the same single native PlayAction invocation. This mirrors the native neutral refresh form at main+0x63A500. It does not inject a second PlayAction call.
+
+Markers:
+- `[NSC:R167] READY ...`
+- `[NSC:R167] UJ_MISS_ANM_REFRESH phase=pre ...`
+- `[NSC:R167] UJ_MISS_ANM_REFRESH phase=post ...`
+
+## Frozen
+- R164 StageInfo CPK / stage registry fix
+- P128 UJ admission/session
+- original main on disk + resolver 7/7 + exact 30-word runtime patch
+- opcode26 SFX
+- voice behavior (no R165/R166 probe install, no voice mutation)
+- D-pad/Izanagi
+
+## R167 verification
+`NSC_RUNTIME_R167_SOURCE_VERIFY=PASS`
+- original main SHA256 exact
+- reference P128 main SHA256 exact
+- exact 30-word diff PASS
+- resolver 7/7 uniqueness PASS
+- stage registry fingerprint PASS
+- native UJ cleanup caller fingerprint PASS
+- known neutral refresh fingerprint PASS
+- PlayAction fingerprint PASS
+- generic custom-ID policy; no hardcoded char281 branch
