@@ -44,3 +44,9 @@ Expected decisive marker
 or ret=1 reason=pass.
 
 Static verifier: NSC_RUNTIME_R170_SOURCE_VERIFY=PASS
+
+
+Compile-clean note
+- First source drop was rejected by `-Werror` for unused locals left from retired diagnostics.
+- Compile-clean revision removes those locals only; no runtime gate/probe behavior changed.
+- `verify_runtime_r170.py` remains PASS after the edit.

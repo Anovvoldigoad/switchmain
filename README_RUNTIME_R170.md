@@ -12,3 +12,7 @@ Expected marker:
 `[NSC:R170] UJ707_GATE ... ret=0 reason=anim_flag70|actor1264|timing ...`
 
 Test one clean UJ miss and do not press movement for ~8–10 seconds, then exit and upload the full log.
+
+
+## Compile-clean revision
+This package removes stale unused local variables left by retired R167/R168/R169 diagnostics. No R170 runtime behavior, hook target, fingerprint, gate condition, or mutation policy is changed.

@@ -2832,7 +2832,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         }
 
         uint32_t pre_action = 0xFFFFFFFFu;
-        uint32_t pre_e60 = 0xFFFFFFFFu, pre_e80 = 0xFFFFFFFFu, pre_e94 = 0xFFFFFFFFu, pre_e98 = 0xFFFFFFFFu, pre_e9c = 0xFFFFFFFFu, pre_ea0 = 0xFFFFFFFFu;
+        uint32_t pre_e60 = 0xFFFFFFFFu, pre_e98 = 0xFFFFFFFFu, pre_e9c = 0xFFFFFFFFu, pre_ea0 = 0xFFFFFFFFu;
         uint32_t pre_ea4 = 0xFFFFFFFFu, pre_bda4 = 0xFFFFFFFFu, pre_bdc8 = 0xFFFFFFFFu;
         uint32_t pre_106f4 = 0xFFFFFFFFu, pre_123e0 = 0xFFFFFFFFu, pre_123e4 = 0xFFFFFFFFu;
         const uintptr_t setter_target = ReadActionSetterTarget(actor);
@@ -2841,8 +2841,6 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             const auto* pb = reinterpret_cast<const volatile uint8_t*>(actor);
             pre_action = *reinterpret_cast<const volatile uint32_t*>(pb + 4712);
             pre_e60 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE60);
-            pre_e80 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE80);
-            pre_e94 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE94);
             pre_e98 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE98);
             pre_e9c = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE9C);
             pre_ea0 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xEA0);
@@ -2854,12 +2852,9 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             pre_123e4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E4);
         }
 
-        // R169: R167/R168 cleanup experiments are retired. Preserve every
-        // native PlayAction argument unchanged. The real whiff is action 707,
-        // not 740->74.  This hook only arms a latch when a custom semantic UJ
-        // enters 707 from 700; the release itself happens later in the existing
-        // P81 per-frame policy hook after terminal native phase markers appear.
-        const bool semantic_uj = custom && P64QuerySemanticUltimateJutsu(actor);
+        // R170: R167/R168/R169 action-mutation experiments are retired.
+        // Preserve every native PlayAction argument unchanged while the exact
+        // native 707 completion gate is observed read-only.
         const int32_t effective_a2 = a2;
         P93TraceCore("PLAYACTION", actor, caller_off, index, 0);
         const int32_t ret = Orig(actor, index, effective_a2, a3, a4, a5, rate);
@@ -3319,19 +3314,9 @@ HOOK_DEFINE_TRAMPOLINE(P81OugiAwakeningPolicyHook) {
                 ContainsOugiAwakeningId(
                     char_id);
 
-        uint32_t action =
-            0xFFFFFFFFu;
-        uint32_t e80 =
-            0xFFFFFFFFu;
         uint32_t e94 =
             0xFFFFFFFFu;
-        uint32_t e98 =
-            0xFFFFFFFFu;
         uint32_t e9c =
-            0xFFFFFFFFu;
-        uint32_t ea4 =
-            0xFFFFFFFFu;
-        uint32_t bda4 =
             0xFFFFFFFFu;
 
         if (actor) {
@@ -3340,35 +3325,14 @@ HOOK_DEFINE_TRAMPOLINE(P81OugiAwakeningPolicyHook) {
                     const volatile uint8_t*>(
                     actor);
 
-            action =
-                *reinterpret_cast<
-                    const volatile uint32_t*>(
-                    b + 4712);
-            e80 =
-                *reinterpret_cast<
-                    const volatile uint32_t*>(
-                    b + 0xE80);
             e94 =
                 *reinterpret_cast<
                     const volatile uint32_t*>(
                     b + 0xE94);
-            e98 =
-                *reinterpret_cast<
-                    const volatile uint32_t*>(
-                    b + 0xE98);
-
             e9c =
                 *reinterpret_cast<
                     const volatile uint32_t*>(
                     b + 0xE9C);
-            ea4 =
-                *reinterpret_cast<
-                    const volatile uint32_t*>(
-                    b + 0xEA4);
-            bda4 =
-                *reinterpret_cast<
-                    const volatile uint32_t*>(
-                    b + 0xBDA4);
         }
 
         // R170: R169 direct 707->77->74 release is retired. No action/animation

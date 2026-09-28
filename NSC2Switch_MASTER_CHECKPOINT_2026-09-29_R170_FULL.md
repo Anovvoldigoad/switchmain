@@ -74,3 +74,7 @@ Decision:
 - repeated `ret=0 reason=timing` -> compare current/end/duration progression and action707 descriptor timing;
 - `ret=1 reason=pass` without 708 -> trace lookup(708)/vslot dispatch immediately downstream;
 - native 707->708 appears -> do not mutate; follow the restored fallback 708->125->261->74.
+
+
+## Compile-clean revision (2026-09-29)
+The first R170 source drop failed under `-Werror` because retired R167/R168/R169 diagnostics left unused locals in `PlayActionProbeHook::Callback` and `P81OugiAwakeningPolicyHook::Callback`. The compile-clean revision removes only those unused declarations/reads (`pre_e80`, the local `pre_e94` in that PlayAction snapshot, `semantic_uj`, and unused P81 locals `action/e80/e98/ea4/bda4`). R170 hook targets, native arguments/returns, fingerprints, probe filter, P128 patch plan, and read-only policy are unchanged. The workflow label was also corrected from “Apply R169 overlay” to “Apply R170 overlay”.

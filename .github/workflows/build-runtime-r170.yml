@@ -22,7 +22,7 @@ jobs:
           cd exlaunch
           git checkout 229bbd6
 
-      - name: Apply R169 overlay
+      - name: Apply R170 overlay
         run: bash prepare_exlaunch.sh exlaunch
 
       - name: Build
