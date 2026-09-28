@@ -12,7 +12,6 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 
 namespace nsc {
 namespace {
@@ -37,12 +36,10 @@ constexpr ptrdiff_t kNormalOugiOffset         = 0x6F44A0;  // NORMAL_OUGI combat
 constexpr ptrdiff_t kSpecialOugiFinishOffset  = 0x6F4880;  // SPECIAL_OUGI_FINISH combat action handler (end classifier)
 // P50A: keep only the proven PRE/POST PlayAction probe for UJ progression
 constexpr ptrdiff_t kPlayActionProbeOffset    = 0x766B8C;  // PlayAction → int32_t ret
-// P57A/V2I: native animation/state core behind actor vtable+0xF98.
-// V2G proved that driving PL_ANM930 through this entry executes the expected
-// downstream event stream (SW_MTOB_XH + op17 Right=100), but the actor becomes
-// visually absent on Switch. Therefore this entry is useful evidence but is
-// still not safe as the final opcode23 implementation until that visual/lifecycle
-// divergence is isolated.
+// P57A/V2H: native action/animation state core behind actor vtable+0xF98.
+// V2G hardware falsified the earlier "safe SetAnmDirect" interpretation:
+// a direct call with 930 changes the actor's current 0x1268 state 928->930 and
+// reproduces disappearance. Keep this anchor for tracing/native UJ only.
 constexpr ptrdiff_t kCentralActionSetterOffset = 0x766320;
 // P59A: virtual action-mode dispatch family. 0x7B4680 is the canonical
 // thunk that loads actor->vtable+0xE40 and BRs to the class implementation.
@@ -395,22 +392,11 @@ constexpr ptrdiff_t kStageGlobalOffset          = 0x2143648;
 constexpr ptrdiff_t kStageStateGlobalOffset     = 0x21434C0;
 constexpr ptrdiff_t kStageObjectNameOffset      = 0x1A1E84D;
 
-// V2N: native Switch stage descriptor registry proof. Static v1.70
-// StageSpecific worker main+0x535FBC stores the requested stage ID, then
-// resolves descriptor = lookup([runtime_root+0x6C10]+0x148, stage_id) at
-// main+0x8364F8. A null descriptor skips the environment setup branch.
+// V2N/V2P: exact native StageInfo registry lookup chain.
 constexpr ptrdiff_t kStageRuntimeRootOffset      = 0x2143488;
 constexpr ptrdiff_t kStageRegistryLookupOffset   = 0x8364F8;
 constexpr ptrdiff_t kStageRegistryOwnerOffset    = 0x6C10;
 constexpr ptrdiff_t kStageRegistryMapOffset      = 0x148;
-
-// V2O: native StageInfo registry reload entry point. Static v1.70 proof:
-// manager collection +0x148 is passed to main+0x835FAC at main+0x406498.
-// StageSpecific later passes that same StageInfo manager object to the
-// registry lookup at main+0x53607C/0x536080. 0x835FAC loads both
-// data/stage/StageInfo.bin.xfbin and AdvStageInfo.bin.xfbin through the
-// game's own parser and insertion logic (including duplicate handling).
-constexpr ptrdiff_t kStageInfoReloadOffset       = 0x835FAC;
 
 constexpr uint32_t kVanillaMaxCharId = 280;
 constexpr uint32_t kFirstCustomCharId = 281;
@@ -448,10 +434,9 @@ std::atomic<uint32_t> g_v2m_stage_asset_trace_active{0};
 std::atomic<uint32_t> g_v2m_stage_move_count{0};
 std::atomic<uint32_t> g_v2n_stage_registry_ready{0};
 std::atomic<uint32_t> g_v2n_stage_registry_logs{0};
-std::atomic<uint32_t> g_v2o_stage_reload_ready{0};
-std::atomic<uint32_t> g_v2o_stage_reload_once{0};
-std::atomic<uint32_t> g_v2o_stage_reload_logs{0};
-std::atomic<uint32_t> g_mod_cpk_bound_ok{0};
+std::atomic<uint32_t> g_v2p_cpk_bound_success{0};
+std::atomic<uint32_t> g_v2p_stageinfo_seen_before_bind{0};
+std::atomic<uint32_t> g_v2p_stageinfo_requests{0};
 std::atomic<uint32_t> g_event13_logs{0};
 std::atomic<uint32_t> g_event121_logs{0};
 std::atomic<uint32_t> g_ougi_core_logs{0};
@@ -591,13 +576,9 @@ bool PathContainsTrackedCustom(const char* path) {
 
 bool IsInterestingPath(const char* path) {
     if (!path || !*path) return false;
-
-    // Preserve the existing custom-character trace filter from V2K.
     if (PathContainsTrackedCustom(path)) return true;
     if (BoundedContains(path, "mtob", 512, 8)) return true;
 
-    // V2M adds a stage-focused window without changing any loader decision.
-    // Known fixture asset names are diagnostic-only; no gameplay branch uses them.
     if (BoundedContains(path, "mtobspl", 512, 8) ||
         BoundedContains(path, "2tob", 512, 4) ||
         BoundedContains(path, "c_sta_11", 512, 8) ||
@@ -1500,7 +1481,6 @@ uint32_t HandleDpadChargeSourceParity(void* actor, int16_t enemy, int16_t arrow,
     return 1;
 }
 
-
 struct V2MStageGraphSnapshot {
     void* stage_global{};
     void* manager{};
@@ -1514,35 +1494,26 @@ struct V2MStageGraphSnapshot {
 
 V2MStageGraphSnapshot V2MResolveStageGraph(uintptr_t base) {
     V2MStageGraphSnapshot g{};
-
-    // Re-resolve the graph from the two proven globals every time.  We never
-    // dereference pointers captured before a stage transition after that
-    // transition, because HandleStageChange may replace/release those objects.
     g.stage_global = *reinterpret_cast<void**>(base + kStageGlobalOffset);
     if (g.stage_global) {
-        g.manager = *reinterpret_cast<void**>(
-            reinterpret_cast<uint8_t*>(g.stage_global) + 0x60);
+        g.manager = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(g.stage_global) + 0x60);
         if (g.manager) {
             using LookupFn = void* (*)(void*, const char*);
             auto lookup = reinterpret_cast<LookupFn>(base + kStageObjectLookupOffset);
             g.object = lookup(g.manager, reinterpret_cast<const char*>(base + kStageObjectNameOffset));
             if (g.object) {
-                g.object_inner = *reinterpret_cast<void**>(
-                    reinterpret_cast<uint8_t*>(g.object) + 0x8);
+                g.object_inner = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(g.object) + 0x8);
                 if (g.object_inner) {
-                    g.stage_context = *reinterpret_cast<void**>(
-                        reinterpret_cast<uint8_t*>(g.object_inner) + 0x10);
+                    g.stage_context = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(g.object_inner) + 0x10);
                 }
             }
         }
     }
-
     g.state_global = *reinterpret_cast<void**>(base + kStageStateGlobalOffset);
     if (g.state_global) {
         g.stage_state = *reinterpret_cast<void**>(g.state_global);
         if (g.stage_state) {
-            g.stage_id = *reinterpret_cast<volatile uint32_t*>(
-                reinterpret_cast<uint8_t*>(g.stage_state) + 0x8);
+            g.stage_id = *reinterpret_cast<volatile uint32_t*>(reinterpret_cast<uint8_t*>(g.stage_state) + 0x8);
         }
     }
     return g;
@@ -1562,27 +1533,21 @@ void V2MLogStageGraph(const char* phase, const char* text, uintptr_t base) {
 void V2NProbeStageRegistry(const char* phase, const char* text, uintptr_t base, uint32_t key) {
     if (g_v2n_stage_registry_ready.load(std::memory_order_acquire) == 0u) return;
     if (key == 0u || key == 0xFFFFFFFFu) return;
-
-    // Read-only duplicate of the exact native lookup used by StageSpecific.
-    // No insertion, no descriptor mutation, no stage-state write.
     void* runtime_root = *reinterpret_cast<void**>(base + kStageRuntimeRootOffset);
     void* registry_owner = nullptr;
     void* registry_map = nullptr;
     void* result = nullptr;
     if (runtime_root) {
-        registry_owner = *reinterpret_cast<void**>(
-            reinterpret_cast<uint8_t*>(runtime_root) + kStageRegistryOwnerOffset);
+        registry_owner = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(runtime_root) + kStageRegistryOwnerOffset);
     }
     if (registry_owner) {
-        registry_map = *reinterpret_cast<void**>(
-            reinterpret_cast<uint8_t*>(registry_owner) + kStageRegistryMapOffset);
+        registry_map = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(registry_owner) + kStageRegistryMapOffset);
     }
     if (registry_map) {
         using RegistryLookupFn = void* (*)(void*, uint32_t);
         auto fn = reinterpret_cast<RegistryLookupFn>(base + kStageRegistryLookupOffset);
         result = fn(registry_map, key);
     }
-
     const uint32_t n = g_v2n_stage_registry_logs.fetch_add(1u, std::memory_order_relaxed);
     if (n < 64u) {
         Logging.Log(
@@ -1591,96 +1556,6 @@ void V2NProbeStageRegistry(const char* phase, const char* text, uintptr_t base, 
             phase ? phase : "?", text ? text : "<null>", key,
             runtime_root, registry_owner, registry_map, result, result ? 1u : 0u);
     }
-}
-
-
-struct V2OStageRegistryView {
-    void* runtime_root{};
-    void* registry_owner{};
-    void* stage_manager{};
-    void* descriptor{};
-};
-
-V2OStageRegistryView V2OResolveStageRegistry(uintptr_t base, uint32_t key) {
-    V2OStageRegistryView v{};
-    v.runtime_root = *reinterpret_cast<void**>(base + kStageRuntimeRootOffset);
-    if (v.runtime_root) {
-        v.registry_owner = *reinterpret_cast<void**>(
-            reinterpret_cast<uint8_t*>(v.runtime_root) + kStageRegistryOwnerOffset);
-    }
-    if (v.registry_owner) {
-        // Static proof ties this exact +0x148 object to both the StageInfo
-        // loader (main+0x406498 -> 0x835FAC) and StageSpecific lookup
-        // (main+0x53607C -> 0x8364F8). It is the native StageInfo manager.
-        v.stage_manager = *reinterpret_cast<void**>(
-            reinterpret_cast<uint8_t*>(v.registry_owner) + kStageRegistryMapOffset);
-    }
-    if (v.stage_manager && key != 0u && key != 0xFFFFFFFFu) {
-        using RegistryLookupFn = void* (*)(void*, uint32_t);
-        v.descriptor = reinterpret_cast<RegistryLookupFn>(
-            base + kStageRegistryLookupOffset)(v.stage_manager, key);
-    }
-    return v;
-}
-
-bool V2OTryNativeStageReindexOnMiss(const char* text, uintptr_t base, uint32_t key) {
-    if (g_v2o_stage_reload_ready.load(std::memory_order_acquire) == 0u) return false;
-    if (key == 0u || key == 0xFFFFFFFFu) return false;
-
-    const V2OStageRegistryView before = V2OResolveStageRegistry(base, key);
-    if (before.descriptor) return true;
-
-    const uint32_t cpk_bound = g_mod_cpk_bound_ok.load(std::memory_order_acquire);
-    if (!before.stage_manager || cpk_bound == 0u) {
-        const uint32_t n = g_v2o_stage_reload_logs.fetch_add(1u, std::memory_order_relaxed);
-        if (n < 32u) {
-            Logging.Log(
-                "[NSC:V2O] STAGE_REINDEX text=%s key=%08x before_found=0 after_found=0 "
-                "manager=%p root=%p owner=%p cpk_bound=%u attempted=0 reason=%s "
-                "native_loader=0x835fac mutation=0 fail_closed=1 generic_missing_key=1 char_hardcode=0",
-                text ? text : "<null>", key, before.stage_manager, before.runtime_root,
-                before.registry_owner, cpk_bound,
-                before.stage_manager ? "cpk_not_bound" : "stage_manager_null");
-        }
-        return false;
-    }
-
-    uint32_t expected = 0u;
-    if (!g_v2o_stage_reload_once.compare_exchange_strong(
-            expected, 1u, std::memory_order_acq_rel)) {
-        const V2OStageRegistryView after_once = V2OResolveStageRegistry(base, key);
-        const uint32_t n = g_v2o_stage_reload_logs.fetch_add(1u, std::memory_order_relaxed);
-        if (n < 32u) {
-            Logging.Log(
-                "[NSC:V2O] STAGE_REINDEX text=%s key=%08x before_found=0 after_found=%u "
-                "manager=%p cpk_bound=%u attempted=0 reason=already_attempted "
-                "native_loader=0x835fac once_per_session=1 generic_missing_key=1 char_hardcode=0",
-                text ? text : "<null>", key, after_once.descriptor ? 1u : 0u,
-                after_once.stage_manager, cpk_bound);
-        }
-        return after_once.descriptor != nullptr;
-    }
-
-    // Controlled generic A/B: reuse the game's own StageInfo loader/parser and
-    // insertion path once, only after a real stage-key miss and only after the
-    // extra mod CPK has bound successfully. Native duplicate handling remains
-    // responsible for pre-existing vanilla entries. No descriptor is cloned or
-    // hand-written by this runtime.
-    using ReloadFn = void (*)(void*);
-    reinterpret_cast<ReloadFn>(base + kStageInfoReloadOffset)(before.stage_manager);
-
-    const V2OStageRegistryView after = V2OResolveStageRegistry(base, key);
-    const uint32_t n = g_v2o_stage_reload_logs.fetch_add(1u, std::memory_order_relaxed);
-    if (n < 32u) {
-        Logging.Log(
-            "[NSC:V2O] STAGE_REINDEX text=%s key=%08x before_found=0 after_found=%u "
-            "manager=%p descriptor=%p cpk_bound=%u attempted=1 once_per_session=1 "
-            "native_loader=0x835fac native_parser=1 native_insert=1 manual_descriptor=0 "
-            "manual_poststage=0 generic_missing_key=1 char_hardcode=0",
-            text ? text : "<null>", key, after.descriptor ? 1u : 0u,
-            after.stage_manager, after.descriptor, cpk_bound);
-    }
-    return after.descriptor != nullptr;
 }
 
 uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
@@ -1699,7 +1574,6 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
         g_v2m_stage_asset_trace_active.exchange(1u, std::memory_order_acq_rel);
     Logging.Log("[NSC:V2M] STAGE_TRACE_ARM seq=%u text=%s was_active=%u active=1",
                 stage_move_seq, text, trace_was_active);
-
     auto disarm_on_failed_transition = [&]() {
         g_v2m_stage_asset_trace_active.store(0u, std::memory_order_release);
         Logging.Log("[NSC:V2M] STAGE_TRACE_DISARM_FAIL seq=%u text=%s active=0",
@@ -1768,8 +1642,6 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
 
     if (param2 == 0) {
         V2NProbeStageRegistry("pre_specific", text, base, stage_crc);
-        V2OTryNativeStageReindexOnMiss(text, base, stage_crc);
-        V2NProbeStageRegistry("post_reindex", text, base, stage_crc);
         using SpecificFn = void (*)(void*, uint32_t);
         reinterpret_cast<SpecificFn>(base + kStageSpecificOffset)(stage_context, stage_crc);
     } else {
@@ -1798,16 +1670,9 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
     using ActorFn = void (*)(void*);
     reinterpret_cast<HandleFn>(base + kHandleStageChangeOffset)(stage_id_post_handler);
     V2MLogStageGraph("post_handle", text, base);
-
-    // V2I source-parity correction from UltimateStormAPI PC v1.70
-    // me_test_switch_stage(): after HandleStageChange, fix BOTH participants.
-    // The previous Switch port also called kPostStageOffset, but the PC source
-    // has no corresponding call, so V2I deliberately removes that extra step.
-    void* enemy = GetEventTargetActor(actor, 1);
     reinterpret_cast<ActorFn>(base + kFixCharPositionOffset)(actor);
-    if (enemy) {
-        reinterpret_cast<ActorFn>(base + kFixCharPositionOffset)(enemy);
-    }
+    void* enemy = GetEventTargetActor(actor, 1);
+    if (enemy) reinterpret_cast<ActorFn>(base + kFixCharPositionOffset)(enemy);
 
     void* state_global_final = nullptr;
     void* state_final = nullptr;
@@ -1820,95 +1685,13 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
         actor, side, char_id, text, stage_crc, param2 == 0 ? "specific" : "default",
         manager, object, stage_context, stage_id_pre, stage_id_post_handler,
         stage_id_final, enemy, enemy ? 1u : 0u);
-    Logging.Log(
-        "[NSC:V2K] STAGE_SAFE_BASELINE actor=%p side=%u char=%u text=%s stage_id=%u "
-        "v2j_poststage_removed=1 poststage=0 extra_stage_call=0",
-        actor, side, char_id, text, stage_id_final);
 
-    // First StageMove (cinematic entry) keeps the resource window open.
-    // Second StageMove (normally cinematic exit) closes it.
     if (trace_was_active != 0u) {
         g_v2m_stage_asset_trace_active.store(0u, std::memory_order_release);
         Logging.Log("[NSC:V2M] STAGE_TRACE_DISARM seq=%u text=%s active=0",
                     stage_move_seq, text);
     }
     return 1;
-}
-
-// V2I controlled A/B for the Izanagi activation tail.  Hardware V2H proves
-// that suppressing PL_ANM930 keeps the actor visible but also prevents the
-// source frame-13 activation events from running.  The decoded source PL_ANM
-// SPTYPE_ACTION10 contains, at the same frame:
-//   Event121 SW_MTOB_XH (self), then Event236 op17 Right=100.0f.
-// This helper replays ONLY those two already-source-proven semantic events so
-// we can determine whether they are sufficient for long-lived protection while
-// keeping the problematic animation path suppressed.  It is diagnostic-only
-// and must not become the final generic opcode23 implementation.
-bool V2IApplyIzanagiActivationCoreAB(void* actor, const char* text, int16_t action_param) {
-    if (!actor || !text) return false;
-    if (action_param != 77 || std::strcmp(text, "SPTYPE_ACTION10") != 0) return false;
-
-    const auto* actor_bytes = reinterpret_cast<const volatile uint8_t*>(actor);
-    const uint32_t f30_before = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0xF30);
-    const uint32_t e94_before = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0xE94);
-    const uint32_t e98_before = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0xE98);
-    const uint32_t anm_before = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0x1268);
-    const auto* charge_before_ptr = reinterpret_cast<const volatile uint32_t*>(actor_bytes + kDpadChargeBaseOffset);
-    const uint32_t charge_before[4] = {
-        charge_before_ptr[0], charge_before_ptr[1], charge_before_ptr[2], charge_before_ptr[3]
-    };
-
-    const uintptr_t base = exl::util::modules::GetTargetStart();
-    using OwnerFn = void* (*)(void*);
-    using ResolveFn = uint32_t (*)(const char*);
-    using ApplyFn = uint32_t (*)(void*, uint32_t, int32_t, float);
-    auto owner_fn = reinterpret_cast<OwnerFn>(base + kConditionOwnerOffset);
-    auto resolve_fn = reinterpret_cast<ResolveFn>(base + kConditionResolveOffset);
-    auto apply_fn = reinterpret_cast<ApplyFn>(base + kConditionApplyOffset);
-
-    constexpr const char* kCond = "SW_MTOB_XH";
-    const uint32_t resolved = resolve_fn(kCond);
-    void* owner = owner_fn(actor);
-    uint32_t apply_ret = 0;
-    bool cond_applied = false;
-    if (owner && resolved > 0 &&
-        resolved < condition_compat_generated::kTotalConditionCount) {
-        owner = owner_fn(actor);
-        if (owner) {
-            apply_ret = apply_fn(owner, resolved, -1, 0.0f);
-            cond_applied = true;
-        }
-    }
-
-    // Exact source Event236 op17 payload: enemy=0, arrow=4 (Right), 100.0f.
-    HandleDpadChargeSourceParity(actor, 0, 4, 100.0f);
-
-    auto* charge = reinterpret_cast<volatile float*>(
-        reinterpret_cast<uint8_t*>(actor) + kDpadChargeBaseOffset);
-    uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
-    ReadActorIdentity(actor, side, char_id);
-    Logging.Log(
-        "[NSC:V2I] IZANAGI_CORE_AB actor=%p side=%u char=%u text=%s action_param=%d "
-        "cond=%s resolved=%u owner=%p cond_applied=%u apply_ret=%u right_bits=%08x "
-        "animation930_suppressed=1 source_frame13_only=1 diagnostic_only=1",
-        actor, side, char_id, text, static_cast<int>(action_param), kCond, resolved,
-        owner, cond_applied ? 1u : 0u, apply_ret, FloatBits(charge[3]));
-
-    const uint32_t f30_after = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0xF30);
-    const uint32_t e94_after = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0xE94);
-    const uint32_t e98_after = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0xE98);
-    const uint32_t anm_after = *reinterpret_cast<const volatile uint32_t*>(actor_bytes + 0x1268);
-    const auto* charge_after_ptr = reinterpret_cast<const volatile uint32_t*>(actor_bytes + kDpadChargeBaseOffset);
-    Logging.Log(
-        "[NSC:V2K] DPAD_PASSIVE_SNAPSHOT actor=%p side=%u char=%u f30=%u->%u "
-        "charge=%08x/%08x/%08x/%08x->%08x/%08x/%08x/%08x "
-        "e94=%u->%u e98=%u->%u anm1268=%u->%u extra_gameplay_write=0 "
-        "v2j_inline_hook=0",
-        actor, side, char_id, f30_before, f30_after,
-        charge_before[0], charge_before[1], charge_before[2], charge_before[3],
-        charge_after_ptr[0], charge_after_ptr[1], charge_after_ptr[2], charge_after_ptr[3],
-        e94_before, e94_after, e98_before, e98_after, anm_before, anm_after);
-    return true;
 }
 
 uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2,
@@ -1960,7 +1743,7 @@ uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2
     Logging.Log("[NSC:P50A] ACTION actor=%p target=%p mode=%u text=%s found=1 index=%u",
                 actor, target, action_mode ? 1u : 0u, text, index);
 
-    // V2I: preserve the V2H/V2F-safe opcode23 suppression as the baseline.
+    // V2H: hardware rollback to the V2F-safe opcode23 A/B behavior.
     // V2G proved that calling main+0x766320 with PL_ANM index930 is NOT a
     // harmless SetAnmDirect equivalent: it changes current state 928->930 and
     // reproduces disappearance. Preserve SetActionImmediate(param3) and name
@@ -1975,12 +1758,12 @@ uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2
         const uint32_t e98_after =
             *reinterpret_cast<const volatile uint32_t*>(tb + 0xE98);
         Logging.Log(
-            "[NSC:V2I] OP23_SAFE_SUPPRESS actor=%p target=%p action_param=%d text=%s "
+            "[NSC:V2H] OP23_SAFE_SUPPRESS actor=%p target=%p action_param=%d text=%s "
             "pl_anm_index=%u state1268=%u->%u e94=%u->%u e98_after=%u "
-            "call_766320=0 playaction_wrapper=0 full_animation_suppressed=1 diagnostic_only=1",
+            "call_766320=0 playaction_wrapper=0 v2g_766320_rejected=1 "
+            "setanmdirect_unresolved=1 diagnostic_only=1",
             actor, target, static_cast<int>(param3), text, index,
             anm1268_before, state1268_after, e94_before, e94_after, e98_after);
-        V2IApplyIzanagiActivationCoreAB(target, text, param3);
         return 1;
     }
 
@@ -2022,10 +1805,15 @@ HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
         uint32_t extra_bind_id = 0;
         const uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
         if (extra_result != 0u) {
-            g_mod_cpk_bound_ok.store(1u, std::memory_order_release);
+            g_v2p_cpk_bound_success.store(1u, std::memory_order_release);
         }
         Logging.Log("[NSC:P50A] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
                     kModCpkPath, kModCpkPriority, extra_result, extra_bind_id);
+        Logging.Log(
+            "[NSC:V2P] CPK_BOUND path=%s result=%u bind_id=%u success=%u "
+            "stageinfo_seen_before_bind=%u passive_order_probe=1",
+            kModCpkPath, extra_result, extra_bind_id, extra_result ? 1u : 0u,
+            g_v2p_stageinfo_seen_before_bind.load(std::memory_order_acquire));
         return original_result;
     }
 };
@@ -2046,7 +1834,31 @@ HOOK_DEFINE_TRAMPOLINE(CharacodeGetterHook) {
 // x0=nuccFileLoadList manager, x1=path C string, x2=options pointer.
 HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
     static void* Callback(void* manager, const char* path, const void* options) {
+        const bool stageinfo = PathEqual(path, "data/stage/StageInfo.bin.xfbin") ||
+                               PathEqual(path, "data/stage/AdvStageInfo.bin.xfbin");
+        uint32_t seq = 0u;
+        uint32_t bound_pre = 0u;
+        if (stageinfo) {
+            seq = g_v2p_stageinfo_requests.fetch_add(1u, std::memory_order_relaxed) + 1u;
+            bound_pre = g_v2p_cpk_bound_success.load(std::memory_order_acquire);
+            if (bound_pre == 0u) {
+                g_v2p_stageinfo_seen_before_bind.store(1u, std::memory_order_release);
+            }
+            Logging.Log(
+                "[NSC:V2P] STAGEINFO_LOAD_REQ phase=pre seq=%u manager=%p path=%s "
+                "options=%p cpk_bound=%u passive_order_probe=1",
+                seq, manager, path ? path : "<null>", options, bound_pre);
+        }
+
         void* result = Orig(manager, path, options);
+
+        if (stageinfo) {
+            Logging.Log(
+                "[NSC:V2P] STAGEINFO_LOAD_REQ phase=post seq=%u manager=%p path=%s "
+                "result=%p cpk_bound_pre=%u cpk_bound_post=%u passive_order_probe=1",
+                seq, manager, path ? path : "<null>", result, bound_pre,
+                g_v2p_cpk_bound_success.load(std::memory_order_acquire));
+        }
         if (IsInterestingPath(path) &&
             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
             Logging.Log("[NSC:P50A] LOAD_REQ manager=%p path=%s options=%p result=%p",
@@ -2720,48 +2532,40 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
             case 23: // source me_play_action
                 return HandleActionAnimation(actor, event, p2, p3, true);
 
-            case 26: { // source me_play_voice_string — V2I native Switch playback parity
+            case 26: { // source me_play_voice_string — V2I generic SFX parity
                 void* target = GetEventTargetActor(actor, p2);
                 char text[31]{};
                 CopyEventText(text, event);
                 const int32_t sfx_index = nsc_sfx_list_generated::FindIndex(text);
                 const uint32_t sound_command =
                     sfx_index >= 0 ? static_cast<uint32_t>(sfx_index + 0x7000) : 0xFFFFFFFFu;
-
                 uintptr_t slot1030 = 0;
-                uint32_t playback_ret = 0;
-                bool playback_called = false;
+                bool called = false;
                 const uintptr_t main_base = exl::util::modules::GetTargetStart();
                 if (target && sfx_index >= 0) {
                     auto** vtable = *reinterpret_cast<void***>(target);
                     if (vtable) {
                         slot1030 = reinterpret_cast<uintptr_t>(vtable[0x1030 / sizeof(void*)]);
-                        // Switch v1.70 native event callbacks around main+0x813D88
-                        // call actor vtable+0x1030 exactly as (actor, sound+0x7000, 0).
-                        // Fail closed if the slot is not inside the target main image.
                         if (slot1030 >= main_base && slot1030 < main_base + 0x12F5FD0u) {
-                            using SoundFn = uint32_t (*)(void*, uint32_t, uint32_t);
-                            playback_ret = reinterpret_cast<SoundFn>(slot1030)(target, sound_command, 0);
-                            playback_called = true;
+                            using SoundFn = void (*)(void*, uint32_t, uint32_t);
+                            reinterpret_cast<SoundFn>(slot1030)(target, sound_command, 0u);
+                            called = true;
                         }
                     }
                 }
-
-                const auto rel = [main_base](uintptr_t p) -> unsigned long {
-                    return (p >= main_base && p < main_base + 0x12F5FD0u)
-                        ? static_cast<unsigned long>(p - main_base)
-                        : static_cast<unsigned long>(~0ul);
-                };
                 uint32_t tside = 0xFFFFFFFFu, tchar = 0xFFFFFFFFu;
                 ReadActorIdentity(target, tside, tchar);
+                const unsigned long slot_off =
+                    (slot1030 >= main_base && slot1030 < main_base + 0x12F5FD0u)
+                    ? static_cast<unsigned long>(slot1030 - main_base)
+                    : static_cast<unsigned long>(~0ul);
                 Logging.Log(
                     "[NSC:V2I] OP26_PLAY actor=%p target=%p side=%u char=%u enemy=%d text=%s "
-                    "sfx_index=%d command=%08x slot1030=%p/off=0x%lx called=%u ret=%u "
+                    "sfx_index=%d command=%08x slot1030=%p/off=0x%lx called=%u "
                     "native_813d88_contract=1",
                     actor, target, tside, tchar, static_cast<int>(p2), text,
                     static_cast<int>(sfx_index), sound_command,
-                    reinterpret_cast<void*>(slot1030), rel(slot1030),
-                    playback_called ? 1u : 0u, playback_ret);
+                    reinterpret_cast<void*>(slot1030), slot_off, called ? 1u : 0u);
                 return 1;
             }
 
@@ -8735,6 +8539,74 @@ static uint32_t P128RuntimeWord(uintptr_t base, ptrdiff_t off) {
 }
 } // anonymous namespace — P128A
 
+bool InstallV2NStageRegistryProof() {
+    static constexpr uint32_t kRegistryExpected[] = {
+        0xF8408C09, 0xB40001A9, 0xAA0003E8, 0xB940212A,
+        0x6B01015F, 0x1A9F27EA, 0x9A893108, 0xF86A5929,
+    };
+    const bool ok = MatchWords(kStageRegistryLookupOffset, kRegistryExpected);
+    if (!ok) {
+        LogFingerprintFail("V2N_STAGE_REGISTRY_LOOKUP", kStageRegistryLookupOffset);
+        g_v2n_stage_registry_ready.store(0u, std::memory_order_release);
+        Logging.Log("[NSC:V2N] READY stage_registry_probe=0 fail_closed=1 readonly=1 dpad_change=0 voice_change=0 p128_change=0");
+        return false;
+    }
+    g_v2n_stage_registry_ready.store(1u, std::memory_order_release);
+    Logging.Log(
+        "[NSC:V2N] READY stage_registry_probe=1 lookup_off=0x%lx exact_fingerprint=1 "
+        "readonly=1 duplicate_lookup_only=1 insert=0 mutation=0 dpad_change=0 voice_change=0 p128_change=0",
+        static_cast<unsigned long>(kStageRegistryLookupOffset));
+    return true;
+}
+
+bool InstallV2MStageSafeTraceHooks() {
+    static constexpr uint32_t kRequestExpected[] = {
+        0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0xF9400008,
+        0xAA0203F4, 0xAA0103F6, 0xAA0003F3, 0xF9400908,
+    };
+    static constexpr uint32_t kFileOpenExpected[] = {
+        0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x6F00E400,
+        0xAA0003F6, 0xB0007ED7, 0x3C838EC0, 0xB90106C2,
+    };
+    static constexpr uint32_t kHandleExpected[] = {
+        0xF81E0FFE, 0xA9014FF4, 0x9000D334, 0xF944C694,
+        0x2A0003F3, 0xF9400280, 0x97FFE41A, 0xF000D2C8,
+    };
+    static constexpr uint32_t kPostExpected[] = {
+        0xA9BF4FFE, 0x2A1F03E0, 0x2A1F03E1, 0x940FC6CA,
+        0xB4000100, 0x52800021, 0xAA0003F3, 0x940BC56F,
+    };
+    const bool request_ok = MatchWords(kFileLoadRequestOffset, kRequestExpected);
+    const bool open_ok = MatchWords(kFileOpenOffset, kFileOpenExpected);
+    const bool handle_ok = MatchWords(kHandleStageChangeOffset, kHandleExpected);
+    const bool post_ok = MatchWords(kPostStageOffset, kPostExpected);
+    if (!request_ok) LogFingerprintFail("V2M_LOAD_REQ", kFileLoadRequestOffset);
+    if (!open_ok) LogFingerprintFail("V2M_FILE_OPEN", kFileOpenOffset);
+    if (!handle_ok) LogFingerprintFail("V2M_STAGE_HANDLE", kHandleStageChangeOffset);
+    if (!post_ok) LogFingerprintFail("V2M_POST_STAGE", kPostStageOffset);
+    if (!(request_ok && open_ok && handle_ok && post_ok)) {
+        Logging.Log("[NSC:V2M] READY stage_only=1 installed=0 request=%u open=%u handle=%u post=%u fail_closed=1",
+                    request_ok ? 1u : 0u, open_ok ? 1u : 0u,
+                    handle_ok ? 1u : 0u, post_ok ? 1u : 0u);
+        return false;
+    }
+    FileLoadRequestHook::InstallAtOffset(kFileLoadRequestOffset);
+    FileOpenHook::InstallAtOffset(kFileOpenOffset);
+    StageHandleHook::InstallAtOffset(kHandleStageChangeOffset);
+    PostStageHook::InstallAtOffset(kPostStageOffset);
+    Logging.Log(
+        "[NSC:V2M] READY stage_only=1 installed=1 resource_request_trace=1 file_open_trace=1 "
+        "stage_handle_trace=1 poststage_observe_only=1 fresh_graph_resolve=1 "
+        "stale_pointer_deref=0 manual_poststage_call=0 dpad_change=0 voice_change=0 p128_change=0");
+    return true;
+}
+
+void InstallV2PPassiveOrderProbe() {
+    Logging.Log(
+        "[NSC:V2P] READY stageinfo_cpk_order_probe=1 passive_only=1 direct_stageinfo_reload=0 "
+        "new_trampoline=0 descriptor_insert=0 manual_poststage=0 dpad_change=0 p128_change=0");
+}
+
 void InstallP128AStaticPreciseGateCaveProof() {
     InstallP81AOugiAwakeningPolicyBridge();
     const bool p89=InstallP89Internal();
@@ -8764,112 +8636,6 @@ void InstallP128AStaticPreciseGateCaveProof() {
         "rt480=%08x rt4b8=%08x rt4fc=%08x rt500=%08x rt494=%08x rt4a8=%08x rt4b4=%08x rt520=%08x rt5e8=%08x",
         p89?1u:0u,gate?1u:0u,post?1u:0u,cleanup?1u:0u,
         w480,w4b8,w4fc,w500,w494,w4a8,w4b4,w520,w5e8);
-}
-
-
-bool InstallV2NStageRegistryProof() {
-    // main+0x8364F8 is the exact uint32 stage-id -> descriptor map lookup used
-    // by StageSpecific at main+0x536080.  V2N only calls it read-only.
-    static constexpr uint32_t kRegistryExpected[] = {
-        0xF8408C09, 0xB40001A9, 0xAA0003E8, 0xB940212A,
-        0x6B01015F, 0x1A9F27EA, 0x9A893108, 0xF86A5929,
-    };
-    const bool ok = MatchWords(kStageRegistryLookupOffset, kRegistryExpected);
-    if (!ok) {
-        LogFingerprintFail("V2N_STAGE_REGISTRY_LOOKUP", kStageRegistryLookupOffset);
-        g_v2n_stage_registry_ready.store(0u, std::memory_order_release);
-        Logging.Log(
-            "[NSC:V2N] READY stage_registry_probe=0 fail_closed=1 readonly=1 "
-            "dpad_change=0 voice_change=0 p128_change=0");
-        return false;
-    }
-    g_v2n_stage_registry_ready.store(1u, std::memory_order_release);
-    Logging.Log(
-        "[NSC:V2N] READY stage_registry_probe=1 lookup_off=0x%lx exact_fingerprint=1 "
-        "readonly=1 duplicate_lookup_only=1 insert=0 mutation=0 dpad_change=0 voice_change=0 p128_change=0",
-        static_cast<unsigned long>(kStageRegistryLookupOffset));
-    return true;
-}
-
-
-bool InstallV2OStageNativeReindex() {
-    // Exact v1.70 prefix of main+0x835FAC. The loader reads StageInfo and
-    // AdvStageInfo through the game's file manager, then feeds the native
-    // parser/inserter. Fail closed if this build no longer matches.
-    static constexpr uint32_t kReloadExpected[] = {
-        0xF81E0FFE, 0xA9014FF4, 0xD000C874, 0xF942F294,
-        0xAA0003F3, 0xF0008E21, 0x9128CC21, 0xAA1403E0,
-        0x942746DB, 0xAA0003E1, 0x90009502, 0x912F1C42,
-    };
-    const bool ok = MatchWords(kStageInfoReloadOffset, kReloadExpected);
-    if (!ok) {
-        LogFingerprintFail("V2O_STAGEINFO_RELOAD", kStageInfoReloadOffset);
-        g_v2o_stage_reload_ready.store(0u, std::memory_order_release);
-        Logging.Log("[NSC:V2O] READY stage_native_reindex=0 fail_closed=1");
-        return false;
-    }
-    g_v2o_stage_reload_ready.store(1u, std::memory_order_release);
-    Logging.Log(
-        "[NSC:V2O] READY stage_native_reindex=1 loader_off=0x%lx "
-        "trigger=registry_miss after_cpk_bind=1 once_per_session=1 "
-        "native_parser=1 native_insert=1 manual_descriptor=0 manual_poststage=0 "
-        "dpad_change=0 voice_change=0 p128_change=0",
-        static_cast<unsigned long>(kStageInfoReloadOffset));
-    return true;
-}
-
-bool InstallV2MStageSafeTraceHooks() {
-    // Diagnostic hooks only.  Every callback forwards to Orig unchanged.
-    // There is no manual PostStage call and no stage/gameplay mutation here.
-    static constexpr uint32_t kRequestExpected[] = {
-        0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0xF9400008,
-        0xAA0203F4, 0xAA0103F6, 0xAA0003F3, 0xF9400908,
-    };
-    static constexpr uint32_t kFileOpenExpected[] = {
-        0xA9BD5FFE, 0xA90157F6, 0xA9024FF4, 0x6F00E400,
-        0xAA0003F6, 0xB0007ED7, 0x3C838EC0, 0xB90106C2,
-    };
-    static constexpr uint32_t kHandleExpected[] = {
-        0xF81E0FFE, 0xA9014FF4, 0x9000D334, 0xF944C694,
-        0x2A0003F3, 0xF9400280, 0x97FFE41A, 0xF000D2C8,
-    };
-    static constexpr uint32_t kPostExpected[] = {
-        0xA9BF4FFE, 0x2A1F03E0, 0x2A1F03E1, 0x940FC6CA,
-        0xB4000100, 0x52800021, 0xAA0003F3, 0x940BC56F,
-    };
-
-    const bool request_ok = MatchWords(kFileLoadRequestOffset, kRequestExpected);
-    const bool open_ok = MatchWords(kFileOpenOffset, kFileOpenExpected);
-    const bool handle_ok = MatchWords(kHandleStageChangeOffset, kHandleExpected);
-    const bool post_ok = MatchWords(kPostStageOffset, kPostExpected);
-    if (!request_ok) LogFingerprintFail("V2M_LOAD_REQ", kFileLoadRequestOffset);
-    if (!open_ok) LogFingerprintFail("V2M_FILE_OPEN", kFileOpenOffset);
-    if (!handle_ok) LogFingerprintFail("V2M_STAGE_HANDLE", kHandleStageChangeOffset);
-    if (!post_ok) LogFingerprintFail("V2M_POST_STAGE", kPostStageOffset);
-    if (!(request_ok && open_ok && handle_ok && post_ok)) {
-        Logging.Log(
-            "[NSC:V2M] READY stage_only=1 installed=0 request=%u open=%u handle=%u post=%u fail_closed=1",
-            request_ok ? 1u : 0u, open_ok ? 1u : 0u,
-            handle_ok ? 1u : 0u, post_ok ? 1u : 0u);
-        return false;
-    }
-
-    FileLoadRequestHook::InstallAtOffset(kFileLoadRequestOffset);
-    FileOpenHook::InstallAtOffset(kFileOpenOffset);
-    StageHandleHook::InstallAtOffset(kHandleStageChangeOffset);
-    PostStageHook::InstallAtOffset(kPostStageOffset);
-    Logging.Log(
-        "[NSC:V2M] READY stage_only=1 installed=1 resource_request_trace=1 file_open_trace=1 "
-        "stage_handle_trace=1 poststage_observe_only=1 fresh_graph_resolve=1 "
-        "stale_pointer_deref=0 manual_poststage_call=0 dpad_change=0 voice_change=0 p128_change=0");
-    return true;
-}
-
-void InstallV2KRecoveryPassiveProbe() {
-    Logging.Log(
-        "[NSC:V2K] READY recovery_baseline=V2I v2j_stage_post=0 v2j_dpad_inline_hook=0 "
-        "opcode26_frozen=1 safe_op23=1 activation_core_retained=1 passive_dpad_snapshot=1 "
-        "damage_override=0 force_visible=0 no_char281_branch=1");
 }
 
 } // namespace nsc

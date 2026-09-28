@@ -1,4 +1,4 @@
-name: Build NSC Runtime V2O Native Stage Reindex
+name: Build NSC Runtime V2P StageInfo CPK Passive Ordering Probe
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Verify source package
-        run: python3 verify_runtime_v2o.py
+        run: python3 verify_runtime_v2p.py
 
       - name: Clone pinned exlaunch
         run: |
@@ -22,7 +22,7 @@ jobs:
           cd exlaunch
           git checkout 229bbd6
 
-      - name: Apply V2O overlay
+      - name: Apply V2P overlay
         run: bash prepare_exlaunch.sh exlaunch
 
       - name: Build
@@ -51,6 +51,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-RUNTIME-V2O-native-stage-reindex
+          name: NSC-RUNTIME-V2P-stageinfo-cpk-order-probe
           path: out/**
           if-no-files-found: error
