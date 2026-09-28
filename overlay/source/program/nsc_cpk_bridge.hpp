@@ -48,5 +48,5 @@ void InstallP126AActorC48RejectBypassProbe();
 void InstallP127AFullNativeCorridorAB();
 void InstallP128AStaticPreciseGateCaveProof();
 void InstallV2KRecoveryPassiveProbe();
-bool InstallV2LStageOnlyTraceHooks();
+bool InstallV2MStageSafeTraceHooks();
 }

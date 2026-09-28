@@ -1,0 +1,25 @@
+v2k_baseline PASS
+v2m_main_call PASS
+v2m_ready PASS
+fresh_graph_resolve PASS
+no_v2l_unsafe_q PASS
+four_graph_phases PASS
+resource_window PASS
+failure_disarm PASS
+load_request_trace PASS
+file_open_trace PASS
+handle_observe PASS
+post_observe_only PASS
+no_v2j_post_call PASS
+op23_safe_retained PASS
+op26_retained PASS
+p128_retained PASS
+workflow_v2m PASS
+workflow_original_main PASS
+prepare_v2m_elf PASS
+no_char281_branch PASS
+original_main_sha256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+reference_p128_main_sha256 904a0405d04360ff3969909cdd7197c9e8c2aba2467151a7eaad4c821fcebbff
+text_diff_words 30
+reference_delta_exact_30_words PASS
+NSC_RUNTIME_V2M_SOURCE_VERIFY=PASS
