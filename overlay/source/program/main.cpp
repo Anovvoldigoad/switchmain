@@ -12,6 +12,7 @@ extern "C" void exl_main(void* x0, void* x1) {
     nsc::InstallV2KRecoveryPassiveProbe();
     nsc::InstallV2MStageSafeTraceHooks();
     nsc::InstallV2NStageRegistryProof();
+    nsc::InstallV2OStageNativeReindex();
 }
 
 extern "C" NORETURN void exl_exception_entry() {

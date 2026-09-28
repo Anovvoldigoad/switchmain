@@ -404,6 +404,14 @@ constexpr ptrdiff_t kStageRegistryLookupOffset   = 0x8364F8;
 constexpr ptrdiff_t kStageRegistryOwnerOffset    = 0x6C10;
 constexpr ptrdiff_t kStageRegistryMapOffset      = 0x148;
 
+// V2O: native StageInfo registry reload entry point. Static v1.70 proof:
+// manager collection +0x148 is passed to main+0x835FAC at main+0x406498.
+// StageSpecific later passes that same StageInfo manager object to the
+// registry lookup at main+0x53607C/0x536080. 0x835FAC loads both
+// data/stage/StageInfo.bin.xfbin and AdvStageInfo.bin.xfbin through the
+// game's own parser and insertion logic (including duplicate handling).
+constexpr ptrdiff_t kStageInfoReloadOffset       = 0x835FAC;
+
 constexpr uint32_t kVanillaMaxCharId = 280;
 constexpr uint32_t kFirstCustomCharId = 281;
 constexpr int kModCpkPriority = 32;
@@ -440,6 +448,10 @@ std::atomic<uint32_t> g_v2m_stage_asset_trace_active{0};
 std::atomic<uint32_t> g_v2m_stage_move_count{0};
 std::atomic<uint32_t> g_v2n_stage_registry_ready{0};
 std::atomic<uint32_t> g_v2n_stage_registry_logs{0};
+std::atomic<uint32_t> g_v2o_stage_reload_ready{0};
+std::atomic<uint32_t> g_v2o_stage_reload_once{0};
+std::atomic<uint32_t> g_v2o_stage_reload_logs{0};
+std::atomic<uint32_t> g_mod_cpk_bound_ok{0};
 std::atomic<uint32_t> g_event13_logs{0};
 std::atomic<uint32_t> g_event121_logs{0};
 std::atomic<uint32_t> g_ougi_core_logs{0};
@@ -1581,6 +1593,96 @@ void V2NProbeStageRegistry(const char* phase, const char* text, uintptr_t base, 
     }
 }
 
+
+struct V2OStageRegistryView {
+    void* runtime_root{};
+    void* registry_owner{};
+    void* stage_manager{};
+    void* descriptor{};
+};
+
+V2OStageRegistryView V2OResolveStageRegistry(uintptr_t base, uint32_t key) {
+    V2OStageRegistryView v{};
+    v.runtime_root = *reinterpret_cast<void**>(base + kStageRuntimeRootOffset);
+    if (v.runtime_root) {
+        v.registry_owner = *reinterpret_cast<void**>(
+            reinterpret_cast<uint8_t*>(v.runtime_root) + kStageRegistryOwnerOffset);
+    }
+    if (v.registry_owner) {
+        // Static proof ties this exact +0x148 object to both the StageInfo
+        // loader (main+0x406498 -> 0x835FAC) and StageSpecific lookup
+        // (main+0x53607C -> 0x8364F8). It is the native StageInfo manager.
+        v.stage_manager = *reinterpret_cast<void**>(
+            reinterpret_cast<uint8_t*>(v.registry_owner) + kStageRegistryMapOffset);
+    }
+    if (v.stage_manager && key != 0u && key != 0xFFFFFFFFu) {
+        using RegistryLookupFn = void* (*)(void*, uint32_t);
+        v.descriptor = reinterpret_cast<RegistryLookupFn>(
+            base + kStageRegistryLookupOffset)(v.stage_manager, key);
+    }
+    return v;
+}
+
+bool V2OTryNativeStageReindexOnMiss(const char* text, uintptr_t base, uint32_t key) {
+    if (g_v2o_stage_reload_ready.load(std::memory_order_acquire) == 0u) return false;
+    if (key == 0u || key == 0xFFFFFFFFu) return false;
+
+    const V2OStageRegistryView before = V2OResolveStageRegistry(base, key);
+    if (before.descriptor) return true;
+
+    const uint32_t cpk_bound = g_mod_cpk_bound_ok.load(std::memory_order_acquire);
+    if (!before.stage_manager || cpk_bound == 0u) {
+        const uint32_t n = g_v2o_stage_reload_logs.fetch_add(1u, std::memory_order_relaxed);
+        if (n < 32u) {
+            Logging.Log(
+                "[NSC:V2O] STAGE_REINDEX text=%s key=%08x before_found=0 after_found=0 "
+                "manager=%p root=%p owner=%p cpk_bound=%u attempted=0 reason=%s "
+                "native_loader=0x835fac mutation=0 fail_closed=1 generic_missing_key=1 char_hardcode=0",
+                text ? text : "<null>", key, before.stage_manager, before.runtime_root,
+                before.registry_owner, cpk_bound,
+                before.stage_manager ? "cpk_not_bound" : "stage_manager_null");
+        }
+        return false;
+    }
+
+    uint32_t expected = 0u;
+    if (!g_v2o_stage_reload_once.compare_exchange_strong(
+            expected, 1u, std::memory_order_acq_rel)) {
+        const V2OStageRegistryView after_once = V2OResolveStageRegistry(base, key);
+        const uint32_t n = g_v2o_stage_reload_logs.fetch_add(1u, std::memory_order_relaxed);
+        if (n < 32u) {
+            Logging.Log(
+                "[NSC:V2O] STAGE_REINDEX text=%s key=%08x before_found=0 after_found=%u "
+                "manager=%p cpk_bound=%u attempted=0 reason=already_attempted "
+                "native_loader=0x835fac once_per_session=1 generic_missing_key=1 char_hardcode=0",
+                text ? text : "<null>", key, after_once.descriptor ? 1u : 0u,
+                after_once.stage_manager, cpk_bound);
+        }
+        return after_once.descriptor != nullptr;
+    }
+
+    // Controlled generic A/B: reuse the game's own StageInfo loader/parser and
+    // insertion path once, only after a real stage-key miss and only after the
+    // extra mod CPK has bound successfully. Native duplicate handling remains
+    // responsible for pre-existing vanilla entries. No descriptor is cloned or
+    // hand-written by this runtime.
+    using ReloadFn = void (*)(void*);
+    reinterpret_cast<ReloadFn>(base + kStageInfoReloadOffset)(before.stage_manager);
+
+    const V2OStageRegistryView after = V2OResolveStageRegistry(base, key);
+    const uint32_t n = g_v2o_stage_reload_logs.fetch_add(1u, std::memory_order_relaxed);
+    if (n < 32u) {
+        Logging.Log(
+            "[NSC:V2O] STAGE_REINDEX text=%s key=%08x before_found=0 after_found=%u "
+            "manager=%p descriptor=%p cpk_bound=%u attempted=1 once_per_session=1 "
+            "native_loader=0x835fac native_parser=1 native_insert=1 manual_descriptor=0 "
+            "manual_poststage=0 generic_missing_key=1 char_hardcode=0",
+            text ? text : "<null>", key, after.descriptor ? 1u : 0u,
+            after.stage_manager, after.descriptor, cpk_bound);
+    }
+    return after.descriptor != nullptr;
+}
+
 uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
     const uintptr_t base = exl::util::modules::GetTargetStart();
     char text[31]{};
@@ -1666,6 +1768,8 @@ uint32_t HandleStageMove(void* actor, const uint8_t* event, int16_t param2) {
 
     if (param2 == 0) {
         V2NProbeStageRegistry("pre_specific", text, base, stage_crc);
+        V2OTryNativeStageReindexOnMiss(text, base, stage_crc);
+        V2NProbeStageRegistry("post_reindex", text, base, stage_crc);
         using SpecificFn = void (*)(void*, uint32_t);
         reinterpret_cast<SpecificFn>(base + kStageSpecificOffset)(stage_context, stage_crc);
     } else {
@@ -1917,6 +2021,9 @@ HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
         CpkPathArg extra{kModCpkPath, 0, 0, 0};
         uint32_t extra_bind_id = 0;
         const uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
+        if (extra_result != 0u) {
+            g_mod_cpk_bound_ok.store(1u, std::memory_order_release);
+        }
         Logging.Log("[NSC:P50A] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
                     kModCpkPath, kModCpkPriority, extra_result, extra_bind_id);
         return original_result;
@@ -8681,6 +8788,33 @@ bool InstallV2NStageRegistryProof() {
         "[NSC:V2N] READY stage_registry_probe=1 lookup_off=0x%lx exact_fingerprint=1 "
         "readonly=1 duplicate_lookup_only=1 insert=0 mutation=0 dpad_change=0 voice_change=0 p128_change=0",
         static_cast<unsigned long>(kStageRegistryLookupOffset));
+    return true;
+}
+
+
+bool InstallV2OStageNativeReindex() {
+    // Exact v1.70 prefix of main+0x835FAC. The loader reads StageInfo and
+    // AdvStageInfo through the game's file manager, then feeds the native
+    // parser/inserter. Fail closed if this build no longer matches.
+    static constexpr uint32_t kReloadExpected[] = {
+        0xF81E0FFE, 0xA9014FF4, 0xD000C874, 0xF942F294,
+        0xAA0003F3, 0xF0008E21, 0x9128CC21, 0xAA1403E0,
+        0x942746DB, 0xAA0003E1, 0x90009502, 0x912F1C42,
+    };
+    const bool ok = MatchWords(kStageInfoReloadOffset, kReloadExpected);
+    if (!ok) {
+        LogFingerprintFail("V2O_STAGEINFO_RELOAD", kStageInfoReloadOffset);
+        g_v2o_stage_reload_ready.store(0u, std::memory_order_release);
+        Logging.Log("[NSC:V2O] READY stage_native_reindex=0 fail_closed=1");
+        return false;
+    }
+    g_v2o_stage_reload_ready.store(1u, std::memory_order_release);
+    Logging.Log(
+        "[NSC:V2O] READY stage_native_reindex=1 loader_off=0x%lx "
+        "trigger=registry_miss after_cpk_bind=1 once_per_session=1 "
+        "native_parser=1 native_insert=1 manual_descriptor=0 manual_poststage=0 "
+        "dpad_change=0 voice_change=0 p128_change=0",
+        static_cast<unsigned long>(kStageInfoReloadOffset));
     return true;
 }
 

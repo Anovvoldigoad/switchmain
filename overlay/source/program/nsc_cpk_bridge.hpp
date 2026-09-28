@@ -50,4 +50,5 @@ void InstallP128AStaticPreciseGateCaveProof();
 void InstallV2KRecoveryPassiveProbe();
 bool InstallV2MStageSafeTraceHooks();
 bool InstallV2NStageRegistryProof();
+bool InstallV2OStageNativeReindex();
 }
