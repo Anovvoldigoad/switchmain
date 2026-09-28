@@ -198,15 +198,13 @@ constexpr ptrdiff_t kP81UjPolicyCallerReturnOffset =
 
 std::atomic<uint32_t> g_p81_policy_seq{0};
 
-// R169 — true UJ whiff cleanup state machine.
-// Hardware R168 proved the miss never reaches the old 740->74 boundary.
-// The actual miss path is 74->700->707, and action 707 can persist until
-// player movement forces 707->77.  Arm only from the exact custom semantic
-// UJ 700->707 handoff, then wait for the terminal native phase markers
-// e94=8/e98=8/e9c=0 before a two-tick direct-animation release 707->77->74.
-std::atomic<uintptr_t> g_r169_whiff_actor{0};
-std::atomic<uint32_t> g_r169_whiff_phase{0}; // 0=idle, 1=armed707, 2=pushed77
-std::atomic<uint32_t> g_r169_whiff_seq{0};
+// R170 — read-only native 707->708 completion-gate provenance.
+// Static v1.70 proof: UJ state handler main+0x7E48E4 calls main+0x769A4C
+// while current action is 707. A zero result keeps 707; nonzero proceeds to
+// lookup and native vslot+0xF98 transition to action708. No action mutation.
+std::atomic<uint32_t> g_r170_gate_logs{0};
+constexpr uint32_t kR170GateLogLimit = 4096u;
+constexpr ptrdiff_t kR170Uj707GateCallerReturnOffset = 0x7E48E8;
 
 
 // R165 read-only Event150/voice provenance probe.
@@ -2886,35 +2884,8 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             post_123e4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E4);
         }
 
-        // R169 arm/cancel latch.  The exact whiff candidate entry proven by
-        // hardware is PlayAction(707) from action 700 on a custom semantic UJ.
-        // A native hit path leaves 707 for 710 and clears the latch before the
-        // terminal whiff release can run.
-        if (custom && semantic_uj && actor && ret == 1 &&
-            index == 707 && pre_action == 700u && post_action == 707u) {
-            const uint32_t seq = g_r169_whiff_seq.fetch_add(1, std::memory_order_relaxed) + 1u;
-            g_r169_whiff_actor.store(reinterpret_cast<uintptr_t>(actor), std::memory_order_relaxed);
-            g_r169_whiff_phase.store(1u, std::memory_order_release);
-            Logging.Log(
-                "[NSC:R169] UJ707_WHIFF phase=arm seq=%u actor=%p side=%u char=%u "
-                "pre=%u post=%u caller_off=0x%lx e80=%u e94=%u e98=%u e9c=%u bda4=%u",
-                seq, actor, side, char_id, pre_action, post_action,
-                static_cast<unsigned long>(caller_off),
-                pre_e80, pre_e94, post_e98, post_e9c, post_bda4);
-        } else if (actor &&
-                   g_r169_whiff_actor.load(std::memory_order_relaxed) ==
-                       reinterpret_cast<uintptr_t>(actor) &&
-                   (index == 710 || index == 740 || index == 74) &&
-                   post_action != 707u) {
-            const uint32_t old_phase = g_r169_whiff_phase.exchange(0u, std::memory_order_acq_rel);
-            g_r169_whiff_actor.store(0u, std::memory_order_relaxed);
-            if (old_phase != 0u) {
-                Logging.Log(
-                    "[NSC:R169] UJ707_WHIFF phase=cancel-native actor=%p side=%u char=%u "
-                    "index=%d post=%u old_phase=%u",
-                    actor, side, char_id, index, post_action, old_phase);
-            }
-        }
+        // R170: no whiff action mutation. Preserve the exact native 707 state
+        // so the native 707->708 completion gate can be observed without masking it.
 
         // P91A: focused zero-extra handoff-state trace. Reuse the proven P50
         // PlayAction trampoline; add snapshots only, never another hook.
@@ -3400,70 +3371,8 @@ HOOK_DEFINE_TRAMPOLINE(P81OugiAwakeningPolicyHook) {
                     b + 0xBDA4);
         }
 
-        // R169 terminal-whiff release.  The native phases settle from
-        // 136/135 -> 8/136 -> 8/8.  Hardware shows genuine hits transition
-        // 707->710; a miss instead remains 707 with e94=e98=8,e9c=0,bda4=1.
-        // Give the terminal phase at least one native tick (ea4>=100), then
-        // switch only the direct animation core to 77.  On the next P81 tick,
-        // return it to 74, guaranteeing a rendered/ticked boundary between
-        // the two clips without invoking movement PlayAction/events.
-        if (valid && semantic && actor &&
-            g_r169_whiff_actor.load(std::memory_order_relaxed) ==
-                reinterpret_cast<uintptr_t>(actor)) {
-            uint32_t phase = g_r169_whiff_phase.load(std::memory_order_acquire);
-            using DirectAnmFn = void (*)(void*, int32_t, int32_t, int32_t, float);
-            auto direct = reinterpret_cast<DirectAnmFn>(
-                exl::util::modules::GetTargetStart() + kCentralActionSetterOffset);
-
-            if (phase == 1u) {
-                if (action != 707u) {
-                    g_r169_whiff_phase.store(0u, std::memory_order_release);
-                    g_r169_whiff_actor.store(0u, std::memory_order_relaxed);
-                    Logging.Log(
-                        "[NSC:R169] UJ707_WHIFF phase=cancel-state actor=%p side=%u char=%u "
-                        "action=%u e94=%u e98=%u e9c=%u bda4=%u",
-                        actor, side, char_id, action, e94, e98, e9c, bda4);
-                } else if (e80 == 1u && e94 == 8u && e98 == 8u &&
-                           e9c == 0u && bda4 == 1u &&
-                           ea4 != 0xFFFFFFFFu && ea4 >= 100u) {
-                    direct(actor, 77, -1, 0, 1.0f);
-                    const auto* rb = reinterpret_cast<const volatile uint8_t*>(actor);
-                    const uint32_t post77 =
-                        *reinterpret_cast<const volatile uint32_t*>(rb + 4712);
-                    const uint32_t anm77 =
-                        *reinterpret_cast<const volatile uint32_t*>(rb + 0x1268);
-                    g_r169_whiff_phase.store(2u, std::memory_order_release);
-                    Logging.Log(
-                        "[NSC:R169] UJ707_WHIFF phase=release77 actor=%p side=%u char=%u "
-                        "pre=707 post=%u anm=%u e80=%u e94=%u e98=%u e9c=%u ea4=%u bda4=%u",
-                        actor, side, char_id, post77, anm77,
-                        e80, e94, e98, e9c, ea4, bda4);
-                    action = post77;
-                }
-            } else if (phase == 2u) {
-                // Do not override a native transition if something else already
-                // consumed the one-tick 77 state.
-                if (action == 77u || action == 78u) {
-                    direct(actor, 74, -1, 0, 1.0f);
-                    const auto* rb = reinterpret_cast<const volatile uint8_t*>(actor);
-                    const uint32_t post74 =
-                        *reinterpret_cast<const volatile uint32_t*>(rb + 4712);
-                    const uint32_t anm74 =
-                        *reinterpret_cast<const volatile uint32_t*>(rb + 0x1268);
-                    Logging.Log(
-                        "[NSC:R169] UJ707_WHIFF phase=release74 actor=%p side=%u char=%u "
-                        "pre=%u post=%u anm=%u one_tick_bounce=1",
-                        actor, side, char_id, action, post74, anm74);
-                } else {
-                    Logging.Log(
-                        "[NSC:R169] UJ707_WHIFF phase=release74-skip actor=%p side=%u char=%u "
-                        "action=%u native_transition_won=1",
-                        actor, side, char_id, action);
-                }
-                g_r169_whiff_phase.store(0u, std::memory_order_release);
-                g_r169_whiff_actor.store(0u, std::memory_order_relaxed);
-            }
-        }
+        // R170: R169 direct 707->77->74 release is retired. No action/animation
+        // mutation is performed here; the native 707 completion path is left intact.
 
         // +0x1288:
         //
@@ -5661,18 +5570,104 @@ HOOK_DEFINE_TRAMPOLINE(ActionLookupProbeHook) {
 //   FC1D0FE8 A90157FE A9024FF4 AA0003F3 F9410C00 B4000160 97F34520 D000CEC8
 HOOK_DEFINE_TRAMPOLINE(ActionGateProbeHook) {
     static uint32_t Callback(void* actor) {
-        const uint32_t n = g_action_gate_logs.fetch_add(1, std::memory_order_relaxed);
+        // Capture native caller before any helper call. The exact UJ707 caller is
+        // main+0x7E48E8 (BL at 0x7E48E4).
+        uintptr_t caller_lr = 0;
+        asm volatile("mov %0, x30" : "=r"(caller_lr));
+        const ptrdiff_t caller_off = MainRelativeOffset(caller_lr);
+
         uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
         const bool valid = ReadActorIdentity(actor, side, char_id);
-        uint32_t pre_action = 0xFFFFFFFFu;
-        if (actor) pre_action = *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
+        const bool custom = valid && char_id > kVanillaMaxCharId && char_id < 0x1000u;
+
+        uint32_t action = 0xFFFFFFFFu;
+        uint32_t busy1264 = 0xFFFFFFFFu;
+        uintptr_t anim = 0;
+        uintptr_t inner50 = 0;
+        uint16_t flags70 = 0;
+        uint32_t frame74 = 0xFFFFFFFFu;
+        uint32_t end78 = 0xFFFFFFFFu;
+        uint32_t duration_bits = 0;
+        uint32_t e80 = 0xFFFFFFFFu, e94 = 0xFFFFFFFFu, e98 = 0xFFFFFFFFu;
+        uint32_t e9c = 0xFFFFFFFFu, ea4 = 0xFFFFFFFFu, bda4 = 0xFFFFFFFFu;
+
+        if (actor) {
+            const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+            action = *reinterpret_cast<const volatile uint32_t*>(b + 4712);
+            busy1264 = *reinterpret_cast<const volatile uint32_t*>(b + 0x1264);
+            anim = *reinterpret_cast<const volatile uintptr_t*>(b + 0x218);
+            e80 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE80);
+            e94 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE94);
+            e98 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE98);
+            e9c = *reinterpret_cast<const volatile uint32_t*>(b + 0xE9C);
+            ea4 = *reinterpret_cast<const volatile uint32_t*>(b + 0xEA4);
+            bda4 = *reinterpret_cast<const volatile uint32_t*>(b + 0xBDA4);
+            if (anim) {
+                const auto* a = reinterpret_cast<const volatile uint8_t*>(anim);
+                inner50 = *reinterpret_cast<const volatile uintptr_t*>(a + 0x50);
+                flags70 = *reinterpret_cast<const volatile uint16_t*>(a + 0x70);
+                frame74 = *reinterpret_cast<const volatile uint32_t*>(a + 0x74);
+                end78 = *reinterpret_cast<const volatile uint32_t*>(a + 0x78);
+                duration_bits = *reinterpret_cast<const volatile uint32_t*>(a + 0x80);
+            }
+        }
+
         const uint32_t ret = Orig(actor);
-        uint32_t post_action = 0xFFFFFFFFu;
-        if (actor) post_action = *reinterpret_cast<const volatile uint32_t*>(reinterpret_cast<const volatile uint8_t*>(actor) + 4712);
-        const bool relevant = (pre_action >= 700 && pre_action <= 740) || (post_action >= 700 && post_action <= 740);
-        if (relevant || n < 192) {
-            Logging.Log("[NSC:P50A] ACTION_GATE actor=%p valid=%u side=%u char=%u ret=%u n=%u pre_action=%u post_action=%u",
-                        actor, valid ? 1u : 0u, side, char_id, ret, n, pre_action, post_action);
+
+        if (custom && side == 0u && action == 707u &&
+            caller_off == kR170Uj707GateCallerReturnOffset) {
+            // main+0x438E48's only nonzero path is:
+            //   anim+0x50 != 0 && (*(u16*)(anim+0x70) & 1) != 0.
+            const uint32_t flag_block = (inner50 != 0 && (flags70 & 1u)) ? 1u : 0u;
+
+            // Reconstruct the final timing predicate from the same read-only
+            // fields used by main+0x769A4C. This is diagnostic only.
+            uint32_t tick_num = 0, tick_div = 0, scaled = 0;
+            const uintptr_t base = exl::util::modules::GetTargetStart();
+            const uintptr_t clock_root =
+                *reinterpret_cast<const volatile uintptr_t*>(base + 0x2143658);
+            if (clock_root) {
+                const uintptr_t clock_obj =
+                    *reinterpret_cast<const volatile uintptr_t*>(clock_root);
+                if (clock_obj) tick_div =
+                    *reinterpret_cast<const volatile uint8_t*>(clock_obj + 0xA02);
+            }
+            const uintptr_t tick_ptr =
+                *reinterpret_cast<const volatile uintptr_t*>(base + 0x2143718);
+            if (tick_ptr) tick_num =
+                *reinterpret_cast<const volatile uint32_t*>(tick_ptr);
+
+            union { uint32_t u; float f; } duration{};
+            duration.u = duration_bits;
+            if (tick_div != 0u) {
+                const uint32_t ratio = tick_num / tick_div;
+                const float sf = duration.f * static_cast<float>(ratio);
+                if (sf > 0.0f) scaled = static_cast<uint32_t>(sf);
+            }
+            const uint64_t lhs = static_cast<uint64_t>(frame74) + scaled;
+            const uint32_t timing_pass =
+                (anim != 0 && lhs >= static_cast<uint64_t>(end78)) ? 1u : 0u;
+
+            const char* reason = "timing";
+            if (!anim) reason = "no_anim";
+            else if (flag_block) reason = "anim_flag70";
+            else if (busy1264 != 0u) reason = "actor1264";
+            else if (timing_pass) reason = "pass";
+
+            const uint32_t n = g_r170_gate_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < kR170GateLogLimit) {
+                Logging.Log(
+                    "[NSC:R170] UJ707_GATE n=%u actor=%p side=%u char=%u ret=%u reason=%s "
+                    "caller_off=0x%lx action=%u anim=0x%lx inner50=0x%lx flags70=%04x "
+                    "busy1264=%u frame74=%u end78=%u duration_bits=%08x tick_num=%u tick_div=%u "
+                    "scaled=%u timing_pass=%u e80=%u e94=%u e98=%u e9c=%u ea4=%u bda4=%u readonly=1",
+                    n, actor, side, char_id, ret, reason,
+                    static_cast<unsigned long>(caller_off), action,
+                    static_cast<unsigned long>(anim), static_cast<unsigned long>(inner50),
+                    static_cast<unsigned>(flags70), busy1264, frame74, end78, duration_bits,
+                    tick_num, tick_div, scaled, timing_pass,
+                    e80, e94, e98, e9c, ea4, bda4);
+            }
         }
         return ret;
     }
@@ -8892,13 +8887,25 @@ bool InstallR166SoundDispatchReadOnlyProbe() {
     return true;
 }
 
-void InstallR169CustomUj707WhiffRelease() {
+bool InstallR170Uj707NativeGateProbe() {
+    static constexpr uint32_t kGateExpected[] = {
+        0xFC1D0FE8, 0xA90157FE, 0xA9024FF4, 0xAA0003F3,
+        0xF9410C00, 0xB4000160, 0x97F34520, 0xD000CEC8,
+    };
+    const bool ok = MatchWords(kActionGateOffset, kGateExpected);
+    if (!ok) {
+        LogFingerprintFail("R170_UJ707_NATIVE_GATE", kActionGateOffset);
+        Logging.Log(
+            "[NSC:R170] READY installed=0 fail_closed=1 readonly=1 r169_mutation=0 "
+            "stage_trace_hooks=0 voice_probe=0 p128_change=0 dpad_change=0");
+        return false;
+    }
+    ActionGateProbeHook::InstallAtOffset(kActionGateOffset);
     Logging.Log(
-        "[NSC:R169] READY custom_uj707_whiff_release=1 arm_700_707=1 "
-        "terminal_e94_8_e98_8=1 require_e9c_0=1 require_e80_1=1 "
-        "require_bda4_1=1 require_ea4_ge100=1 two_tick_direct_77_74=1 "
-        "full_playaction_injection=0 r167_retired=1 r168_retired=1 "
-        "voice_probe=0 voice_mutation=0 stage_change=0 p128_change=0 dpad_change=0");
+        "[NSC:R170] READY installed=1 native_707_gate=0x769a4c exact_caller=0x7e48e8 "
+        "static_707_to_708_proof=1 readonly=1 r169_mutation=0 force708=0 force710=0 "
+        "direct77_74=0 stage_trace_hooks=0 voice_probe=0 p128_change=0 dpad_change=0");
+    return true;
 }
 
 bool InstallV2NStageRegistryProof() {

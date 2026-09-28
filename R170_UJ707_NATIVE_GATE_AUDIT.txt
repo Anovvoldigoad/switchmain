@@ -1,0 +1,46 @@
+NSC2Switch R170 — UJ707 Native Gate Audit
+Date: 2026-09-29
+Target: STORM CONNECTIONS Switch v1.70
+Main Build ID: 48ece454b61412b9fb46fab2be3f5ef7b2804f39
+
+R169 disposition
+- RETIRED as final fix.
+- Hardware proved R169 can force 707->77->74, but this bypasses the native whiff fallback.
+- Historical hardware/checkpoints prove the intended custom fallback previously reached 707->708->125->261->74.
+- Movement recovery and UJ sequence recovery are separable; P102-era history already showed movement could return while the UJ/cinematic lifecycle remained broken.
+
+R170 static root boundary
+- Current action is read by main+0x766A98.
+- In the UJ 707 handler, main+0x7E48E4 calls main+0x769A4C.
+- Return 0 branches away and leaves action707 active.
+- Return nonzero performs lookup(708) via main+0x768E84.
+- If lookup succeeds, actor vslot+0xF98 is called with action708.
+
+main+0x769A4C completion gate
+- actor+0x218 must exist.
+- inner animation blocker is equivalent to:
+    anim+0x50 != 0 && (*(u16*)(anim+0x70) & 1) != 0
+- actor+0x1264 must be zero.
+- final timing predicate uses:
+    anim+0x80 duration scalar
+    anim+0x74 current frame/time
+    anim+0x78 end frame/time
+    global tick numerator/divisor
+- gate returns current + scaled_duration >= end.
+
+R170 behavior
+- Read-only whole-function trampoline at main+0x769A4C.
+- Logs only exact custom player action707 calls from caller return main+0x7E48E8.
+- Calls Orig(actor) exactly once and returns its native result unchanged.
+- R169 direct 77/74 mutation removed.
+- No force708, no force710, no actor field write.
+- P128 exact 30-word runtime patch retained unchanged.
+- R164 CPK/stage fix remains external and unchanged.
+- R165/R166 voice probes remain disabled.
+- V2M passive stage observer hooks omitted in this diagnostic build to reduce perturbation/log overhead; V2N registry proof and V2P marker remain.
+
+Expected decisive marker
+[NSC:R170] UJ707_GATE ... ret=0 reason=anim_flag70|actor1264|timing ...
+or ret=1 reason=pass.
+
+Static verifier: NSC_RUNTIME_R170_SOURCE_VERIFY=PASS
