@@ -2844,17 +2844,18 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             pre_123e4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x123E4);
         }
 
-        // R167: exact custom-UJ miss cleanup refresh. Hardware traces from two
-        // independent whiff runs show the same stale-visual signature at the
-        // native UJ cleanup callsite: custom actor, semantic UJ active,
-        // action 740 -> requested neutral 74, a2=-1, e80=1, bda4=1, and
-        // caller main+0x798F34. Native PlayAction materially forwards a2 to
-        // actor vtable +0xF98. A known native neutral refresh path calls the
-        // same PlayAction(74) with a2=0. Change only that one parameter on the
-        // exact miss signature; preserve the original function, action index,
-        // rate, all side effects, hit path, vanilla path, P128, stage and D-pad.
+        // R168: R167 hardware proved that changing the cleanup PlayAction(74)
+        // argument from a2=-1 to a2=0 is NOT sufficient: the call fires, the
+        // logical action and ANM1268 both become 74, yet the visible Kamui clip
+        // remains stale until the first real movement transition 74->77.
+        //
+        // Preserve the native cleanup PlayAction completely unchanged. After
+        // that exact whiff cleanup returns, R168 cache-busts ONLY the direct
+        // animation core (actor vtable+0xF98 == main+0x766320): 77 then 74,
+        // both with the hardware-proven direct ABI (-1,0,rate1). This avoids
+        // full PlayAction side effects/events and does not move the actor.
         const bool semantic_uj = custom && P64QuerySemanticUltimateJutsu(actor);
-        const bool r167_miss_refresh =
+        const bool r168_miss_bounce =
             semantic_uj &&
             index == 74 &&
             a2 == -1 &&
@@ -2862,15 +2863,18 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
             caller_off == 0x798F34 &&
             pre_e80 == 1u &&
             pre_bda4 == 1u;
-        const int32_t effective_a2 = r167_miss_refresh ? 0 : a2;
+        const int32_t effective_a2 = a2; // R167 -1->0 experiment retired.
 
-        if (r167_miss_refresh) {
+        uint32_t r168_anm_pre = 0xFFFFFFFFu;
+        if (r168_miss_bounce && actor) {
+            r168_anm_pre = *reinterpret_cast<const volatile uint32_t*>(
+                reinterpret_cast<const volatile uint8_t*>(actor) + 0x1268);
             Logging.Log(
-                "[NSC:R167] UJ_MISS_ANM_REFRESH phase=pre actor=%p side=%u char=%u "
-                "caller_off=0x%lx index=%d a2=%d->%d pre=%u e80=%u bda4=%u "
-                "semantic=%u single_native_call=1",
+                "[NSC:R168] UJ_MISS_ANM_BOUNCE phase=arm actor=%p side=%u char=%u "
+                "caller_off=0x%lx index=%d a2=%d preserved=1 pre=%u anm1268=%u "
+                "e80=%u bda4=%u semantic=%u direct77_74_pending=1",
                 actor, side, char_id, static_cast<unsigned long>(caller_off),
-                index, a2, effective_a2, pre_action, pre_e80, pre_bda4,
+                index, a2, pre_action, r168_anm_pre, pre_e80, pre_bda4,
                 semantic_uj ? 1u : 0u);
         }
 
@@ -2936,12 +2940,46 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
                 q[16],q[17],q[18],q[19],q[20],q[21],q[22],q[23],q[24],q[25],q[26],q[27],q[28],q[29],q[30],q[31]);
         }
 
-        if (r167_miss_refresh) {
+        if (r168_miss_bounce) {
+            std::ptrdiff_t direct_off = 0;
+            const bool direct_ok =
+                nsc::v2::GetResolvedOffset(nsc::v2::Anchor::CentralSetter, direct_off) &&
+                direct_off == kCentralActionSetterOffset &&
+                setter_off == kCentralActionSetterOffset;
+            uint32_t anm_after_cleanup = 0xFFFFFFFFu;
+            uint32_t anm_after_77 = 0xFFFFFFFFu;
+            uint32_t anm_after_74 = 0xFFFFFFFFu;
+            uint32_t action_after_77 = 0xFFFFFFFFu;
+            uint32_t action_after_74 = post_action;
+            if (actor) {
+                const auto* rb = reinterpret_cast<const volatile uint8_t*>(actor);
+                anm_after_cleanup = *reinterpret_cast<const volatile uint32_t*>(rb + 0x1268);
+            }
+            if (direct_ok && actor && ret == 1 && post_action == 74u) {
+                using DirectAnmFn = void (*)(void*, int32_t, int32_t, int32_t, float);
+                auto direct = reinterpret_cast<DirectAnmFn>(
+                    exl::util::modules::GetTargetStart() + direct_off);
+                direct(actor, 77, -1, 0, 1.0f);
+                {
+                    const auto* rb = reinterpret_cast<const volatile uint8_t*>(actor);
+                    action_after_77 = *reinterpret_cast<const volatile uint32_t*>(rb + 4712);
+                    anm_after_77 = *reinterpret_cast<const volatile uint32_t*>(rb + 0x1268);
+                }
+                direct(actor, 74, -1, 0, 1.0f);
+                {
+                    const auto* rb = reinterpret_cast<const volatile uint8_t*>(actor);
+                    action_after_74 = *reinterpret_cast<const volatile uint32_t*>(rb + 4712);
+                    anm_after_74 = *reinterpret_cast<const volatile uint32_t*>(rb + 0x1268);
+                }
+            }
             Logging.Log(
-                "[NSC:R167] UJ_MISS_ANM_REFRESH phase=post actor=%p side=%u char=%u "
-                "index=%d effective_a2=%d pre=%u post=%u ret=%d e80=%u bda4=%u",
-                actor, side, char_id, index, effective_a2, pre_action, post_action,
-                ret, pre_e80, pre_bda4);
+                "[NSC:R168] UJ_MISS_ANM_BOUNCE phase=post actor=%p side=%u char=%u "
+                "native_cleanup_ret=%d pre=%u cleanup_post=%u direct_ok=%u direct_off=0x%x "
+                "anm=%u->%u->%u->%u action77=%u action74=%u "
+                "full_playaction_bounce=0 movement_events=0 stage_change=0 voice_change=0",
+                actor, side, char_id, ret, pre_action, post_action, direct_ok ? 1u : 0u,
+                static_cast<unsigned int>(direct_off), r168_anm_pre, anm_after_cleanup, anm_after_77, anm_after_74,
+                action_after_77, action_after_74);
         }
 
         if (p59_log) {
@@ -8787,13 +8825,13 @@ bool InstallR166SoundDispatchReadOnlyProbe() {
     return true;
 }
 
-void InstallR167CustomUjMissAnimationRefresh() {
+void InstallR168CustomUjMissAnimationBounce() {
     Logging.Log(
-        "[NSC:R167] READY custom_uj_miss_animation_refresh=1 inherited_playaction_hook=1 "
-        "exact_cleanup_caller=0x798f34 index74=1 pre740=1 a2_neg1_to_zero=1 "
+        "[NSC:R168] READY custom_uj_miss_animation_bounce=1 inherited_playaction_hook=1 "
+        "exact_cleanup_caller=0x798f34 index74=1 pre740=1 native_a2_preserved=1 "
         "require_semantic_uj=1 require_e80_1=1 require_bda4_1=1 "
-        "single_native_call=1 voice_probe=0 voice_mutation=0 stage_change=0 "
-        "p128_change=0 dpad_change=0");
+        "direct_animation_bounce_77_74=1 full_playaction_bounce=0 voice_probe=0 "
+        "voice_mutation=0 stage_change=0 p128_change=0 dpad_change=0");
 }
 
 bool InstallV2NStageRegistryProof() {

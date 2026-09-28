@@ -3556,3 +3556,16 @@ Markers:
 - known neutral refresh fingerprint PASS
 - PlayAction fingerprint PASS
 - generic custom-ID policy; no hardcoded char281 branch
+
+
+# R168 UPDATE — UJ MISS DIRECT-ANIMATION BOUNCE
+
+## R167 hardware verdict
+R167 fired on hardware at the exact whiff cleanup. The log proves a2 was changed -1->0, central setter changed ANM1268 740->74, PlayAction returned 1, and logical action became 74. The user still observed the Kamui animation looping. Therefore the a2-neutral-refresh hypothesis is retired.
+
+After that cleanup, no PlayAction occurred for roughly 50 seconds. The first subsequent movement transition was PlayAction(77) from logical action74; the user reports movement stops the stale Kamui visual.
+
+## R168 functional change
+Preserve native cleanup PlayAction(74,-1) unchanged. On the exact R167 miss signature and only after successful cleanup, call the resolved direct-animation core main+0x766320 twice: animation77 then animation74, both with a2=-1,a3=0,rate=1.0. No full PlayAction bounce is injected.
+
+Expected marker: `[NSC:R168] UJ_MISS_ANM_BOUNCE phase=post ... anm=740->74->77->74 ... full_playaction_bounce=0 movement_events=0`
