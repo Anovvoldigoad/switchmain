@@ -419,36 +419,38 @@ bool InstallOriginalMainRuntimePatches() {
     return true;
 }
 
-bool InstallR178DpadAnimationEligibilityParity() {
+bool InstallR179DpadAnimationEligibilityParity() {
     // PC UltimateStormAPI / HookFunctions.cpp v1.70 source patch:
     //   native D-pad HUD/animation gate: [actor+0xE64] == 124
     //   patched generically to:          [actor+0xF30] == 1
-    // Switch v1.70 has two independently proven actor-layout shifts of -0x10:
-    //   charID PC E64 -> Switch E54
-    //   D-pad charge base PC 12B88 -> Switch 12B78
-    // Therefore the source-semantic D-pad enable field maps PC F30 -> Switch F20.
-    // The corresponding Switch native gate is the exact char124 pair below.
+    //
+    // R178 incorrectly inferred that F30 must shift to F20 on Switch. Hardware
+    // falsified that inference: R175/R177 show actor+0xF30 == 1 at the D-pad
+    // selector for both Left and Right before R178, while R178 moved the writer
+    // to F20 and caused F30 == 0 plus a Left behavioral regression. Therefore
+    // R179 uses the source field F30 directly on Switch and changes only the
+    // native eligibility compare, not the selector/action registry/opcode23 path.
     static constexpr std::ptrdiff_t kGateOff = 0x59CEB4;
     static constexpr std::uint32_t kBefore[] = {
         0xB94E5768u, // LDR W8,[X27,#0xE54]
         0x7101F11Fu, // CMP W8,#0x7C
     };
     static constexpr std::uint32_t kAfter[] = {
-        0xB94F2368u, // LDR W8,[X27,#0xF20]
+        0xB94F3368u, // LDR W8,[X27,#0xF30]
         0x7100051Fu, // CMP W8,#1
     };
 
     const std::uintptr_t base = exl::util::modules::GetTargetStart();
     if (!base) {
-        Logging.Log("[NSC:R178] READY parity=0 fail_closed=1 reason=no_target_base "
-                    "dpad_enable_off=0xf20 hud_gate_off=0x59ceb4");
+        Logging.Log("[NSC:R179] READY parity=0 fail_closed=1 reason=no_target_base "
+                    "dpad_enable_off=0xf30 hud_gate_off=0x59ceb4");
         return false;
     }
 
     for (std::size_t i = 0; i < ARRAY_COUNT(kBefore); ++i) {
         std::uint32_t got = 0;
         if (!ReadWord(base, kGateOff + static_cast<std::ptrdiff_t>(i * 4), got) || got != kBefore[i]) {
-            Logging.Log("[NSC:R178] READY parity=0 fail_closed=1 reason=fingerprint "
+            Logging.Log("[NSC:R179] READY parity=0 fail_closed=1 reason=fingerprint "
                         "i=%u off=0x%lx got=%08x expected=%08x",
                         static_cast<unsigned>(i),
                         static_cast<unsigned long>(kGateOff + static_cast<std::ptrdiff_t>(i * 4)),
@@ -470,7 +472,7 @@ bool InstallR178DpadAnimationEligibilityParity() {
     for (std::size_t i = 0; i < ARRAY_COUNT(kAfter); ++i) {
         std::uint32_t got = 0;
         if (!ReadWord(base, kGateOff + static_cast<std::ptrdiff_t>(i * 4), got) || got != kAfter[i]) {
-            Logging.Log("[NSC:R178] READY parity=0 fail_closed=1 reason=verify_after "
+            Logging.Log("[NSC:R179] READY parity=0 fail_closed=1 reason=verify_after "
                         "i=%u off=0x%lx got=%08x expected=%08x",
                         static_cast<unsigned>(i),
                         static_cast<unsigned long>(kGateOff + static_cast<std::ptrdiff_t>(i * 4)),
@@ -480,9 +482,9 @@ bool InstallR178DpadAnimationEligibilityParity() {
     }
 
     Logging.Log(
-        "[NSC:R178] READY parity=1 dpad_enable_off=0xf20 writer13_source_parity=1 "
+        "[NSC:R179] READY parity=1 dpad_enable_off=0xf30 writer13_source_parity=1 "
         "hud_gate_off=0x59ceb4 hud_gate_words=2 pc_e64_7c_to_f30_1=1 "
-        "switch_e54_7c_to_f20_1=1 layout_shift_minus_0x10=1 "
+        "switch_e54_7c_to_f30_1=1 r178_f20_mapping_retired=1 "
         "exact30_unchanged=1 opcode23_change=0 registry_change=0 descriptor_clone=0 "
         "action_force=0 no_char281_branch=1 zero_extra_trampoline=1");
     return true;

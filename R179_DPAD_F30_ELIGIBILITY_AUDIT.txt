@@ -1,0 +1,36 @@
+NSC2Switch R179 D-PAD F30 ELIGIBILITY CORRECTION AUDIT
+Date: 2026-09-29
+
+HARDWARE INPUT
+- R178 artifact SHA256: bc488257b35153b62c8c81a7bfd78dcb41a2b955d78c8b199c1dab6694754e01
+- log20 Left SHA256: 1a4098dd40ee3c6dd755ae2f50889f69a26e32ba935e75cbecfbf3b52e676ef6
+- log21 Right SHA256: a2a15dd423f0be0de69a9c9f6dcf3794f4ff3a88f50c9aa21c4bfedacb0bb940
+- deployed main in R178 artifact: exact original v1.70 SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+- deployed R178 subsdk9 SHA256: ea47a5f14bf9b117d06b6d551dac1acf7dfaf16837b07234a2f7f69937fbc161
+
+R178 HARDWARE VERDICT
+- Left user observation: intended disappearance/transition no longer occurs.
+- Right user observation: no invulnerability.
+- R178 opcode13 executes and writes F20 0->1; F30 observed remains 0.
+- Left selector remains mode2/base_candidate921.
+- Right selector remains mode3/base_candidate922, actor lookup922 NULL, native fallback921.
+- Both Left and Right still reach action928 then Event236 opcode23 p3=77 SPTYPE_ACTION10.
+- Non-UJ opcode23 remains OP23_SAFE_SUPPRESS.
+- log21 has no opcode17 / DPAD17_APPLY; Izanagi charge100 is not armed.
+
+CORRECTION
+Historical pre-R178 hardware R175/R177 shows f30=1 at the D-pad selector for both directions. Therefore R178's F20 extrapolation is falsified for this field.
+
+R179 EXACT CHANGE
+- opcode13 writes actor+0xF30.
+- main+0x59CEB4 native gate changes from LDR W8,[X27,#0xE54]; CMP W8,#124 to LDR W8,[X27,#0xF30]; CMP W8,#1.
+- target words: B94F3368 7100051F.
+- no opcode23 change.
+- no registry/action922 change.
+- no descriptor clone.
+- no action force.
+- no char281 branch.
+- exact30 P128 delta unchanged.
+
+SOURCE VERIFIER
+NSC_RUNTIME_R179_SOURCE_VERIFY=PASS

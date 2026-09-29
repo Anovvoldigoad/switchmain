@@ -34,9 +34,10 @@ bool InstallOriginalMainRuntimePatches();
 bool RuntimeMainPatchesReady();
 bool GetDerivedUjGateLoadOffset(std::ptrdiff_t& out_offset);
 
-// R178 source-parity port of UltimateStormAPI's PC v1.70 "Dpad animations"
-// native gate patch. This is intentionally separate from the frozen exact
-// 30-word V2D/P128 runtime delta. Fail closed on the original two-word fingerprint.
-bool InstallR178DpadAnimationEligibilityParity();
+// R179 corrected source-parity port of UltimateStormAPI's PC v1.70 "Dpad animations"
+// native gate patch. R178 incorrectly inferred a -0x10 shift for this field;
+// hardware R175/R177 proves Switch actor+0xF30 is the live D-pad-enable state.
+// This remains separate from the frozen exact 30-word V2D/P128 delta.
+bool InstallR179DpadAnimationEligibilityParity();
 
 } // namespace nsc::v2

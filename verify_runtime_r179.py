@@ -15,19 +15,19 @@ prep=(root/'prepare_exlaunch.sh').read_text()
 wfs=list((root/'.github/workflows').glob('*.yml'))
 wf=wfs[0].read_text() if len(wfs)==1 else ''
 checks={
- 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallR178DpadAnimationEligibilityParity()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR172UjMissAnmDirectParity();') < main.index('InstallR175DpadLookupMatrixTrace();') < main.index('InstallR176ActionRegistryMatrixTrace();') < main.index('InstallR177ActionDescriptorMatrixTrace();') < main.index('InstallV2NStageRegistryProof();'),
- 'r178_fail_closed_main':'if (!nsc::v2::InstallR178DpadAnimationEligibilityParity()) return;' in main,
- 'r178_declared':'bool InstallR178DpadAnimationEligibilityParity();' in rth,
- 'r178_ready':'[NSC:R178] READY parity=1 dpad_enable_off=0xf20' in rt,
- 'r178_writer_marker':'[NSC:R178] DPAD_ENABLE actor=%p side=%u char=%u p2=%d' in bridge,
- 'r178_writer_f20':'pb + 0xF20' in bridge and '*dpad_enable = p2;' in bridge,
- 'r178_writer_no_f30':'actor+0xF20' in bridge and 'Do not touch native F30' in bridge,
- 'r178_gate_off':'kGateOff = 0x59CEB4' in rt,
- 'r178_gate_before':'0xB94E5768u' in rt and '0x7101F11Fu' in rt,
- 'r178_gate_after':'0xB94F2368u' in rt and '0x7100051Fu' in rt,
- 'r178_pc_contract':'PC F30 -> Switch F20' in rt and '[actor+0xE64] == 124' in rt and '[actor+0xF30] == 1' in rt,
- 'r178_separate_patch':'WordPatch plan[30]' in rt and 'hud_gate_words=2' in rt and 'exact30_unchanged=1' in rt,
- 'r178_no_action_mutation':all(x in rt for x in ('opcode23_change=0','registry_change=0','descriptor_clone=0','action_force=0','no_char281_branch=1')),
+ 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallR179DpadAnimationEligibilityParity()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR172UjMissAnmDirectParity();') < main.index('InstallR175DpadLookupMatrixTrace();') < main.index('InstallR176ActionRegistryMatrixTrace();') < main.index('InstallR177ActionDescriptorMatrixTrace();') < main.index('InstallV2NStageRegistryProof();'),
+ 'r179_fail_closed_main':'if (!nsc::v2::InstallR179DpadAnimationEligibilityParity()) return;' in main,
+ 'r179_declared':'bool InstallR179DpadAnimationEligibilityParity();' in rth,
+ 'r179_ready':'[NSC:R179] READY parity=1 dpad_enable_off=0xf30' in rt,
+ 'r179_writer_marker':'[NSC:R179] DPAD_ENABLE actor=%p side=%u char=%u p2=%d' in bridge,
+ 'r179_writer_f30':'pb + 0xF30' in bridge and '*dpad_enable = p2;' in bridge,
+ 'r179_writer_f20_observed':'pb + 0xF20' in bridge and 'f20_observed' in bridge,
+ 'r179_gate_off':'kGateOff = 0x59CEB4' in rt,
+ 'r179_gate_before':'0xB94E5768u' in rt and '0x7101F11Fu' in rt,
+ 'r179_gate_after':'0xB94F3368u' in rt and '0x7100051Fu' in rt,
+ 'r179_pc_contract':'[actor+0xE64] == 124' in rt and '[actor+0xF30] == 1' in rt and 'r178_f20_mapping_retired=1' in rt,
+ 'r179_separate_patch':'WordPatch plan[30]' in rt and 'hud_gate_words=2' in rt and 'exact30_unchanged=1' in rt,
+ 'r179_no_action_mutation':all(x in rt for x in ('opcode23_change=0','registry_change=0','descriptor_clone=0','action_force=0','no_char281_branch=1')),
  'r171_not_installed':'InstallR171Uj707Flag70Release();' not in main and 'ActionGateFlagReleaseHook::InstallAtOffset' not in bridge,
  'r172_installed':'InstallR172UjMissAnmDirectParity();' in main and 'bool InstallR172UjMissAnmDirectParity();' in hdr,
  'r172_guard':all(x in bridge for x in ('param2 == 0','side == 0u','semantic && member','anm1268_before == 707u','state1268_after_pre == 707u','param3 == 8')),
@@ -42,8 +42,8 @@ checks={
  'p128_retained':'[NSC:P128A] READY' in bridge and 'no_force708=1' in bridge and 'no_force710=1' in bridge,
  'thirty_word_plan':'WordPatch plan[30]' in rt and 'condition_words=5 p67_words=1 p128_words=24' in rt,
  'validate_before_write':rt.index('Validate ALL original words before the first write') < rt.index('patcher.Write<std::uint32_t>'),
- 'workflow_r178':len(wfs)==1 and 'NSC-RUNTIME-R178-dpad-animation-eligibility-parity' in wf,
- 'prepare_r178_elf':'runtime_r178.elf' in prep,
+ 'workflow_r179':len(wfs)==1 and 'NSC-RUNTIME-R179-dpad-animation-f30-parity' in wf,
+ 'prepare_r179_elf':'runtime_r179.elf' in prep,
 }
 for k,v in checks.items(): print(k,'PASS' if v else 'FAIL')
 if not all(checks.values()): sys.exit(1)
@@ -79,16 +79,16 @@ diff={off:(struct.unpack_from('<I',text_o,off)[0],struct.unpack_from('<I',text_r
 print('reference_delta_30_words','PASS' if len(diff)==30 else 'FAIL',len(diff))
 if len(diff)!=30:sys.exit(1)
 def words(off,n):return [struct.unpack_from('<I',text_o,off+4*i)[0] for i in range(n)]
-# R178 exact Switch homolog of PC source D-pad gate.
+# R179 corrected exact Switch homolog of PC source D-pad gate.
 if words(0x59CEB4,2)!=[0xB94E5768,0x7101F11F]:
-    print('r178_dpad_gate_fingerprint FAIL',words(0x59CEB4,2));sys.exit(1)
-print('r178_dpad_gate_fingerprint PASS')
-# Confirm generated target opcodes decode to the intended F20/1 pair by exact encoding.
-new_ldr=0xB9400000 | ((0xF20//4)<<10) | (27<<5) | 8
+    print('r179_dpad_gate_fingerprint FAIL',words(0x59CEB4,2));sys.exit(1)
+print('r179_dpad_gate_fingerprint PASS')
+# Confirm generated target opcodes decode to the intended F30/1 pair by exact encoding.
+new_ldr=0xB9400000 | ((0xF30//4)<<10) | (27<<5) | 8
 new_cmp=0x7100001F | (1<<10) | (8<<5)
-if (new_ldr,new_cmp)!=(0xB94F2368,0x7100051F):
-    print('r178_target_encoding FAIL');sys.exit(1)
-print('r178_target_encoding PASS')
+if (new_ldr,new_cmp)!=(0xB94F3368,0x7100051F):
+    print('r179_target_encoding FAIL');sys.exit(1)
+print('r179_target_encoding PASS')
 # Frozen R172 central setter.
 setter=[0xD10303FF,0x6D0523E9,0xA9067BFD,0xA9076FFC,0xA90867FA,0xA9095FF8,0xA90A57F6,0xA90B4FF4,0xF9410C08,0x4EA01C08,0x2A0303F4,0x2A0203F6,0xAA0003F3,0x2A0103F5]
 if words(0x766320,len(setter))!=setter: print('r172_setter_fingerprint FAIL');sys.exit(1)
@@ -107,4 +107,4 @@ print('r175_candidate_table PASS',table)
 reg=[0xF8408C09,0xB40001A9,0xAA0003E8,0xB940212A,0x6B01015F,0x1A9F27EA,0x9A893108,0xF86A5929]
 if words(0x8364F8,8)!=reg: print('stage_registry_fingerprint FAIL');sys.exit(1)
 print('stage_registry_fingerprint PASS')
-print('NSC_RUNTIME_R178_SOURCE_VERIFY=PASS')
+print('NSC_RUNTIME_R179_SOURCE_VERIFY=PASS')
