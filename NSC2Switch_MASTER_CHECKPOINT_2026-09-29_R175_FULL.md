@@ -1,4 +1,4 @@
-# NSC2Switch MASTER CHECKPOINT — 2026-09-29 R174
+# NSC2Switch MASTER CHECKPOINT — 2026-09-29 R175
 
 ## Frozen identity
 - Game: NARUTO X BORUTO Ultimate Ninja STORM CONNECTIONS Switch v1.70
@@ -116,11 +116,62 @@ No action/state/input/visibility/damage writes.
 - "921 proves selector chose the same direction": retired by R174 static fallback proof.
 - actor+0x12B78 block alone identifies Left/Right: retired as insufficient.
 
-## Next hardware test
-1. Build `NSC-RUNTIME-R174-dpad-selector-fallback-trace`.
-2. Fresh boot -> Left once only -> save full log.
-3. Fresh boot -> Right once only -> save full log.
-4. Compare first R174 selector marker from each run.
-5. Do not test UJ in the same boot unless regression verification is specifically needed.
+## R174 hardware result — selector split proven
+Compiled artifact:
+- `NSC-RUNTIME-R174-dpad-selector-fallback-trace.zip`
+- ZIP SHA256 `6e100b89a5332a35f5dcd78b9dbb44d9ba34e543f81d99aa19716b78099e60de`
+- subsdk9 SHA256 `080afc32b555010ad93e4dd6d8f2d8f92dd7f3a964d4bff72fc9f935a7192989`
 
-END R174
+Logs:
+- `uzuy_log(14).txt` SHA256 `6848de77358b619382b9080623157e2c5157234fefb491b1632fe8856b883e16`
+- `uzuy_log(15).txt` SHA256 `bfd91394eeb4ebf069627cd67fc5b70e1681a9a1ad1062235a8775bf306eb8e8`
+
+Observed:
+- log14: selector primary/fallback=2, active_mode=2, base_candidate=921, actual index921, fallback921_suspect=0.
+- log15: selector primary/fallback=3, active_mode=3, base_candidate=922, actual index921, fallback921_suspect=1.
+- both later reach action928 and SPTYPE_ACTION10 because the mode3 route has already fallen back to 921 before PlayAction.
+
+Conclusion:
+**direction selection is NOT collapsed.**
+One route genuinely selects native candidate922, but the native controller proceeds with 921.
+The next exact boundary is native action descriptor lookup `main+0x768E84`.
+
+If the requested test order was followed, log14=Left and log15=Right. The root conclusion does not depend on that label assignment.
+
+## R175 functional scope
+Diagnostic-only extension, zero new trampoline.
+
+At first custom route PlayAction921 from caller `0x646CFC`, duplicate-query:
+- 921/922/923/924 with flag=1 (exact native contract)
+- 921/922/923/924 with flag=0 (comparison)
+
+Marker:
+`[NSC:R175] ACTION_LOOKUP_MATRIX ...`
+
+Decision fields:
+- `candidate_f1`
+- `candidate_f0`
+- `native_candidate_missing`
+- `flag1_only_gap`
+- `state_changed`
+
+No force922. No action/state/controller/visibility/damage mutation.
+
+## R175 decision table
+- mode3/candidate922 + f1_922=null + f0_922=null:
+  => action922 descriptor is absent/unresolvable in the active actor registry.
+- f1_922=null + f0_922 non-null:
+  => flag1 normalization/remap parity gap.
+- f1_922 non-null but actual921:
+  => fallback branch interpretation incomplete; trace exact return/branch provenance.
+- state_changed must stay0:
+  => duplicate lookups remained observational.
+
+## Next hardware test
+1. Build `NSC-RUNTIME-R175-dpad-action-lookup-matrix-trace`.
+2. Fresh boot -> the D-pad direction that produced mode3/candidate922 in R174 once only -> save log.
+3. One run is sufficient if marker contains the full 921..924 matrix.
+4. Optional second run mode2 is only for comparison.
+5. Do not force action922 until R175 proves whether its descriptor exists.
+
+END R175

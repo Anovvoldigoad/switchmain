@@ -10,7 +10,7 @@ extern "C" void exl_main(void* x0, void* x1) {
     if (!nsc::v2::InstallOriginalMainRuntimePatches()) return;
     nsc::InstallP128AStaticPreciseGateCaveProof();
     nsc::InstallR172UjMissAnmDirectParity();
-    nsc::InstallR174DpadSelectorTrace();
+    nsc::InstallR175DpadLookupMatrixTrace();
     nsc::InstallV2NStageRegistryProof();
     nsc::InstallV2PPassiveOrderProbe();
 }

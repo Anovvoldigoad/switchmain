@@ -489,6 +489,7 @@ std::atomic<uint32_t> g_p56b_custom_snapshots{0};
 std::atomic<uint32_t> g_p57_setter_logs{0};
 std::atomic<uint32_t> g_p59_play_call_logs{0};
 std::atomic<uint32_t> g_r174_dpad_route_logs{0};
+std::atomic<uint32_t> g_r175_lookup_matrix_logs{0};
 std::atomic<uint32_t> g_p59_dispatch_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
@@ -2880,7 +2881,7 @@ void LogR174DpadSelectorRoute(const char* phase, void* actor, uint32_t side, uin
     const uint32_t aux_12b84 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12B84);
 
     Logging.Log(
-        "[NSC:R174] DPAD_SELECTOR_%s n=%u actor=%p side=%u char=%u index=%d caller_off=0x%lx "
+        "[NSC:R175] DPAD_SELECTOR_%s n=%u actor=%p side=%u char=%u index=%d caller_off=0x%lx "
         "anm1268=%u e94=%u e98=%u e9c=%u f30=%08x "
         "sel_primary=%08x sel_fallback=%08x sel_helper=%08x active_mode=%u "
         "base_candidate=%u fallback921_suspect=%u "
@@ -2894,6 +2895,97 @@ void LogR174DpadSelectorRoute(const char* phase, void* actor, uint32_t side, uin
         q105f8, q105fc, q10600, q10610,
         aux_12b78, aux_12b7c, aux_12b80, aux_12b84,
         ret);
+}
+
+
+// R175: reuse the existing PlayAction hook to re-query the exact native action
+// descriptor resolver at the first D-pad route call.  This is diagnostic-only:
+// no action/state/controller field is written and no new trampoline is installed.
+// It tests both native flag=1 (the exact main+0x646CC8 call contract) and flag=0
+// for 921..924 so we can distinguish a genuinely missing descriptor from a
+// flag/remap-only compatibility gap.
+void LogR175ActionLookupMatrix(void* actor, uint32_t side, uint32_t char_id,
+                               int32_t actual_index, ptrdiff_t caller_off) {
+    if (!actor) return;
+    if (caller_off != 0x646CFC || actual_index != 921) return;
+    const bool custom = char_id > kVanillaMaxCharId && char_id < 0x1000u;
+    if (!custom) return;
+
+    const uint32_t n = g_r175_lookup_matrix_logs.fetch_add(1u, std::memory_order_relaxed);
+    if (n >= 64u) return;
+
+    const auto* pb = reinterpret_cast<const volatile uint8_t*>(actor);
+    const uint32_t sel_primary = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12264);
+    const uint32_t sel_fallback = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12268);
+    const uint32_t active_mode =
+        sel_primary != 0xFFFFFFFFu ? sel_primary : sel_fallback;
+    uint32_t base_candidate = 0xFFFFFFFFu;
+    switch (active_mode) {
+        case 0u: base_candidate = 923u; break;
+        case 1u: base_candidate = 924u; break;
+        case 2u: base_candidate = 921u; break;
+        case 3u: base_candidate = 922u; break;
+        default: break;
+    }
+
+    const uint32_t pre_anm = *reinterpret_cast<const volatile uint32_t*>(pb + 0x1268);
+    const uint32_t pre_e94 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE94);
+    const uint32_t pre_e98 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE98);
+    const uint32_t pre_e9c = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE9C);
+
+    using ActionLookupFn = void* (*)(void*, int32_t, int32_t);
+    const uintptr_t main_base =
+        reinterpret_cast<uintptr_t>(exl::util::GetMainModuleInfo().m_Total.m_Start);
+    auto lookup = reinterpret_cast<ActionLookupFn>(main_base + kActionLookupOffset);
+
+    void* f1_921 = lookup(actor, 921, 1);
+    void* f1_922 = lookup(actor, 922, 1);
+    void* f1_923 = lookup(actor, 923, 1);
+    void* f1_924 = lookup(actor, 924, 1);
+
+    void* f0_921 = lookup(actor, 921, 0);
+    void* f0_922 = lookup(actor, 922, 0);
+    void* f0_923 = lookup(actor, 923, 0);
+    void* f0_924 = lookup(actor, 924, 0);
+
+    const uint32_t post_anm = *reinterpret_cast<const volatile uint32_t*>(pb + 0x1268);
+    const uint32_t post_e94 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE94);
+    const uint32_t post_e98 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE98);
+    const uint32_t post_e9c = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE9C);
+    const uint32_t state_changed =
+        (pre_anm != post_anm || pre_e94 != post_e94 ||
+         pre_e98 != post_e98 || pre_e9c != post_e9c) ? 1u : 0u;
+
+    void* candidate_f1 = nullptr;
+    void* candidate_f0 = nullptr;
+    switch (base_candidate) {
+        case 921u: candidate_f1 = f1_921; candidate_f0 = f0_921; break;
+        case 922u: candidate_f1 = f1_922; candidate_f0 = f0_922; break;
+        case 923u: candidate_f1 = f1_923; candidate_f0 = f0_923; break;
+        case 924u: candidate_f1 = f1_924; candidate_f0 = f0_924; break;
+        default: break;
+    }
+    const uint32_t native_candidate_missing =
+        (base_candidate != 0xFFFFFFFFu && candidate_f1 == nullptr) ? 1u : 0u;
+    const uint32_t flag1_only_gap =
+        (candidate_f1 == nullptr && candidate_f0 != nullptr) ? 1u : 0u;
+
+    Logging.Log(
+        "[NSC:R175] ACTION_LOOKUP_MATRIX n=%u actor=%p side=%u char=%u "
+        "actual=%d caller_off=0x%lx active_mode=%u base_candidate=%u "
+        "f1_921=%p f1_922=%p f1_923=%p f1_924=%p "
+        "f0_921=%p f0_922=%p f0_923=%p f0_924=%p "
+        "candidate_f1=%p candidate_f0=%p native_candidate_missing=%u "
+        "flag1_only_gap=%u state_changed=%u "
+        "anm=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u "
+        "readonly_requery=1 no_state_write=1 zero_extra_trampoline=1",
+        n, actor, side, char_id, actual_index,
+        static_cast<unsigned long>(caller_off), active_mode, base_candidate,
+        f1_921, f1_922, f1_923, f1_924,
+        f0_921, f0_922, f0_923, f0_924,
+        candidate_f1, candidate_f0, native_candidate_missing,
+        flag1_only_gap, state_changed,
+        pre_anm, post_anm, pre_e94, post_e94, pre_e98, post_e98, pre_e9c, post_e9c);
 }
 
 // hook now observes the ordinary jutsu route (84), SPTYPE action10 (930), and
@@ -2969,6 +3061,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         // R173 reuses this existing trampoline to capture the D-pad selector
         // fields at the two hardware-proven 921/928 callsites. It writes nothing.
         LogR174DpadSelectorRoute("PRE", actor, side, char_id, index, caller_off, -1);
+        LogR175ActionLookupMatrix(actor, side, char_id, index, caller_off);
         const int32_t effective_a2 = a2;
         P93TraceCore("PLAYACTION", actor, caller_off, index, 0);
         const int32_t ret = Orig(actor, index, effective_a2, a3, a4, a5, rate);
@@ -9009,14 +9102,15 @@ bool InstallR172UjMissAnmDirectParity() {
     return true;
 }
 
-void InstallR174DpadSelectorTrace() {
+void InstallR175DpadLookupMatrixTrace() {
     Logging.Log(
-        "[NSC:R174] READY dpad_selector_trace=1 readonly=1 zero_extra_trampoline=1 "
-        "reuse_playaction_hook=1 callsites=0x646cfc,0x647080 indexes=921,928 "
-        "selector_offsets=0x12264,0x12268,0x1223c candidate_table=923,924,921,922 "
-        "native_lookup_off=0x768e84 fallback921_at_0x646ce4=1 "
-        "no_state_write=1 dpad_change=0 r172_uj_change=0 p128_change=0 "
-        "stage_change=0 voice_change=0 no_char281_branch=1");
+        "[NSC:R175] READY dpad_lookup_matrix_trace=1 readonly_requery=1 "
+        "zero_extra_trampoline=1 reuse_playaction_hook=1 "
+        "selector_callsites=0x646cfc,0x647080 candidate_table=923,924,921,922 "
+        "native_lookup_off=0x768e84 matrix_indexes=921,922,923,924 flags=1,0 "
+        "fallback921_at_0x646ce4=1 no_state_write=1 dpad_change=0 "
+        "r172_uj_change=0 p128_change=0 stage_change=0 voice_change=0 "
+        "no_char281_branch=1");
 }
 
 bool InstallV2NStageRegistryProof() {

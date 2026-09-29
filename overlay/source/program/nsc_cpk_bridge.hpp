@@ -50,7 +50,7 @@ void InstallP128AStaticPreciseGateCaveProof();
 bool InstallR165Event150VoiceReadOnlyProbe();
 bool InstallR166SoundDispatchReadOnlyProbe();
 bool InstallR172UjMissAnmDirectParity();
-void InstallR174DpadSelectorTrace();
+void InstallR175DpadLookupMatrixTrace();
 bool InstallV2MStageSafeTraceHooks();
 bool InstallV2NStageRegistryProof();
 void InstallV2PPassiveOrderProbe();

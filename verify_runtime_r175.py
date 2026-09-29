@@ -14,21 +14,25 @@ prep=(root/'prepare_exlaunch.sh').read_text()
 wfs=list((root/'.github/workflows').glob('*.yml'))
 wf=wfs[0].read_text() if len(wfs)==1 else ''
 checks={
- 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR172UjMissAnmDirectParity();') < main.index('InstallR174DpadSelectorTrace();') < main.index('InstallV2NStageRegistryProof();'),
+ 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR172UjMissAnmDirectParity();') < main.index('InstallR175DpadLookupMatrixTrace();') < main.index('InstallV2NStageRegistryProof();'),
  'fail_closed_main':'if (!nsc::v2::InstallOriginalMainRuntimePatches()) return;' in main,
  'r171_not_installed':'InstallR171Uj707Flag70Release();' not in main and 'ActionGateFlagReleaseHook::InstallAtOffset' not in bridge,
  'r172_installed':'InstallR172UjMissAnmDirectParity();' in main and 'bool InstallR172UjMissAnmDirectParity();' in hdr,
- 'r174_installed':'InstallR174DpadSelectorTrace();' in main and 'void InstallR174DpadSelectorTrace();' in hdr,
- 'r174_ready':'[NSC:R174] READY dpad_selector_trace=1' in bridge,
- 'r174_markers':'[NSC:R174] DPAD_SELECTOR_%s' in bridge,
- 'r174_callsites':'caller_off == 0x646CFC' in bridge and 'caller_off == 0x647080' in bridge,
- 'r174_indexes':'index == 921' in bridge and 'index == 928' in bridge,
- 'r174_selector_offsets':all(x in bridge for x in ('pb + 0x12264','pb + 0x12268','pb + 0x1223C','pb + 0x105F8','pb + 0x105FC','pb + 0x10600','pb + 0x10610')),
- 'r174_candidate_table':all(x in bridge for x in ('case 0u: base_candidate = 923u','case 1u: base_candidate = 924u','case 2u: base_candidate = 921u','case 3u: base_candidate = 922u')),
- 'r174_fallback_flag':'fallback921_suspect' in bridge and 'base_candidate != 921u' in bridge,
- 'r174_zero_extra_hook':'zero_extra_trampoline=1' in bridge and 'reuse_playaction_hook=1' in bridge,
- 'r174_no_char281_guard':'char_id == 281' not in bridge,
- 'r174_no_dpad_write':'no_state_write=1 dpad_change=0' in bridge,
+ 'r175_installed':'InstallR175DpadLookupMatrixTrace();' in main and 'void InstallR175DpadLookupMatrixTrace();' in hdr,
+ 'r175_ready':'[NSC:R175] READY dpad_lookup_matrix_trace=1' in bridge,
+ 'r175_selector_markers':'[NSC:R175] DPAD_SELECTOR_%s' in bridge,
+ 'r175_callsites':'caller_off == 0x646CFC' in bridge and 'caller_off == 0x647080' in bridge,
+ 'r175_indexes':'index == 921' in bridge and 'index == 928' in bridge,
+ 'r175_selector_offsets':all(x in bridge for x in ('pb + 0x12264','pb + 0x12268','pb + 0x1223C','pb + 0x105F8','pb + 0x105FC','pb + 0x10600','pb + 0x10610')),
+ 'r175_candidate_table_source':all(x in bridge for x in ('case 0u: base_candidate = 923u','case 1u: base_candidate = 924u','case 2u: base_candidate = 921u','case 3u: base_candidate = 922u')),
+ 'r175_fallback_flag':'fallback921_suspect' in bridge and 'base_candidate != 921u' in bridge,
+ 'r175_zero_extra_hook':'zero_extra_trampoline=1' in bridge and 'reuse_playaction_hook=1' in bridge,
+ 'r175_no_char281_guard':'char_id == 281' not in bridge,
+ 'r175_no_dpad_write':'no_state_write=1 dpad_change=0' in bridge,
+ 'r175_lookup_matrix_marker':'[NSC:R175] ACTION_LOOKUP_MATRIX' in bridge,
+ 'r175_lookup_matrix_calls':all(x in bridge for x in ('lookup(actor, 921, 1)','lookup(actor, 922, 1)','lookup(actor, 923, 1)','lookup(actor, 924, 1)','lookup(actor, 921, 0)','lookup(actor, 922, 0)','lookup(actor, 923, 0)','lookup(actor, 924, 0)')),
+ 'r175_native_missing_flag':'native_candidate_missing' in bridge and 'flag1_only_gap' in bridge,
+ 'r175_state_change_guard':'state_changed' in bridge and 'readonly_requery=1' in bridge,
  'r172_direct_call':'reinterpret_cast<DirectAnmFn>(base + kCentralActionSetterOffset)' in bridge,
  'r172_guard':all(x in bridge for x in ('param2 == 0','side == 0u','semantic && member','anm1268_before == 707u','state1268_after_pre == 707u','param3 == 8')),
  'r172_other_op23_failclosed':'[NSC:V2H] OP23_SAFE_SUPPRESS' in bridge and 'setanmdirect_deferred_non_uj=1' in bridge,
@@ -37,8 +41,8 @@ checks={
  'p128_retained':'[NSC:P128A] READY' in bridge and 'no_force708=1' in bridge and 'no_force710=1' in bridge,
  'thirty_word_plan':'WordPatch plan[30]' in rt and 'condition_words=5 p67_words=1 p128_words=24' in rt,
  'validate_before_write':rt.index('Validate ALL original words before the first write') < rt.index('patcher.Write<std::uint32_t>'),
- 'workflow_r174':len(wfs)==1 and 'NSC-RUNTIME-R174-dpad-selector-fallback-trace' in wf,
- 'prepare_r174_elf':'runtime_r174.elf' in prep,
+ 'workflow_r175':len(wfs)==1 and 'NSC-RUNTIME-R175-dpad-action-lookup-matrix-trace' in wf,
+ 'prepare_r175_elf':'runtime_r175.elf' in prep,
 }
 for k,v in checks.items(): print(k,'PASS' if v else 'FAIL')
 if not all(checks.values()): sys.exit(1)
@@ -83,32 +87,32 @@ print('r172_setter_fingerprint PASS')
 # R174 exact native selector/fallback proof.
 controller=[0x52809688,0x72A00028,0xAA0003F3,0x8B080017]
 if words(0x6461D4,4)!=controller:
-    print('r174_controller_base_fingerprint FAIL');sys.exit(1)
-print('r174_controller_base_fingerprint PASS')
+    print('r175_controller_base_fingerprint FAIL');sys.exit(1)
+print('r175_controller_base_fingerprint PASS')
 
 fallback=[0xAA1303E0,0x2A1403E1,0x52800022,0x9404886C,0x1E2E1000,0xF100001F,0x52807328,0x1A940101,0x12800002,0xAA1303E0,0x2A1F03E3,0x2A1F03E4,0x94047FA5]
 if words(0x646CC8,len(fallback))!=fallback:
-    print('r174_native_fallback_fingerprint FAIL');sys.exit(1)
-print('r174_native_fallback_fingerprint PASS')
+    print('r175_native_fallback_fingerprint FAIL');sys.exit(1)
+print('r175_native_fallback_fingerprint PASS')
 
 lookup=[0xA9BE57FE,0xA9014FF4,0xB94E5408,0x2A0203F5,0x2A0103F3,0xAA0003F4]
 if words(0x768E84,len(lookup))!=lookup:
-    print('r174_action_lookup_fingerprint FAIL');sys.exit(1)
-print('r174_action_lookup_fingerprint PASS')
+    print('r175_action_lookup_fingerprint FAIL');sys.exit(1)
+print('r175_action_lookup_fingerprint PASS')
 
 # mode table @ rodata VA 0x1B29960
 ro_base,ro=secs_o[1]
 va=0x1B29960
 if not (ro_base <= va < ro_base+len(ro)):
-    print('r174_candidate_table_range FAIL');sys.exit(1)
+    print('r175_candidate_table_range FAIL');sys.exit(1)
 table=struct.unpack_from('<4I',ro,va-ro_base)
-print('r174_candidate_table',table)
+print('r175_candidate_table_source',table)
 if table!=(923,924,921,922):
-    print('r174_candidate_table FAIL');sys.exit(1)
-print('r174_candidate_table PASS')
+    print('r175_candidate_table FAIL');sys.exit(1)
+print('r175_candidate_table PASS')
 
 reg=[0xF8408C09,0xB40001A9,0xAA0003E8,0xB940212A,0x6B01015F,0x1A9F27EA,0x9A893108,0xF86A5929]
 if words(0x8364F8,8)!=reg:
     print('stage_registry_fingerprint FAIL');sys.exit(1)
 print('stage_registry_fingerprint PASS')
-print('NSC_RUNTIME_R174_SOURCE_VERIFY=PASS')
+print('NSC_RUNTIME_R175_SOURCE_VERIFY=PASS')
