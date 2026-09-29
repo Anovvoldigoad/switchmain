@@ -490,6 +490,7 @@ std::atomic<uint32_t> g_p57_setter_logs{0};
 std::atomic<uint32_t> g_p59_play_call_logs{0};
 std::atomic<uint32_t> g_r174_dpad_route_logs{0};
 std::atomic<uint32_t> g_r175_lookup_matrix_logs{0};
+std::atomic<uint32_t> g_r176_registry_matrix_logs{0};
 std::atomic<uint32_t> g_p59_dispatch_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
@@ -2988,6 +2989,114 @@ void LogR175ActionLookupMatrix(void* actor, uint32_t side, uint32_t char_id,
         pre_anm, post_anm, pre_e94, post_e94, pre_e98, post_e98, pre_e9c, post_e9c);
 }
 
+
+// R176: correlate the actor-local action resolver with the global PL_ANM/action
+// entry table. R175 hardware proved Right selects native candidate922 but
+// 0x768E84(actor,922,1) and flag=0 both return null, while Left candidate921
+// resolves. This probe is read-only and reuses the existing PlayAction hook.
+// It asks:
+//   1) Does global entry 922 exist at all?
+//   2) If global922 exists, is only the actor-local binding missing?
+//   3) Does native ActionRemap change 921..924 before actor lookup?
+// No registry insertion, descriptor cloning, action forcing, or state write.
+void LogR176ActionRegistryMatrix(void* actor, uint32_t side, uint32_t char_id,
+                                 int32_t actual_index, ptrdiff_t caller_off) {
+    if (!actor) return;
+    if (caller_off != 0x646CFC || actual_index != 921) return;
+    const bool custom = char_id > kVanillaMaxCharId && char_id < 0x1000u;
+    if (!custom) return;
+
+    const uint32_t seq =
+        g_r176_registry_matrix_logs.fetch_add(1u, std::memory_order_relaxed);
+    if (seq >= 16u) return;
+
+    const auto* pb = reinterpret_cast<const volatile uint8_t*>(actor);
+    const uint32_t pre_anm = *reinterpret_cast<const volatile uint32_t*>(pb + 0x1268);
+    const uint32_t pre_e94 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE94);
+    const uint32_t pre_e98 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE98);
+    const uint32_t pre_e9c = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE9C);
+
+    const uintptr_t main_base =
+        reinterpret_cast<uintptr_t>(exl::util::GetMainModuleInfo().m_Total.m_Start);
+    using ActorLookupFn = void* (*)(void*, int32_t, int32_t);
+    using GlobalEntryFn = void* (*)(uint32_t);
+    using RemapFn = int32_t (*)(void*, int32_t);
+    auto actor_lookup =
+        reinterpret_cast<ActorLookupFn>(main_base + kActionLookupOffset);
+    auto global_entry =
+        reinterpret_cast<GlobalEntryFn>(main_base + kActionEntryLookupOffset);
+    auto remap =
+        reinterpret_cast<RemapFn>(main_base + kActionRemapOffset);
+
+    // Native remap is a pure query in the observed 0x768E84 flag=1 path.
+    const int32_t remap921 = remap(actor, 921);
+    const int32_t remap922 = remap(actor, 922);
+    const int32_t remap923 = remap(actor, 923);
+    const int32_t remap924 = remap(actor, 924);
+
+    auto copy_name = [](char* out, size_t cap, const void* ptr) {
+        if (!out || cap == 0) return;
+        out[0] = '\0';
+        if (!ptr) return;
+        const volatile uint8_t* p =
+            reinterpret_cast<const volatile uint8_t*>(ptr);
+        size_t j = 0;
+        for (; j + 1 < cap; ++j) {
+            const uint8_t c = p[j];
+            if (c == 0) break;
+            out[j] = (c >= 0x20 && c <= 0x7e) ? static_cast<char>(c) : '.';
+        }
+        out[j] = '\0';
+    };
+
+    for (uint32_t index = 921u; index <= 930u; ++index) {
+        void* const g = global_entry(index);
+        void* const a1 = actor_lookup(actor, static_cast<int32_t>(index), 1);
+        void* const a0 = actor_lookup(actor, static_cast<int32_t>(index), 0);
+
+        char name0[40]{};
+        char name7[40]{};
+        copy_name(name0, sizeof(name0), g);
+        if (g) {
+            copy_name(name7, sizeof(name7),
+                      reinterpret_cast<const uint8_t*>(g) + 7);
+        }
+
+        Logging.Log(
+            "[NSC:R176] ACTION_REGISTRY seq=%u idx=%u global=%p global_present=%u "
+            "actor_f1=%p actor_f0=%p actor_present=%u "
+            "name0=%s name7=%s readonly=1 no_insert=1 no_clone=1",
+            seq, index, g, g ? 1u : 0u, a1, a0,
+            (a1 || a0) ? 1u : 0u,
+            name0[0] ? name0 : "-", name7[0] ? name7 : "-");
+    }
+
+    const uint32_t post_anm = *reinterpret_cast<const volatile uint32_t*>(pb + 0x1268);
+    const uint32_t post_e94 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE94);
+    const uint32_t post_e98 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE98);
+    const uint32_t post_e9c = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE9C);
+    const uint32_t state_changed =
+        (pre_anm != post_anm || pre_e94 != post_e94 ||
+         pre_e98 != post_e98 || pre_e9c != post_e9c) ? 1u : 0u;
+
+    const uint32_t sel_primary =
+        *reinterpret_cast<const volatile uint32_t*>(pb + 0x12264);
+    const uint32_t sel_fallback =
+        *reinterpret_cast<const volatile uint32_t*>(pb + 0x12268);
+    const uint32_t active_mode =
+        sel_primary != 0xFFFFFFFFu ? sel_primary : sel_fallback;
+
+    Logging.Log(
+        "[NSC:R176] ACTION_REGISTRY_SUMMARY seq=%u actor=%p side=%u char=%u "
+        "active_mode=%u actual=%d remap921=%d remap922=%d remap923=%d remap924=%d "
+        "state_changed=%u anm=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u "
+        "readonly=1 registry_mutation=0 action_force=0 zero_extra_trampoline=1",
+        seq, actor, side, char_id, active_mode, actual_index,
+        remap921, remap922, remap923, remap924,
+        state_changed, pre_anm, post_anm, pre_e94, post_e94,
+        pre_e98, post_e98, pre_e9c, post_e9c);
+}
+
 // hook now observes the ordinary jutsu route (84), SPTYPE action10 (930), and
 // the cinematic UJ range (700..740). This distinguishes XXA->UJ from XXA->XA
 // without adding another hook or changing any gameplay decision.
@@ -3062,6 +3171,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         // fields at the two hardware-proven 921/928 callsites. It writes nothing.
         LogR174DpadSelectorRoute("PRE", actor, side, char_id, index, caller_off, -1);
         LogR175ActionLookupMatrix(actor, side, char_id, index, caller_off);
+        LogR176ActionRegistryMatrix(actor, side, char_id, index, caller_off);
         const int32_t effective_a2 = a2;
         P93TraceCore("PLAYACTION", actor, caller_off, index, 0);
         const int32_t ret = Orig(actor, index, effective_a2, a3, a4, a5, rate);
@@ -9111,6 +9221,17 @@ void InstallR175DpadLookupMatrixTrace() {
         "fallback921_at_0x646ce4=1 no_state_write=1 dpad_change=0 "
         "r172_uj_change=0 p128_change=0 stage_change=0 voice_change=0 "
         "no_char281_branch=1");
+}
+
+
+void InstallR176ActionRegistryMatrixTrace() {
+    Logging.Log(
+        "[NSC:R176] READY dpad_action_registry_matrix=1 "
+        "global_entry_off=0x3f5560 actor_lookup_off=0x768e84 remap_off=0x769b04 "
+        "indexes=921-930 read_global_names=1 readonly=1 "
+        "registry_insert=0 descriptor_clone=0 action_force=0 "
+        "zero_extra_trampoline=1 reuse_playaction_hook=1 "
+        "r172_uj_change=0 p128_change=0 stage_change=0 voice_change=0");
 }
 
 bool InstallV2NStageRegistryProof() {

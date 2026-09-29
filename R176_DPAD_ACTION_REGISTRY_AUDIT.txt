@@ -1,0 +1,49 @@
+R176_DPAD_ACTION_REGISTRY_AUDIT
+Date: 2026-09-29
+Parent: R175 exact source package
+
+Hardware evidence:
+- log16 = LEFT.
+  active_mode=2, base_candidate=921, actual=921.
+  actor lookup:
+    921 present (flag1/flag0)
+    922 NULL (flag1/flag0)
+    923 present
+    924 present
+  native_candidate_missing=0.
+- log17 = RIGHT.
+  active_mode=3, base_candidate=922, actual=921 fallback.
+  actor lookup:
+    921 present
+    922 NULL for both flag=1 and flag=0
+    923 present
+    924 present
+  candidate_f1=NULL, candidate_f0=NULL,
+  native_candidate_missing=1, flag1_only_gap=0.
+- Therefore Right input/selector routing is correct; the gap is candidate922 availability/binding.
+- Do not force PlayAction(922) while actor lookup returns NULL.
+
+R176 diagnostic:
+- Reuses existing PlayAction hook. Zero additional trampoline.
+- On the first D-pad route, query global action/PL_ANM entries 921..930 via main+0x3F5560.
+- Query actor-local action lookup 921..930 via main+0x768E84 with flag=1 and flag=0.
+- Query native action remap 921..924 via main+0x769B04.
+- Log entry names at global pointer and global+7 where present.
+- Snapshot actor 0x1268/E94/E98/E9C before/after; require state_changed=0.
+- No registry insert, no descriptor clone, no action force.
+
+Decision:
+A) global922 == NULL:
+   root is asset/global registry load/export parity. Repair data/registration, not selector.
+B) global922 != NULL AND actor922 == NULL:
+   root is actor-local binding/availability parity. Repair binding from global entry to custom actor.
+C) global922 != NULL AND actor922 != NULL but native still falls to 921:
+   branch/remap assumption needs one more native decision trace.
+
+Frozen:
+- R172 UJ SetAnmDirect parity remains.
+- P128 exact 30-word runtime delta remains.
+- R164 StageInfo remains.
+- Voice remains frozen/skipped.
+- Non-UJ opcode23 remains safe-suppressed.
+- No global visibility hack.
