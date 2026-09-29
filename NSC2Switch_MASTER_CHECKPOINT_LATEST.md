@@ -3588,3 +3588,41 @@ Then test with the current safe V2P/V2N runtime. Expected decisive marker:
 `[NSC:V2N] STAGE_REGISTRY ... text=STG_2TOB_UNI_LT ... found=1`
 
 V2O direct `main+0x835FAC` runtime reload remains permanently retired.
+
+
+# R180 ADDENDUM — D-PAD NATIVE GATE ROLLBACK RECOVERY
+Date: 2026-09-30
+
+## New hardware evidence
+- log22 = Left-only R179. User: no change vs R178; Left does not perform the expected disappearance transition.
+- log23 = Right-only R179. User: no change vs R178; Right is not invulnerable.
+- R179 runtime is correctly deployed and F30 writer executes.
+
+## Exact log conclusions
+- Left selector remains mode2/base_candidate921 and candidate921 resolves normally.
+- Right selector remains mode3/base_candidate922; actor lookup922 remains NULL and native fallback plays921.
+- Both runs later reach action928 -> Event236 opcode23 p3=77 / SPTYPE_ACTION10 -> PL_ANM930.
+- Both runs use V2H OP23_SAFE_SUPPRESS; call_766320=0.
+- Both logs contain zero opcode17. Therefore Right=100 is never armed in R179.
+
+## R178/R179 eligibility gate hypothesis retired
+R179 restored the opcode13 writer from R178 F20 back to F30, but gameplay did not recover. The remaining common gameplay delta is the PC-style rewrite of Switch main+0x59CEB4. That gate rewrite is therefore retired. Do not carry it into future builds unless new evidence uniquely revalidates it.
+
+## R180 exact delta
+- Event236 opcode13 remains actor+0xF30.
+- main+0x59CEB4 is left untouched and only fingerprinted:
+  - 0xB94E5768 = LDR W8,[X27,#0xE54]
+  - 0x7101F11F = CMP W8,#0x7C
+- gate_patch_words=0.
+- exact30 runtime patch unchanged.
+- R172 UJ unchanged.
+- R175/R176/R177 diagnostics unchanged.
+- non-UJ opcode23 suppression unchanged.
+- action922 registry unchanged.
+- no action force, descriptor clone, visibility override, damage override, or char281 gameplay branch.
+
+## R180 test
+Primary A/B: fresh boot -> Left once -> save full log. PASS for recovery if expected disappearance/secret-room transition returns.
+Only after saving: optional separate fresh boot -> Right once for regression comparison. Right is not expected to become invulnerable in R180 because opcode23 remains suppressed and opcode17 cannot execute.
+
+If Left recovers, next frontier is no longer eligibility/F20/F30. Resume from the two proven downstream gaps: Right candidate922 missing actor binding and non-UJ opcode23/PL_ANM930 execution semantics. Do not re-open UJ/P128/stage/voice.

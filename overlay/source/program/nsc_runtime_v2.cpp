@@ -419,75 +419,47 @@ bool InstallOriginalMainRuntimePatches() {
     return true;
 }
 
-bool InstallR179DpadAnimationEligibilityParity() {
-    // PC UltimateStormAPI / HookFunctions.cpp v1.70 source patch:
-    //   native D-pad HUD/animation gate: [actor+0xE64] == 124
-    //   patched generically to:          [actor+0xF30] == 1
-    //
-    // R178 incorrectly inferred that F30 must shift to F20 on Switch. Hardware
-    // falsified that inference: R175/R177 show actor+0xF30 == 1 at the D-pad
-    // selector for both Left and Right before R178, while R178 moved the writer
-    // to F20 and caused F30 == 0 plus a Left behavioral regression. Therefore
-    // R179 uses the source field F30 directly on Switch and changes only the
-    // native eligibility compare, not the selector/action registry/opcode23 path.
+bool InstallR180DpadNativeGateRollback() {
+    // R178/R179 hardware verdict:
+    // - moving the Event236 opcode13 writer F30->F20 was wrong (R178), and
+    // - even after restoring the writer to F30 (R179), Left remained regressed.
+    // Therefore the common causal delta is the PC-style native gate rewrite at
+    // main+0x59CEB4 itself. R180 retires that gate patch completely and returns
+    // this code path to the untouched Switch v1.70 pair:
+    //   LDR W8,[X27,#0xE54]
+    //   CMP W8,#0x7C
+    // R180 performs fingerprint verification only; it writes zero gate words.
     static constexpr std::ptrdiff_t kGateOff = 0x59CEB4;
-    static constexpr std::uint32_t kBefore[] = {
+    static constexpr std::uint32_t kNative[] = {
         0xB94E5768u, // LDR W8,[X27,#0xE54]
         0x7101F11Fu, // CMP W8,#0x7C
-    };
-    static constexpr std::uint32_t kAfter[] = {
-        0xB94F3368u, // LDR W8,[X27,#0xF30]
-        0x7100051Fu, // CMP W8,#1
     };
 
     const std::uintptr_t base = exl::util::modules::GetTargetStart();
     if (!base) {
-        Logging.Log("[NSC:R179] READY parity=0 fail_closed=1 reason=no_target_base "
-                    "dpad_enable_off=0xf30 hud_gate_off=0x59ceb4");
+        Logging.Log("[NSC:R180] READY rollback=0 fail_closed=1 reason=no_target_base "
+                    "hud_gate_off=0x59ceb4 gate_patch_words=0");
         return false;
     }
 
-    for (std::size_t i = 0; i < ARRAY_COUNT(kBefore); ++i) {
+    for (std::size_t i = 0; i < ARRAY_COUNT(kNative); ++i) {
         std::uint32_t got = 0;
-        if (!ReadWord(base, kGateOff + static_cast<std::ptrdiff_t>(i * 4), got) || got != kBefore[i]) {
-            Logging.Log("[NSC:R179] READY parity=0 fail_closed=1 reason=fingerprint "
+        if (!ReadWord(base, kGateOff + static_cast<std::ptrdiff_t>(i * 4), got) || got != kNative[i]) {
+            Logging.Log("[NSC:R180] READY rollback=0 fail_closed=1 reason=native_fingerprint "
                         "i=%u off=0x%lx got=%08x expected=%08x",
                         static_cast<unsigned>(i),
                         static_cast<unsigned long>(kGateOff + static_cast<std::ptrdiff_t>(i * 4)),
-                        got, kBefore[i]);
-            return false;
-        }
-    }
-
-    {
-        exl::patch::RandomAccessPatcher patcher;
-        for (std::size_t i = 0; i < ARRAY_COUNT(kAfter); ++i) {
-            patcher.Write<std::uint32_t>(
-                static_cast<std::uintptr_t>(kGateOff + static_cast<std::ptrdiff_t>(i * 4)),
-                kAfter[i]);
-        }
-        patcher.Flush();
-    }
-
-    for (std::size_t i = 0; i < ARRAY_COUNT(kAfter); ++i) {
-        std::uint32_t got = 0;
-        if (!ReadWord(base, kGateOff + static_cast<std::ptrdiff_t>(i * 4), got) || got != kAfter[i]) {
-            Logging.Log("[NSC:R179] READY parity=0 fail_closed=1 reason=verify_after "
-                        "i=%u off=0x%lx got=%08x expected=%08x",
-                        static_cast<unsigned>(i),
-                        static_cast<unsigned long>(kGateOff + static_cast<std::ptrdiff_t>(i * 4)),
-                        got, kAfter[i]);
+                        got, kNative[i]);
             return false;
         }
     }
 
     Logging.Log(
-        "[NSC:R179] READY parity=1 dpad_enable_off=0xf30 writer13_source_parity=1 "
-        "hud_gate_off=0x59ceb4 hud_gate_words=2 pc_e64_7c_to_f30_1=1 "
-        "switch_e54_7c_to_f30_1=1 r178_f20_mapping_retired=1 "
+        "[NSC:R180] READY rollback=1 native_gate_restored=1 hud_gate_off=0x59ceb4 "
+        "native_e54_cmp124=1 gate_patch_words=0 dpad_enable_off=0xf30 "
+        "writer13_f30_retained=1 r178_f20_mapping_retired=1 r179_gate_patch_retired=1 "
         "exact30_unchanged=1 opcode23_change=0 registry_change=0 descriptor_clone=0 "
         "action_force=0 no_char281_branch=1 zero_extra_trampoline=1");
     return true;
 }
-
 } // namespace nsc::v2

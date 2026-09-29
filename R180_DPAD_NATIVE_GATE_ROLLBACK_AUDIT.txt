@@ -1,0 +1,38 @@
+R180 D-PAD NATIVE GATE ROLLBACK AUDIT
+Date: 2026-09-30
+
+Hardware inputs
+- log22 = Left-only R179 run
+  SHA256 885bfdda0f15c23595c9cb6775a520e53fdd7eb23e5dd13e494c0a417c02e0b7
+- log23 = Right-only R179 run
+  SHA256 620471ecf9ca2b0deac4adaf8af2b7d9650b10fafae8d5731c2fdd514f23f522
+- compiled R179 artifact SHA256 8f749b2aab621585ac2c1e50b0b44219d70df4776a0572061b95f5d71238552b
+- R179 subsdk9 SHA256 37f970d87119fc2ab112a27ffbce21a25af1efcdfa4a84a219679ccd231fc1d9
+- deployed main remains original SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
+
+R179 hardware verdict
+1. R179 boots correctly and its F30 writer executes.
+2. Left: mode2 -> candidate921 remains healthy, but user reports the expected disappearance/secret-room transition is still absent.
+3. Right: mode3 -> candidate922 remains distinct; actor lookup922 is still NULL and native route falls back to921.
+4. Both Left and Right reach action928 -> Event236 opcode23 p3=77 text=SPTYPE_ACTION10 -> PL_ANM930.
+5. Non-UJ opcode23 remains OP23_SAFE_SUPPRESS, so SetAnmDirect930 is not executed.
+6. There are zero Event236 opcode17 records in both logs; therefore Right=100 activation tail never arms and Right cannot be invulnerable in this build.
+
+Causal conclusion
+R178 and R179 share one gameplay-changing delta: the PC-style native D-pad HUD/animation gate rewrite at main+0x59CEB4. R179 restored the writer to F30 but gameplay stayed identical to R178, so the writer mapping is not the cause of the remaining Left regression. The shared gate rewrite is the causal suspect and is retired.
+
+R180 delta
+- Keep Event236 opcode13 writer at actor+0xF30.
+- Remove the R178/R179 native gate rewrite completely.
+- Verify original Switch v1.70 gate words only:
+  main+0x59CEB4 = 0xB94E5768  LDR W8,[X27,#0xE54]
+  main+0x59CEB8 = 0x7101F11F  CMP W8,#0x7C
+- Zero gate writes.
+- No opcode23 change.
+- No action922 force/clone/registry insertion.
+- No visibility or damage override.
+- No char281 gameplay branch.
+
+Expected hardware A/B
+Primary: fresh boot, Left once. If the expected disappearance/secret-room transition returns, R178/R179 gate rewrite is causally retired and R180 becomes the recovered baseline.
+Secondary: Right once only after Left result is captured. Right is still expected to remain non-invulnerable because opcode23 is still suppressed and opcode17 cannot run.
