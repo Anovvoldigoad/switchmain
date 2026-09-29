@@ -12,6 +12,7 @@ extern "C" void exl_main(void* x0, void* x1) {
     nsc::InstallR172UjMissAnmDirectParity();
     nsc::InstallR175DpadLookupMatrixTrace();
     nsc::InstallR176ActionRegistryMatrixTrace();
+    nsc::InstallR177ActionDescriptorMatrixTrace();
     nsc::InstallV2NStageRegistryProof();
     nsc::InstallV2PPassiveOrderProbe();
 }

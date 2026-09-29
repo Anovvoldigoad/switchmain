@@ -24,3 +24,18 @@ Test:
 2. press RIGHT once
 3. save full log
 A LEFT run is optional; RIGHT is decisive because candidate922 is the failing path.
+
+
+# R177 delta — D-pad action descriptor matrix
+
+R176 hardware proved the decisive registry split for Right D-pad candidate 922:
+- global index922 exists as `PL_ANM_SPTYPE_ACTION02`;
+- actor-local lookup922 is null for both flag=1 and flag=0;
+- native remap is identity 922->922;
+- all neighbouring SPTYPE entries 921 and 923..930 are globally present and actor-bound.
+
+R177 is read-only. At the existing PlayAction fallback callsite it inspects the already-proven native action-record path:
+`actor+0xE90 -> actor+0x11660[e90] -> table_obj -> table_base -> record[index*0x18]`.
+For indexes 921..930 it logs the actor state-table binding, record pointer, descriptor pointer, record qwords, descriptor fields +0x6C/+0x72, and the descriptor key at +0x94.
+
+No actor table writes, descriptor cloning, action forcing, new hook, or new trampoline are added.

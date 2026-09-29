@@ -121,3 +121,32 @@ R176 must not:
 - modify StageInfo,
 - modify voice,
 - add visibility hacks.
+
+
+# R177 — ACTION DESCRIPTOR / BINDING PROVENANCE
+
+## R176 hardware result (uzuy_log(18), Right D-pad)
+- Right remains native mode3 and candidate922.
+- Global entry922 is present and named `PL_ANM_SPTYPE_ACTION02` / `SPTYPE_ACTION02`.
+- Actor-local lookup922 is NULL for both flag=1 and flag=0.
+- Entries921 and 923..930 are globally present and actor-local present.
+- Native remap is identity for 921..924, including 922->922.
+- Probe state_changed=0.
+
+Therefore the current root boundary is not input, candidate selection, native remap, or global CPK/global registry absence. The missing parity is actor-local action binding for index922.
+
+## R177 target
+Before any repair, prove whether actor action-record index922 itself contains a valid descriptor/resource key. Reuse the existing PlayAction hook at the hardware-proven fallback callsite and dump 921..930 through the P96-proven action-record table path.
+
+R177 is strictly read-only:
+- no binding-table write;
+- no descriptor clone;
+- no action force;
+- no char281 gameplay branch;
+- no additional trampoline;
+- R172 UJ, P128, R164 StageInfo, voice freeze unchanged.
+
+Decision after hardware test:
+1. record922 descriptor/key valid + binding922 NULL -> repair actor binding construction from the native descriptor/resource path.
+2. record922 descriptor NULL -> move one layer earlier into custom action-record population.
+3. descriptor exists but key empty/unresolvable -> repair authored/resource-key parity, not D-pad selector.

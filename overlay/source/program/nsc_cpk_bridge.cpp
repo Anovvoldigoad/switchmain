@@ -491,6 +491,7 @@ std::atomic<uint32_t> g_p59_play_call_logs{0};
 std::atomic<uint32_t> g_r174_dpad_route_logs{0};
 std::atomic<uint32_t> g_r175_lookup_matrix_logs{0};
 std::atomic<uint32_t> g_r176_registry_matrix_logs{0};
+std::atomic<uint32_t> g_r177_descriptor_matrix_logs{0};
 std::atomic<uint32_t> g_p59_dispatch_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
@@ -3097,6 +3098,103 @@ void LogR176ActionRegistryMatrix(void* actor, uint32_t side, uint32_t char_id,
         pre_e98, post_e98, pre_e9c, post_e9c);
 }
 
+
+// R177: inspect the native action-record/descriptor table that exists upstream
+// of the actor-local state+0x3000 binding table. R176 hardware proved that
+// global PL_ANM_SPTYPE_ACTION02 (index922) exists while actor-local lookup922
+// is null. P96 static/runtime work already established the generic record path:
+//   actor+0xE90 -> actor+0x11660[e90] -> table_obj -> table_base
+//   record(index) = table_base + index*0x18
+//   record+0x00 = descriptor; descriptor+0x94 = transition/resource key.
+// This probe is read-only, runs only at the hardware-proven D-pad fallback
+// callsite, and reuses the existing PlayAction trampoline. It does not insert
+// or clone descriptors and does not write actor state.
+void LogR177ActionDescriptorMatrix(void* actor, uint32_t side, uint32_t char_id,
+                                   int32_t actual_index, ptrdiff_t caller_off) {
+    if (!actor) return;
+    if (caller_off != 0x646CFC || actual_index != 921) return;
+    const bool custom = char_id > kVanillaMaxCharId && char_id < 0x1000u;
+    if (!custom) return;
+
+    const uint32_t seq =
+        g_r177_descriptor_matrix_logs.fetch_add(1u, std::memory_order_relaxed);
+    if (seq >= 16u) return;
+
+    const auto* b = reinterpret_cast<const volatile uint8_t*>(actor);
+    const uint32_t pre_anm = *reinterpret_cast<const volatile uint32_t*>(b + 0x1268);
+    const uint32_t pre_e94 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE94);
+    const uint32_t pre_e98 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE98);
+    const uint32_t pre_e9c = *reinterpret_cast<const volatile uint32_t*>(b + 0xE9C);
+    const uint32_t e90 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE90);
+
+    uintptr_t state = *reinterpret_cast<const volatile uintptr_t*>(b + 0x218u);
+    uintptr_t state_table = 0;
+    if (P96PlausiblePtr(state))
+        state_table = *reinterpret_cast<const volatile uintptr_t*>(state + 0x3000u);
+
+    uintptr_t table_slot = 0, table_obj = 0, table_base = 0;
+    if (e90 < 0x100u) {
+        table_slot = reinterpret_cast<uintptr_t>(b) + 0x11660u +
+                     static_cast<uintptr_t>(e90) * 8u;
+        table_obj = *reinterpret_cast<const volatile uintptr_t*>(table_slot);
+        if (P96PlausiblePtr(table_obj))
+            table_base = *reinterpret_cast<const volatile uintptr_t*>(table_obj);
+    }
+
+    for (uint32_t index = 921u; index <= 930u; ++index) {
+        uintptr_t binding = 0;
+        if (P96PlausiblePtr(state_table))
+            binding = *reinterpret_cast<const volatile uintptr_t*>(
+                state_table + static_cast<uintptr_t>(index) * 8u);
+
+        uintptr_t rec = 0, desc = 0;
+        uint64_t r1 = 0, r2 = 0;
+        uint16_t d6c = 0, d72 = 0;
+        char key[64]{};
+        if (P96PlausiblePtr(table_base)) {
+            rec = table_base + static_cast<uintptr_t>(index) * 0x18u;
+            desc = *reinterpret_cast<const volatile uintptr_t*>(rec + 0x00u);
+            r1 = *reinterpret_cast<const volatile uint64_t*>(rec + 0x08u);
+            r2 = *reinterpret_cast<const volatile uint64_t*>(rec + 0x10u);
+            if (P96PlausiblePtr(desc)) {
+                const auto* d = reinterpret_cast<const volatile uint8_t*>(desc);
+                d6c = *reinterpret_cast<const volatile uint16_t*>(d + 0x6Cu);
+                d72 = *reinterpret_cast<const volatile uint16_t*>(d + 0x72u);
+                P96CopyKey(key, sizeof(key), d + 0x94u);
+            }
+        }
+
+        Logging.Log(
+            "[NSC:R177] ACTION_DESCRIPTOR seq=%u idx=%u binding=%p "
+            "record=%p desc=%p r1=%016lx r2=%016lx d6c=%u d72=%u key=%s "
+            "readonly=1 no_binding_write=1 no_descriptor_clone=1",
+            seq, index, reinterpret_cast<void*>(binding),
+            reinterpret_cast<void*>(rec), reinterpret_cast<void*>(desc),
+            static_cast<unsigned long>(r1), static_cast<unsigned long>(r2),
+            static_cast<unsigned>(d6c), static_cast<unsigned>(d72),
+            key[0] ? key : "-");
+    }
+
+    const uint32_t post_anm = *reinterpret_cast<const volatile uint32_t*>(b + 0x1268);
+    const uint32_t post_e94 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE94);
+    const uint32_t post_e98 = *reinterpret_cast<const volatile uint32_t*>(b + 0xE98);
+    const uint32_t post_e9c = *reinterpret_cast<const volatile uint32_t*>(b + 0xE9C);
+    const uint32_t changed =
+        (pre_anm != post_anm || pre_e94 != post_e94 ||
+         pre_e98 != post_e98 || pre_e9c != post_e9c) ? 1u : 0u;
+
+    Logging.Log(
+        "[NSC:R177] ACTION_DESCRIPTOR_SUMMARY seq=%u actor=%p side=%u char=%u "
+        "state=%p state_table=%p e90=%u table_slot=%p table_obj=%p table_base=%p "
+        "state_changed=%u anm=%u->%u e94=%u->%u e98=%u->%u e9c=%u->%u "
+        "readonly=1 registration_change=0 action_force=0 zero_extra_trampoline=1",
+        seq, actor, side, char_id, reinterpret_cast<void*>(state),
+        reinterpret_cast<void*>(state_table), e90, reinterpret_cast<void*>(table_slot),
+        reinterpret_cast<void*>(table_obj), reinterpret_cast<void*>(table_base),
+        changed, pre_anm, post_anm, pre_e94, post_e94, pre_e98, post_e98,
+        pre_e9c, post_e9c);
+}
+
 // hook now observes the ordinary jutsu route (84), SPTYPE action10 (930), and
 // the cinematic UJ range (700..740). This distinguishes XXA->UJ from XXA->XA
 // without adding another hook or changing any gameplay decision.
@@ -3172,6 +3270,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         LogR174DpadSelectorRoute("PRE", actor, side, char_id, index, caller_off, -1);
         LogR175ActionLookupMatrix(actor, side, char_id, index, caller_off);
         LogR176ActionRegistryMatrix(actor, side, char_id, index, caller_off);
+        LogR177ActionDescriptorMatrix(actor, side, char_id, index, caller_off);
         const int32_t effective_a2 = a2;
         P93TraceCore("PLAYACTION", actor, caller_off, index, 0);
         const int32_t ret = Orig(actor, index, effective_a2, a3, a4, a5, rate);
@@ -9230,6 +9329,16 @@ void InstallR176ActionRegistryMatrixTrace() {
         "global_entry_off=0x3f5560 actor_lookup_off=0x768e84 remap_off=0x769b04 "
         "indexes=921-930 read_global_names=1 readonly=1 "
         "registry_insert=0 descriptor_clone=0 action_force=0 "
+        "zero_extra_trampoline=1 reuse_playaction_hook=1 "
+        "r172_uj_change=0 p128_change=0 stage_change=0 voice_change=0");
+}
+
+void InstallR177ActionDescriptorMatrixTrace() {
+    Logging.Log(
+        "[NSC:R177] READY dpad_action_descriptor_matrix=1 "
+        "state_off=0x218 state_table_off=0x3000 e90_off=0xe90 "
+        "table_cache_off=0x11660 record_stride=0x18 descriptor_key_off=0x94 "
+        "indexes=921-930 readonly=1 registration_change=0 descriptor_clone=0 action_force=0 "
         "zero_extra_trampoline=1 reuse_playaction_hook=1 "
         "r172_uj_change=0 p128_change=0 stage_change=0 voice_change=0");
 }

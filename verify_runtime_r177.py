@@ -14,12 +14,13 @@ prep=(root/'prepare_exlaunch.sh').read_text()
 wfs=list((root/'.github/workflows').glob('*.yml'))
 wf=wfs[0].read_text() if len(wfs)==1 else ''
 checks={
- 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR172UjMissAnmDirectParity();') < main.index('InstallR175DpadLookupMatrixTrace();') < main.index('InstallR176ActionRegistryMatrixTrace();') < main.index('InstallV2NStageRegistryProof();'),
+ 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR172UjMissAnmDirectParity();') < main.index('InstallR175DpadLookupMatrixTrace();') < main.index('InstallR176ActionRegistryMatrixTrace();') < main.index('InstallR177ActionDescriptorMatrixTrace();') < main.index('InstallV2NStageRegistryProof();'),
  'fail_closed_main':'if (!nsc::v2::InstallOriginalMainRuntimePatches()) return;' in main,
  'r171_not_installed':'InstallR171Uj707Flag70Release();' not in main and 'ActionGateFlagReleaseHook::InstallAtOffset' not in bridge,
  'r172_installed':'InstallR172UjMissAnmDirectParity();' in main and 'bool InstallR172UjMissAnmDirectParity();' in hdr,
  'r175_installed':'InstallR175DpadLookupMatrixTrace();' in main and 'void InstallR175DpadLookupMatrixTrace();' in hdr,
  'r176_installed':'InstallR176ActionRegistryMatrixTrace();' in main and 'void InstallR176ActionRegistryMatrixTrace();' in hdr,
+ 'r177_installed':'InstallR177ActionDescriptorMatrixTrace();' in main and 'void InstallR177ActionDescriptorMatrixTrace();' in hdr,
  'r176_ready':'[NSC:R176] READY dpad_action_registry_matrix=1' in bridge,
  'r176_registry_marker':'[NSC:R176] ACTION_REGISTRY seq=%u idx=%u' in bridge,
  'r176_summary_marker':'[NSC:R176] ACTION_REGISTRY_SUMMARY' in bridge,
@@ -28,6 +29,14 @@ checks={
  'r176_remap_matrix':all(x in bridge for x in ('remap(actor, 921)','remap(actor, 922)','remap(actor, 923)','remap(actor, 924)')),
  'r176_no_mutation':all(x in bridge for x in ('registry_mutation=0','action_force=0','no_insert=1','no_clone=1')),
  'r176_zero_extra_hook':'zero_extra_trampoline=1 reuse_playaction_hook=1' in bridge,
+ 'r177_ready':'[NSC:R177] READY dpad_action_descriptor_matrix=1' in bridge,
+ 'r177_marker':'[NSC:R177] ACTION_DESCRIPTOR seq=%u idx=%u' in bridge,
+ 'r177_summary':'[NSC:R177] ACTION_DESCRIPTOR_SUMMARY' in bridge,
+ 'r177_range':'for (uint32_t index = 921u; index <= 930u; ++index)' in bridge,
+ 'r177_record_path':all(x in bridge for x in ('reinterpret_cast<uintptr_t>(b) + 0x11660u','static_cast<uintptr_t>(index) * 0x18u','rec + 0x00u','d + 0x94u')),
+ 'r177_state_table':all(x in bridge for x in ('b + 0x218u','state + 0x3000u','static_cast<uintptr_t>(index) * 8u')),
+ 'r177_no_mutation':all(x in bridge for x in ('no_binding_write=1','no_descriptor_clone=1','registration_change=0','action_force=0')),
+ 'r177_zero_extra_hook':'zero_extra_trampoline=1 reuse_playaction_hook=1' in bridge,
 
  'r175_ready':'[NSC:R175] READY dpad_lookup_matrix_trace=1' in bridge,
  'r175_selector_markers':'[NSC:R175] DPAD_SELECTOR_%s' in bridge,
@@ -51,8 +60,8 @@ checks={
  'p128_retained':'[NSC:P128A] READY' in bridge and 'no_force708=1' in bridge and 'no_force710=1' in bridge,
  'thirty_word_plan':'WordPatch plan[30]' in rt and 'condition_words=5 p67_words=1 p128_words=24' in rt,
  'validate_before_write':rt.index('Validate ALL original words before the first write') < rt.index('patcher.Write<std::uint32_t>'),
- 'workflow_r176':len(wfs)==1 and 'NSC-RUNTIME-R176-dpad-action-registry-matrix-trace' in wf,
- 'prepare_r176_elf':'runtime_r176.elf' in prep,
+ 'workflow_r177':len(wfs)==1 and 'NSC-RUNTIME-R177-dpad-action-descriptor-matrix-trace' in wf,
+ 'prepare_r177_elf':'runtime_r177.elf' in prep,
 }
 for k,v in checks.items(): print(k,'PASS' if v else 'FAIL')
 if not all(checks.values()): sys.exit(1)
@@ -136,4 +145,4 @@ reg=[0xF8408C09,0xB40001A9,0xAA0003E8,0xB940212A,0x6B01015F,0x1A9F27EA,0x9A89310
 if words(0x8364F8,8)!=reg:
     print('stage_registry_fingerprint FAIL');sys.exit(1)
 print('stage_registry_fingerprint PASS')
-print('NSC_RUNTIME_R176_SOURCE_VERIFY=PASS')
+print('NSC_RUNTIME_R177_SOURCE_VERIFY=PASS')

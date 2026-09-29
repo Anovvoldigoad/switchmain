@@ -52,6 +52,7 @@ bool InstallR166SoundDispatchReadOnlyProbe();
 bool InstallR172UjMissAnmDirectParity();
 void InstallR175DpadLookupMatrixTrace();
 void InstallR176ActionRegistryMatrixTrace();
+void InstallR177ActionDescriptorMatrixTrace();
 bool InstallV2MStageSafeTraceHooks();
 bool InstallV2NStageRegistryProof();
 void InstallV2PPassiveOrderProbe();
