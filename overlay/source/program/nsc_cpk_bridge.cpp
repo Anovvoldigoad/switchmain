@@ -488,7 +488,7 @@ std::atomic<uint32_t> g_p56b_vanilla_snapshots{0};
 std::atomic<uint32_t> g_p56b_custom_snapshots{0};
 std::atomic<uint32_t> g_p57_setter_logs{0};
 std::atomic<uint32_t> g_p59_play_call_logs{0};
-std::atomic<uint32_t> g_r173_dpad_route_logs{0};
+std::atomic<uint32_t> g_r174_dpad_route_logs{0};
 std::atomic<uint32_t> g_p59_dispatch_logs{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
@@ -2824,14 +2824,14 @@ std::atomic<uint32_t> g_p63_f58_logs{0};
 std::atomic<uint32_t> g_p63_post_gate_logs{0};
 std::atomic<uint32_t> g_p63_control_get_logs{0};
 
-void LogR173DpadRoute(const char* phase, void* actor, uint32_t side, uint32_t char_id,
-                          int32_t index, ptrdiff_t caller_off, int32_t ret) {
+void LogR174DpadSelectorRoute(const char* phase, void* actor, uint32_t side, uint32_t char_id,
+                               int32_t index, ptrdiff_t caller_off, int32_t ret) {
     if (!actor) return;
     if (!(index == 921 || index == 928)) return;
     if (!(caller_off == 0x646CFC || caller_off == 0x647080)) return;
     const bool custom = char_id > kVanillaMaxCharId && char_id < 0x1000u;
     if (!custom) return;
-    const uint32_t n = g_r173_dpad_route_logs.fetch_add(1u, std::memory_order_relaxed);
+    const uint32_t n = g_r174_dpad_route_logs.fetch_add(1u, std::memory_order_relaxed);
     if (n >= 256u) return;
 
     const auto* pb = reinterpret_cast<const volatile uint8_t*>(actor);
@@ -2840,24 +2840,60 @@ void LogR173DpadRoute(const char* phase, void* actor, uint32_t side, uint32_t ch
     const uint32_t e98 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE98);
     const uint32_t e9c = *reinterpret_cast<const volatile uint32_t*>(pb + 0xE9C);
     const uint32_t f30 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xF30);
-    const uint32_t dpad_up = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12B78);
-    const uint32_t dpad_down = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12B7C);
-    const uint32_t dpad_left = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12B80);
-    const uint32_t dpad_right = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12B84);
-    const uint32_t dpad_tail = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12B88);
-    const uint32_t bda4 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xBDA4);
-    const uint32_t bda8 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xBDA8);
-    const uint32_t bdc8 = *reinterpret_cast<const volatile uint32_t*>(pb + 0xBDC8);
+
+    // R174 static v1.70 proof from main+0x646190:
+    //   X23 = actor + 0x104B4
+    //   [X23+0x1DB0] == actor+0x12264 : primary selector mode
+    //   [X23+0x1DB4] == actor+0x12268 : fallback selector mode when primary == -1
+    //   [X23+0x1D88] == actor+0x1223C : selector/helper result
+    //   table[mode 0..3] @ main rodata maps to base candidates 923,924,921,922.
+    // At main+0x646CC8, native calls 0x768E84(actor,candidate,1).  If that
+    // action-descriptor lookup returns null, CSEL substitutes PlayAction(921).
+    const uint32_t sel_primary = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12264);
+    const uint32_t sel_fallback = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12268);
+    const uint32_t sel_helper = *reinterpret_cast<const volatile uint32_t*>(pb + 0x1223C);
+    const uint32_t active_mode =
+        sel_primary != 0xFFFFFFFFu ? sel_primary : sel_fallback;
+    uint32_t base_candidate = 0xFFFFFFFFu;
+    switch (active_mode) {
+        case 0u: base_candidate = 923u; break;
+        case 1u: base_candidate = 924u; break;
+        case 2u: base_candidate = 921u; break;
+        case 3u: base_candidate = 922u; break;
+        default: break;
+    }
+    const uint32_t fallback921_suspect =
+        (caller_off == 0x646CFC && index == 921 &&
+         base_candidate != 0xFFFFFFFFu && base_candidate != 921u) ? 1u : 0u;
+
+    // Existing controller/action queue fields around X23+0x144..0x15C.
+    const uint32_t q105f8 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x105F8);
+    const uint32_t q105fc = *reinterpret_cast<const volatile uint32_t*>(pb + 0x105FC);
+    const uint32_t q10600 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x10600);
+    const uint32_t q10610 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x10610);
+
+    // Keep the old 12B78 snapshot only as auxiliary evidence. R173 hardware
+    // showed it is not sufficient to identify the selector direction by itself.
+    const uint32_t aux_12b78 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12B78);
+    const uint32_t aux_12b7c = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12B7C);
+    const uint32_t aux_12b80 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12B80);
+    const uint32_t aux_12b84 = *reinterpret_cast<const volatile uint32_t*>(pb + 0x12B84);
 
     Logging.Log(
-        "[NSC:R173] DPAD_ROUTE_%s n=%u actor=%p side=%u char=%u index=%d caller_off=0x%lx "
+        "[NSC:R174] DPAD_SELECTOR_%s n=%u actor=%p side=%u char=%u index=%d caller_off=0x%lx "
         "anm1268=%u e94=%u e98=%u e9c=%u f30=%08x "
-        "up=%08x down=%08x left=%08x right=%08x tail=%08x "
-        "bda4=%u bda8=%u bdc8=%u ret=%d readonly=1 no_state_write=1 zero_extra_trampoline=1",
+        "sel_primary=%08x sel_fallback=%08x sel_helper=%08x active_mode=%u "
+        "base_candidate=%u fallback921_suspect=%u "
+        "q105f8=%08x q105fc=%08x q10600=%08x q10610=%08x "
+        "aux12b78=%08x aux12b7c=%08x aux12b80=%08x aux12b84=%08x "
+        "ret=%d readonly=1 no_state_write=1 zero_extra_trampoline=1",
         phase ? phase : "?", n, actor, side, char_id, index,
         static_cast<unsigned long>(caller_off), anm1268, e94, e98, e9c, f30,
-        dpad_up, dpad_down, dpad_left, dpad_right, dpad_tail,
-        bda4, bda8, bdc8, ret);
+        sel_primary, sel_fallback, sel_helper, active_mode,
+        base_candidate, fallback921_suspect,
+        q105f8, q105fc, q10600, q10610,
+        aux_12b78, aux_12b7c, aux_12b80, aux_12b84,
+        ret);
 }
 
 // hook now observes the ordinary jutsu route (84), SPTYPE action10 (930), and
@@ -2932,12 +2968,12 @@ HOOK_DEFINE_TRAMPOLINE(PlayActionProbeHook) {
         // native 707 completion gate is observed read-only.
         // R173 reuses this existing trampoline to capture the D-pad selector
         // fields at the two hardware-proven 921/928 callsites. It writes nothing.
-        LogR173DpadRoute("PRE", actor, side, char_id, index, caller_off, -1);
+        LogR174DpadSelectorRoute("PRE", actor, side, char_id, index, caller_off, -1);
         const int32_t effective_a2 = a2;
         P93TraceCore("PLAYACTION", actor, caller_off, index, 0);
         const int32_t ret = Orig(actor, index, effective_a2, a3, a4, a5, rate);
         P93TraceCore("PLAYACTION", actor, caller_off, index, 1);
-        LogR173DpadRoute("POST", actor, side, char_id, index, caller_off, ret);
+        LogR174DpadSelectorRoute("POST", actor, side, char_id, index, caller_off, ret);
 
         uint32_t post_action = 0xFFFFFFFFu;
         uint32_t post_e60 = 0xFFFFFFFFu, post_e98 = 0xFFFFFFFFu, post_e9c = 0xFFFFFFFFu, post_ea0 = 0xFFFFFFFFu;
@@ -8973,12 +9009,14 @@ bool InstallR172UjMissAnmDirectParity() {
     return true;
 }
 
-void InstallR173DpadRouteTrace() {
+void InstallR174DpadSelectorTrace() {
     Logging.Log(
-        "[NSC:R173] READY dpad_route_trace=1 readonly=1 zero_extra_trampoline=1 "
+        "[NSC:R174] READY dpad_selector_trace=1 readonly=1 zero_extra_trampoline=1 "
         "reuse_playaction_hook=1 callsites=0x646cfc,0x647080 indexes=921,928 "
-        "snapshot_12b78_12b88=1 f30_passive=1 no_state_write=1 dpad_change=0 "
-        "r172_uj_change=0 p128_change=0 stage_change=0 voice_change=0 no_char281_branch=1");
+        "selector_offsets=0x12264,0x12268,0x1223c candidate_table=923,924,921,922 "
+        "native_lookup_off=0x768e84 fallback921_at_0x646ce4=1 "
+        "no_state_write=1 dpad_change=0 r172_uj_change=0 p128_change=0 "
+        "stage_change=0 voice_change=0 no_char281_branch=1");
 }
 
 bool InstallV2NStageRegistryProof() {

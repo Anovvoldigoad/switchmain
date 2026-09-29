@@ -1,0 +1,35 @@
+main_order PASS
+fail_closed_main PASS
+r171_not_installed PASS
+r172_installed PASS
+r174_installed PASS
+r174_ready PASS
+r174_markers PASS
+r174_callsites PASS
+r174_indexes PASS
+r174_selector_offsets PASS
+r174_candidate_table PASS
+r174_fallback_flag PASS
+r174_zero_extra_hook PASS
+r174_no_char281_guard PASS
+r174_no_dpad_write PASS
+r172_direct_call PASS
+r172_guard PASS
+r172_other_op23_failclosed PASS
+stage_trace_hooks_omitted PASS
+voice_probes_not_installed PASS
+p128_retained PASS
+thirty_word_plan PASS
+validate_before_write PASS
+workflow_r174 PASS
+prepare_r174_elf PASS
+original_main_sha256 PASS
+reference_delta_30_words PASS 30
+r172_setter_fingerprint PASS
+r174_controller_base_fingerprint PASS
+r174_native_fallback_fingerprint PASS
+r174_action_lookup_fingerprint PASS
+r174_candidate_table (923, 924, 921, 922)
+r174_candidate_table PASS
+stage_registry_fingerprint PASS
+NSC_RUNTIME_R174_SOURCE_VERIFY=PASS

@@ -42,39 +42,3 @@ No hardcoded char281 and no IXN0-string guard. No force708/710/74/77. All non-UJ
 ## Hardware decision
 PASS signature: `[NSC:R172] OP23_UJ_ANM_DIRECT ... pl_anm_index=150 anm1268=707->150 e94=136->8 ...` and visible loop stops without movement input.
 If marker fires and 1268 becomes150 but visual still loops, the remaining issue is below the animation-index setter (render/clip object), not the action/state machine.
-
-## R173 — D-pad route tracing (prepared, not hardware-tested)
-
-### New evidence
-The latest Left-designated fixture `uzuy_log(11).txt` reaches the same known D-pad activation setup previously seen on Right:
-- PlayAction `921` from `main+0x646CFC`;
-- then PlayAction `928` from `main+0x647080`;
-- then Event236 opcode23 `p3=77`, `SPTYPE_ACTION10`, PL_ANM index930;
-- current non-UJ opcode23 remains safe-suppressed, so 930 is resolved but not directly applied.
-
-Because the fixture was intended as Left-only, the next unresolved boundary is now the direction/selector routing before or at the 921/928 setup. Do not assume Left already reaches a separate ACTION08/ACTION09 lifecycle.
-
-### R173 implementation
-Parent: exact R172 full-source package from Drive.
-R173 adds a read-only `DPAD_ROUTE_PRE/POST` trace inside the already-installed PlayAction hook. No new trampoline is allocated.
-
-Trace scope:
-- custom actor only (generic custom-ID range; no char281 branch);
-- action/index 921 or 928;
-- caller exactly `0x646CFC` or `0x647080`.
-
-Snapshot:
-- `actor+0x1268` animation;
-- `E94/E98/E9C`;
-- passive `F30`;
-- D-pad block `0x12B78..0x12B88` (raw words);
-- `BDA4/BDA8/BDC8`.
-
-R173 changes no gameplay state. R172 UJ-miss direct-animation parity, P128, V2N/V2P stage behavior and voice-frozen policy are unchanged.
-
-### Test
-1. fresh boot; press Left D-pad once only; save full log;
-2. fresh boot; press Right D-pad once only; save full log;
-3. compare `[NSC:R173] DPAD_ROUTE_PRE/POST` fields and the subsequent opcode23 route.
-
-PASS for diagnostic stage = both runs produce usable route snapshots without UJ/P128/stage regressions.
