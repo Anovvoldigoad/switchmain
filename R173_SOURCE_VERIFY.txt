@@ -2,6 +2,15 @@ main_order PASS
 fail_closed_main PASS
 r171_not_installed PASS
 r172_installed PASS
+r173_installed PASS
+r173_ready PASS
+r173_markers PASS
+r173_callsites PASS
+r173_indexes PASS
+r173_snapshot PASS
+r173_zero_extra_hook PASS
+r173_no_char281_guard PASS
+r173_no_dpad_write PASS
 r172_ready PASS
 r172_direct_call PASS
 r172_default_abi PASS
@@ -15,8 +24,8 @@ voice_probes_not_installed PASS
 p128_retained PASS
 thirty_word_plan PASS
 validate_before_write PASS
-workflow_r172 PASS
-prepare_r172_elf PASS
+workflow_r173 PASS
+prepare_r173_elf PASS
 original_main_sha256 PASS
 reference_delta_30_words PASS 30
 r172_setter_fingerprint PASS
@@ -24,4 +33,4 @@ r172_animation_getter_fingerprint PASS
 r172_animation_writer_fingerprint PASS
 r172_native_direct_callsite_fingerprint PASS
 stage_registry_fingerprint PASS
-NSC_RUNTIME_R172_SOURCE_VERIFY=PASS
+NSC_RUNTIME_R173_SOURCE_VERIFY=PASS

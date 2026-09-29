@@ -14,10 +14,19 @@ prep=(root/'prepare_exlaunch.sh').read_text()
 wfs=list((root/'.github/workflows').glob('*.yml'))
 wf=wfs[0].read_text() if len(wfs)==1 else ''
 checks={
- 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR172UjMissAnmDirectParity();') < main.index('InstallV2NStageRegistryProof();'),
+ 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR172UjMissAnmDirectParity();') < main.index('InstallR173DpadRouteTrace();') < main.index('InstallV2NStageRegistryProof();'),
  'fail_closed_main':'if (!nsc::v2::InstallOriginalMainRuntimePatches()) return;' in main,
  'r171_not_installed':'InstallR171Uj707Flag70Release();' not in main and 'ActionGateFlagReleaseHook::InstallAtOffset' not in bridge,
  'r172_installed':'InstallR172UjMissAnmDirectParity();' in main and 'bool InstallR172UjMissAnmDirectParity();' in hdr,
+ 'r173_installed':'InstallR173DpadRouteTrace();' in main and 'void InstallR173DpadRouteTrace();' in hdr,
+ 'r173_ready':'[NSC:R173] READY dpad_route_trace=1' in bridge,
+ 'r173_markers':'[NSC:R173] DPAD_ROUTE_%s' in bridge,
+ 'r173_callsites':'caller_off == 0x646CFC' in bridge and 'caller_off == 0x647080' in bridge,
+ 'r173_indexes':'index == 921' in bridge and 'index == 928' in bridge,
+ 'r173_snapshot':all(x in bridge for x in ('pb + 0x12B78','pb + 0x12B7C','pb + 0x12B80','pb + 0x12B84','pb + 0x12B88','pb + 0xF30','pb + 0xBDA8')),
+ 'r173_zero_extra_hook':'zero_extra_trampoline=1' in bridge and 'reuse_playaction_hook=1' in bridge,
+ 'r173_no_char281_guard':'char_id == 281' not in bridge,
+ 'r173_no_dpad_write':'no_state_write=1 dpad_change=0' in bridge,
  'r172_ready':'[NSC:R172] READY parity=1 direct_off=0x766320' in bridge,
  'r172_direct_call':'reinterpret_cast<DirectAnmFn>(base + kCentralActionSetterOffset)' in bridge,
  'r172_default_abi':'target, static_cast<int32_t>(index), -1, 0, 1.0f' in bridge,
@@ -31,8 +40,8 @@ checks={
  'p128_retained':'[NSC:P128A] READY' in bridge and 'no_force708=1' in bridge and 'no_force710=1' in bridge,
  'thirty_word_plan':'WordPatch plan[30]' in rt and 'condition_words=5 p67_words=1 p128_words=24' in rt,
  'validate_before_write':rt.index('Validate ALL original words before the first write') < rt.index('patcher.Write<std::uint32_t>'),
- 'workflow_r172':len(wfs)==1 and 'NSC-RUNTIME-R172-uj-miss-anmdirect-parity' in wf,
- 'prepare_r172_elf':'runtime_r172.elf' in prep,
+ 'workflow_r173':len(wfs)==1 and 'NSC-RUNTIME-R173-dpad-route-trace' in wf,
+ 'prepare_r173_elf':'runtime_r173.elf' in prep,
 }
 for k,v in checks.items(): print(k,'PASS' if v else 'FAIL')
 if not all(checks.values()): sys.exit(1)
@@ -79,4 +88,4 @@ reg=[0xF8408C09,0xB40001A9,0xAA0003E8,0xB940212A,0x6B01015F,0x1A9F27EA,0x9A89310
 ok=words(0x8364F8,8)==reg
 print('stage_registry_fingerprint','PASS' if ok else 'FAIL')
 if not ok:sys.exit(1)
-print('NSC_RUNTIME_R172_SOURCE_VERIFY=PASS')
+print('NSC_RUNTIME_R173_SOURCE_VERIFY=PASS')

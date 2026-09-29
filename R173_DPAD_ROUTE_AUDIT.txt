@@ -1,0 +1,23 @@
+R173 D-PAD ROUTE TRACE AUDIT
+============================
+Parent: exact Google Drive R172 full source.
+
+New hardware evidence from uzuy_log(11).txt:
+- actor transitions 74 -> 921 -> 928.
+- PlayAction 921 caller_off=0x646cfc.
+- PlayAction 928 caller_off=0x647080.
+- downstream Event236 op23 p3=77 text=SPTYPE_ACTION10 resolves PL_ANM index930.
+- R172/V2H non-UJ policy suppresses direct SetAnmDirect for that D-pad path.
+- no opcode17/DPAD17_APPLY marker appears in this fixture.
+
+R173 mutation:
+- zero new trampoline/hook;
+- reuses PlayActionProbeHook;
+- read-only PRE/POST snapshot for exact 921/928 route callsites;
+- captures raw D-pad block 0x12B78..0x12B88 plus F30/E94/E98/E9C/BDA4/BDA8/BDC8/0x1268;
+- no state write, no char281 branch, no UJ/P128/stage/voice behavior change.
+
+Hardware test discipline:
+1. fresh boot, Left D-pad once only, save full log;
+2. fresh boot, Right D-pad once only, save full log;
+3. compare DPAD_ROUTE_PRE/POST fields before 921/928 and downstream op23 route.
