@@ -9,7 +9,7 @@ extern "C" void exl_main(void* x0, void* x1) {
     nsc::v2::InstallResolverHookMigrationProbe();
     if (!nsc::v2::InstallOriginalMainRuntimePatches()) return;
     nsc::InstallP128AStaticPreciseGateCaveProof();
-    nsc::InstallR171Uj707Flag70Release();
+    nsc::InstallR172UjMissAnmDirectParity();
     nsc::InstallV2NStageRegistryProof();
     nsc::InstallV2PPassiveOrderProbe();
 }

@@ -49,7 +49,7 @@ void InstallP127AFullNativeCorridorAB();
 void InstallP128AStaticPreciseGateCaveProof();
 bool InstallR165Event150VoiceReadOnlyProbe();
 bool InstallR166SoundDispatchReadOnlyProbe();
-bool InstallR171Uj707Flag70Release();
+bool InstallR172UjMissAnmDirectParity();
 bool InstallV2MStageSafeTraceHooks();
 bool InstallV2NStageRegistryProof();
 void InstallV2PPassiveOrderProbe();

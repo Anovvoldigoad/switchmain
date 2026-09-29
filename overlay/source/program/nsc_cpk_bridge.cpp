@@ -1772,27 +1772,64 @@ uint32_t HandleActionAnimation(void* actor, const uint8_t* event, int16_t param2
     Logging.Log("[NSC:P50A] ACTION actor=%p target=%p mode=%u text=%s found=1 index=%u",
                 actor, target, action_mode ? 1u : 0u, text, index);
 
-    // V2H: hardware rollback to the V2F-safe opcode23 A/B behavior.
-    // V2G proved that calling main+0x766320 with PL_ANM index930 is NOT a
-    // harmless SetAnmDirect equivalent: it changes current state 928->930 and
-    // reproduces disappearance. Preserve SetActionImmediate(param3) and name
-    // resolution, but suppress both 0x766320 and PlayAction while the true
-    // direct-animation primitive is unresolved.
+    // R172: close the exact UJ-miss parity gap proven by R171 hardware.
+    // PC opcode23 semantics are SetActionImmediate(param3) followed by
+    // SetAnmDirect(resolved PL_ANM).  Switch main+0x766320 is now statically
+    // supported as the direct animation setter: its companion 0x766A98 reads
+    // the current animation and native callers feed PL_ANM-like indexes
+    // 934/936/938/940/942 before it stores W1 to actor+0x1268.
+    //
+    // Keep the old V2H fail-closed policy for every other opcode23 so the
+    // paused D-pad path cannot regress.  Only the proven custom-UJ miss tail
+    // (self, animation707, requested state8) receives the missing direct
+    // animation operation.  No character-ID or IXN0 string hardcode.
     if (action_mode) {
         const auto* tb = reinterpret_cast<const volatile uint8_t*>(target);
-        const uint32_t state1268_after =
+        const uint32_t state1268_after_pre =
             *reinterpret_cast<const volatile uint32_t*>(tb + 0x1268);
-        const uint32_t e94_after =
+        const uint32_t e94_after_pre =
             *reinterpret_cast<const volatile uint32_t*>(tb + 0xE94);
-        const uint32_t e98_after =
+        const uint32_t e98_after_pre =
             *reinterpret_cast<const volatile uint32_t*>(tb + 0xE98);
+
+        uint32_t side = 0xFFFFFFFFu, char_id = 0xFFFFFFFFu;
+        const bool valid = ReadActorIdentity(target, side, char_id);
+        const bool custom = valid && char_id > kVanillaMaxCharId && char_id < 0x1000u;
+        const bool semantic = custom && P64QuerySemanticUltimateJutsu(target);
+        const bool member = custom && p81_data::ContainsOugiAwakeningId(char_id);
+        const bool uj_miss_direct =
+            param2 == 0 && side == 0u && semantic && member &&
+            anm1268_before == 707u && state1268_after_pre == 707u && param3 == 8;
+
+        if (uj_miss_direct) {
+            using DirectAnmFn = void (*)(void*, int32_t, int32_t, int32_t, float);
+            reinterpret_cast<DirectAnmFn>(base + kCentralActionSetterOffset)(
+                target, static_cast<int32_t>(index), -1, 0, 1.0f);
+
+            const uint32_t state1268_after =
+                *reinterpret_cast<const volatile uint32_t*>(tb + 0x1268);
+            const uint32_t e94_after =
+                *reinterpret_cast<const volatile uint32_t*>(tb + 0xE94);
+            const uint32_t e98_after =
+                *reinterpret_cast<const volatile uint32_t*>(tb + 0xE98);
+            Logging.Log(
+                "[NSC:R172] OP23_UJ_ANM_DIRECT actor=%p target=%p side=%u char=%u "
+                "action_param=%d text=%s pl_anm_index=%u anm1268=%u->%u "
+                "e94=%u->%u e98=%u semantic=%u member=%u direct_off=0x766320 "
+                "force708=0 force710=0 force74=0 force77=0 dpad_scope=0",
+                actor, target, side, char_id, static_cast<int>(param3), text, index,
+                anm1268_before, state1268_after, e94_before, e94_after, e98_after,
+                semantic ? 1u : 0u, member ? 1u : 0u);
+            return 1;
+        }
+
         Logging.Log(
             "[NSC:V2H] OP23_SAFE_SUPPRESS actor=%p target=%p action_param=%d text=%s "
             "pl_anm_index=%u state1268=%u->%u e94=%u->%u e98_after=%u "
-            "call_766320=0 playaction_wrapper=0 v2g_766320_rejected=1 "
-            "setanmdirect_unresolved=1 diagnostic_only=1",
+            "call_766320=0 playaction_wrapper=0 r172_uj_miss_scope=0 "
+            "setanmdirect_deferred_non_uj=1",
             actor, target, static_cast<int>(param3), text, index,
-            anm1268_before, state1268_after, e94_before, e94_after, e98_after);
+            anm1268_before, state1268_after_pre, e94_before, e94_after_pre, e98_after_pre);
         return 1;
     }
 
@@ -8870,25 +8907,28 @@ bool InstallR166SoundDispatchReadOnlyProbe() {
     return true;
 }
 
-bool InstallR171Uj707Flag70Release() {
-    static constexpr uint32_t kGateExpected[] = {
-        0xFC1D0FE8, 0xA90157FE, 0xA9024FF4, 0xAA0003F3,
-        0xF9410C00, 0xB4000160, 0x97F34520, 0xD000CEC8,
+bool InstallR172UjMissAnmDirectParity() {
+    // Validate the complete native 0x766320 entry used as the scoped direct
+    // animation primitive. The function is already hooked read-only by P57,
+    // so R172 adds no trampoline here.
+    static constexpr uint32_t kSetterExpected[] = {
+        0xD10303FF, 0x6D0523E9, 0xA9067BFD, 0xA9076FFC,
+        0xA90867FA, 0xA9095FF8, 0xA90A57F6, 0xA90B4FF4,
+        0xF9410C08, 0x4EA01C08, 0x2A0303F4, 0x2A0203F6,
+        0xAA0003F3, 0x2A0103F5,
     };
-    const bool ok = MatchWords(kActionGateOffset, kGateExpected);
+    const bool ok = MatchWords(kCentralActionSetterOffset, kSetterExpected);
     if (!ok) {
-        LogFingerprintFail("R171_UJ707_FLAG70_RELEASE", kActionGateOffset);
+        LogFingerprintFail("R172_SET_ANM_DIRECT_766320", kCentralActionSetterOffset);
         Logging.Log(
-            "[NSC:R171] READY installed=0 fail_closed=1 flag70_release=0 "
-            "force708=0 force710=0 stage_trace_hooks=0 voice_probe=0 p128_change=0 dpad_change=0");
+            "[NSC:R172] READY parity=0 fail_closed=1 direct_off=0x766320 "
+            "uj_miss_scope=0 force708=0 force710=0 dpad_change=0 p128_change=0");
         return false;
     }
-    ActionGateFlagReleaseHook::InstallAtOffset(kActionGateOffset);
     Logging.Log(
-        "[NSC:R171] READY installed=1 native_707_gate=0x769a4c exact_caller=0x7e48e8 "
-        "root_fix_anim_flag70=1 exact_whiff_terminal_8_8=1 timing_guard=1 semantic_guard=1 "
-        "membership_guard=1 native_transition_only=1 force708=0 force710=0 direct77_74=0 "
-        "stage_trace_hooks=0 voice_probe=0 p128_change=0 dpad_change=0");
+        "[NSC:R172] READY parity=1 direct_off=0x766320 scoped_uj_miss_only=1 "
+        "guard=semantic_member_self_anim707_state8 no_char281=1 no_ixn0_string_guard=1 "
+        "force708=0 force710=0 force74=0 force77=0 dpad_change=0 p128_change=0");
     return true;
 }
 
