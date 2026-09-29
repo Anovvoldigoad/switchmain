@@ -2657,23 +2657,21 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 return 1;
             }
 
-            case 13: { // R180 recovery baseline: keep proven actor+0xF30 writer
-                // PC SC1.70 writes actor+0xF30. Hardware R175/R177 proves Switch
-                // also carries the live D-pad-enable state at actor+0xF30; R178's
-                // inferred F20 mapping zeroed F30 at the selector and regressed Left.
+            case 13: { // R181 full eligibility rollback: restore pre-R178 shadow-only behavior
+                // Hardware R175 baseline executed opcode13 with no actor-field mutation.
+                // R178/R179/R180 added F20/F30 writes and Left stopped performing its
+                // intended disappearance/secret-room transition. R181 therefore makes
+                // opcode13 observational only while preserving the native Switch gate.
                 auto* pb = reinterpret_cast<uint8_t*>(actor);
-                auto* dpad_enable = reinterpret_cast<volatile int32_t*>(pb + 0xF30);
-                const int32_t f30_before = *dpad_enable;
+                const int32_t f30_observed =
+                    *reinterpret_cast<const volatile int32_t*>(pb + 0xF30);
                 const int32_t f20_observed =
                     *reinterpret_cast<const volatile int32_t*>(pb + 0xF20);
-                *dpad_enable = p2;
-                const int32_t f30_after = *dpad_enable;
                 Logging.Log(
-                    "[NSC:R180] DPAD_ENABLE actor=%p side=%u char=%u p2=%d "
-                    "f30=%d->%d f20_observed=%d switch_off=0xf30 pc_off=0xf30",
+                    "[NSC:R181] OP13_SHADOW actor=%p side=%u char=%u p2=%d "
+                    "f30_observed=%d f20_observed=%d no_state_write=1",
                     actor, side, char_id, static_cast<int>(p2),
-                    static_cast<int>(f30_before), static_cast<int>(f30_after),
-                    static_cast<int>(f20_observed));
+                    static_cast<int>(f30_observed), static_cast<int>(f20_observed));
                 return 1;
             }
 

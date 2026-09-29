@@ -14,20 +14,21 @@ hdr=(root/'overlay/source/program/nsc_cpk_bridge.hpp').read_text()
 prep=(root/'prepare_exlaunch.sh').read_text()
 wfs=list((root/'.github/workflows').glob('*.yml'))
 wf=wfs[0].read_text() if len(wfs)==1 else ''
-fn=rt[rt.index('bool InstallR180DpadNativeGateRollback() {'):rt.index('\n} // namespace nsc::v2',rt.index('bool InstallR180DpadNativeGateRollback() {'))]
+fn=rt[rt.index('bool InstallR181DpadFullEligibilityRollback() {'):rt.index('\n} // namespace nsc::v2',rt.index('bool InstallR181DpadFullEligibilityRollback() {'))]
+case13=bridge[bridge.index('case 13: { // R181'):bridge.index('case 14:', bridge.index('case 13: { // R181'))]
 checks={
- 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallR180DpadNativeGateRollback()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR172UjMissAnmDirectParity();') < main.index('InstallR175DpadLookupMatrixTrace();') < main.index('InstallR176ActionRegistryMatrixTrace();') < main.index('InstallR177ActionDescriptorMatrixTrace();') < main.index('InstallV2NStageRegistryProof();'),
- 'r180_fail_closed_main':'if (!nsc::v2::InstallR180DpadNativeGateRollback()) return;' in main,
- 'r180_declared':'bool InstallR180DpadNativeGateRollback();' in rth,
- 'r179_not_installed':'InstallR179DpadAnimationEligibilityParity()' not in main and 'bool InstallR179DpadAnimationEligibilityParity();' not in rth,
- 'r180_ready':'[NSC:R180] READY rollback=1 native_gate_restored=1' in rt,
- 'r180_writer_marker':'[NSC:R180] DPAD_ENABLE actor=%p side=%u char=%u p2=%d' in bridge,
- 'r180_writer_f30':'pb + 0xF30' in bridge and '*dpad_enable = p2;' in bridge,
- 'r180_gate_off':'kGateOff = 0x59CEB4' in fn,
- 'r180_native_gate_words':'0xB94E5768u' in fn and '0x7101F11Fu' in fn,
- 'r180_zero_gate_write':'RandomAccessPatcher' not in fn and 'patcher.Write' not in fn and 'gate_patch_words=0' in fn,
- 'r180_retired_gate':'r179_gate_patch_retired=1' in fn and 'r178_f20_mapping_retired=1' in fn,
- 'r180_no_action_mutation':all(x in fn for x in ('opcode23_change=0','registry_change=0','descriptor_clone=0','action_force=0','no_char281_branch=1')),
+ 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallR181DpadFullEligibilityRollback()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR172UjMissAnmDirectParity();') < main.index('InstallR175DpadLookupMatrixTrace();') < main.index('InstallR176ActionRegistryMatrixTrace();') < main.index('InstallR177ActionDescriptorMatrixTrace();') < main.index('InstallV2NStageRegistryProof();'),
+ 'r181_fail_closed_main':'if (!nsc::v2::InstallR181DpadFullEligibilityRollback()) return;' in main,
+ 'r181_declared':'bool InstallR181DpadFullEligibilityRollback();' in rth,
+ 'old_eligibility_installers_absent': all(x not in main+rth for x in ('InstallR178DpadAnimationEligibilityParity','InstallR179DpadAnimationEligibilityParity','InstallR180DpadNativeGateRollback')),
+ 'r181_ready':'[NSC:R181] READY full_rollback=1 native_gate_original=1' in rt,
+ 'r181_shadow_marker':'[NSC:R181] OP13_SHADOW actor=%p side=%u char=%u p2=%d' in bridge and 'no_state_write=1' in case13,
+ 'r181_opcode13_zero_write': all(x not in case13 for x in ('*dpad_enable = p2','pb + 0xF20) =','pb + 0xF30) =','memcpy','Write<')) and 'f30_observed' in case13 and 'f20_observed' in case13,
+ 'r181_gate_off':'kGateOff = 0x59CEB4' in fn,
+ 'r181_native_gate_words':'0xB94E5768u' in fn and '0x7101F11Fu' in fn,
+ 'r181_zero_gate_write':'RandomAccessPatcher' not in fn and 'patcher.Write' not in fn and 'gate_patch_words=0' in fn,
+ 'r181_retired_eligibility':'r179_gate_patch_retired=1' in fn and 'r178_f20_mapping_retired=1' in fn and 'r180_f30_writer_retired=1' in fn and 'writer13_mutation=0' in fn,
+ 'r181_no_action_mutation':all(x in fn for x in ('opcode23_change=0','registry_change=0','descriptor_clone=0','action_force=0','no_char281_branch=1')),
  'r171_not_installed':'InstallR171Uj707Flag70Release();' not in main and 'ActionGateFlagReleaseHook::InstallAtOffset' not in bridge,
  'r172_installed':'InstallR172UjMissAnmDirectParity();' in main and 'bool InstallR172UjMissAnmDirectParity();' in hdr,
  'r172_guard':all(x in bridge for x in ('param2 == 0','side == 0u','semantic && member','anm1268_before == 707u','state1268_after_pre == 707u','param3 == 8')),
@@ -42,8 +43,8 @@ checks={
  'p128_retained':'[NSC:P128A] READY' in bridge and 'no_force708=1' in bridge and 'no_force710=1' in bridge,
  'thirty_word_plan':'WordPatch plan[30]' in rt and 'condition_words=5 p67_words=1 p128_words=24' in rt,
  'validate_before_write':rt.index('Validate ALL original words before the first write') < rt.index('patcher.Write<std::uint32_t>'),
- 'workflow_r180':len(wfs)==1 and 'NSC-RUNTIME-R180-dpad-native-gate-rollback' in wf and 'verify_runtime_r180.py' in wf,
- 'prepare_r180_elf':'runtime_r180.elf' in prep,
+ 'workflow_r181':len(wfs)==1 and 'NSC-RUNTIME-R181-dpad-full-eligibility-rollback' in wf and 'verify_runtime_r181.py' in wf,
+ 'prepare_r181_elf':'runtime_r181.elf' in prep,
 }
 for k,v in checks.items(): print(k,'PASS' if v else 'FAIL')
 if not all(checks.values()): sys.exit(1)
@@ -73,8 +74,8 @@ diff={off:(struct.unpack_from('<I',text_o,off)[0],struct.unpack_from('<I',text_r
 if len(diff)!=30: print('reference_delta_30_words FAIL',len(diff));sys.exit(1)
 print('reference_delta_30_words PASS',len(diff))
 def words(off,n):return [struct.unpack_from('<I',text_o,off+4*i)[0] for i in range(n)]
-if words(0x59CEB4,2)!=[0xB94E5768,0x7101F11F]: print('r180_native_gate_fingerprint FAIL',words(0x59CEB4,2));sys.exit(1)
-print('r180_native_gate_fingerprint PASS')
+if words(0x59CEB4,2)!=[0xB94E5768,0x7101F11F]: print('r181_native_gate_fingerprint FAIL',words(0x59CEB4,2));sys.exit(1)
+print('r181_native_gate_fingerprint PASS')
 setter=[0xD10303FF,0x6D0523E9,0xA9067BFD,0xA9076FFC,0xA90867FA,0xA9095FF8,0xA90A57F6,0xA90B4FF4,0xF9410C08,0x4EA01C08,0x2A0303F4,0x2A0203F6,0xAA0003F3,0x2A0103F5]
 if words(0x766320,len(setter))!=setter: print('r172_setter_fingerprint FAIL');sys.exit(1)
 print('r172_setter_fingerprint PASS')
@@ -90,4 +91,4 @@ print('r175_candidate_table PASS',table)
 reg=[0xF8408C09,0xB40001A9,0xAA0003E8,0xB940212A,0x6B01015F,0x1A9F27EA,0x9A893108,0xF86A5929]
 if words(0x8364F8,8)!=reg: print('stage_registry_fingerprint FAIL');sys.exit(1)
 print('stage_registry_fingerprint PASS')
-print('NSC_RUNTIME_R180_SOURCE_VERIFY=PASS')
+print('NSC_RUNTIME_R181_SOURCE_VERIFY=PASS')

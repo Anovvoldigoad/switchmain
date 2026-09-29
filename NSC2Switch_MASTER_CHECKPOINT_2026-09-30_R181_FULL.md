@@ -1,3 +1,65 @@
+# NSC2Switch MASTER CHECKPOINT — 2026-09-30 R181 FULL
+## CURRENT RECOVERY OVERRIDE — FULL PRE-R178 D-PAD ELIGIBILITY ROLLBACK
+
+> **Authoritative current section.** This block overrides R178-R180 eligibility conclusions wherever they conflict. Historical lineage is preserved below.
+
+---
+
+## R181 CURRENT FRONTIER
+
+### Frozen invariants
+- Game: NARUTO X BORUTO Ultimate Ninja STORM CONNECTIONS Switch v1.70.
+- Title ID `0100FA10190A0000`.
+- Build ID `48ECE454B61412B9FB46FAB2BE3F5EF7B2804F39`.
+- Original main SHA256 `2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9`.
+- Reference P128 main SHA256 `904a0405d04360ff3969909cdd7197c9e8c2aba2467151a7eaad4c821fcebbff`.
+- Exact runtime main delta stays 30 words = condition5 + P67 1 + P128 24.
+- R164 StageInfo hardware PASS/frozen.
+- R172 UJ hardware PASS/frozen.
+- Voice frozen/skipped.
+- No char281-specific gameplay policy.
+
+### R180 hardware result — FAIL as recovery, decisive diagnostically
+- Compiled R180 artifact SHA256 `1c2dcb48512ce6715419729c60257ca6add6514cd88bcde13f94165f1904bdcd`.
+- Left-only log24 SHA256 `3f26762c061e9c9c6479ea952b3130ae86c415821046bb3ca96c2a8dc59c6504`.
+- User observation: Left still does not disappear / perform the intended transition.
+- R180 READY proved the native gate at `main+0x59CEB4` was original Switch `E54 / #124` with zero gate writes.
+- R180 nevertheless retained the Event236 opcode13 F30 writer; first opcode13 changed F30 `0->1`.
+- Left selector remained correct `mode2 -> candidate921 -> actual921`.
+- Route still reached `928 -> opcode23 SPTYPE_ACTION10 / PL_ANM930`, where non-UJ opcode23 remained `OP23_SAFE_SUPPRESS`.
+- No opcode17 was executed.
+
+### Critical comparison to the known pre-R178 hardware baseline
+R175 Left hardware executed opcode13 and immediately continued into opcode12 without any F20/F30 mutation. Therefore R180 was only a gate rollback, not a true eligibility rollback.
+
+### R181 exact A/B
+1. Keep native Switch gate untouched at `main+0x59CEB4`:
+   - `B94E5768` = `LDR W8,[X27,#0xE54]`
+   - `7101F11F` = `CMP W8,#0x7C`
+2. Restore Event236 opcode13 to shadow-only/read-only.
+3. Opcode13 logs F30/F20 observations but writes neither field.
+4. Keep non-UJ opcode23 suppressed for this A/B.
+5. No action922 insertion, registry mutation, descriptor clone, action force, visibility/damage override, or char281 branch.
+6. Preserve R172 UJ, P128, StageInfo, and voice state unchanged.
+
+### R181 hardware test
+- Fresh boot.
+- Confirm `[NSC:R181] READY full_rollback=1 ... opcode13_shadow=1 writer13_mutation=0`.
+- Press Left once only.
+- Save full log and report whether Tobi again disappears/transitions toward the secret room.
+- Do not mix Right into this boot.
+
+### Decision
+- **Left transition returns:** R178-R180 opcode13 mutation was the remaining regression cause; R181 becomes baseline and Right investigation resumes at candidate922 / non-UJ PL_ANM930.
+- **Left still unchanged:** eligibility experiments are fully exonerated; compare pre-R178 lineage against R181 beyond opcode13 and focus on downstream action lifecycle. Do not revive F20/F30 writers.
+
+### Source verification
+`NSC_RUNTIME_R181_SOURCE_VERIFY=PASS`.
+
+---
+
+# HISTORICAL R180/R179/R178 AND EARLIER CHECKPOINT (PRESERVED)
+
 # NSC2Switch MASTER CHECKPOINT — 2026-09-29 R179 FULL
 ## CURRENT RECOVERY OVERRIDE — R178 F20 MAPPING RETIRED; R179 F30 ELIGIBILITY CORRECTION
 

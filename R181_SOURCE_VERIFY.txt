@@ -1,15 +1,15 @@
 main_order PASS
-r180_fail_closed_main PASS
-r180_declared PASS
-r179_not_installed PASS
-r180_ready PASS
-r180_writer_marker PASS
-r180_writer_f30 PASS
-r180_gate_off PASS
-r180_native_gate_words PASS
-r180_zero_gate_write PASS
-r180_retired_gate PASS
-r180_no_action_mutation PASS
+r181_fail_closed_main PASS
+r181_declared PASS
+old_eligibility_installers_absent PASS
+r181_ready PASS
+r181_shadow_marker PASS
+r181_opcode13_zero_write PASS
+r181_gate_off PASS
+r181_native_gate_words PASS
+r181_zero_gate_write PASS
+r181_retired_eligibility PASS
+r181_no_action_mutation PASS
 r171_not_installed PASS
 r172_installed PASS
 r172_guard PASS
@@ -24,15 +24,15 @@ voice_probes_not_installed PASS
 p128_retained PASS
 thirty_word_plan PASS
 validate_before_write PASS
-workflow_r180 PASS
-prepare_r180_elf PASS
+workflow_r181 PASS
+prepare_r181_elf PASS
 original_main_sha256 PASS
 reference_p128_sha256 PASS
 reference_delta_30_words PASS 30
-r180_native_gate_fingerprint PASS
+r181_native_gate_fingerprint PASS
 r172_setter_fingerprint PASS
 r175_native_fallback_fingerprint PASS
 r175_action_lookup_fingerprint PASS
 r175_candidate_table PASS (923, 924, 921, 922)
 stage_registry_fingerprint PASS
-NSC_RUNTIME_R180_SOURCE_VERIFY=PASS
+NSC_RUNTIME_R181_SOURCE_VERIFY=PASS

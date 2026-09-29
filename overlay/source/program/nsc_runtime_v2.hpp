@@ -34,10 +34,10 @@ bool InstallOriginalMainRuntimePatches();
 bool RuntimeMainPatchesReady();
 bool GetDerivedUjGateLoadOffset(std::ptrdiff_t& out_offset);
 
-// R180 rollback-only recovery: retire the failed R178/R179 PC-style D-pad
-// native gate rewrite and verify the original Switch v1.70 E54/124 words are
-// intact. Event236 opcode13 remains on actor+0xF30; this function writes zero
-// gameplay words and exists only as a fail-closed native-gate fingerprint.
-bool InstallR180DpadNativeGateRollback();
+// R181 full eligibility rollback: restore the pre-R178 baseline by keeping
+// the original Switch v1.70 E54/124 gate intact and making Event236 opcode13
+// shadow-only. This function writes zero gate words and opcode13 writes zero
+// F20/F30 state.
+bool InstallR181DpadFullEligibilityRollback();
 
 } // namespace nsc::v2
