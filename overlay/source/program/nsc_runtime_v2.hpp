@@ -34,4 +34,9 @@ bool InstallOriginalMainRuntimePatches();
 bool RuntimeMainPatchesReady();
 bool GetDerivedUjGateLoadOffset(std::ptrdiff_t& out_offset);
 
+// R178 source-parity port of UltimateStormAPI's PC v1.70 "Dpad animations"
+// native gate patch. This is intentionally separate from the frozen exact
+// 30-word V2D/P128 runtime delta. Fail closed on the original two-word fingerprint.
+bool InstallR178DpadAnimationEligibilityParity();
+
 } // namespace nsc::v2

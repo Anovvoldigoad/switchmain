@@ -1,0 +1,85 @@
+R178 D-PAD ANIMATION ELIGIBILITY PARITY AUDIT
+Date: 2026-09-29
+Game: NARUTO X BORUTO Ultimate Ninja STORM CONNECTIONS Switch v1.70
+Title ID: 0100FA10190A0000
+Build ID: 48ECE454B61412B9FB46FAB2BE3F5EF7B2804F39
+
+HARDWARE INPUT / R177 RESULT
+- log19 is a Right-only R177 run.
+- Right selector remains mode3 -> native candidate922.
+- Global index922 exists as PL_ANM_SPTYPE_ACTION02, but actor lookup is NULL.
+- R177 upstream action record922 is an empty/default record:
+  binding=0, r1=0, r2=0, static/default descriptor; adjacent actions have r2=1.
+- R177 probe itself is read-only: registration_change=0, descriptor_clone=0, action_force=0.
+
+ASSET FORENSICS THAT RETIRE THE 922-CLONE THEORY
+- The active Switch Tobi R164 CPK contains PL_ANM_SPTYPE_ACTION01 and 03..10, but no ACTION02 resource string.
+- Historical P4_TOBI_DECRYPT_COMPILE_STAGE source/decrypted PC staging shows the SAME pattern: ACTION01 and 03..10, no ACTION02.
+- Therefore alpha14b did not drop ACTION02. Missing per-actor ACTION02 is source-consistent and MUST NOT be repaired by blindly cloning/inserting action922.
+
+PC ULTIMATESTORMAPI SOURCE CONTRACT
+HookFunctions.cpp has an explicit //Dpad animations patch before MovesetPlus hook installation.
+For the PC v1.70 layout it rewrites the native hard-coded eligibility check:
+  [actor+0xE64] == 124
+into:
+  [actor+0xF30] == 1
+The same source also implements Event236 opcode13 me_enable_dpad_animation by writing the D-pad enable flag.
+
+SWITCH LAYOUT PARITY
+Two independent actor-layout translations are already proven:
+- PC CharID +0xE64 -> Switch +0xE54
+- PC D-pad charge base +0x12B88 -> Switch +0x12B78
+Both are -0x10.
+Thus PC D-pad enable +0xF30 maps semantically to Switch +0xF20.
+
+Important correction:
+- old Switch opcode13 wrote +0xF30; this is wrong.
+- Switch native code independently uses +0xF30 (including writes at main+0x7A7594/0x7A788C/0x7A78AC and read at 0x7E74A4).
+- This explains historical observation that F30 could already be 1 before D-pad activation.
+- The old 'F30 activation-success flag' hypothesis remains retired.
+
+R178 IMPLEMENTATION
+1) Event236 opcode13 writer:
+   OLD Switch: actor+0xF30 = p2
+   R178:       actor+0xF20 = p2
+   Marker: [NSC:R178] DPAD_ENABLE ... f20=before->after f30_observed=...
+
+2) Separate two-word native eligibility patch, outside the frozen exact30 plan:
+   main+0x59CEB4 original:
+     B94E5768  LDR W8,[X27,#0xE54]
+     7101F11F  CMP W8,#0x7C
+   R178:
+     B94F2368  LDR W8,[X27,#0xF20]
+     7100051F  CMP W8,#1
+
+The surrounding Switch function is the strongest semantic homolog of PC DPadHud/Dpad animations:
+- obtains actor object in X27;
+- checks native actor charID124;
+- converts that equality to a boolean used to update a UI/control state object.
+
+SAFETY / FROZEN BASELINE
+- exact V2D/P128 30-word runtime delta unchanged.
+- R172 UJ SetAnmDirect parity unchanged.
+- non-UJ opcode23 suppression unchanged for this A/B.
+- selector table 923,924,921,922 unchanged.
+- no action922 force.
+- no actor binding insertion.
+- no descriptor clone.
+- no char281 gameplay branch.
+- no new trampoline/hook.
+- R164 StageInfo frozen.
+- voice frozen/skipped.
+
+SOURCE VERIFIER
+NSC_RUNTIME_R178_SOURCE_VERIFY=PASS
+
+HARDWARE TEST
+Fresh boot A: Left once.
+Fresh boot B: Right once.
+Capture:
+- [NSC:R178] READY parity=1
+- [NSC:R178] DPAD_ENABLE
+- R175 selector markers
+- R176/R177 matrices
+- downstream Event236/action sequence
+Observe visual/gameplay behavior; do not infer from disappearance alone because Left may intentionally disappear during its transition.

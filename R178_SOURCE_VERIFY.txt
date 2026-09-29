@@ -1,0 +1,40 @@
+main_order PASS
+r178_fail_closed_main PASS
+r178_declared PASS
+r178_ready PASS
+r178_writer_marker PASS
+r178_writer_f20 PASS
+r178_writer_no_f30 PASS
+r178_gate_off PASS
+r178_gate_before PASS
+r178_gate_after PASS
+r178_pc_contract PASS
+r178_separate_patch PASS
+r178_no_action_mutation PASS
+r171_not_installed PASS
+r172_installed PASS
+r172_guard PASS
+r172_other_op23_unchanged PASS
+r175_retained PASS
+r176_retained PASS
+r177_retained PASS
+selector_table_retained PASS
+no_char281_runtime_guard PASS
+stage_trace_hooks_omitted PASS
+voice_probes_not_installed PASS
+p128_retained PASS
+thirty_word_plan PASS
+validate_before_write PASS
+workflow_r178 PASS
+prepare_r178_elf PASS
+original_main_sha256 PASS
+reference_p128_sha256 PASS
+reference_delta_30_words PASS 30
+r178_dpad_gate_fingerprint PASS
+r178_target_encoding PASS
+r172_setter_fingerprint PASS
+r175_native_fallback_fingerprint PASS
+r175_action_lookup_fingerprint PASS
+r175_candidate_table PASS (923, 924, 921, 922)
+stage_registry_fingerprint PASS
+NSC_RUNTIME_R178_SOURCE_VERIFY=PASS

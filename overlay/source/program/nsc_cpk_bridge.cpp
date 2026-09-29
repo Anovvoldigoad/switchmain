@@ -2657,9 +2657,25 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 return 1;
             }
 
-            case 13: // source me_enable_dpad_animation
-                *reinterpret_cast<volatile int32_t*>(reinterpret_cast<uint8_t*>(actor) + 0xF30) = p2;
+            case 13: { // R178 source parity: me_enable_dpad_animation
+                // PC SC1.70 writes actor+0xF30. Switch actor layout is proven -0x10
+                // at both CharID (E64->E54) and D-pad charge (12B88->12B78), so
+                // the matching Switch field is actor+0xF20.  Do not touch native F30.
+                auto* pb = reinterpret_cast<uint8_t*>(actor);
+                auto* dpad_enable = reinterpret_cast<volatile int32_t*>(pb + 0xF20);
+                const int32_t f20_before = *dpad_enable;
+                const int32_t f30_observed =
+                    *reinterpret_cast<const volatile int32_t*>(pb + 0xF30);
+                *dpad_enable = p2;
+                const int32_t f20_after = *dpad_enable;
+                Logging.Log(
+                    "[NSC:R178] DPAD_ENABLE actor=%p side=%u char=%u p2=%d "
+                    "f20=%d->%d f30_observed=%d switch_off=0xf20 pc_off=0xf30",
+                    actor, side, char_id, static_cast<int>(p2),
+                    static_cast<int>(f20_before), static_cast<int>(f20_after),
+                    static_cast<int>(f30_observed));
                 return 1;
+            }
 
             case 14: {
                 // P64F functional semantic bridge: preserve victim-safe shadowing of
