@@ -1,4 +1,4 @@
-name: Build NSC R181 Runtime Core
+name: Build NSC R183 ModdingAPI Compatibility Hotfix
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Verify source package
-        run: python3 verify_runtime_r181.py
+        run: python3 verify_runtime_r183.py
 
       - name: Clone pinned exlaunch
         run: |
@@ -22,7 +22,7 @@ jobs:
           cd exlaunch
           git checkout 229bbd6
 
-      - name: Apply R181 overlay
+      - name: Apply R183 overlay
         run: bash prepare_exlaunch.sh exlaunch
 
       - name: Build
@@ -63,6 +63,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC2Switch-RUNTIME-CORE-R181
+          name: NSC2Switch-RUNTIME-R183-compat-hotfix
           path: out/**
           if-no-files-found: error

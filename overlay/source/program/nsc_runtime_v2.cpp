@@ -425,42 +425,41 @@ bool InstallR181DpadFullEligibilityRollback() {
     // - R179 F30 writer + gate rewrite remained regressed, and
     // - R180 restored the native gate but retained the F30 writer; Left still regressed.
     // Therefore R181 fully restores pre-R178 eligibility semantics: native gate untouched
-    // and opcode13 shadow-only. Locate the native gate by a unique instruction signature
-    // instead of depending on the v1.70 absolute offset.
-    static constexpr std::uint32_t kNativeGateSig[] = {
+    // and opcode13 shadow-only. The gate remains the Switch v1.70 pair:
+    //   LDR W8,[X27,#0xE54]
+    //   CMP W8,#0x7C
+    // R181 full rollback keeps the untouched Switch gate and writes zero gate words.
+    static constexpr std::ptrdiff_t kGateOff = 0x59CEB4;
+    static constexpr std::uint32_t kNative[] = {
         0xB94E5768u, // LDR W8,[X27,#0xE54]
         0x7101F11Fu, // CMP W8,#0x7C
-        0x1A9F07F9u,
-        0x1A9F17E8u,
-        0xAA1803F4u,
-        0xB84B8E89u,
-        0x6B08013Fu,
-        0x54000101u,
     };
 
     const std::uintptr_t base = exl::util::modules::GetTargetStart();
     if (!base) {
-        Logging.Log("[NSC:R181] READY full_rollback=0 fail_closed=1 reason=no_target_base gate_patch_words=0");
+        Logging.Log("[NSC:R181] READY full_rollback=0 fail_closed=1 reason=no_target_base "
+                    "hud_gate_off=0x59ceb4 gate_patch_words=0");
         return false;
     }
 
-    std::uint32_t hits = 0;
-    const std::ptrdiff_t gate_off = ResolveExactUnique(
-        base, kNativeGateSig, ARRAY_COUNT(kNativeGateSig), hits);
-    if (gate_off < 0) {
-        Logging.Log(
-            "[NSC:R181] READY full_rollback=0 fail_closed=1 reason=native_gate_resolve "
-            "hits=%u gate_patch_words=0", hits);
-        return false;
+    for (std::size_t i = 0; i < ARRAY_COUNT(kNative); ++i) {
+        std::uint32_t got = 0;
+        if (!ReadWord(base, kGateOff + static_cast<std::ptrdiff_t>(i * 4), got) || got != kNative[i]) {
+            Logging.Log("[NSC:R181] READY full_rollback=0 fail_closed=1 reason=native_fingerprint "
+                        "i=%u off=0x%lx got=%08x expected=%08x",
+                        static_cast<unsigned>(i),
+                        static_cast<unsigned long>(kGateOff + static_cast<std::ptrdiff_t>(i * 4)),
+                        got, kNative[i]);
+            return false;
+        }
     }
 
     Logging.Log(
-        "[NSC:R181] READY full_rollback=1 native_gate_original=1 hud_gate_off=0x%lx "
-        "gate_source=resolver native_e54_cmp124=1 gate_patch_words=0 opcode13_shadow=1 writer13_mutation=0 "
+        "[NSC:R181] READY full_rollback=1 native_gate_original=1 hud_gate_off=0x59ceb4 "
+        "native_e54_cmp124=1 gate_patch_words=0 opcode13_shadow=1 writer13_mutation=0 "
         "r178_f20_mapping_retired=1 r179_gate_patch_retired=1 r180_f30_writer_retired=1 "
         "exact30_unchanged=1 opcode23_change=0 registry_change=0 descriptor_clone=0 "
-        "action_force=0 no_char281_branch=1 zero_extra_trampoline=1",
-        static_cast<unsigned long>(gate_off));
+        "action_force=0 no_char281_branch=1 zero_extra_trampoline=1");
     return true;
 }
 } // namespace nsc::v2

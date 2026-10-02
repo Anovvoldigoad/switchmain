@@ -1,3 +1,9 @@
+# R183 CURRENT STATUS
+
+R182 resolver/CPK-path migrations caused a hardware regression (new-character VS stall and partial Isshiki loss). R183 keeps the bootstrap/core split and no-main packaging experiment, but restores R181 gate/R172/CPK-bind behavior. Do not use `NSC2Switch_ModPack.cpk` as an active runtime path in R183; use the previously proven content layout until the multi-pack loader is redesigned and tested.
+
+---
+
 # NSC2Switch ModdingAPI Architecture — bootstrap/core split
 
 ## Goal
