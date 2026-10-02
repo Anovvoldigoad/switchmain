@@ -430,7 +430,8 @@ constexpr ptrdiff_t kStageRegistryMapOffset      = 0x148;
 constexpr uint32_t kVanillaMaxCharId = 280;
 constexpr uint32_t kFirstCustomCharId = 281;
 constexpr int kModCpkPriority = 32;
-constexpr const char* kModCpkPath = "sim:data/moddingapi/Tobi_Switch.cpk";
+constexpr const char* kPrimaryModCpkPath = "sim:data/moddingapi/NSC2Switch_ModPack.cpk";
+constexpr const char* kLegacyModCpkPath  = "sim:data/moddingapi/Tobi_Switch.cpk";
 
 struct CpkPathArg {
     const char* path;
@@ -1871,18 +1872,31 @@ HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
         if (!g_extra_bind_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
             return original_result;
         }
-        CpkPathArg extra{kModCpkPath, 0, 0, 0};
+        const char* selected_path = kPrimaryModCpkPath;
+        CpkPathArg extra{selected_path, 0, 0, 0};
         uint32_t extra_bind_id = 0;
-        const uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
+        uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
+
+        // Backward compatibility for the existing single-Tobi package. New
+        // content builds should use NSC2Switch_ModPack.cpk so the runtime no
+        // longer needs to change when characters are added/removed.
+        if (extra_result == 0u) {
+            selected_path = kLegacyModCpkPath;
+            CpkPathArg legacy{selected_path, 0, 0, 0};
+            extra_bind_id = 0;
+            extra_result = Orig(&legacy, &extra_bind_id, kModCpkPriority);
+        }
+
         if (extra_result != 0u) {
             g_v2p_cpk_bound_success.store(1u, std::memory_order_release);
         }
-        Logging.Log("[NSC:P50A] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
-                    kModCpkPath, kModCpkPriority, extra_result, extra_bind_id);
+        Logging.Log("[NSC:P50A] CPK_BIND path=%s priority=%d result=%u bind_id=%u primary=%s legacy_fallback=%u",
+                    selected_path, kModCpkPriority, extra_result, extra_bind_id,
+                    kPrimaryModCpkPath, selected_path == kLegacyModCpkPath ? 1u : 0u);
         Logging.Log(
             "[NSC:V2P] CPK_BOUND path=%s result=%u bind_id=%u success=%u "
             "stageinfo_seen_before_bind=%u passive_order_probe=1",
-            kModCpkPath, extra_result, extra_bind_id, extra_result ? 1u : 0u,
+            selected_path, extra_result, extra_bind_id, extra_result ? 1u : 0u,
             g_v2p_stageinfo_seen_before_bind.load(std::memory_order_acquire));
         return original_result;
     }
@@ -9310,18 +9324,27 @@ bool InstallR172UjMissAnmDirectParity() {
         0xF9410C08, 0x4EA01C08, 0x2A0303F4, 0x2A0203F6,
         0xAA0003F3, 0x2A0103F5,
     };
-    const bool ok = MatchWords(kCentralActionSetterOffset, kSetterExpected);
-    if (!ok) {
-        LogFingerprintFail("R172_SET_ANM_DIRECT_766320", kCentralActionSetterOffset);
+    std::ptrdiff_t setter_off = -1;
+    if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::CentralSetter, setter_off)) {
         Logging.Log(
-            "[NSC:R172] READY parity=0 fail_closed=1 direct_off=0x766320 "
+            "[NSC:R172] READY parity=0 fail_closed=1 reason=resolver_unavailable "
             "uj_miss_scope=0 force708=0 force710=0 dpad_change=0 p128_change=0");
         return false;
     }
+    const bool ok = MatchWords(setter_off, kSetterExpected);
+    if (!ok) {
+        LogFingerprintFail("R172_SET_ANM_DIRECT_RESOLVED", setter_off);
+        Logging.Log(
+            "[NSC:R172] READY parity=0 fail_closed=1 direct_off=0x%lx "
+            "uj_miss_scope=0 force708=0 force710=0 dpad_change=0 p128_change=0",
+            static_cast<unsigned long>(setter_off));
+        return false;
+    }
     Logging.Log(
-        "[NSC:R172] READY parity=1 direct_off=0x766320 scoped_uj_miss_only=1 "
+        "[NSC:R172] READY parity=1 direct_off=0x%lx source=resolver scoped_uj_miss_only=1 "
         "guard=semantic_member_self_anim707_state8 no_char281=1 no_ixn0_string_guard=1 "
-        "force708=0 force710=0 force74=0 force77=0 dpad_change=0 p128_change=0");
+        "force708=0 force710=0 force74=0 force77=0 dpad_change=0 p128_change=0",
+        static_cast<unsigned long>(setter_off));
     return true;
 }
 

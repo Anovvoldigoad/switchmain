@@ -1,4 +1,4 @@
-name: Build NSC R181 Full D-Pad Eligibility Rollback
+name: Build NSC R181 Runtime Core
 
 on:
   workflow_dispatch:
@@ -29,28 +29,40 @@ jobs:
         working-directory: exlaunch
         run: make -j2
 
-      - name: Package original main + runtime
+      - name: Package runtime bootstrap only
         shell: bash
         run: |
           set -euo pipefail
           SUBSDK="$(find exlaunch -type f -name subsdk9 -print -quit)"
           test -n "$SUBSDK"
+
           OUT="$GITHUB_WORKSPACE/out"
-          EXE="$OUT/atmosphere/contents/0100FA10190A0000/exefs"
-          REST="$OUT/restore/atmosphere/contents/0100FA10190A0000/exefs"
-          mkdir -p "$EXE" "$REST"
-          cp original/atmosphere/contents/0100FA10190A0000/exefs/main "$EXE/main"
+          EXE="$OUT/runtime/atmosphere/contents/0100FA10190A0000/exefs"
+          mkdir -p "$EXE"
+
+          # Deliberately do NOT package or replace the game's main NSO.
+          # Atmosphere will fall back to the title's own ExeFS main when no
+          # loose SD override exists. subsdk9 is a bootstrap only.
           cp "$SUBSDK" "$EXE/subsdk9"
-          cp original/atmosphere/contents/0100FA10190A0000/exefs/main "$REST/main"
+
           cd "$OUT"
-          sha256sum atmosphere/contents/0100FA10190A0000/exefs/main \
-                    atmosphere/contents/0100FA10190A0000/exefs/subsdk9 \
-                    restore/atmosphere/contents/0100FA10190A0000/exefs/main > SHA256SUMS.txt
-          grep '2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9' SHA256SUMS.txt
+          sha256sum runtime/atmosphere/contents/0100FA10190A0000/exefs/subsdk9 > SHA256SUMS.txt
+          printf '%s\n' \
+            'NSC2Switch runtime core: install once.' \
+            'Do not copy a game main file into this package.' \
+            'Character/content mods should contain RomFS data only.' \
+            > INSTALL.txt
+
+      - name: Assert no main override is shipped
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e out/runtime/atmosphere/contents/0100FA10190A0000/exefs/main
+          test -e out/runtime/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-RUNTIME-R181-dpad-full-eligibility-rollback
+          name: NSC2Switch-RUNTIME-CORE-R181
           path: out/**
           if-no-files-found: error

@@ -9,28 +9,35 @@ root=Path(__file__).resolve().parent
 rt=(root/'overlay/source/program/nsc_runtime_v2.cpp').read_text()
 bridge=(root/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
 main=(root/'overlay/source/program/main.cpp').read_text()
+core=(root/'overlay/source/program/nsc_runtime_core.cpp').read_text()
+coreh=(root/'overlay/source/program/nsc_runtime_core.hpp').read_text()
 rth=(root/'overlay/source/program/nsc_runtime_v2.hpp').read_text()
 hdr=(root/'overlay/source/program/nsc_cpk_bridge.hpp').read_text()
 prep=(root/'prepare_exlaunch.sh').read_text()
 wfs=list((root/'.github/workflows').glob('*.yml'))
 wf=wfs[0].read_text() if len(wfs)==1 else ''
+checkpoint_latest=(root/'NSC2Switch_MASTER_CHECKPOINT_LATEST.md').read_text()
+checkpoint_current=(root/'NSC2Switch_MASTER_CHECKPOINT_2026-10-02_R182_FULL.md').read_text()
 fn=rt[rt.index('bool InstallR181DpadFullEligibilityRollback() {'):rt.index('\n} // namespace nsc::v2',rt.index('bool InstallR181DpadFullEligibilityRollback() {'))]
 case13=bridge[bridge.index('case 13: { // R181'):bridge.index('case 14:', bridge.index('case 13: { // R181'))]
 checks={
- 'main_order': main.index('InstallResolverHookMigrationProbe();') < main.index('InstallOriginalMainRuntimePatches()') < main.index('InstallR181DpadFullEligibilityRollback()') < main.index('InstallP128AStaticPreciseGateCaveProof();') < main.index('InstallR172UjMissAnmDirectParity();') < main.index('InstallR175DpadLookupMatrixTrace();') < main.index('InstallR176ActionRegistryMatrixTrace();') < main.index('InstallR177ActionDescriptorMatrixTrace();') < main.index('InstallV2NStageRegistryProof();'),
- 'r181_fail_closed_main':'if (!nsc::v2::InstallR181DpadFullEligibilityRollback()) return;' in main,
+ 'main_thin_bootstrap': 'exl::hook::Initialize();' in main and 'nsc_runtime_initialize();' in main and 'InstallResolverHookMigrationProbe' not in main,
+ 'core_order': core.index('InstallResolverHookMigrationProbe();') < core.index('InstallOriginalMainRuntimePatches()') < core.index('InstallR181DpadFullEligibilityRollback()') < core.index('InstallP128AStaticPreciseGateCaveProof();') < core.index('InstallR172UjMissAnmDirectParity();') < core.index('InstallR175DpadLookupMatrixTrace();') < core.index('InstallR176ActionRegistryMatrixTrace();') < core.index('InstallR177ActionDescriptorMatrixTrace();') < core.index('InstallV2NStageRegistryProof();'),
+ 'runtime_c_abi':'extern \"C\" bool nsc_runtime_initialize();' in coreh and 'extern \"C\" bool nsc_runtime_initialize()' in core,
+ 'r181_fail_closed_core':'if (!nsc::v2::InstallR181DpadFullEligibilityRollback()) return false;' in core,
  'r181_declared':'bool InstallR181DpadFullEligibilityRollback();' in rth,
- 'old_eligibility_installers_absent': all(x not in main+rth for x in ('InstallR178DpadAnimationEligibilityParity','InstallR179DpadAnimationEligibilityParity','InstallR180DpadNativeGateRollback')),
+ 'old_eligibility_installers_absent': all(x not in main+core+rth for x in ('InstallR178DpadAnimationEligibilityParity','InstallR179DpadAnimationEligibilityParity','InstallR180DpadNativeGateRollback')),
  'r181_ready':'[NSC:R181] READY full_rollback=1 native_gate_original=1' in rt,
  'r181_shadow_marker':'[NSC:R181] OP13_SHADOW actor=%p side=%u char=%u p2=%d' in bridge and 'no_state_write=1' in case13,
  'r181_opcode13_zero_write': all(x not in case13 for x in ('*dpad_enable = p2','pb + 0xF20) =','pb + 0xF30) =','memcpy','Write<')) and 'f30_observed' in case13 and 'f20_observed' in case13,
- 'r181_gate_off':'kGateOff = 0x59CEB4' in fn,
+ 'r181_gate_resolved':'ResolveExactUnique' in fn and 'kNativeGateSig' in fn and 'gate_source=resolver' in fn,
  'r181_native_gate_words':'0xB94E5768u' in fn and '0x7101F11Fu' in fn,
  'r181_zero_gate_write':'RandomAccessPatcher' not in fn and 'patcher.Write' not in fn and 'gate_patch_words=0' in fn,
  'r181_retired_eligibility':'r179_gate_patch_retired=1' in fn and 'r178_f20_mapping_retired=1' in fn and 'r180_f30_writer_retired=1' in fn and 'writer13_mutation=0' in fn,
  'r181_no_action_mutation':all(x in fn for x in ('opcode23_change=0','registry_change=0','descriptor_clone=0','action_force=0','no_char281_branch=1')),
- 'r171_not_installed':'InstallR171Uj707Flag70Release();' not in main and 'ActionGateFlagReleaseHook::InstallAtOffset' not in bridge,
- 'r172_installed':'InstallR172UjMissAnmDirectParity();' in main and 'bool InstallR172UjMissAnmDirectParity();' in hdr,
+ 'r171_not_installed':'InstallR171Uj707Flag70Release();' not in core and 'ActionGateFlagReleaseHook::InstallAtOffset' not in bridge,
+ 'r172_installed':'InstallR172UjMissAnmDirectParity();' in core and 'bool InstallR172UjMissAnmDirectParity();' in hdr,
+ 'r172_resolver_driven':'GetResolvedOffset(nsc::v2::Anchor::CentralSetter, setter_off)' in bridge and 'R172_SET_ANM_DIRECT_RESOLVED' in bridge,
  'r172_guard':all(x in bridge for x in ('param2 == 0','side == 0u','semantic && member','anm1268_before == 707u','state1268_after_pre == 707u','param3 == 8')),
  'r172_other_op23_unchanged':'[NSC:V2H] OP23_SAFE_SUPPRESS' in bridge and 'setanmdirect_deferred_non_uj=1' in bridge,
  'r175_retained':'[NSC:R175] READY dpad_lookup_matrix_trace=1' in bridge,
@@ -38,13 +45,20 @@ checks={
  'r177_retained':'[NSC:R177] READY dpad_action_descriptor_matrix=1' in bridge,
  'selector_table_retained':all(x in bridge for x in ('case 0u: base_candidate = 923u','case 1u: base_candidate = 924u','case 2u: base_candidate = 921u','case 3u: base_candidate = 922u')),
  'no_char281_runtime_guard':'char_id == 281' not in bridge,
- 'stage_trace_hooks_omitted':'InstallV2MStageSafeTraceHooks();' not in main,
- 'voice_probes_not_installed':'InstallR165Event150VoiceReadOnlyProbe();' not in main and 'InstallR166SoundDispatchReadOnlyProbe();' not in main,
+ 'stage_trace_hooks_omitted':'InstallV2MStageSafeTraceHooks();' not in core,
+ 'voice_probes_not_installed':'InstallR165Event150VoiceReadOnlyProbe();' not in core and 'InstallR166SoundDispatchReadOnlyProbe();' not in core,
  'p128_retained':'[NSC:P128A] READY' in bridge and 'no_force708=1' in bridge and 'no_force710=1' in bridge,
  'thirty_word_plan':'WordPatch plan[30]' in rt and 'condition_words=5 p67_words=1 p128_words=24' in rt,
  'validate_before_write':rt.index('Validate ALL original words before the first write') < rt.index('patcher.Write<std::uint32_t>'),
- 'workflow_r181':len(wfs)==1 and 'NSC-RUNTIME-R181-dpad-full-eligibility-rollback' in wf and 'verify_runtime_r181.py' in wf,
+ 'workflow_runtime_core':len(wfs)==1 and 'NSC2Switch-RUNTIME-CORE-R181' in wf and 'verify_runtime_r181.py' in wf,
+ 'workflow_no_main_payload':'cp original/atmosphere/contents/0100FA10190A0000/exefs/main' not in wf and 'Assert no main override is shipped' in wf,
+ 'workflow_bootstrap_only':'cp \"$SUBSDK\" \"$EXE/subsdk9\"' in wf,
+ 'generic_modpack_path':'sim:data/moddingapi/NSC2Switch_ModPack.cpk' in bridge and 'sim:data/moddingapi/Tobi_Switch.cpk' in bridge,
  'prepare_r181_elf':'runtime_r181.elf' in prep,
+ 'checkpoint_full_sync': checkpoint_latest == checkpoint_current,
+ 'checkpoint_r182_current': '# NSC2Switch MASTER CHECKPOINT — 2026-10-02 R182 FULL' in checkpoint_current,
+ 'checkpoint_rule_frozen': 'EVERY PROJECT UPDATE MUST UPDATE THIS FULL MASTER CHECKPOINT.' in checkpoint_current,
+ 'checkpoint_preserves_r181': '# NSC2Switch MASTER CHECKPOINT — 2026-09-30 R181 FULL' in checkpoint_current,
 }
 for k,v in checks.items(): print(k,'PASS' if v else 'FAIL')
 if not all(checks.values()): sys.exit(1)
