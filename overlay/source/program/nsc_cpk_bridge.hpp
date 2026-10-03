@@ -1,7 +1,7 @@
 #pragma once
 
 namespace nsc {
-bool InstallR204HNativeCharselOwnerTrace();
+bool InstallR204INativeCharselOwnerTrace();
 void InstallP50AConditionCompat();
 void InstallP52APreUjProbe();
 void InstallP53AInputPromotionProbe();
