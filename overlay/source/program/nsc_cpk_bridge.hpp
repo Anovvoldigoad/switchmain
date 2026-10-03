@@ -1,6 +1,7 @@
 #pragma once
 
 namespace nsc {
+bool InstallR204ANativeMtobTrace();
 void InstallP50AConditionCompat();
 void InstallP52APreUjProbe();
 void InstallP53AInputPromotionProbe();

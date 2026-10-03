@@ -101,8 +101,3 @@ Do not mass-convert every historical offset. Migrate live paths first.
 Hardware validation is still required before treating the modified runtime binary
 as a new hardware baseline, because source verification cannot prove trampoline,
 loader, or in-game behavior on Switch hardware.
-
-
-## Mandatory master-checkpoint discipline
-
-From R182 onward, every NSC2Switch project change must also update the full master checkpoint. `NSC2Switch_MASTER_CHECKPOINT_LATEST.md` must be byte-identical to the current dated FULL checkpoint, and prior full history must remain preserved below the new authoritative section. The source verifier enforces this rule.

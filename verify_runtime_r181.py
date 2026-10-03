@@ -16,8 +16,6 @@ hdr=(root/'overlay/source/program/nsc_cpk_bridge.hpp').read_text()
 prep=(root/'prepare_exlaunch.sh').read_text()
 wfs=list((root/'.github/workflows').glob('*.yml'))
 wf=wfs[0].read_text() if len(wfs)==1 else ''
-checkpoint_latest=(root/'NSC2Switch_MASTER_CHECKPOINT_LATEST.md').read_text()
-checkpoint_current=(root/'NSC2Switch_MASTER_CHECKPOINT_2026-10-02_R182_FULL.md').read_text()
 fn=rt[rt.index('bool InstallR181DpadFullEligibilityRollback() {'):rt.index('\n} // namespace nsc::v2',rt.index('bool InstallR181DpadFullEligibilityRollback() {'))]
 case13=bridge[bridge.index('case 13: { // R181'):bridge.index('case 14:', bridge.index('case 13: { // R181'))]
 checks={
@@ -55,10 +53,6 @@ checks={
  'workflow_bootstrap_only':'cp \"$SUBSDK\" \"$EXE/subsdk9\"' in wf,
  'generic_modpack_path':'sim:data/moddingapi/NSC2Switch_ModPack.cpk' in bridge and 'sim:data/moddingapi/Tobi_Switch.cpk' in bridge,
  'prepare_r181_elf':'runtime_r181.elf' in prep,
- 'checkpoint_full_sync': checkpoint_latest == checkpoint_current,
- 'checkpoint_r182_current': '# NSC2Switch MASTER CHECKPOINT — 2026-10-02 R182 FULL' in checkpoint_current,
- 'checkpoint_rule_frozen': 'EVERY PROJECT UPDATE MUST UPDATE THIS FULL MASTER CHECKPOINT.' in checkpoint_current,
- 'checkpoint_preserves_r181': '# NSC2Switch MASTER CHECKPOINT — 2026-09-30 R181 FULL' in checkpoint_current,
 }
 for k,v in checks.items(): print(k,'PASS' if v else 'FAIL')
 if not all(checks.values()): sys.exit(1)

@@ -1,25 +1,13 @@
 #include "nsc_runtime_core.hpp"
 #include "nsc_cpk_bridge.hpp"
-#include "nsc_runtime_v2.hpp"
 
 namespace nsc::runtime {
 
 bool Initialize() {
-    // Keep the proven R181 install order unchanged. This file intentionally
-    // contains no exlaunch entrypoint so another bootstrap can call the same
-    // runtime ABI later without moving gameplay/core initialization again.
-    nsc::v2::InstallResolverHookMigrationProbe();
-    if (!nsc::v2::InstallOriginalMainRuntimePatches()) return false;
-    if (!nsc::v2::InstallR181DpadFullEligibilityRollback()) return false;
-
-    nsc::InstallP128AStaticPreciseGateCaveProof();
-    nsc::InstallR172UjMissAnmDirectParity();
-    nsc::InstallR175DpadLookupMatrixTrace();
-    nsc::InstallR176ActionRegistryMatrixTrace();
-    nsc::InstallR177ActionDescriptorMatrixTrace();
-    nsc::InstallV2NStageRegistryProof();
-    nsc::InstallV2PPassiveOrderProbe();
-    return true;
+    // R204A is a temporary read-only diagnostic runtime.
+    // It intentionally installs no gameplay patches, no CPK binder, no
+    // numeric-ID expansion, and no custom resource mutation.
+    return nsc::InstallR204ANativeMtobTrace();
 }
 
 } // namespace nsc::runtime

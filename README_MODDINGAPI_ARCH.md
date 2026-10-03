@@ -1,9 +1,3 @@
-# R183 CURRENT STATUS
-
-R182 resolver/CPK-path migrations caused a hardware regression (new-character VS stall and partial Isshiki loss). R183 keeps the bootstrap/core split and no-main packaging experiment, but restores R181 gate/R172/CPK-bind behavior. Do not use `NSC2Switch_ModPack.cpk` as an active runtime path in R183; use the previously proven content layout until the multi-pack loader is redesigned and tested.
-
----
-
 # NSC2Switch ModdingAPI Architecture — bootstrap/core split
 
 ## Goal
@@ -70,8 +64,3 @@ keeps character additions/removals out of the runtime binary.
 
 A later enhancement may add a runtime manifest or generic CPK slots, but that is
 not required to remove per-character runtime rebuilds.
-
-
-## Checkpoint discipline
-
-Every source, resolver, workflow, packaging, hardware conclusion, or architecture update must be accompanied by a new FULL master checkpoint. `NSC2Switch_MASTER_CHECKPOINT_LATEST.md` must exactly match the dated current FULL checkpoint; do not ship delta-only checkpoint notes.

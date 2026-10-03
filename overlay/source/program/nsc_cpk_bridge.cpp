@@ -430,7 +430,8 @@ constexpr ptrdiff_t kStageRegistryMapOffset      = 0x148;
 constexpr uint32_t kVanillaMaxCharId = 280;
 constexpr uint32_t kFirstCustomCharId = 281;
 constexpr int kModCpkPriority = 32;
-constexpr const char* kModCpkPath = "sim:data/moddingapi/Tobi_Switch.cpk";
+constexpr const char* kPrimaryModCpkPath = "sim:data/moddingapi/NSC2Switch_ModPack.cpk";
+constexpr const char* kLegacyModCpkPath  = "sim:data/moddingapi/Tobi_Switch.cpk";
 
 struct CpkPathArg {
     const char* path;
@@ -1871,18 +1872,31 @@ HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
         if (!g_extra_bind_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
             return original_result;
         }
-        CpkPathArg extra{kModCpkPath, 0, 0, 0};
+        const char* selected_path = kPrimaryModCpkPath;
+        CpkPathArg extra{selected_path, 0, 0, 0};
         uint32_t extra_bind_id = 0;
-        const uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
+        uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
+
+        // Backward compatibility for the existing single-Tobi package. New
+        // content builds should use NSC2Switch_ModPack.cpk so the runtime no
+        // longer needs to change when characters are added/removed.
+        if (extra_result == 0u) {
+            selected_path = kLegacyModCpkPath;
+            CpkPathArg legacy{selected_path, 0, 0, 0};
+            extra_bind_id = 0;
+            extra_result = Orig(&legacy, &extra_bind_id, kModCpkPriority);
+        }
+
         if (extra_result != 0u) {
             g_v2p_cpk_bound_success.store(1u, std::memory_order_release);
         }
-        Logging.Log("[NSC:P50A] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
-                    kModCpkPath, kModCpkPriority, extra_result, extra_bind_id);
+        Logging.Log("[NSC:P50A] CPK_BIND path=%s priority=%d result=%u bind_id=%u primary=%s legacy_fallback=%u",
+                    selected_path, kModCpkPriority, extra_result, extra_bind_id,
+                    kPrimaryModCpkPath, selected_path == kLegacyModCpkPath ? 1u : 0u);
         Logging.Log(
             "[NSC:V2P] CPK_BOUND path=%s result=%u bind_id=%u success=%u "
             "stageinfo_seen_before_bind=%u passive_order_probe=1",
-            kModCpkPath, extra_result, extra_bind_id, extra_result ? 1u : 0u,
+            selected_path, extra_result, extra_bind_id, extra_result ? 1u : 0u,
             g_v2p_stageinfo_seen_before_bind.load(std::memory_order_acquire));
         return original_result;
     }
@@ -1931,7 +1945,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
         }
         if (IsInterestingPath(path) &&
             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:P50A] LOAD_REQ manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:R204A] LOAD_REQ manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -1944,7 +1958,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
         void* result = Orig(manager, path, options);
         if (IsInterestingPath(path) &&
             g_create_logs.fetch_add(1, std::memory_order_relaxed) < 128) {
-            Logging.Log("[NSC:P50A] LOAD_CREATE manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:R204A] LOAD_CREATE manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -1991,14 +2005,14 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
         if (overflow) {
             uint32_t expected = 0;
             if (g_status_overflow_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
-                Logging.Log("[NSC:P50A] STATUS_TABLE_OVERFLOW max=%u",
+                Logging.Log("[NSC:R204A] STATUS_TABLE_OVERFLOW max=%u",
                             static_cast<unsigned>(sizeof(g_status_entries) / sizeof(g_status_entries[0])));
             }
         }
 
         if (should_log &&
             g_status_transition_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:P50A] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
+            Logging.Log("[NSC:R204A] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
                         manager, path ? path : "<null>", first ? 1u : 0u, previous, status);
         }
         return status;
@@ -2013,7 +2027,7 @@ HOOK_DEFINE_TRAMPOLINE(ChunkBinaryHook) {
         void* result = Orig(full_path, key);
         if (IsInterestingChunk(full_path, key) &&
             g_chunk_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:P50A] CHUNK path=%s key=%s result=%p",
+            Logging.Log("[NSC:R204A] CHUNK path=%s key=%s result=%p",
                         full_path ? full_path : "<null>",
                         key ? key : "<null>", result);
         }
@@ -2031,7 +2045,7 @@ HOOK_DEFINE_TRAMPOLINE(FileOpenHook) {
         const uint32_t result = Orig(request, path, slot);
         if (IsInterestingPath(path) &&
             g_file_open_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:P50A] FILE_OPEN request=%p path=%s slot=%u result=%u",
+            Logging.Log("[NSC:R204A] FILE_OPEN request=%p path=%s slot=%u result=%u",
                         request, path ? path : "<null>", slot, result);
         }
         return result;
@@ -2070,7 +2084,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
             read_error = *p;
         }
 
-        Logging.Log("[NSC:P50A] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
+        Logging.Log("[NSC:R204A] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
                     path ? path : "<null>", owner, read_context, load_object,
                     load_status, read_error);
     }
@@ -6347,6 +6361,16 @@ bool InstallP52PreUjTraceHooks() {
 
 } // namespace
 
+bool InstallR204ANativeMtobTrace() {
+    const bool ok = InstallTraceHooks();
+    Logging.Log(
+        "[NSC:R204A] READY installed=%u readonly=1 fixture=mtob native_id_control=46 "
+        "cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0 "
+        "hooks=LOAD_REQ,LOAD_CREATE,LOAD_STATUS,FILE_OPEN,PROCESS,CHUNK",
+        ok ? 1u : 0u);
+    return ok;
+}
+
 bool InstallPlayActionProbe() {
     static constexpr uint32_t kPlayActionExpected[] = {
         0xA9BE57FE, 0xA9014FF4, 0xB9529408, 0x2A0403F4,
@@ -9310,18 +9334,27 @@ bool InstallR172UjMissAnmDirectParity() {
         0xF9410C08, 0x4EA01C08, 0x2A0303F4, 0x2A0203F6,
         0xAA0003F3, 0x2A0103F5,
     };
-    const bool ok = MatchWords(kCentralActionSetterOffset, kSetterExpected);
-    if (!ok) {
-        LogFingerprintFail("R172_SET_ANM_DIRECT_766320", kCentralActionSetterOffset);
+    std::ptrdiff_t setter_off = -1;
+    if (!nsc::v2::GetResolvedOffset(nsc::v2::Anchor::CentralSetter, setter_off)) {
         Logging.Log(
-            "[NSC:R172] READY parity=0 fail_closed=1 direct_off=0x766320 "
+            "[NSC:R172] READY parity=0 fail_closed=1 reason=resolver_unavailable "
             "uj_miss_scope=0 force708=0 force710=0 dpad_change=0 p128_change=0");
         return false;
     }
+    const bool ok = MatchWords(setter_off, kSetterExpected);
+    if (!ok) {
+        LogFingerprintFail("R172_SET_ANM_DIRECT_RESOLVED", setter_off);
+        Logging.Log(
+            "[NSC:R172] READY parity=0 fail_closed=1 direct_off=0x%lx "
+            "uj_miss_scope=0 force708=0 force710=0 dpad_change=0 p128_change=0",
+            static_cast<unsigned long>(setter_off));
+        return false;
+    }
     Logging.Log(
-        "[NSC:R172] READY parity=1 direct_off=0x766320 scoped_uj_miss_only=1 "
+        "[NSC:R172] READY parity=1 direct_off=0x%lx source=resolver scoped_uj_miss_only=1 "
         "guard=semantic_member_self_anim707_state8 no_char281=1 no_ixn0_string_guard=1 "
-        "force708=0 force710=0 force74=0 force77=0 dpad_change=0 p128_change=0");
+        "force708=0 force710=0 force74=0 force77=0 dpad_change=0 p128_change=0",
+        static_cast<unsigned long>(setter_off));
     return true;
 }
 
