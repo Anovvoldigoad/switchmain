@@ -10,3 +10,6 @@ New probes:
 No arguments, returns, paths, hashes, load states, registry nodes, or gameplay state are modified. R215A `sound.cpk` remains unchanged.
 
 Hardware protocol: cold boot, hover one working vanilla preview briefly, then target slot for 10+ seconds, exit, and provide full log plus visual result.
+
+## R204J build-only logger fix (R220)
+The original R204J READY banner exceeded exlaunch LoggerMgr's 512-byte snprintf buffer and failed under `-Werror=format-truncation`. R220 splits the same diagnostic metadata across `READY`, `READY_FLAGS`, and `READY_HOOKS`. Hook offsets, fingerprints, callbacks, return values, and runtime behavior are unchanged.

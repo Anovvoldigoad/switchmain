@@ -6843,10 +6843,12 @@ bool InstallP52PreUjTraceHooks() {
 bool InstallR204JNativeCharselOwnerTrace() {
     const bool ok = InstallTraceHooks();
     Logging.Log(
-        "[NSC:R204J] READY installed=%u process_installed=%u completion_writers=1 resource_consumers=1 chunk_key_text=1 trace_1nrt_children=1 owner_poll_trace=1 owner_register_trace=1 tree_verify=1 registry_process_trace=1 target_registry_scan=1 trace_all_charsel=1 readonly=1 fixture=mtob native_id_control=46 "
-        "cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0 "
-        "mandatory_hooks=LOAD_REQ,LOAD_CREATE,LOAD_STATUS,FILE_OPEN,PROCESS,CHUNK,STATE_SET,SUCCESS_SET,RESOURCE_LOOKUP,CHUNK_LOW,OWNER_INIT,OWNER_INIT5,OWNER_REGISTER,REGISTRY_PROCESS,OWNER_READY,OWNER_STATE",
+        "[NSC:R204J] READY installed=%u process_installed=%u completion_writers=1 resource_consumers=1 chunk_key_text=1 trace_1nrt_children=1 owner_poll_trace=1 owner_register_trace=1 tree_verify=1 registry_process_trace=1 target_registry_scan=1",
         ok ? 1u : 0u, g_r204j_process_hook_installed ? 1u : 0u);
+    Logging.Log(
+        "[NSC:R204J] READY_FLAGS trace_all_charsel=1 readonly=1 fixture=mtob native_id_control=46 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0");
+    Logging.Log(
+        "[NSC:R204J] READY_HOOKS mandatory_hooks=LOAD_REQ,LOAD_CREATE,LOAD_STATUS,FILE_OPEN,PROCESS,CHUNK,STATE_SET,SUCCESS_SET,RESOURCE_LOOKUP,CHUNK_LOW,OWNER_INIT,OWNER_INIT5,OWNER_REGISTER,REGISTRY_PROCESS,OWNER_READY,OWNER_STATE");
     return ok;
 }
 
