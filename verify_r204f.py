@@ -10,19 +10,20 @@ core=(root/"overlay/source/program/nsc_runtime_core.cpp").read_text()
 bridge=(root/"overlay/source/program/nsc_cpk_bridge.cpp").read_text()
 hpp=(root/"overlay/source/program/nsc_cpk_bridge.hpp").read_text()
 checks={
- "core_calls_r204e_only":"return nsc::InstallR204ENativeMtobResourceTrace();" in core,
+ "core_calls_r204f_only":"return nsc::InstallR204FNativeMtobChunkKeyTrace();" in core,
  "no_gameplay_installer_in_core":all(x not in core for x in ["InstallP128","InstallR172","InstallR175","InstallR176","InstallR177","InstallV2N","InstallV2P","InstallResolverHookMigrationProbe","InstallOriginalMainRuntimePatches"]),
- "public_decl":"bool InstallR204ENativeMtobResourceTrace();" in hpp,
- "ready_marker":"[NSC:R204E] READY" in bridge and "resource_consumers=1" in bridge,
- "success_set":"[NSC:R204E] SUCCESS_SET" in bridge,
- "resource_lookup":"[NSC:R204E] RESOURCE_LOOKUP" in bridge,
- "chunk_low":"[NSC:R204E] CHUNK_LOW" in bridge,
+ "public_decl":"bool InstallR204FNativeMtobChunkKeyTrace();" in hpp,
+ "ready_marker":"[NSC:R204F] READY" in bridge and "resource_consumers=1" in bridge,
+ "success_set":"[NSC:R204F] SUCCESS_SET" in bridge,
+ "resource_lookup":"[NSC:R204F] RESOURCE_LOOKUP" in bridge,
+ "chunk_low":"[NSC:R204F] CHUNK_LOW" in bridge,
+ "chunk_key_text":all(x in bridge for x in ["key_text[97]", "key_printable=%u", "key_len=%u", "key_text=%s"]),
  "resource_lookup_offset":"kFileResourceLookupOffset = 0x1207B38" in bridge,
  "chunk_low_offset":"kChunkResourceLookupOffset = 0x120A3D4" in bridge,
  "resource_tracking":all(x in bridge for x in ["TrackResourcePath(resource, path)","LookupResourcePath(resource, path, sizeof(path))","ResourcePathEntry g_resource_path_entries[128]"]),
  "resource_lookup_installed":"FileResourceLookupHook::InstallAtOffset(kFileResourceLookupOffset);" in bridge,
  "chunk_low_installed":"ChunkResourceLookupHook::InstallAtOffset(kChunkResourceLookupOffset);" in bridge,
- "no_cpk_bind_install":"CpkBindHook::Install" not in bridge[bridge.index("bool InstallR204ENativeMtobResourceTrace()"):bridge.index("bool InstallPlayActionProbe()")],
+ "no_cpk_bind_install":"CpkBindHook::Install" not in bridge[bridge.index("bool InstallR204FNativeMtobChunkKeyTrace()"):bridge.index("bool InstallPlayActionProbe()")],
 }
 for k,v in checks.items(): print(f"{k}={'PASS' if v else 'FAIL'}")
 if not all(checks.values()): sys.exit(1)
@@ -44,4 +45,4 @@ expected_chunk=[0xD10143FF,0xA90357FE,0xA9044FF4,0xAA0203F3,0xAA0103F4,0xB90003F
 print("main_resource_lookup_fingerprint=" + ("PASS" if words(0x1207B38,8)==expected_lookup else "FAIL"))
 print("main_chunk_low_fingerprint=" + ("PASS" if words(0x120A3D4,8)==expected_chunk else "FAIL"))
 if words(0x1207B38,8)!=expected_lookup or words(0x120A3D4,8)!=expected_chunk: sys.exit(1)
-print("R204E_SOURCE_VERIFY=PASS")
+print("R204F_SOURCE_VERIFY=PASS")
