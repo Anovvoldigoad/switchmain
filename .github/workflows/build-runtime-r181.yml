@@ -1,4 +1,4 @@
-name: Build NSC R204C Native mtob Process Trace
+name: Build NSC R204D Native mtob Completion Trace
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Verify source package
-        run: python3 verify_r204c.py
+        run: python3 verify_r204d.py
 
       - name: Clone pinned exlaunch
         run: |
@@ -29,7 +29,7 @@ jobs:
         working-directory: exlaunch
         run: make -j2
 
-      - name: Package R204C read-only trace runtime
+      - name: Package R204D read-only completion trace runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -48,9 +48,9 @@ jobs:
           cd "$OUT"
           sha256sum runtime/atmosphere/contents/0100FA10190A0000/exefs/subsdk9 > SHA256SUMS.txt
           printf '%s\n' \
-            'NSC2Switch R204C diagnostic: temporary read-only mtob loader/chunk/process tracer.' \
+            'NSC2Switch R204D diagnostic: read-only mtob loader/completion-writer tracer.' \
             'Do not copy a game main file into this package.' \
-            'Deploy only beside the R203A RomFS carrier for one diagnostic run, then remove subsdk9.' \
+            'Deploy only beside the R209A real-Tobi-charsel RomFS carrier for one diagnostic run, then remove subsdk9.' \
             > INSTALL.txt
 
       - name: Assert no main override is shipped
@@ -63,6 +63,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC2Switch-R204C-NATIVE-MTOB-PROCESS-TRACE
+          name: NSC2Switch-R204D-NATIVE-MTOB-COMPLETION-TRACE
           path: out/**
           if-no-files-found: error
