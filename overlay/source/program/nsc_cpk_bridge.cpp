@@ -473,7 +473,7 @@ std::atomic<uint32_t> g_owner_init_wide_logs{0};
 std::atomic<uint32_t> g_owner_register_logs{0};
 std::atomic<uint32_t> g_owner_ready_logs{0};
 std::atomic<uint32_t> g_owner_state_logs{0};
-// R204J: focus on the exact post-register boundary for the target charsel.
+// R204K: focus on the exact post-register boundary and generic body-child lifecycle for the target charsel.
 std::atomic<uintptr_t> g_r204j_target_registry{0};
 std::atomic<uintptr_t> g_r204j_target_init_owner{0};
 std::atomic<uint32_t> g_r204j_target_hash{0};
@@ -719,8 +719,12 @@ bool IsInterestingPath(const char* path) {
     // Trace them too; R204F filtered these paths and could not prove whether
     // child registration actually occurred after mtobprm_load resolved.
     if (BoundedContains(path, "1nrt", 512, 8)) return true;
-    // R204J: compare target mtob charsel lifecycle against any working native charsel.
+    // R204K: compare target mtob charsel lifecycle against any working native charsel.
     if (BoundedContains(path, "charsel.xfbin", 512, 13)) return true;
+    // R204K: R221A proved the target registry is blocked by a prefixless
+    // generic preview child such as data/spc/bod1_col2.xfbin. Trace the
+    // complete loader lifecycle for that exact family.
+    if (BoundedContains(path, "data/spc/bod1", 512, 13)) return true;
 
     if (BoundedContains(path, "mtobspl", 512, 8) ||
         BoundedContains(path, "2tob", 512, 4) ||
@@ -744,7 +748,8 @@ bool IsInterestingChunk(const char* path, const char* key) {
     if (key && *key) {
         if (PathContainsTrackedCustom(key)) return true;
         if (BoundedContains(key, "mtob", 256, 8)) return true; // fixture fallback only
-        if (BoundedContains(key, "1nrt", 256, 8)) return true; // R204J native-child visibility
+        if (BoundedContains(key, "1nrt", 256, 8)) return true; // native-child visibility
+        if (BoundedContains(key, "bod1", 256, 4)) return true; // R204K generic preview-child identity
     }
     return false;
 }
@@ -2108,7 +2113,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
         }
         if (IsInterestingPath(path) &&
             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:R204J] LOAD_REQ manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:R204K] LOAD_REQ manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -2122,7 +2127,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
         if (IsInterestingPath(path) && result) TrackLoadPath(result, path);
         if (IsInterestingPath(path) &&
             g_create_logs.fetch_add(1, std::memory_order_relaxed) < 128) {
-            Logging.Log("[NSC:R204J] LOAD_CREATE manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:R204K] LOAD_CREATE manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -2169,14 +2174,14 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
         if (overflow) {
             uint32_t expected = 0;
             if (g_status_overflow_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
-                Logging.Log("[NSC:R204J] STATUS_TABLE_OVERFLOW max=%u",
+                Logging.Log("[NSC:R204K] STATUS_TABLE_OVERFLOW max=%u",
                             static_cast<unsigned>(sizeof(g_status_entries) / sizeof(g_status_entries[0])));
             }
         }
 
         if (should_log &&
             g_status_transition_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204J] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
+            Logging.Log("[NSC:R204K] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
                         manager, path ? path : "<null>", first ? 1u : 0u, previous, status);
         }
         return status;
@@ -2191,7 +2196,7 @@ HOOK_DEFINE_TRAMPOLINE(ChunkBinaryHook) {
         void* result = Orig(full_path, key);
         if (IsInterestingChunk(full_path, key) &&
             g_chunk_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204J] CHUNK path=%s key=%s result=%p",
+            Logging.Log("[NSC:R204K] CHUNK path=%s key=%s result=%p",
                         full_path ? full_path : "<null>",
                         key ? key : "<null>", result);
         }
@@ -2209,7 +2214,7 @@ HOOK_DEFINE_TRAMPOLINE(FileOpenHook) {
         const uint32_t result = Orig(request, path, slot);
         if (IsInterestingPath(path) &&
             g_file_open_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204J] FILE_OPEN request=%p path=%s slot=%u result=%u",
+            Logging.Log("[NSC:R204K] FILE_OPEN request=%p path=%s slot=%u result=%u",
                         request, path ? path : "<null>", slot, result);
         }
         return result;
@@ -2248,7 +2253,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
             read_error = *p;
         }
 
-        Logging.Log("[NSC:R204J] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
+        Logging.Log("[NSC:R204K] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
                     path ? path : "<null>", owner, read_context, load_object,
                     load_status, read_error);
     }
@@ -2276,7 +2281,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadStateSetHook) {
         }
         if (tracked && IsInterestingPath(path) &&
             g_state_set_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204J] STATE_SET load=%p path=%s requested=%u before=%u after=%u",
+            Logging.Log("[NSC:R204K] STATE_SET load=%p path=%s requested=%u before=%u after=%u",
                         load_object, path, requested_status, before, after);
         }
     }
@@ -2300,7 +2305,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadSuccessSetHook) {
         }
         if (tracked && IsInterestingPath(path) &&
             g_success_set_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204J] SUCCESS_SET load=%p path=%s resource=%p before=%u after=%u",
+            Logging.Log("[NSC:R204K] SUCCESS_SET load=%p path=%s resource=%p before=%u after=%u",
                         load_object, path, resource, before, after);
         }
     }
@@ -2316,7 +2321,7 @@ HOOK_DEFINE_TRAMPOLINE(FileResourceLookupHook) {
         if (result && IsInterestingPath(path)) TrackResourcePath(result, path);
         if (IsInterestingPath(path) &&
             g_resource_lookup_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204J] RESOURCE_LOOKUP manager=%p path=%s result=%p",
+            Logging.Log("[NSC:R204K] RESOURCE_LOOKUP manager=%p path=%s result=%p",
                         manager, path ? path : "<null>", result);
         }
         return result;
@@ -2366,7 +2371,7 @@ HOOK_DEFINE_TRAMPOLINE(ChunkResourceLookupHook) {
         void* result = Orig(resource, type_desc, key_desc);
         if (tracked && IsInterestingPath(path) &&
             g_chunk_low_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204J] CHUNK_LOW resource=%p path=%s type=%p type_tag=%u key_hash=%u key_has_text=%u key_ptr=%p key_printable=%u key_len=%u key_text=%s result=%p",
+            Logging.Log("[NSC:R204K] CHUNK_LOW resource=%p path=%s type=%p type_tag=%u key_hash=%u key_has_text=%u key_ptr=%p key_printable=%u key_len=%u key_text=%s result=%p",
                         resource, path, type_desc, type_tag, key_hash, key_has_text,
                         reinterpret_cast<void*>(key_ptr), key_text_printable, key_text_len,
                         key_text_printable ? key_text : "<nonprintable>", result);
@@ -2382,7 +2387,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerInitHook) {
         Orig(owner, path, mode);
         if (IsInterestingPath(path) &&
             g_owner_init_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204J] OWNER_INIT owner=%p path=%s mode=%u load=%p",
+            Logging.Log("[NSC:R204K] OWNER_INIT owner=%p path=%s mode=%u load=%p",
                         owner, path ? path : "<null>", mode, LoadOwnerLoadPtr(owner));
         }
     }
@@ -2398,7 +2403,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerInitWideHook) {
         }
         if (IsInterestingPath(path) &&
             g_owner_init_wide_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204J] OWNER_INIT5 owner=%p path=%s p2=%u p3=%u p4=%u load=%p",
+            Logging.Log("[NSC:R204K] OWNER_INIT5 owner=%p path=%s p2=%u p3=%u p4=%u load=%p",
                         owner, path ? path : "<null>", p2, p3, p4, LoadOwnerLoadPtr(owner));
         }
     }
@@ -2416,13 +2421,13 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerRegisterHook) {
             void* tree_owner = OwnerFromRegistryNode(node);
             void* init_owner = reinterpret_cast<void*>(g_r204j_target_init_owner.load(std::memory_order_relaxed));
             const char* tree_path = LoadOwnerPath(tree_owner);
-            Logging.Log("[NSC:R204J] OWNER_TREE_VERIFY registry=%p path=%s hash=%u node=%p tree_owner=%p init_owner=%p same_owner=%u tree_path=%s status=%u",
+            Logging.Log("[NSC:R204K] OWNER_TREE_VERIFY registry=%p path=%s hash=%u node=%p tree_owner=%p init_owner=%p same_owner=%u tree_path=%s status=%u",
                         registry, path ? path : "<null>", result, node, tree_owner, init_owner,
                         tree_owner == init_owner ? 1u : 0u, tree_path ? tree_path : "<null>", LoadOwnerStatus(tree_owner));
         }
         if (IsInterestingPath(path) &&
             g_owner_register_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204J] OWNER_REGISTER registry=%p path=%s p2=%u p3=%u p4=%u hash=%u",
+            Logging.Log("[NSC:R204K] OWNER_REGISTER registry=%p path=%s p2=%u p3=%u p4=%u hash=%u",
                         registry, path ? path : "<null>", p2, p3, p4, result);
         }
         return result;
@@ -2436,12 +2441,12 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerReadyHook) {
         const uint32_t result = Orig(owner);
         if (g_r204j_target_poll_active.load(std::memory_order_relaxed) != 0u &&
             g_r204j_target_scan_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:R204J] TARGET_REGISTRY_OWNER_READY owner=%p path=%s load=%p status=%u result=%u",
+            Logging.Log("[NSC:R204K] TARGET_REGISTRY_OWNER_READY owner=%p path=%s load=%p status=%u result=%u",
                         owner, path ? path : "<null>", load, LoadOwnerStatus(owner), result);
         }
         if (IsInterestingPath(path) &&
             g_owner_ready_logs.fetch_add(1, std::memory_order_relaxed) < 2048) {
-            Logging.Log("[NSC:R204J] OWNER_READY owner=%p path=%s load=%p result=%u",
+            Logging.Log("[NSC:R204K] OWNER_READY owner=%p path=%s load=%p result=%u",
                         owner, path ? path : "<null>", load, result);
         }
         return result;
@@ -2461,7 +2466,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerRegistryProcessHook) {
             void* owner = OwnerFromRegistryNode(node);
             if (g_r204j_registry_process_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
                 const char* path = LoadOwnerPath(owner);
-                Logging.Log("[NSC:R204J] REGISTRY_PROCESS registry=%p result=%u target_hash=%u node=%p owner=%p owner_path=%s owner_status=%u",
+                Logging.Log("[NSC:R204K] REGISTRY_PROCESS registry=%p result=%u target_hash=%u node=%p owner=%p owner_path=%s owner_status=%u",
                             registry, result, hash, node, owner, path ? path : "<null>", LoadOwnerStatus(owner));
             }
         }
@@ -2476,7 +2481,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerStateHook) {
         const uint32_t result = Orig(owner);
         if (IsInterestingPath(path) &&
             g_owner_state_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204J] OWNER_STATE owner=%p path=%s load=%p state=%u",
+            Logging.Log("[NSC:R204K] OWNER_STATE owner=%p path=%s load=%p state=%u",
                         owner, path ? path : "<null>", load, result);
         }
         return result;
@@ -6732,40 +6737,40 @@ static bool g_r204j_process_hook_installed = false;
     }
     const bool process_ok = MatchWords(kLoadRequestProcessOffset, kProcessExpected);
     if (!process_ok) {
-        LogFingerprintFail("R204J_PROCESS", kLoadRequestProcessOffset); ok = false;
+        LogFingerprintFail("R204K_PROCESS", kLoadRequestProcessOffset); ok = false;
     }
     if (!MatchWords(kFileOpenOffset, kFileOpenExpected)) {
         LogFingerprintFail("FILE_OPEN", kFileOpenOffset); ok = false;
     }
     if (!MatchWords(kLoadStateSetOffset, kLoadStateSetExpected)) {
-        LogFingerprintFail("R204J_STATE_SET", kLoadStateSetOffset); ok = false;
+        LogFingerprintFail("R204K_STATE_SET", kLoadStateSetOffset); ok = false;
     }
     if (!MatchWords(kLoadSuccessSetOffset, kLoadSuccessSetExpected)) {
-        LogFingerprintFail("R204J_SUCCESS_SET", kLoadSuccessSetOffset); ok = false;
+        LogFingerprintFail("R204K_SUCCESS_SET", kLoadSuccessSetOffset); ok = false;
     }
     if (!MatchWords(kFileResourceLookupOffset, kFileResourceLookupExpected)) {
-        LogFingerprintFail("R204J_RESOURCE_LOOKUP", kFileResourceLookupOffset); ok = false;
+        LogFingerprintFail("R204K_RESOURCE_LOOKUP", kFileResourceLookupOffset); ok = false;
     }
     if (!MatchWords(kChunkResourceLookupOffset, kChunkResourceLookupExpected)) {
-        LogFingerprintFail("R204J_CHUNK_LOW", kChunkResourceLookupOffset); ok = false;
+        LogFingerprintFail("R204K_CHUNK_LOW", kChunkResourceLookupOffset); ok = false;
     }
     if (!MatchWords(kLoadOwnerInitOffset, kLoadOwnerInitExpected)) {
-        LogFingerprintFail("R204J_OWNER_INIT", kLoadOwnerInitOffset); ok = false;
+        LogFingerprintFail("R204K_OWNER_INIT", kLoadOwnerInitOffset); ok = false;
     }
     if (!MatchWords(kLoadOwnerInitWideOffset, kLoadOwnerInitWideExpected)) {
-        LogFingerprintFail("R204J_OWNER_INIT5", kLoadOwnerInitWideOffset); ok = false;
+        LogFingerprintFail("R204K_OWNER_INIT5", kLoadOwnerInitWideOffset); ok = false;
     }
     if (!MatchWords(kLoadOwnerRegisterOffset, kLoadOwnerRegisterExpected)) {
-        LogFingerprintFail("R204J_OWNER_REGISTER", kLoadOwnerRegisterOffset); ok = false;
+        LogFingerprintFail("R204K_OWNER_REGISTER", kLoadOwnerRegisterOffset); ok = false;
     }
     if (!MatchWords(kLoadOwnerRegistryProcessOffset, kLoadOwnerRegistryProcessExpected)) {
-        LogFingerprintFail("R204J_REGISTRY_PROCESS", kLoadOwnerRegistryProcessOffset); ok = false;
+        LogFingerprintFail("R204K_REGISTRY_PROCESS", kLoadOwnerRegistryProcessOffset); ok = false;
     }
     if (!MatchWords(kLoadOwnerReadyOffset, kLoadOwnerReadyExpected)) {
-        LogFingerprintFail("R204J_OWNER_READY", kLoadOwnerReadyOffset); ok = false;
+        LogFingerprintFail("R204K_OWNER_READY", kLoadOwnerReadyOffset); ok = false;
     }
     if (!MatchWords(kLoadOwnerStateOffset, kLoadOwnerStateExpected)) {
-        LogFingerprintFail("R204J_OWNER_STATE", kLoadOwnerStateOffset); ok = false;
+        LogFingerprintFail("R204K_OWNER_STATE", kLoadOwnerStateOffset); ok = false;
     }
     if (!ok) {
         g_r204j_process_hook_installed = false;
@@ -6840,15 +6845,15 @@ bool InstallP52PreUjTraceHooks() {
 
 } // namespace
 
-bool InstallR204JNativeCharselOwnerTrace() {
+bool InstallR204KNativeCharselChildTrace() {
     const bool ok = InstallTraceHooks();
     Logging.Log(
-        "[NSC:R204J] READY installed=%u process_installed=%u completion_writers=1 resource_consumers=1 chunk_key_text=1 trace_1nrt_children=1 owner_poll_trace=1 owner_register_trace=1 tree_verify=1 registry_process_trace=1 target_registry_scan=1",
+        "[NSC:R204K] READY installed=%u process_installed=%u completion_writers=1 resource_consumers=1 chunk_key_text=1 trace_1nrt_children=1 owner_poll_trace=1 owner_register_trace=1 tree_verify=1 registry_process_trace=1 target_registry_scan=1 generic_bod1_trace=1",
         ok ? 1u : 0u, g_r204j_process_hook_installed ? 1u : 0u);
     Logging.Log(
-        "[NSC:R204J] READY_FLAGS trace_all_charsel=1 readonly=1 fixture=mtob native_id_control=46 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0");
+        "[NSC:R204K] READY_FLAGS trace_all_charsel=1 readonly=1 fixture=mtob native_id_control=46 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0");
     Logging.Log(
-        "[NSC:R204J] READY_HOOKS mandatory_hooks=LOAD_REQ,LOAD_CREATE,LOAD_STATUS,FILE_OPEN,PROCESS,CHUNK,STATE_SET,SUCCESS_SET,RESOURCE_LOOKUP,CHUNK_LOW,OWNER_INIT,OWNER_INIT5,OWNER_REGISTER,REGISTRY_PROCESS,OWNER_READY,OWNER_STATE");
+        "[NSC:R204K] READY_HOOKS mandatory_hooks=LOAD_REQ,LOAD_CREATE,LOAD_STATUS,FILE_OPEN,PROCESS,CHUNK,STATE_SET,SUCCESS_SET,RESOURCE_LOOKUP,CHUNK_LOW,OWNER_INIT,OWNER_INIT5,OWNER_REGISTER,REGISTRY_PROCESS,OWNER_READY,OWNER_STATE");
     return ok;
 }
 

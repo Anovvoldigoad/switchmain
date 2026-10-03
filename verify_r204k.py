@@ -10,17 +10,20 @@ b=(r/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
 h=(r/'overlay/source/program/nsc_cpk_bridge.hpp').read_text()
 c=(r/'overlay/source/program/nsc_runtime_core.cpp').read_text()
 checks={
- 'core_calls_r204j_only':'return nsc::InstallR204JNativeCharselOwnerTrace();' in c,
+ 'core_calls_r204k_only':'return nsc::InstallR204KNativeCharselChildTrace();' in c,
  'no_gameplay_installer_in_core':all(x not in c for x in ['InstallP128','InstallR172','InstallR175','InstallR176','InstallR177','InstallV2N','InstallV2P','InstallResolverHookMigrationProbe','InstallOriginalMainRuntimePatches']),
- 'public_decl':'bool InstallR204JNativeCharselOwnerTrace();' in h,
- 'ready_marker':'[NSC:R204J] READY' in b and 'registry_process_trace=1' in b and 'tree_verify=1' in b,
- 'owner_tree_verify':'[NSC:R204J] OWNER_TREE_VERIFY' in b and 'same_owner=%u' in b,
- 'registry_process':'[NSC:R204J] REGISTRY_PROCESS' in b,
- 'target_scan':'[NSC:R204J] TARGET_REGISTRY_OWNER_READY' in b,
+ 'public_decl':'bool InstallR204KNativeCharselChildTrace();' in h,
+ 'ready_marker':'[NSC:R204K] READY' in b and 'registry_process_trace=1' in b and 'tree_verify=1' in b,
+ 'owner_tree_verify':'[NSC:R204K] OWNER_TREE_VERIFY' in b and 'same_owner=%u' in b,
+ 'registry_process':'[NSC:R204K] REGISTRY_PROCESS' in b,
+ 'target_scan':'[NSC:R204K] TARGET_REGISTRY_OWNER_READY' in b,
+ 'generic_bod1_path_trace':'data/spc/bod1' in b,
+ 'generic_bod1_key_trace':'BoundedContains(key, "bod1", 256, 4)' in b,
+ 'generic_bod1_ready_flag':'generic_bod1_trace=1' in b,
  'registry_process_offset':'kLoadOwnerRegistryProcessOffset = 0x1161C98' in b,
  'owner_register_offset':'kLoadOwnerRegisterOffset   = 0x1161B88' in b,
  'registry_process_installed':'LoadOwnerRegistryProcessHook::InstallAtOffset(kLoadOwnerRegistryProcessOffset);' in b,
- 'no_cpk_bind_install':'CpkBindHook::Install' not in b[b.index('bool InstallR204JNativeCharselOwnerTrace()'):b.index('bool InstallPlayActionProbe()')],
+ 'no_cpk_bind_install':'CpkBindHook::Install' not in b[b.index('bool InstallR204KNativeCharselChildTrace()'):b.index('bool InstallPlayActionProbe()')],
  'no_path_rewrite':'path_rewrite=0' in b and 'return_override=0' in b,
 }
 for k,v in checks.items(): print(f'{k}={"PASS" if v else "FAIL"}')
@@ -45,4 +48,4 @@ checks2={
 }
 for k,v in checks2.items(): print(f'{k}={"PASS" if v else "FAIL"}')
 if not all(checks2.values()): sys.exit(1)
-print('R204J_SOURCE_VERIFY=PASS')
+print('R204K_SOURCE_VERIFY=PASS')
