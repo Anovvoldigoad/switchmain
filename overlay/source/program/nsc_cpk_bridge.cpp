@@ -25,6 +25,8 @@ constexpr ptrdiff_t kLoadRequestProcessOffset = 0x116F404; // nuccLoadRequest pr
 constexpr ptrdiff_t kFileOpenOffset           = 0x1170FB0; // low-level file open request; returns 1/0
 constexpr ptrdiff_t kLoadStateSetOffset       = 0x120661C; // nuccFileLoad generic status setter
 constexpr ptrdiff_t kLoadSuccessSetOffset     = 0x1206690; // resource pointer + status=2 success setter
+constexpr ptrdiff_t kFileResourceLookupOffset = 0x1207B38; // path -> completed resource pointer
+constexpr ptrdiff_t kChunkResourceLookupOffset = 0x120A3D4; // resource + type/key descriptor -> chunk pointer
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -458,6 +460,8 @@ std::atomic<uint32_t> g_process_logs{0};
 std::atomic<uint32_t> g_file_open_logs{0};
 std::atomic<uint32_t> g_state_set_logs{0};
 std::atomic<uint32_t> g_success_set_logs{0};
+std::atomic<uint32_t> g_resource_lookup_logs{0};
+std::atomic<uint32_t> g_chunk_low_logs{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -537,6 +541,13 @@ struct LoadPathEntry {
 LoadPathEntry g_load_path_entries[128]{};
 uint32_t g_load_path_count = 0;
 
+struct ResourcePathEntry {
+    void* resource = nullptr;
+    char path[256]{};
+};
+ResourcePathEntry g_resource_path_entries[128]{};
+uint32_t g_resource_path_count = 0;
+
 class LoadPathLock {
 public:
     LoadPathLock() { while (g_load_path_lock.test_and_set(std::memory_order_acquire)) {} }
@@ -611,6 +622,34 @@ bool LookupLoadPath(void* load, char* out, size_t out_size) {
     for (uint32_t i = 0; i < g_load_path_count; ++i) {
         if (g_load_path_entries[i].load == load) {
             CopyPath(out, out_size, g_load_path_entries[i].path);
+            return out[0] != '\0';
+        }
+    }
+    out[0] = '\0';
+    return false;
+}
+
+void TrackResourcePath(void* resource, const char* path) {
+    if (!resource || !path || !*path) return;
+    LoadPathLock lock;
+    for (uint32_t i = 0; i < g_resource_path_count; ++i) {
+        if (g_resource_path_entries[i].resource == resource) {
+            CopyPath(g_resource_path_entries[i].path, sizeof(g_resource_path_entries[i].path), path);
+            return;
+        }
+    }
+    if (g_resource_path_count >= (sizeof(g_resource_path_entries) / sizeof(g_resource_path_entries[0]))) return;
+    auto& e = g_resource_path_entries[g_resource_path_count++];
+    e.resource = resource;
+    CopyPath(e.path, sizeof(e.path), path);
+}
+
+bool LookupResourcePath(void* resource, char* out, size_t out_size) {
+    if (!resource || !out || !out_size) return false;
+    LoadPathLock lock;
+    for (uint32_t i = 0; i < g_resource_path_count; ++i) {
+        if (g_resource_path_entries[i].resource == resource) {
+            CopyPath(out, out_size, g_resource_path_entries[i].path);
             return out[0] != '\0';
         }
     }
@@ -1992,7 +2031,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
         }
         if (IsInterestingPath(path) &&
             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:R204D] LOAD_REQ manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:R204E] LOAD_REQ manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -2006,7 +2045,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
         if (IsInterestingPath(path) && result) TrackLoadPath(result, path);
         if (IsInterestingPath(path) &&
             g_create_logs.fetch_add(1, std::memory_order_relaxed) < 128) {
-            Logging.Log("[NSC:R204D] LOAD_CREATE manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:R204E] LOAD_CREATE manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -2053,14 +2092,14 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
         if (overflow) {
             uint32_t expected = 0;
             if (g_status_overflow_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
-                Logging.Log("[NSC:R204D] STATUS_TABLE_OVERFLOW max=%u",
+                Logging.Log("[NSC:R204E] STATUS_TABLE_OVERFLOW max=%u",
                             static_cast<unsigned>(sizeof(g_status_entries) / sizeof(g_status_entries[0])));
             }
         }
 
         if (should_log &&
             g_status_transition_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204D] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
+            Logging.Log("[NSC:R204E] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
                         manager, path ? path : "<null>", first ? 1u : 0u, previous, status);
         }
         return status;
@@ -2075,7 +2114,7 @@ HOOK_DEFINE_TRAMPOLINE(ChunkBinaryHook) {
         void* result = Orig(full_path, key);
         if (IsInterestingChunk(full_path, key) &&
             g_chunk_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204D] CHUNK path=%s key=%s result=%p",
+            Logging.Log("[NSC:R204E] CHUNK path=%s key=%s result=%p",
                         full_path ? full_path : "<null>",
                         key ? key : "<null>", result);
         }
@@ -2093,7 +2132,7 @@ HOOK_DEFINE_TRAMPOLINE(FileOpenHook) {
         const uint32_t result = Orig(request, path, slot);
         if (IsInterestingPath(path) &&
             g_file_open_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204D] FILE_OPEN request=%p path=%s slot=%u result=%u",
+            Logging.Log("[NSC:R204E] FILE_OPEN request=%p path=%s slot=%u result=%u",
                         request, path ? path : "<null>", slot, result);
         }
         return result;
@@ -2132,14 +2171,14 @@ HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
             read_error = *p;
         }
 
-        Logging.Log("[NSC:R204D] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
+        Logging.Log("[NSC:R204E] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
                     path ? path : "<null>", owner, read_context, load_object,
                     load_status, read_error);
     }
 };
 
 
-// R204D: exact nuccFileLoad completion writers.
+// R204E: exact nuccFileLoad completion writers.
 // main+0x120661C writes an arbitrary status to load+0x68 unless the object is
 // already terminal (3/5). main+0x1206690 stores resource at load+0x50 and
 // writes status=2. These hooks are read-only observers and call Orig unchanged.
@@ -2160,7 +2199,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadStateSetHook) {
         }
         if (tracked && IsInterestingPath(path) &&
             g_state_set_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204D] STATE_SET load=%p path=%s requested=%u before=%u after=%u",
+            Logging.Log("[NSC:R204E] STATE_SET load=%p path=%s requested=%u before=%u after=%u",
                         load_object, path, requested_status, before, after);
         }
     }
@@ -2176,6 +2215,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadSuccessSetHook) {
                 reinterpret_cast<const uint8_t*>(load_object) + 0x68);
         }
         Orig(load_object, resource);
+        if (tracked && resource) TrackResourcePath(resource, path);
         uint32_t after = 0xFFFFFFFFu;
         if (load_object) {
             after = *reinterpret_cast<const volatile uint32_t*>(
@@ -2183,9 +2223,55 @@ HOOK_DEFINE_TRAMPOLINE(LoadSuccessSetHook) {
         }
         if (tracked && IsInterestingPath(path) &&
             g_success_set_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204D] SUCCESS_SET load=%p path=%s resource=%p before=%u after=%u",
+            Logging.Log("[NSC:R204E] SUCCESS_SET load=%p path=%s resource=%p before=%u after=%u",
                         load_object, path, resource, before, after);
         }
+    }
+ };
+
+// R204E: observe post-completion resource consumers. 0x1207B38 returns the
+// completed resource pointer for a file path. 0x120A3D4 is the lower-level
+// chunk resolver used by ccGetChunkBinary and by any direct consumers that
+// bypass the higher wrapper. Both hooks preserve native behavior unchanged.
+HOOK_DEFINE_TRAMPOLINE(FileResourceLookupHook) {
+    static void* Callback(void* manager, const char* path) {
+        void* result = Orig(manager, path);
+        if (result && IsInterestingPath(path)) TrackResourcePath(result, path);
+        if (IsInterestingPath(path) &&
+            g_resource_lookup_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
+            Logging.Log("[NSC:R204E] RESOURCE_LOOKUP manager=%p path=%s result=%p",
+                        manager, path ? path : "<null>", result);
+        }
+        return result;
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(ChunkResourceLookupHook) {
+    static void* Callback(void* resource, const void* type_desc, const void* key_desc) {
+        char path[256]{};
+        const bool tracked = LookupResourcePath(resource, path, sizeof(path));
+        uint32_t key_hash = 0xFFFFFFFFu;
+        uint32_t key_has_text = 0xFFFFFFFFu;
+        uintptr_t key_ptr = 0u;
+        uint32_t type_tag = 0xFFFFFFFFu;
+        if (key_desc) {
+            const auto* k = reinterpret_cast<const volatile uint8_t*>(key_desc);
+            key_hash = *reinterpret_cast<const volatile uint32_t*>(k + 0x0);
+            key_has_text = *(k + 0x4);
+            key_ptr = *reinterpret_cast<const volatile uintptr_t*>(k + 0x8);
+        }
+        if (type_desc) {
+            const auto* t = reinterpret_cast<const volatile uint8_t*>(type_desc);
+            type_tag = *reinterpret_cast<const volatile uint16_t*>(t + 0xA);
+        }
+        void* result = Orig(resource, type_desc, key_desc);
+        if (tracked && IsInterestingPath(path) &&
+            g_chunk_low_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
+            Logging.Log("[NSC:R204E] CHUNK_LOW resource=%p path=%s type=%p type_tag=%u key_hash=%u key_has_text=%u key_ptr=%p result=%p",
+                        resource, path, type_desc, type_tag, key_hash, key_has_text,
+                        reinterpret_cast<void*>(key_ptr), result);
+        }
+        return result;
     }
 };
 
@@ -6355,7 +6441,7 @@ bool InstallCharacodeGetterDynamic() {
     return true;
 }
 
-static bool g_r204d_process_hook_installed = false;
+static bool g_r204e_process_hook_installed = false;
 
 [[maybe_unused]] bool InstallTraceHooks() {
     static constexpr uint32_t kRequestExpected[] = {
@@ -6390,6 +6476,14 @@ static bool g_r204d_process_hook_installed = false;
         0xA9BE57FE, 0xA9014FF4, 0x91006015, 0xAA0003F4,
         0xAA1503E0, 0xAA0103F3, 0x94003B2C, 0x52800048,
     };
+    static constexpr uint32_t kFileResourceLookupExpected[] = {
+        0xF81F0FFE, 0x97FFFC27, 0xB4000060, 0xF84107FE,
+        0x17FFFACB, 0xF84107FE, 0xD65F03C0, 0xA9BD5FFE,
+    };
+    static constexpr uint32_t kChunkResourceLookupExpected[] = {
+        0xD10143FF, 0xA90357FE, 0xA9044FF4, 0xAA0203F3,
+        0xAA0103F4, 0xB90003FF, 0xAA0003F5, 0x390013FF,
+    };
 
     bool ok = true;
     if (!MatchWords(kFileLoadRequestOffset, kRequestExpected)) {
@@ -6406,19 +6500,25 @@ static bool g_r204d_process_hook_installed = false;
     }
     const bool process_ok = MatchWords(kLoadRequestProcessOffset, kProcessExpected);
     if (!process_ok) {
-        LogFingerprintFail("R204D_PROCESS", kLoadRequestProcessOffset); ok = false;
+        LogFingerprintFail("R204E_PROCESS", kLoadRequestProcessOffset); ok = false;
     }
     if (!MatchWords(kFileOpenOffset, kFileOpenExpected)) {
         LogFingerprintFail("FILE_OPEN", kFileOpenOffset); ok = false;
     }
     if (!MatchWords(kLoadStateSetOffset, kLoadStateSetExpected)) {
-        LogFingerprintFail("R204D_STATE_SET", kLoadStateSetOffset); ok = false;
+        LogFingerprintFail("R204E_STATE_SET", kLoadStateSetOffset); ok = false;
     }
     if (!MatchWords(kLoadSuccessSetOffset, kLoadSuccessSetExpected)) {
-        LogFingerprintFail("R204D_SUCCESS_SET", kLoadSuccessSetOffset); ok = false;
+        LogFingerprintFail("R204E_SUCCESS_SET", kLoadSuccessSetOffset); ok = false;
+    }
+    if (!MatchWords(kFileResourceLookupOffset, kFileResourceLookupExpected)) {
+        LogFingerprintFail("R204E_RESOURCE_LOOKUP", kFileResourceLookupOffset); ok = false;
+    }
+    if (!MatchWords(kChunkResourceLookupOffset, kChunkResourceLookupExpected)) {
+        LogFingerprintFail("R204E_CHUNK_LOW", kChunkResourceLookupOffset); ok = false;
     }
     if (!ok) {
-        g_r204d_process_hook_installed = false;
+        g_r204e_process_hook_installed = false;
         return false;
     }
 
@@ -6427,10 +6527,12 @@ static bool g_r204d_process_hook_installed = false;
     FileLoadStatusHook::InstallAtOffset(kFileLoadStatusOffset);
     ChunkBinaryHook::InstallAtOffset(kChunkBinaryOffset);
     LoadRequestProcessHook::InstallAtOffset(kLoadRequestProcessOffset);
-    g_r204d_process_hook_installed = true;
+    g_r204e_process_hook_installed = true;
     FileOpenHook::InstallAtOffset(kFileOpenOffset);
     LoadStateSetHook::InstallAtOffset(kLoadStateSetOffset);
     LoadSuccessSetHook::InstallAtOffset(kLoadSuccessSetOffset);
+    FileResourceLookupHook::InstallAtOffset(kFileResourceLookupOffset);
+    ChunkResourceLookupHook::InstallAtOffset(kChunkResourceLookupOffset);
     return true;
 }
 
@@ -6482,13 +6584,13 @@ bool InstallP52PreUjTraceHooks() {
 
 } // namespace
 
-bool InstallR204DNativeMtobProcessTrace() {
+bool InstallR204ENativeMtobResourceTrace() {
     const bool ok = InstallTraceHooks();
     Logging.Log(
-        "[NSC:R204D] READY installed=%u process_installed=%u completion_writers=1 readonly=1 fixture=mtob native_id_control=46 "
+        "[NSC:R204E] READY installed=%u process_installed=%u completion_writers=1 resource_consumers=1 readonly=1 fixture=mtob native_id_control=46 "
         "cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0 "
-        "mandatory_hooks=LOAD_REQ,LOAD_CREATE,LOAD_STATUS,FILE_OPEN,PROCESS,CHUNK,STATE_SET,SUCCESS_SET",
-        ok ? 1u : 0u, g_r204d_process_hook_installed ? 1u : 0u);
+        "mandatory_hooks=LOAD_REQ,LOAD_CREATE,LOAD_STATUS,FILE_OPEN,PROCESS,CHUNK,STATE_SET,SUCCESS_SET,RESOURCE_LOOKUP,CHUNK_LOW",
+        ok ? 1u : 0u, g_r204e_process_hook_installed ? 1u : 0u);
     return ok;
 }
 
