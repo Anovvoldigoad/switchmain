@@ -4,10 +4,10 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R204F is a temporary read-only diagnostic runtime.
+    // R204G is a temporary read-only diagnostic runtime.
     // It intentionally installs no gameplay patches, no CPK binder, no
     // numeric-ID expansion, and no custom resource mutation.
-    return nsc::InstallR204FNativeMtobChunkKeyTrace();
+    return nsc::InstallR204GNativeMtobChunkKeyTrace();
 }
 
 } // namespace nsc::runtime
