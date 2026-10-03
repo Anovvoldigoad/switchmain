@@ -21,7 +21,7 @@ constexpr ptrdiff_t kFileLoadRequestOffset   = 0x1206B4C; // nuccFileLoadList re
 constexpr ptrdiff_t kFileLoadCreateOffset    = 0x1206C9C; // create new nuccFileLoad object
 constexpr ptrdiff_t kFileLoadStatusOffset    = 0x1207EFC; // lookup path -> status, 4 if absent from list
 constexpr ptrdiff_t kChunkBinaryOffset        = 0x3EAE70;  // ccGetChunkBinary(full_path, key)
-constexpr ptrdiff_t kLoadRequestProcessOffset = 0x106F404; // nuccLoadRequest process/open/read path
+constexpr ptrdiff_t kLoadRequestProcessOffset = 0x116F404; // nuccLoadRequest process/open/read path
 constexpr ptrdiff_t kFileOpenOffset           = 0x1170FB0; // low-level file open request; returns 1/0
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
@@ -1945,7 +1945,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
         }
         if (IsInterestingPath(path) &&
             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:R204B] LOAD_REQ manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:R204C] LOAD_REQ manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -1958,7 +1958,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
         void* result = Orig(manager, path, options);
         if (IsInterestingPath(path) &&
             g_create_logs.fetch_add(1, std::memory_order_relaxed) < 128) {
-            Logging.Log("[NSC:R204B] LOAD_CREATE manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:R204C] LOAD_CREATE manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -2005,14 +2005,14 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
         if (overflow) {
             uint32_t expected = 0;
             if (g_status_overflow_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
-                Logging.Log("[NSC:R204B] STATUS_TABLE_OVERFLOW max=%u",
+                Logging.Log("[NSC:R204C] STATUS_TABLE_OVERFLOW max=%u",
                             static_cast<unsigned>(sizeof(g_status_entries) / sizeof(g_status_entries[0])));
             }
         }
 
         if (should_log &&
             g_status_transition_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204B] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
+            Logging.Log("[NSC:R204C] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
                         manager, path ? path : "<null>", first ? 1u : 0u, previous, status);
         }
         return status;
@@ -2027,7 +2027,7 @@ HOOK_DEFINE_TRAMPOLINE(ChunkBinaryHook) {
         void* result = Orig(full_path, key);
         if (IsInterestingChunk(full_path, key) &&
             g_chunk_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204B] CHUNK path=%s key=%s result=%p",
+            Logging.Log("[NSC:R204C] CHUNK path=%s key=%s result=%p",
                         full_path ? full_path : "<null>",
                         key ? key : "<null>", result);
         }
@@ -2045,14 +2045,14 @@ HOOK_DEFINE_TRAMPOLINE(FileOpenHook) {
         const uint32_t result = Orig(request, path, slot);
         if (IsInterestingPath(path) &&
             g_file_open_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204B] FILE_OPEN request=%p path=%s slot=%u result=%u",
+            Logging.Log("[NSC:R204C] FILE_OPEN request=%p path=%s slot=%u result=%u",
                         request, path ? path : "<null>", slot, result);
         }
         return result;
     }
 };
 
-// main+0x106F404 is the native nuccLoadRequest processing routine that owns
+// main+0x116F404 is the native nuccLoadRequest processing routine that owns
 // BOTH proven status=5 branches:
 //   0x116F520 -> status=5 after FILE_OPEN returned 0 ("file could not be opened")
 //   0x116F5C0 -> status=5 after the XFBIN read path reports failure.
@@ -2084,7 +2084,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
             read_error = *p;
         }
 
-        Logging.Log("[NSC:R204B] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
+        Logging.Log("[NSC:R204C] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
                     path ? path : "<null>", owner, read_context, load_object,
                     load_status, read_error);
     }
@@ -6257,7 +6257,7 @@ bool InstallCharacodeGetterDynamic() {
     return true;
 }
 
-static bool g_r204b_process_hook_installed = false;
+static bool g_r204c_process_hook_installed = false;
 
 [[maybe_unused]] bool InstallTraceHooks() {
     static constexpr uint32_t kRequestExpected[] = {
@@ -6300,23 +6300,22 @@ static bool g_r204b_process_hook_installed = false;
     }
     const bool process_ok = MatchWords(kLoadRequestProcessOffset, kProcessExpected);
     if (!process_ok) {
-        LogFingerprintFail("R204B_PROCESS_OPTIONAL", kLoadRequestProcessOffset);
+        LogFingerprintFail("R204C_PROCESS", kLoadRequestProcessOffset); ok = false;
     }
     if (!MatchWords(kFileOpenOffset, kFileOpenExpected)) {
         LogFingerprintFail("FILE_OPEN", kFileOpenOffset); ok = false;
     }
-    if (!ok) return false;
+    if (!ok) {
+        g_r204c_process_hook_installed = false;
+        return false;
+    }
 
     FileLoadRequestHook::InstallAtOffset(kFileLoadRequestOffset);
     FileLoadCreateHook::InstallAtOffset(kFileLoadCreateOffset);
     FileLoadStatusHook::InstallAtOffset(kFileLoadStatusOffset);
     ChunkBinaryHook::InstallAtOffset(kChunkBinaryOffset);
-    if (process_ok) {
-        LoadRequestProcessHook::InstallAtOffset(kLoadRequestProcessOffset);
-        g_r204b_process_hook_installed = true;
-    } else {
-        g_r204b_process_hook_installed = false;
-    }
+    LoadRequestProcessHook::InstallAtOffset(kLoadRequestProcessOffset);
+    g_r204c_process_hook_installed = true;
     FileOpenHook::InstallAtOffset(kFileOpenOffset);
     return true;
 }
@@ -6369,13 +6368,13 @@ bool InstallP52PreUjTraceHooks() {
 
 } // namespace
 
-bool InstallR204BNativeMtobTrace() {
+bool InstallR204CNativeMtobProcessTrace() {
     const bool ok = InstallTraceHooks();
     Logging.Log(
-        "[NSC:R204B] READY installed=%u process_optional_installed=%u readonly=1 fixture=mtob native_id_control=46 "
+        "[NSC:R204C] READY installed=%u process_installed=%u readonly=1 fixture=mtob native_id_control=46 "
         "cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0 "
-        "mandatory_hooks=LOAD_REQ,LOAD_CREATE,LOAD_STATUS,FILE_OPEN,CHUNK optional_hook=PROCESS",
-        ok ? 1u : 0u, g_r204b_process_hook_installed ? 1u : 0u);
+        "mandatory_hooks=LOAD_REQ,LOAD_CREATE,LOAD_STATUS,FILE_OPEN,PROCESS,CHUNK",
+        ok ? 1u : 0u, g_r204c_process_hook_installed ? 1u : 0u);
     return ok;
 }
 

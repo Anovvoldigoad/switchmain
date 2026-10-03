@@ -4,10 +4,10 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R204B is a temporary read-only diagnostic runtime.
+    // R204C is a temporary read-only diagnostic runtime.
     // It intentionally installs no gameplay patches, no CPK binder, no
     // numeric-ID expansion, and no custom resource mutation.
-    return nsc::InstallR204BNativeMtobTrace();
+    return nsc::InstallR204CNativeMtobProcessTrace();
 }
 
 } // namespace nsc::runtime
