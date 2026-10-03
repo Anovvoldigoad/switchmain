@@ -2,10 +2,10 @@
 import re,sys
 from pathlib import Path
 if len(sys.argv)!=2:
-    raise SystemExit('usage: python3 analyze_r204a_log.py <uzuy_log.txt>')
+    raise SystemExit('usage: python3 analyze_r204b_log.py <uzuy_log.txt>')
 lines=Path(sys.argv[1]).read_text(errors='replace').splitlines()
-events=[x for x in lines if '[NSC:R204A]' in x]
-print(f'R204A_LINES={len(events)}')
+events=[x for x in lines if '[NSC:R204B]' in x]
+print(f'R204B_LINES={len(events)}')
 ready=[x for x in events if ' READY ' in x]
 print('READY='+('PASS' if any('installed=1' in x for x in ready) else 'MISSING_OR_FAIL'))
 for kind in ['LOAD_REQ','LOAD_CREATE','LOAD_STATUS','FILE_OPEN','PROCESS','CHUNK']:

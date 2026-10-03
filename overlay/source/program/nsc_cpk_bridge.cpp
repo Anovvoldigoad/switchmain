@@ -1945,7 +1945,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
         }
         if (IsInterestingPath(path) &&
             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:R204A] LOAD_REQ manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:R204B] LOAD_REQ manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -1958,7 +1958,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
         void* result = Orig(manager, path, options);
         if (IsInterestingPath(path) &&
             g_create_logs.fetch_add(1, std::memory_order_relaxed) < 128) {
-            Logging.Log("[NSC:R204A] LOAD_CREATE manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:R204B] LOAD_CREATE manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -2005,14 +2005,14 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
         if (overflow) {
             uint32_t expected = 0;
             if (g_status_overflow_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
-                Logging.Log("[NSC:R204A] STATUS_TABLE_OVERFLOW max=%u",
+                Logging.Log("[NSC:R204B] STATUS_TABLE_OVERFLOW max=%u",
                             static_cast<unsigned>(sizeof(g_status_entries) / sizeof(g_status_entries[0])));
             }
         }
 
         if (should_log &&
             g_status_transition_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204A] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
+            Logging.Log("[NSC:R204B] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
                         manager, path ? path : "<null>", first ? 1u : 0u, previous, status);
         }
         return status;
@@ -2027,7 +2027,7 @@ HOOK_DEFINE_TRAMPOLINE(ChunkBinaryHook) {
         void* result = Orig(full_path, key);
         if (IsInterestingChunk(full_path, key) &&
             g_chunk_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204A] CHUNK path=%s key=%s result=%p",
+            Logging.Log("[NSC:R204B] CHUNK path=%s key=%s result=%p",
                         full_path ? full_path : "<null>",
                         key ? key : "<null>", result);
         }
@@ -2045,7 +2045,7 @@ HOOK_DEFINE_TRAMPOLINE(FileOpenHook) {
         const uint32_t result = Orig(request, path, slot);
         if (IsInterestingPath(path) &&
             g_file_open_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204A] FILE_OPEN request=%p path=%s slot=%u result=%u",
+            Logging.Log("[NSC:R204B] FILE_OPEN request=%p path=%s slot=%u result=%u",
                         request, path ? path : "<null>", slot, result);
         }
         return result;
@@ -2084,7 +2084,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
             read_error = *p;
         }
 
-        Logging.Log("[NSC:R204A] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
+        Logging.Log("[NSC:R204B] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
                     path ? path : "<null>", owner, read_context, load_object,
                     load_status, read_error);
     }
@@ -6257,6 +6257,8 @@ bool InstallCharacodeGetterDynamic() {
     return true;
 }
 
+static bool g_r204b_process_hook_installed = false;
+
 [[maybe_unused]] bool InstallTraceHooks() {
     static constexpr uint32_t kRequestExpected[] = {
         0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0xF9400008,
@@ -6296,8 +6298,9 @@ bool InstallCharacodeGetterDynamic() {
     if (!MatchWords(kChunkBinaryOffset, kChunkExpected)) {
         LogFingerprintFail("CHUNK", kChunkBinaryOffset); ok = false;
     }
-    if (!MatchWords(kLoadRequestProcessOffset, kProcessExpected)) {
-        LogFingerprintFail("PROCESS", kLoadRequestProcessOffset); ok = false;
+    const bool process_ok = MatchWords(kLoadRequestProcessOffset, kProcessExpected);
+    if (!process_ok) {
+        LogFingerprintFail("R204B_PROCESS_OPTIONAL", kLoadRequestProcessOffset);
     }
     if (!MatchWords(kFileOpenOffset, kFileOpenExpected)) {
         LogFingerprintFail("FILE_OPEN", kFileOpenOffset); ok = false;
@@ -6308,7 +6311,12 @@ bool InstallCharacodeGetterDynamic() {
     FileLoadCreateHook::InstallAtOffset(kFileLoadCreateOffset);
     FileLoadStatusHook::InstallAtOffset(kFileLoadStatusOffset);
     ChunkBinaryHook::InstallAtOffset(kChunkBinaryOffset);
-    LoadRequestProcessHook::InstallAtOffset(kLoadRequestProcessOffset);
+    if (process_ok) {
+        LoadRequestProcessHook::InstallAtOffset(kLoadRequestProcessOffset);
+        g_r204b_process_hook_installed = true;
+    } else {
+        g_r204b_process_hook_installed = false;
+    }
     FileOpenHook::InstallAtOffset(kFileOpenOffset);
     return true;
 }
@@ -6361,13 +6369,13 @@ bool InstallP52PreUjTraceHooks() {
 
 } // namespace
 
-bool InstallR204ANativeMtobTrace() {
+bool InstallR204BNativeMtobTrace() {
     const bool ok = InstallTraceHooks();
     Logging.Log(
-        "[NSC:R204A] READY installed=%u readonly=1 fixture=mtob native_id_control=46 "
+        "[NSC:R204B] READY installed=%u process_optional_installed=%u readonly=1 fixture=mtob native_id_control=46 "
         "cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0 "
-        "hooks=LOAD_REQ,LOAD_CREATE,LOAD_STATUS,FILE_OPEN,PROCESS,CHUNK",
-        ok ? 1u : 0u);
+        "mandatory_hooks=LOAD_REQ,LOAD_CREATE,LOAD_STATUS,FILE_OPEN,CHUNK optional_hook=PROCESS",
+        ok ? 1u : 0u, g_r204b_process_hook_installed ? 1u : 0u);
     return ok;
 }
 
