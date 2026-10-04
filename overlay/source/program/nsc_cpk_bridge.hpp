@@ -1,7 +1,7 @@
 #pragma once
 
 namespace nsc {
-bool InstallR204KNativeCharselChildTrace();
+bool InstallR204LNativeFileReadDispatchTrace();
 void InstallP50AConditionCompat();
 void InstallP52APreUjProbe();
 void InstallP53AInputPromotionProbe();

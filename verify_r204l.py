@@ -10,20 +10,25 @@ b=(r/'overlay/source/program/nsc_cpk_bridge.cpp').read_text()
 h=(r/'overlay/source/program/nsc_cpk_bridge.hpp').read_text()
 c=(r/'overlay/source/program/nsc_runtime_core.cpp').read_text()
 checks={
- 'core_calls_r204k_only':'return nsc::InstallR204KNativeCharselChildTrace();' in c,
+ 'core_calls_r204l_only':'return nsc::InstallR204LNativeFileReadDispatchTrace();' in c,
  'no_gameplay_installer_in_core':all(x not in c for x in ['InstallP128','InstallR172','InstallR175','InstallR176','InstallR177','InstallV2N','InstallV2P','InstallResolverHookMigrationProbe','InstallOriginalMainRuntimePatches']),
- 'public_decl':'bool InstallR204KNativeCharselChildTrace();' in h,
- 'ready_marker':'[NSC:R204K] READY' in b and 'registry_process_trace=1' in b and 'tree_verify=1' in b,
- 'owner_tree_verify':'[NSC:R204K] OWNER_TREE_VERIFY' in b and 'same_owner=%u' in b,
- 'registry_process':'[NSC:R204K] REGISTRY_PROCESS' in b,
- 'target_scan':'[NSC:R204K] TARGET_REGISTRY_OWNER_READY' in b,
+ 'public_decl':'bool InstallR204LNativeFileReadDispatchTrace();' in h,
+ 'ready_marker':'[NSC:R204L] READY' in b and 'registry_process_trace=1' in b and 'tree_verify=1' in b,
+ 'owner_tree_verify':'[NSC:R204L] OWNER_TREE_VERIFY' in b and 'same_owner=%u' in b,
+ 'registry_process':'[NSC:R204L] REGISTRY_PROCESS' in b,
+ 'target_scan':'[NSC:R204L] TARGET_REGISTRY_OWNER_READY' in b,
  'generic_bod1_path_trace':'data/spc/bod1' in b,
  'generic_bod1_key_trace':'BoundedContains(key, "bod1", 256, 4)' in b,
  'generic_bod1_ready_flag':'generic_bod1_trace=1' in b,
+ 'read_dispatch_offset':'kFileReadDispatchOffset   = 0x11705F0' in b,
+ 'read_dispatch_hook':'HOOK_DEFINE_TRAMPOLINE(FileReadDispatchHook)' in b and 'FileReadDispatchHook::InstallAtOffset(kFileReadDispatchOffset);' in b,
+ 'read_dispatch_markers':'[NSC:R204L] READ_DISPATCH_ENTER' in b and '[NSC:R204L] READ_DISPATCH_EXIT' in b and 'method_off=0x%lx' in b,
+ 'request_path_tracking':'TrackRequestPath(request, path);' in b and 'LookupRequestPath(request, path, sizeof(path))' in b,
+ 'read_dispatch_ready_flag':'read_dispatch_trace=1' in b and 'READ_DISPATCH' in b,
  'registry_process_offset':'kLoadOwnerRegistryProcessOffset = 0x1161C98' in b,
  'owner_register_offset':'kLoadOwnerRegisterOffset   = 0x1161B88' in b,
  'registry_process_installed':'LoadOwnerRegistryProcessHook::InstallAtOffset(kLoadOwnerRegistryProcessOffset);' in b,
- 'no_cpk_bind_install':'CpkBindHook::Install' not in b[b.index('bool InstallR204KNativeCharselChildTrace()'):b.index('bool InstallPlayActionProbe()')],
+ 'no_cpk_bind_install':'CpkBindHook::Install' not in b[b.index('bool InstallR204LNativeFileReadDispatchTrace()'):b.index('bool InstallPlayActionProbe()')],
  'no_path_rewrite':'path_rewrite=0' in b and 'return_override=0' in b,
 }
 for k,v in checks.items(): print(f'{k}={"PASS" if v else "FAIL"}')
@@ -45,7 +50,8 @@ checks2={
  'main_owner_register_fingerprint':words(0x1161B88)==[0xD10143FF,0xA90167FE,0xA9025FF8,0xA90357F6,0xA9044FF4,0xF9400008,0x2A0403F5,0x2A0303F6],
  'main_registry_process_fingerprint':words(0x1161C98)==[0xF81E0FFE,0xA9014FF4,0xF9400C14,0x91008013,0x14000002,0xAA0903F4,0xEB13029F,0x540002E0],
  'main_owner_ready_fingerprint':words(0x11617CC)==[0xA9BE57FE,0xA9014FF4,0xF9401C08,0xB40000E8,0xAA0003F5,0x38408EA8,0xAA0003F3,0x37000108],
+ 'main_read_dispatch_fingerprint':words(0x11705F0)==[0xF9001001,0xF9400028,0xF9402502,0xAA0103E0,0xD61F0040,0xF81E0FFE,0xA9014FF4,0x2A0103F4],
 }
 for k,v in checks2.items(): print(f'{k}={"PASS" if v else "FAIL"}')
 if not all(checks2.values()): sys.exit(1)
-print('R204K_SOURCE_VERIFY=PASS')
+print('R204L_SOURCE_VERIFY=PASS')
