@@ -1,7 +1,0 @@
-# Generated after R204L source patch; verify with sha256sum -c where desired.
-69569507df2a441270073a6477d59b4815d719cb90636dbc4ee4b45c7212ae32  overlay/source/program/nsc_cpk_bridge.cpp
-b5fc5b0da049f8ae1e095f3cff612eda9a68011847125c6de85a98db7d993b8b  overlay/source/program/nsc_cpk_bridge.hpp
-43411e75c100880724bfc0deaed9c3cd106a921e2a94a7106d3a2e2cd7651d9c  overlay/source/program/nsc_runtime_core.cpp
-9437488b07a01a4f0ae78ca3b87cac33394ca78cc89c4cff9d7d332268b5ae09  verify_r204l.py
-1e971c03b21fd6312b29faef72c43cccf626b61c4cffb788f74ff6af3dc5a87a  .github/workflows/build-runtime-r181.yml
-696d7ddf9657be374d9e26f3fa960e18b3dcea41719d3518d08abbf5a0b84d82  README_R204L_TRACE.md
