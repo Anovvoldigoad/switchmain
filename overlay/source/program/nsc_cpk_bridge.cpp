@@ -495,7 +495,7 @@ std::atomic<uint32_t> g_owner_init_wide_logs{0};
 std::atomic<uint32_t> g_owner_register_logs{0};
 std::atomic<uint32_t> g_owner_ready_logs{0};
 std::atomic<uint32_t> g_owner_state_logs{0};
-// R204O: focus on the exact post-register boundary and generic body-child lifecycle for the target charsel.
+// R204P: focus on the exact post-register boundary and generic body-child lifecycle for the target charsel.
 std::atomic<uintptr_t> g_r204j_target_registry{0};
 std::atomic<uintptr_t> g_r204j_target_init_owner{0};
 std::atomic<uint32_t> g_r204j_target_hash{0};
@@ -776,9 +776,9 @@ bool IsInterestingPath(const char* path) {
     // Trace them too; R204F filtered these paths and could not prove whether
     // child registration actually occurred after mtobprm_load resolved.
     if (BoundedContains(path, "1nrt", 512, 8)) return true;
-    // R204O: compare target mtob charsel lifecycle against any working native charsel.
+    // R204P: compare target mtob charsel lifecycle against any working native charsel.
     if (BoundedContains(path, "charsel.xfbin", 512, 13)) return true;
-    // R204O: R221A proved the target registry is blocked by a prefixless
+    // R204P: R221A proved the target registry is blocked by a prefixless
     // generic preview child such as data/spc/bod1_col2.xfbin. Trace the
     // complete loader lifecycle for that exact family.
     if (BoundedContains(path, "data/spc/bod1", 512, 13)) return true;
@@ -806,12 +806,12 @@ bool IsInterestingChunk(const char* path, const char* key) {
         if (PathContainsTrackedCustom(key)) return true;
         if (BoundedContains(key, "mtob", 256, 8)) return true; // fixture fallback only
         if (BoundedContains(key, "1nrt", 256, 8)) return true; // native-child visibility
-        if (BoundedContains(key, "bod1", 256, 4)) return true; // R204O generic preview-child identity
+        if (BoundedContains(key, "bod1", 256, 4)) return true; // R204P generic preview-child identity
     }
     return false;
 }
 
-bool IsR204ODeepReadTargetPath(const char* path) {
+bool IsR204PDeepReadTargetPath(const char* path) {
     if (!path || !*path) return false;
     // Keep deep internals focused so body traces cannot be hidden by earlier
     // high-volume prm/preview traffic. 5mdr is the known-good control.
@@ -2180,7 +2180,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
         }
         if (IsInterestingPath(path) &&
             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:R204O] LOAD_REQ manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:R204P] LOAD_REQ manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -2194,7 +2194,7 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadCreateHook) {
         if (IsInterestingPath(path) && result) TrackLoadPath(result, path);
         if (IsInterestingPath(path) &&
             g_create_logs.fetch_add(1, std::memory_order_relaxed) < 128) {
-            Logging.Log("[NSC:R204O] LOAD_CREATE manager=%p path=%s options=%p result=%p",
+            Logging.Log("[NSC:R204P] LOAD_CREATE manager=%p path=%s options=%p result=%p",
                         manager, path ? path : "<null>", options, result);
         }
         return result;
@@ -2241,14 +2241,14 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
         if (overflow) {
             uint32_t expected = 0;
             if (g_status_overflow_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
-                Logging.Log("[NSC:R204O] STATUS_TABLE_OVERFLOW max=%u",
+                Logging.Log("[NSC:R204P] STATUS_TABLE_OVERFLOW max=%u",
                             static_cast<unsigned>(sizeof(g_status_entries) / sizeof(g_status_entries[0])));
             }
         }
 
         if (should_log &&
             g_status_transition_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204O] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
+            Logging.Log("[NSC:R204P] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
                         manager, path ? path : "<null>", first ? 1u : 0u, previous, status);
         }
         return status;
@@ -2263,7 +2263,7 @@ HOOK_DEFINE_TRAMPOLINE(ChunkBinaryHook) {
         void* result = Orig(full_path, key);
         if (IsInterestingChunk(full_path, key) &&
             g_chunk_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204O] CHUNK path=%s key=%s result=%p",
+            Logging.Log("[NSC:R204P] CHUNK path=%s key=%s result=%p",
                         full_path ? full_path : "<null>",
                         key ? key : "<null>", result);
         }
@@ -2282,14 +2282,14 @@ HOOK_DEFINE_TRAMPOLINE(FileOpenHook) {
         const uint32_t result = Orig(request, path, slot);
         if (IsInterestingPath(path) &&
             g_file_open_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204O] FILE_OPEN request=%p path=%s slot=%u result=%u",
+            Logging.Log("[NSC:R204P] FILE_OPEN request=%p path=%s slot=%u result=%u",
                         request, path ? path : "<null>", slot, result);
         }
         return result;
     }
 };
 
-// R204O: main+0x11705F0 is called immediately after a successful FILE_OPEN.
+// R204P: main+0x11705F0 is called immediately after a successful FILE_OPEN.
 // Native body is a five-instruction tail-dispatch:
 //   request+0x20 = reader; method = reader->vtable[0x48/8]; x0=reader; BR method.
 // The caller at main+0x116F48C ignores the return value. We log both sides of
@@ -2314,7 +2314,7 @@ HOOK_DEFINE_TRAMPOLINE(FileReadDispatchHook) {
             const uintptr_t base = exl::util::modules::GetTargetStart();
             const uintptr_t method_addr = reinterpret_cast<uintptr_t>(method);
             const uintptr_t method_off = (method_addr >= base) ? (method_addr - base) : 0;
-            Logging.Log("[NSC:R204O] READ_DISPATCH_ENTER request=%p reader=%p vtable=%p method=%p method_off=0x%lx path=%s",
+            Logging.Log("[NSC:R204P] READ_DISPATCH_ENTER request=%p reader=%p vtable=%p method=%p method_off=0x%lx path=%s",
                         request, reader, vtable, method,
                         static_cast<unsigned long>(method_off), path);
         }
@@ -2323,46 +2323,80 @@ HOOK_DEFINE_TRAMPOLINE(FileReadDispatchHook) {
 
         if (interesting &&
             g_read_dispatch_exit_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204O] READ_DISPATCH_EXIT request=%p reader=%p path=%s",
+            Logging.Log("[NSC:R204P] READ_DISPATCH_EXIT request=%p reader=%p path=%s",
                         request, reader, path);
         }
     }
 };
 
-// R204O: broaden the post-open trace so one hardware run covers every native
+// R204P: broaden the post-open trace so one hardware run covers every native
 // boundary between provider dispatch and nuccFileLoad completion. These are
 // read-only trampolines; no arguments, return values, paths or states change.
 HOOK_DEFINE_TRAMPOLINE(ReadStageHook) {
     static void Callback(void* read_context, void* local_ctx) {
         char path[256]{};
         const bool tracked = LookupRequestPath(read_context, path, sizeof(path));
-        if (tracked && IsInterestingPath(path) &&
+        const bool interesting = tracked && IsInterestingPath(path);
+        if (interesting &&
             g_read_stage_enter_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204O] READ_STAGE_ENTER readctx=%p local=%p path=%s",
+            uint64_t q1b0 = 0, q1b8 = 0, q1c0 = 0, q1c8 = 0, q1d0 = 0, q1d8 = 0, q1e0 = 0;
+            if (read_context) {
+                const auto* b = reinterpret_cast<const volatile uint8_t*>(read_context);
+                q1b0 = *reinterpret_cast<const volatile uint64_t*>(b + 0x1B0);
+                q1b8 = *reinterpret_cast<const volatile uint64_t*>(b + 0x1B8);
+                q1c0 = *reinterpret_cast<const volatile uint64_t*>(b + 0x1C0);
+                q1c8 = *reinterpret_cast<const volatile uint64_t*>(b + 0x1C8);
+                q1d0 = *reinterpret_cast<const volatile uint64_t*>(b + 0x1D0);
+                q1d8 = *reinterpret_cast<const volatile uint64_t*>(b + 0x1D8);
+                q1e0 = *reinterpret_cast<const volatile uint64_t*>(b + 0x1E0);
+            }
+            void* local_vtable = nullptr;
+            void* local_m28 = nullptr;
+            void* local_m50 = nullptr;
+            if (local_ctx) {
+                local_vtable = *reinterpret_cast<void**>(local_ctx);
+                if (local_vtable) {
+                    local_m28 = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(local_vtable) + 0x28);
+                    local_m50 = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(local_vtable) + 0x50);
+                }
+            }
+            Logging.Log("[NSC:R204P] READ_STAGE_ENTER readctx=%p local=%p path=%s",
                         read_context, local_ctx, path);
+            Logging.Log("[NSC:R204P] PREAMBLE_CTX readctx=%p q1b0=0x%llx q1b8=0x%llx q1c0=0x%llx q1c8=0x%llx q1d0=0x%llx q1d8=0x%llx q1e0=0x%llx",
+                        read_context,
+                        static_cast<unsigned long long>(q1b0),
+                        static_cast<unsigned long long>(q1b8),
+                        static_cast<unsigned long long>(q1c0),
+                        static_cast<unsigned long long>(q1c8),
+                        static_cast<unsigned long long>(q1d0),
+                        static_cast<unsigned long long>(q1d8),
+                        static_cast<unsigned long long>(q1e0));
+            Logging.Log("[NSC:R204P] PREAMBLE_LOCAL local=%p vtable=%p m28=%p m50=%p field1c8=%p path=%s",
+                        local_ctx, local_vtable, local_m28, local_m50,
+                        reinterpret_cast<void*>(static_cast<uintptr_t>(q1c8)), path);
         }
         Orig(read_context, local_ctx);
-        if (tracked && IsInterestingPath(path) &&
+        if (interesting &&
             g_read_stage_exit_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
             uint32_t read_error = 0xFFFFFFFFu;
             if (read_context) {
                 read_error = *reinterpret_cast<const volatile uint32_t*>(
                     reinterpret_cast<const uint8_t*>(read_context) + 0x1D8);
             }
-            Logging.Log("[NSC:R204O] READ_STAGE_EXIT readctx=%p path=%s readerr=%u",
+            Logging.Log("[NSC:R204P] READ_STAGE_EXIT readctx=%p path=%s readerr=%u",
                         read_context, path, read_error);
         }
     }
 };
 
-// R204O: split READ_STAGE into every direct substage visible in main+0x120A860.
+// R204P: split READ_STAGE into every direct substage visible in main+0x120A860.
 // This identifies the first native call that enters but never returns.
 HOOK_DEFINE_TRAMPOLINE(StreamAttachHook) {
     static void Callback(void* stream, void* local_ctx) {
         void* read_context = stream ? reinterpret_cast<void*>(reinterpret_cast<uint8_t*>(stream) - 0x20) : nullptr;
         char path[256]{};
         const bool tracked = LookupRequestPath(read_context, path, sizeof(path));
-        const bool interesting = tracked && IsR204ODeepReadTargetPath(path);
+        const bool interesting = tracked && IsR204PDeepReadTargetPath(path);
         if (interesting && g_stream_attach_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
             void* vtable = nullptr;
             void* method = nullptr;
@@ -2373,12 +2407,12 @@ HOOK_DEFINE_TRAMPOLINE(StreamAttachHook) {
             const uintptr_t base = exl::util::modules::GetTargetStart();
             const uintptr_t ma = reinterpret_cast<uintptr_t>(method);
             const uintptr_t mo = (ma >= base) ? (ma - base) : 0;
-            Logging.Log("[NSC:R204O] STREAM_ATTACH_ENTER readctx=%p stream=%p local=%p vtable=%p method=%p method_off=0x%lx path=%s",
+            Logging.Log("[NSC:R204P] STREAM_ATTACH_ENTER readctx=%p stream=%p local=%p vtable=%p method=%p method_off=0x%lx path=%s",
                         read_context, stream, local_ctx, vtable, method, static_cast<unsigned long>(mo), path);
         }
         Orig(stream, local_ctx);
         if (interesting && g_stream_attach_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:R204O] STREAM_ATTACH_EXIT readctx=%p stream=%p local=%p path=%s",
+            Logging.Log("[NSC:R204P] STREAM_ATTACH_EXIT readctx=%p stream=%p local=%p path=%s",
                         read_context, stream, local_ctx, path);
         }
     }
@@ -2389,7 +2423,7 @@ HOOK_DEFINE_TRAMPOLINE(StreamReadHook) {
         void* read_context = stream ? reinterpret_cast<void*>(reinterpret_cast<uint8_t*>(stream) - 0x20) : nullptr;
         char path[256]{};
         const bool tracked = LookupRequestPath(read_context, path, sizeof(path));
-        const bool interesting = tracked && IsR204ODeepReadTargetPath(path);
+        const bool interesting = tracked && IsR204PDeepReadTargetPath(path);
         uint32_t pos_before = 0xFFFFFFFFu;
         uint32_t buffered_before = 0xFFFFFFFFu;
         void* reader = nullptr;
@@ -2399,7 +2433,7 @@ HOOK_DEFINE_TRAMPOLINE(StreamReadHook) {
             buffered_before = *reinterpret_cast<volatile uint32_t*>(b + 0x10);
             reader = *reinterpret_cast<void**>(b + 0x18);
             if (g_stream_read_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-                Logging.Log("[NSC:R204O] STREAM_READ_ENTER readctx=%p stream=%p reader=%p dst=%p size=%u pos=%u buffered=%u path=%s",
+                Logging.Log("[NSC:R204P] STREAM_READ_ENTER readctx=%p stream=%p reader=%p dst=%p size=%u pos=%u buffered=%u path=%s",
                             read_context, stream, reader, dst, size, pos_before, buffered_before, path);
             }
         }
@@ -2408,7 +2442,7 @@ HOOK_DEFINE_TRAMPOLINE(StreamReadHook) {
             auto* b = reinterpret_cast<uint8_t*>(stream);
             const uint32_t pos_after = *reinterpret_cast<volatile uint32_t*>(b + 0x0);
             const uint32_t buffered_after = *reinterpret_cast<volatile uint32_t*>(b + 0x10);
-            Logging.Log("[NSC:R204O] STREAM_READ_EXIT readctx=%p stream=%p size=%u result=%u pos_before=%u pos_after=%u buffered_before=%u buffered_after=%u path=%s",
+            Logging.Log("[NSC:R204P] STREAM_READ_EXIT readctx=%p stream=%p size=%u result=%u pos_before=%u pos_after=%u buffered_before=%u buffered_after=%u path=%s",
                         read_context, stream, size, result, pos_before, pos_after, buffered_before, buffered_after, path);
         }
         return result;
@@ -2423,36 +2457,36 @@ static uint32_t ReadStageErrorValue(void* read_context) {
 HOOK_DEFINE_TRAMPOLINE(ReadHeaderHook) {
     static void Callback(void* read_context) {
         char path[256]{};
-        const bool interesting = LookupRequestPath(read_context, path, sizeof(path)) && IsR204ODeepReadTargetPath(path);
+        const bool interesting = LookupRequestPath(read_context, path, sizeof(path)) && IsR204PDeepReadTargetPath(path);
         if (interesting && g_read_header_logs.fetch_add(1, std::memory_order_relaxed) < 256)
-            Logging.Log("[NSC:R204O] READ_HEADER_ENTER readctx=%p readerr=%u path=%s", read_context, ReadStageErrorValue(read_context), path);
+            Logging.Log("[NSC:R204P] READ_HEADER_ENTER readctx=%p readerr=%u path=%s", read_context, ReadStageErrorValue(read_context), path);
         Orig(read_context);
         if (interesting && g_read_header_logs.fetch_add(1, std::memory_order_relaxed) < 256)
-            Logging.Log("[NSC:R204O] READ_HEADER_EXIT readctx=%p readerr=%u path=%s", read_context, ReadStageErrorValue(read_context), path);
+            Logging.Log("[NSC:R204P] READ_HEADER_EXIT readctx=%p readerr=%u path=%s", read_context, ReadStageErrorValue(read_context), path);
     }
 };
 
 HOOK_DEFINE_TRAMPOLINE(ReadPayloadHook) {
     static void Callback(void* read_context) {
         char path[256]{};
-        const bool interesting = LookupRequestPath(read_context, path, sizeof(path)) && IsR204ODeepReadTargetPath(path);
+        const bool interesting = LookupRequestPath(read_context, path, sizeof(path)) && IsR204PDeepReadTargetPath(path);
         if (interesting && g_read_payload_logs.fetch_add(1, std::memory_order_relaxed) < 256)
-            Logging.Log("[NSC:R204O] READ_PAYLOAD_ENTER readctx=%p readerr=%u path=%s", read_context, ReadStageErrorValue(read_context), path);
+            Logging.Log("[NSC:R204P] READ_PAYLOAD_ENTER readctx=%p readerr=%u path=%s", read_context, ReadStageErrorValue(read_context), path);
         Orig(read_context);
         if (interesting && g_read_payload_logs.fetch_add(1, std::memory_order_relaxed) < 256)
-            Logging.Log("[NSC:R204O] READ_PAYLOAD_EXIT readctx=%p readerr=%u path=%s", read_context, ReadStageErrorValue(read_context), path);
+            Logging.Log("[NSC:R204P] READ_PAYLOAD_EXIT readctx=%p readerr=%u path=%s", read_context, ReadStageErrorValue(read_context), path);
     }
 };
 
 HOOK_DEFINE_TRAMPOLINE(ReadFinalHook) {
     static void Callback(void* read_context) {
         char path[256]{};
-        const bool interesting = LookupRequestPath(read_context, path, sizeof(path)) && IsR204ODeepReadTargetPath(path);
+        const bool interesting = LookupRequestPath(read_context, path, sizeof(path)) && IsR204PDeepReadTargetPath(path);
         if (interesting && g_read_final_logs.fetch_add(1, std::memory_order_relaxed) < 256)
-            Logging.Log("[NSC:R204O] READ_FINAL_ENTER readctx=%p readerr=%u path=%s", read_context, ReadStageErrorValue(read_context), path);
+            Logging.Log("[NSC:R204P] READ_FINAL_ENTER readctx=%p readerr=%u path=%s", read_context, ReadStageErrorValue(read_context), path);
         Orig(read_context);
         if (interesting && g_read_final_logs.fetch_add(1, std::memory_order_relaxed) < 256)
-            Logging.Log("[NSC:R204O] READ_FINAL_EXIT readctx=%p readerr=%u path=%s", read_context, ReadStageErrorValue(read_context), path);
+            Logging.Log("[NSC:R204P] READ_FINAL_EXIT readctx=%p readerr=%u path=%s", read_context, ReadStageErrorValue(read_context), path);
     }
 };
 
@@ -2462,12 +2496,12 @@ HOOK_DEFINE_TRAMPOLINE(RequestFinalizeHook) {
         const bool tracked = LookupRequestPath(request, path, sizeof(path));
         if (tracked && IsInterestingPath(path) &&
             g_request_finalize_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204O] REQUEST_FINALIZE_ENTER request=%p path=%s", request, path);
+            Logging.Log("[NSC:R204P] REQUEST_FINALIZE_ENTER request=%p path=%s", request, path);
         }
         Orig(request);
         if (tracked && IsInterestingPath(path) &&
             g_request_finalize_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204O] REQUEST_FINALIZE_EXIT request=%p path=%s", request, path);
+            Logging.Log("[NSC:R204P] REQUEST_FINALIZE_EXIT request=%p path=%s", request, path);
         }
     }
 };
@@ -2478,12 +2512,12 @@ HOOK_DEFINE_TRAMPOLINE(ReadCleanupHook) {
         const bool tracked = LookupRequestPath(request, path, sizeof(path));
         if (tracked && IsInterestingPath(path) &&
             g_read_cleanup_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204O] READ_CLEANUP_ENTER request=%p path=%s", request, path);
+            Logging.Log("[NSC:R204P] READ_CLEANUP_ENTER request=%p path=%s", request, path);
         }
         Orig(request);
         if (tracked && IsInterestingPath(path) &&
             g_read_cleanup_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204O] READ_CLEANUP_EXIT request=%p path=%s", request, path);
+            Logging.Log("[NSC:R204P] READ_CLEANUP_EXIT request=%p path=%s", request, path);
         }
     }
 };
@@ -2508,7 +2542,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
                 TrackRequestPath(request, path);
             }
             if (g_process_enter_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-                Logging.Log("[NSC:R204O] PROCESS_ENTER path=%s owner=%p readctx=%p load=%p",
+                Logging.Log("[NSC:R204P] PROCESS_ENTER path=%s owner=%p readctx=%p load=%p",
                             path ? path : "<null>", owner, read_context, load_object);
             }
         }
@@ -2532,7 +2566,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
             read_error = *p;
         }
 
-        Logging.Log("[NSC:R204O] PROCESS_EXIT path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
+        Logging.Log("[NSC:R204P] PROCESS_EXIT path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
                     path ? path : "<null>", owner, read_context, load_object,
                     load_status, read_error);
     }
@@ -2560,7 +2594,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadStateSetHook) {
         }
         if (tracked && IsInterestingPath(path) &&
             g_state_set_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204O] STATE_SET load=%p path=%s requested=%u before=%u after=%u",
+            Logging.Log("[NSC:R204P] STATE_SET load=%p path=%s requested=%u before=%u after=%u",
                         load_object, path, requested_status, before, after);
         }
     }
@@ -2584,7 +2618,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadSuccessSetHook) {
         }
         if (tracked && IsInterestingPath(path) &&
             g_success_set_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204O] SUCCESS_SET load=%p path=%s resource=%p before=%u after=%u",
+            Logging.Log("[NSC:R204P] SUCCESS_SET load=%p path=%s resource=%p before=%u after=%u",
                         load_object, path, resource, before, after);
         }
     }
@@ -2600,7 +2634,7 @@ HOOK_DEFINE_TRAMPOLINE(FileResourceLookupHook) {
         if (result && IsInterestingPath(path)) TrackResourcePath(result, path);
         if (IsInterestingPath(path) &&
             g_resource_lookup_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204O] RESOURCE_LOOKUP manager=%p path=%s result=%p",
+            Logging.Log("[NSC:R204P] RESOURCE_LOOKUP manager=%p path=%s result=%p",
                         manager, path ? path : "<null>", result);
         }
         return result;
@@ -2650,7 +2684,7 @@ HOOK_DEFINE_TRAMPOLINE(ChunkResourceLookupHook) {
         void* result = Orig(resource, type_desc, key_desc);
         if (tracked && IsInterestingPath(path) &&
             g_chunk_low_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204O] CHUNK_LOW resource=%p path=%s type=%p type_tag=%u key_hash=%u key_has_text=%u key_ptr=%p key_printable=%u key_len=%u key_text=%s result=%p",
+            Logging.Log("[NSC:R204P] CHUNK_LOW resource=%p path=%s type=%p type_tag=%u key_hash=%u key_has_text=%u key_ptr=%p key_printable=%u key_len=%u key_text=%s result=%p",
                         resource, path, type_desc, type_tag, key_hash, key_has_text,
                         reinterpret_cast<void*>(key_ptr), key_text_printable, key_text_len,
                         key_text_printable ? key_text : "<nonprintable>", result);
@@ -2666,7 +2700,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerInitHook) {
         Orig(owner, path, mode);
         if (IsInterestingPath(path) &&
             g_owner_init_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
-            Logging.Log("[NSC:R204O] OWNER_INIT owner=%p path=%s mode=%u load=%p",
+            Logging.Log("[NSC:R204P] OWNER_INIT owner=%p path=%s mode=%u load=%p",
                         owner, path ? path : "<null>", mode, LoadOwnerLoadPtr(owner));
         }
     }
@@ -2682,7 +2716,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerInitWideHook) {
         }
         if (IsInterestingPath(path) &&
             g_owner_init_wide_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204O] OWNER_INIT5 owner=%p path=%s p2=%u p3=%u p4=%u load=%p",
+            Logging.Log("[NSC:R204P] OWNER_INIT5 owner=%p path=%s p2=%u p3=%u p4=%u load=%p",
                         owner, path ? path : "<null>", p2, p3, p4, LoadOwnerLoadPtr(owner));
         }
     }
@@ -2700,13 +2734,13 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerRegisterHook) {
             void* tree_owner = OwnerFromRegistryNode(node);
             void* init_owner = reinterpret_cast<void*>(g_r204j_target_init_owner.load(std::memory_order_relaxed));
             const char* tree_path = LoadOwnerPath(tree_owner);
-            Logging.Log("[NSC:R204O] OWNER_TREE_VERIFY registry=%p path=%s hash=%u node=%p tree_owner=%p init_owner=%p same_owner=%u tree_path=%s status=%u",
+            Logging.Log("[NSC:R204P] OWNER_TREE_VERIFY registry=%p path=%s hash=%u node=%p tree_owner=%p init_owner=%p same_owner=%u tree_path=%s status=%u",
                         registry, path ? path : "<null>", result, node, tree_owner, init_owner,
                         tree_owner == init_owner ? 1u : 0u, tree_path ? tree_path : "<null>", LoadOwnerStatus(tree_owner));
         }
         if (IsInterestingPath(path) &&
             g_owner_register_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204O] OWNER_REGISTER registry=%p path=%s p2=%u p3=%u p4=%u hash=%u",
+            Logging.Log("[NSC:R204P] OWNER_REGISTER registry=%p path=%s p2=%u p3=%u p4=%u hash=%u",
                         registry, path ? path : "<null>", p2, p3, p4, result);
         }
         return result;
@@ -2720,12 +2754,12 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerReadyHook) {
         const uint32_t result = Orig(owner);
         if (g_r204j_target_poll_active.load(std::memory_order_relaxed) != 0u &&
             g_r204j_target_scan_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:R204O] TARGET_REGISTRY_OWNER_READY owner=%p path=%s load=%p status=%u result=%u",
+            Logging.Log("[NSC:R204P] TARGET_REGISTRY_OWNER_READY owner=%p path=%s load=%p status=%u result=%u",
                         owner, path ? path : "<null>", load, LoadOwnerStatus(owner), result);
         }
         if (IsInterestingPath(path) &&
             g_owner_ready_logs.fetch_add(1, std::memory_order_relaxed) < 2048) {
-            Logging.Log("[NSC:R204O] OWNER_READY owner=%p path=%s load=%p result=%u",
+            Logging.Log("[NSC:R204P] OWNER_READY owner=%p path=%s load=%p result=%u",
                         owner, path ? path : "<null>", load, result);
         }
         return result;
@@ -2745,7 +2779,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerRegistryProcessHook) {
             void* owner = OwnerFromRegistryNode(node);
             if (g_r204j_registry_process_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
                 const char* path = LoadOwnerPath(owner);
-                Logging.Log("[NSC:R204O] REGISTRY_PROCESS registry=%p result=%u target_hash=%u node=%p owner=%p owner_path=%s owner_status=%u",
+                Logging.Log("[NSC:R204P] REGISTRY_PROCESS registry=%p result=%u target_hash=%u node=%p owner=%p owner_path=%s owner_status=%u",
                             registry, result, hash, node, owner, path ? path : "<null>", LoadOwnerStatus(owner));
             }
         }
@@ -2760,7 +2794,7 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerStateHook) {
         const uint32_t result = Orig(owner);
         if (IsInterestingPath(path) &&
             g_owner_state_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
-            Logging.Log("[NSC:R204O] OWNER_STATE owner=%p path=%s load=%p state=%u",
+            Logging.Log("[NSC:R204P] OWNER_STATE owner=%p path=%s load=%p state=%u",
                         owner, path ? path : "<null>", load, result);
         }
         return result;
@@ -7051,87 +7085,82 @@ static bool g_r204j_process_hook_installed = false;
     }
     const bool process_ok = MatchWords(kLoadRequestProcessOffset, kProcessExpected);
     if (!process_ok) {
-        LogFingerprintFail("R204O_PROCESS", kLoadRequestProcessOffset); ok = false;
+        LogFingerprintFail("R204P_PROCESS", kLoadRequestProcessOffset); ok = false;
     }
     if (!MatchWords(kFileOpenOffset, kFileOpenExpected)) {
         LogFingerprintFail("FILE_OPEN", kFileOpenOffset); ok = false;
     }
     if (!MatchWords(kFileReadDispatchOffset, kFileReadDispatchExpected)) {
-        LogFingerprintFail("R204O_READ_DISPATCH", kFileReadDispatchOffset); ok = false;
+        LogFingerprintFail("R204P_READ_DISPATCH", kFileReadDispatchOffset); ok = false;
     }
     if (!MatchWords(kReadStageOffset, kReadStageExpected)) {
-        LogFingerprintFail("R204O_READ_STAGE", kReadStageOffset); ok = false;
+        LogFingerprintFail("R204P_READ_STAGE", kReadStageOffset); ok = false;
     }
     if (!MatchWords(kStreamAttachOffset, kStreamAttachExpected)) {
-        LogFingerprintFail("R204O_STREAM_ATTACH", kStreamAttachOffset); ok = false;
+        LogFingerprintFail("R204P_STREAM_ATTACH", kStreamAttachOffset); ok = false;
     }
     if (!MatchWords(kStreamReadOffset, kStreamReadExpected)) {
-        LogFingerprintFail("R204O_STREAM_READ", kStreamReadOffset); ok = false;
+        LogFingerprintFail("R204P_STREAM_READ", kStreamReadOffset); ok = false;
     }
     if (!MatchWords(kReadHeaderOffset, kReadHeaderExpected)) {
-        LogFingerprintFail("R204O_READ_HEADER", kReadHeaderOffset); ok = false;
+        LogFingerprintFail("R204P_READ_HEADER", kReadHeaderOffset); ok = false;
     }
     if (!MatchWords(kReadPayloadOffset, kReadPayloadExpected)) {
-        LogFingerprintFail("R204O_READ_PAYLOAD", kReadPayloadOffset); ok = false;
+        LogFingerprintFail("R204P_READ_PAYLOAD", kReadPayloadOffset); ok = false;
     }
     if (!MatchWords(kReadFinalOffset, kReadFinalExpected)) {
-        LogFingerprintFail("R204O_READ_FINAL", kReadFinalOffset); ok = false;
+        LogFingerprintFail("R204P_READ_FINAL", kReadFinalOffset); ok = false;
     }
     if (!MatchWords(kRequestFinalizeOffset, kRequestFinalizeExpected)) {
-        LogFingerprintFail("R204O_REQUEST_FINALIZE", kRequestFinalizeOffset); ok = false;
+        LogFingerprintFail("R204P_REQUEST_FINALIZE", kRequestFinalizeOffset); ok = false;
     }
     if (!MatchWords(kReadCleanupOffset, kReadCleanupExpected)) {
-        LogFingerprintFail("R204O_READ_CLEANUP", kReadCleanupOffset); ok = false;
+        LogFingerprintFail("R204P_READ_CLEANUP", kReadCleanupOffset); ok = false;
     }
     if (!MatchWords(kLoadStateSetOffset, kLoadStateSetExpected)) {
-        LogFingerprintFail("R204O_STATE_SET", kLoadStateSetOffset); ok = false;
+        LogFingerprintFail("R204P_STATE_SET", kLoadStateSetOffset); ok = false;
     }
     if (!MatchWords(kLoadSuccessSetOffset, kLoadSuccessSetExpected)) {
-        LogFingerprintFail("R204O_SUCCESS_SET", kLoadSuccessSetOffset); ok = false;
+        LogFingerprintFail("R204P_SUCCESS_SET", kLoadSuccessSetOffset); ok = false;
     }
     if (!MatchWords(kFileResourceLookupOffset, kFileResourceLookupExpected)) {
-        LogFingerprintFail("R204O_RESOURCE_LOOKUP", kFileResourceLookupOffset); ok = false;
+        LogFingerprintFail("R204P_RESOURCE_LOOKUP", kFileResourceLookupOffset); ok = false;
     }
     if (!MatchWords(kChunkResourceLookupOffset, kChunkResourceLookupExpected)) {
-        LogFingerprintFail("R204O_CHUNK_LOW", kChunkResourceLookupOffset); ok = false;
+        LogFingerprintFail("R204P_CHUNK_LOW", kChunkResourceLookupOffset); ok = false;
     }
     if (!MatchWords(kLoadOwnerInitOffset, kLoadOwnerInitExpected)) {
-        LogFingerprintFail("R204O_OWNER_INIT", kLoadOwnerInitOffset); ok = false;
+        LogFingerprintFail("R204P_OWNER_INIT", kLoadOwnerInitOffset); ok = false;
     }
     if (!MatchWords(kLoadOwnerInitWideOffset, kLoadOwnerInitWideExpected)) {
-        LogFingerprintFail("R204O_OWNER_INIT5", kLoadOwnerInitWideOffset); ok = false;
+        LogFingerprintFail("R204P_OWNER_INIT5", kLoadOwnerInitWideOffset); ok = false;
     }
     if (!MatchWords(kLoadOwnerRegisterOffset, kLoadOwnerRegisterExpected)) {
-        LogFingerprintFail("R204O_OWNER_REGISTER", kLoadOwnerRegisterOffset); ok = false;
+        LogFingerprintFail("R204P_OWNER_REGISTER", kLoadOwnerRegisterOffset); ok = false;
     }
     if (!MatchWords(kLoadOwnerRegistryProcessOffset, kLoadOwnerRegistryProcessExpected)) {
-        LogFingerprintFail("R204O_REGISTRY_PROCESS", kLoadOwnerRegistryProcessOffset); ok = false;
+        LogFingerprintFail("R204P_REGISTRY_PROCESS", kLoadOwnerRegistryProcessOffset); ok = false;
     }
     if (!MatchWords(kLoadOwnerReadyOffset, kLoadOwnerReadyExpected)) {
-        LogFingerprintFail("R204O_OWNER_READY", kLoadOwnerReadyOffset); ok = false;
+        LogFingerprintFail("R204P_OWNER_READY", kLoadOwnerReadyOffset); ok = false;
     }
     if (!MatchWords(kLoadOwnerStateOffset, kLoadOwnerStateExpected)) {
-        LogFingerprintFail("R204O_OWNER_STATE", kLoadOwnerStateOffset); ok = false;
+        LogFingerprintFail("R204P_OWNER_STATE", kLoadOwnerStateOffset); ok = false;
     }
     if (!ok) {
         g_r204j_process_hook_installed = false;
         return false;
     }
 
-    // R204O boot-safe focused install: R204N proved the emulator/exlaunch
-    // trampoline pool cannot hold the full 25-hook set. Keep only the hooks
-    // required to map a load/read_context to its path and split READ_STAGE.
-    // Total trampolines installed here: 9.
+    // R204P preamble-state control: R204O hardware proved body entries never
+    // reach any deeper READ_STAGE subcall. Install only the four boundaries
+    // needed to map the request and snapshot READ_STAGE preamble state.
+    // Total trampolines installed here: 4.
     LoadRequestProcessHook::InstallAtOffset(kLoadRequestProcessOffset);
     g_r204j_process_hook_installed = true;
     FileOpenHook::InstallAtOffset(kFileOpenOffset);
     FileReadDispatchHook::InstallAtOffset(kFileReadDispatchOffset);
     ReadStageHook::InstallAtOffset(kReadStageOffset);
-    StreamAttachHook::InstallAtOffset(kStreamAttachOffset);
-    StreamReadHook::InstallAtOffset(kStreamReadOffset);
-    ReadHeaderHook::InstallAtOffset(kReadHeaderOffset);
-    ReadPayloadHook::InstallAtOffset(kReadPayloadOffset);
-    ReadFinalHook::InstallAtOffset(kReadFinalOffset);
     return true;
 }
 
@@ -7183,15 +7212,15 @@ bool InstallP52PreUjTraceHooks() {
 
 } // namespace
 
-bool InstallR204OBootSafeReadStageTrace() {
+bool InstallR204PPreambleStateTrace() {
     const bool ok = InstallTraceHooks();
     Logging.Log(
-        "[NSC:R204O] READY installed=%u process_installed=%u boot_safe=1 trampoline_count=9 path_map=1 file_open=1 read_dispatch=1 read_stage=1 stream_attach=1 stream_read=1 read_header=1 read_payload=1 read_final=1",
+        "[NSC:R204P] READY installed=%u process_installed=%u boot_safe=1 trampoline_count=4 path_map=1 file_open=1 read_dispatch=1 read_stage=1 preamble_state=1",
         ok ? 1u : 0u, g_r204j_process_hook_installed ? 1u : 0u);
     Logging.Log(
-        "[NSC:R204O] READY_FLAGS trace_all_charsel=1 readonly=1 fixture=mtob native_id_control=46 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0");
+        "[NSC:R204P] READY_FLAGS trace_all_charsel=1 readonly=1 fixture=mtob native_id_control=46 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0");
     Logging.Log(
-        "[NSC:R204O] READY_HOOKS installed_hooks=PROCESS,FILE_OPEN,READ_DISPATCH,READ_STAGE,STREAM_ATTACH,STREAM_READ,READ_HEADER,READ_PAYLOAD,READ_FINAL omitted_hooks=LOAD_REQ,LOAD_CREATE,LOAD_STATUS,CHUNK,REQUEST_FINALIZE,READ_CLEANUP,STATE_SET,SUCCESS_SET,RESOURCE_LOOKUP,CHUNK_LOW,OWNER_INIT,OWNER_INIT5,OWNER_REGISTER,REGISTRY_PROCESS,OWNER_READY,OWNER_STATE");
+        "[NSC:R204P] READY_HOOKS installed_hooks=PROCESS,FILE_OPEN,READ_DISPATCH,READ_STAGE omitted_hooks=STREAM_ATTACH,STREAM_READ,READ_HEADER,READ_PAYLOAD,READ_FINAL,LOAD_REQ,LOAD_CREATE,LOAD_STATUS,CHUNK,REQUEST_FINALIZE,READ_CLEANUP,STATE_SET,SUCCESS_SET,RESOURCE_LOOKUP,CHUNK_LOW,OWNER_INIT,OWNER_INIT5,OWNER_REGISTER,REGISTRY_PROCESS,OWNER_READY,OWNER_STATE");
     return ok;
 }
 
