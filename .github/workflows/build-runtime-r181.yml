@@ -1,4 +1,4 @@
-name: Build NSC R204M Full Preview Pipeline Trace
+name: Build NSC R204N READ_STAGE Subcall Trace
 
 on:
   workflow_dispatch:
@@ -29,7 +29,7 @@ jobs:
         working-directory: exlaunch
         run: make -j2
 
-      - name: Package R204M read-only generic-child lifecycle trace runtime
+      - name: Package R204N read-only generic-child lifecycle trace runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -48,7 +48,7 @@ jobs:
           cd "$OUT"
           sha256sum runtime/atmosphere/contents/0100FA10190A0000/exefs/subsdk9 > SHA256SUMS.txt
           printf '%s\n' \
-            'NSC2Switch R204M diagnostic: read-only charsel/body loader + post-open virtual read-dispatch tracer.' \
+            'NSC2Switch R204N diagnostic: read-only charsel/body loader + READ_STAGE subcall tracer.' \
             'Do not copy a game main file into this package.' \
             'Deploy beside the R215A internal-identity-fixed RomFS carrier for one diagnostic run, then remove subsdk9.' \
             > INSTALL.txt
@@ -63,6 +63,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC2Switch-R204M-NATIVE-FULL-PREVIEW-PIPELINE-TRACE
+          name: NSC2Switch-R204N-NATIVE-READ-STAGE-SUBCALL-TRACE
           path: out/**
           if-no-files-found: error
