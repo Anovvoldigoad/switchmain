@@ -1,7 +1,7 @@
 #pragma once
 
 namespace nsc {
-bool InstallR204NFullPreviewPipelineTrace();
+bool InstallR204OBootSafeReadStageTrace();
 void InstallP50AConditionCompat();
 void InstallP52APreUjProbe();
 void InstallP53AInputPromotionProbe();
