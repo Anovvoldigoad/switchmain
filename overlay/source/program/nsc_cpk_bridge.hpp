@@ -1,7 +1,8 @@
 #pragma once
 
 namespace nsc {
-bool InstallR204TTargetOnlyStreamForensicTrace();
+bool InstallR204VCharselStateGateTrace();
+bool InstallR204JNativeCharselOwnerTrace();
 void InstallP50AConditionCompat();
 void InstallP52APreUjProbe();
 void InstallP53AInputPromotionProbe();

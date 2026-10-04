@@ -1,0 +1,16 @@
+core_calls_r204j_only=PASS
+no_gameplay_installer_in_core=PASS
+public_decl=PASS
+ready_marker=PASS
+owner_tree_verify=PASS
+registry_process=PASS
+target_scan=PASS
+registry_process_offset=PASS
+owner_register_offset=PASS
+registry_process_installed=PASS
+no_cpk_bind_install=PASS
+no_path_rewrite=PASS
+main_owner_register_fingerprint=PASS
+main_registry_process_fingerprint=PASS
+main_owner_ready_fingerprint=PASS
+R204J_SOURCE_VERIFY=PASS

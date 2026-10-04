@@ -4,10 +4,11 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R204T is a temporary read-only diagnostic runtime.
-    // It intentionally installs no gameplay patches, no CPK binder, no
-    // numeric-ID expansion, and no custom resource mutation.
-    return nsc::InstallR204TTargetOnlyStreamForensicTrace();
+    // R204V is a temporary read-only post-registry state-gate diagnostic.
+    // Historical R204J + R238A proved the primary mtob registry reaches result=1.
+    // This run isolates the native ccUiCharacterSelect3DModel gates that must pass
+    // before state fields +0x6C=1 and +0x5C=2 are committed.
+    return nsc::InstallR204VCharselStateGateTrace();
 }
 
 } // namespace nsc::runtime
