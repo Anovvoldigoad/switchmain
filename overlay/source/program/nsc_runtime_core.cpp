@@ -4,10 +4,10 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R204R is a one-shot read-only root-cause diagnostic runtime.
+    // R204S is a temporary read-only diagnostic runtime.
     // It intentionally installs no gameplay patches, no CPK binder, no
     // numeric-ID expansion, and no custom resource mutation.
-    return nsc::InstallR204RRootCauseProbe();
+    return nsc::InstallR204STargetOnlyStreamForensicTrace();
 }
 
 } // namespace nsc::runtime

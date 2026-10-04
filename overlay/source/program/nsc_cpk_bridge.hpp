@@ -1,7 +1,7 @@
 #pragma once
 
 namespace nsc {
-bool InstallR204RRootCauseProbe();
+bool InstallR204STargetOnlyStreamForensicTrace();
 void InstallP50AConditionCompat();
 void InstallP52APreUjProbe();
 void InstallP53AInputPromotionProbe();
