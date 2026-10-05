@@ -4,11 +4,9 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R245G is a temporary read-only diagnostic runtime.
-    // It preserves the proven R204J loader/registry visibility and adds only
-    // the exact ccUiCharacterSelect3DModel state-advance gate trace.
-    // No gameplay patches, CPK binder, numeric-ID expansion, or resource mutation.
-    return nsc::InstallR245GPreviewStateGateTrace();
+    // R247 reconstructs the already-designed R204W four-state table tracer
+    // on the materially changed R245C real-Tobi carrier. Read-only only.
+    return nsc::InstallR247R204WStateTableRetest();
 }
 
 } // namespace nsc::runtime

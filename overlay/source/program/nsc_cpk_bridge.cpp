@@ -36,6 +36,16 @@ constexpr ptrdiff_t kLoadOwnerStateOffset      = 0x1161858; // load-object statu
 // R245G: ccUiCharacterSelect3DModel post-owner-readiness state-advance gate.
 constexpr ptrdiff_t kR245GPreviewStateGateOffset = 0x549804;
 constexpr ptrdiff_t kR245GAltReadyWrapperOffset  = 0x58498;
+// R247: reconstructed equivalent of the historical R204W four-state table tracer.
+// R246 statically proved these descriptor callbacks on clean Switch v1.70 main.
+constexpr ptrdiff_t kR247LoadEnterOffset   = 0x548094;
+constexpr ptrdiff_t kR247LoadUpdateOffset  = 0x549804;
+constexpr ptrdiff_t kR247CreateEnterOffset = 0x549868;
+constexpr ptrdiff_t kR247CreateUpdateOffset= 0x54991C;
+constexpr ptrdiff_t kR247WaitEnterOffset   = 0x549950;
+constexpr ptrdiff_t kR247WaitUpdateOffset  = 0x549B80;
+constexpr ptrdiff_t kR247SelectEnterOffset = 0x549C40;
+constexpr ptrdiff_t kR247SelectUpdateOffset= 0x549EA8;
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -490,6 +500,11 @@ std::atomic<uint32_t> g_r245g_gate_calls{0};
 std::atomic<uint32_t> g_r245g_gate_registry_seq{0};
 std::atomic<uint32_t> g_r245g_gate_registry_logs{0};
 std::atomic<uint32_t> g_r245g_alt_ready_logs{0};
+// R247/R204W-equivalent: target registry + state-object identity and bounded state logs.
+std::atomic<uintptr_t> g_r247_target_registry{0};
+std::atomic<uintptr_t> g_r247_target_state_self{0};
+std::atomic<uint32_t> g_r247_state_logs{0};
+std::atomic<uint32_t> g_r247_target_capture_logs{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -782,6 +797,64 @@ uint32_t LoadOwnerStatus(void* owner) {
 
 bool IsR204JTargetCharselPath(const char* path) {
     return path && BoundedContains(path, "mtobcharsel.xfbin", 512, 17);
+}
+
+struct R247StateSnapshot {
+    uint32_t state5c;
+    uint32_t phase6c;
+    void* reg_a;
+    void* model_b0;
+    void* helper_c0;
+    void* reg_b;
+};
+
+R247StateSnapshot R247Snapshot(void* self) {
+    R247StateSnapshot out{0xFFFFFFFFu, 0xFFFFFFFFu, nullptr, nullptr, nullptr, nullptr};
+    if (!self) return out;
+    auto* b = reinterpret_cast<uint8_t*>(self);
+    out.state5c = *reinterpret_cast<volatile uint32_t*>(b + 0x5Cu);
+    out.phase6c = *reinterpret_cast<volatile uint32_t*>(b + 0x6Cu);
+    out.reg_a = *reinterpret_cast<void* volatile*>(b + 0xA8u);
+    out.model_b0 = *reinterpret_cast<void* volatile*>(b + 0xB0u);
+    out.helper_c0 = *reinterpret_cast<void* volatile*>(b + 0xC0u);
+    void* end_ptr = *reinterpret_cast<void* volatile*>(b + 0x80u);
+    if (end_ptr) {
+        out.reg_b = *reinterpret_cast<void* volatile*>(
+            reinterpret_cast<uint8_t*>(end_ptr) - 0x18u);
+    }
+    return out;
+}
+
+bool R247SnapshotTouchesTargetRegistry(const R247StateSnapshot& snap, uintptr_t target_registry) {
+    if (target_registry == 0u) return false;
+    const uintptr_t a = reinterpret_cast<uintptr_t>(snap.reg_a);
+    const uintptr_t b = reinterpret_cast<uintptr_t>(snap.reg_b);
+    const uintptr_t c = reinterpret_cast<uintptr_t>(snap.helper_c0);
+    return a == target_registry || b == target_registry ||
+           (c != 0u && c + 8u == target_registry);
+}
+
+bool R247IsTargetState(void* self, const R247StateSnapshot& snap) {
+    const uintptr_t self_u = reinterpret_cast<uintptr_t>(self);
+    const uintptr_t remembered = g_r247_target_state_self.load(std::memory_order_relaxed);
+    if (remembered != 0u && remembered == self_u) return true;
+    const uintptr_t target_registry = g_r247_target_registry.load(std::memory_order_relaxed);
+    if (R247SnapshotTouchesTargetRegistry(snap, target_registry)) {
+        g_r247_target_state_self.store(self_u, std::memory_order_relaxed);
+        return true;
+    }
+    return false;
+}
+
+void R247LogStateCall(const char* state_name, const char* callback, const char* phase,
+                      void* self, const R247StateSnapshot& snap, bool target) {
+    if (g_r247_state_logs.fetch_add(1u, std::memory_order_relaxed) >= 2048u) return;
+    Logging.Log(
+        "[NSC:R247] STATE_CALL state_name=%s callback=%s phase=%s target=%u self=%p "
+        "state5c=%u phase6c=%u regA=%p modelB0=%p helperC0=%p regB=%p target_registry=%p",
+        state_name, callback, phase, target ? 1u : 0u, self,
+        snap.state5c, snap.phase6c, snap.reg_a, snap.model_b0, snap.helper_c0, snap.reg_b,
+        reinterpret_cast<void*>(g_r247_target_registry.load(std::memory_order_relaxed)));
 }
 
 void* FindOwnerNodeByHash(void* registry, uint32_t hash) {
@@ -2578,6 +2651,47 @@ HOOK_DEFINE_TRAMPOLINE(R245GAltReadyWrapperHook) {
         return result;
     }
 };
+
+// R247: reconstructed R204W-equivalent target registry capture. Read-only.
+HOOK_DEFINE_TRAMPOLINE(R247TargetRegistryCaptureHook) {
+    static uint32_t Callback(void* registry, const char* path, uint32_t p2, uint32_t p3, uint32_t p4) {
+        const uint32_t result = Orig(registry, path, p2, p3, p4);
+        if (IsR204JTargetCharselPath(path)) {
+            g_r247_target_registry.store(reinterpret_cast<uintptr_t>(registry), std::memory_order_relaxed);
+            g_r247_target_state_self.store(0u, std::memory_order_relaxed);
+            g_r247_state_logs.store(0u, std::memory_order_relaxed);
+            if (g_r247_target_capture_logs.fetch_add(1u, std::memory_order_relaxed) < 32u) {
+                Logging.Log("[NSC:R247] TARGET_REGISTRY_CAPTURE registry=%p path=%s hash=%u readonly=1",
+                            registry, path ? path : "<null>", result);
+            }
+        }
+        return result;
+    }
+};
+
+#define R247_DEFINE_STATE_HOOK(HOOK_NAME, STATE_NAME, CALLBACK_NAME) \
+HOOK_DEFINE_TRAMPOLINE(HOOK_NAME) { \
+    static void Callback(void* self) { \
+        const R247StateSnapshot pre = R247Snapshot(self); \
+        const bool target_pre = R247IsTargetState(self, pre); \
+        R247LogStateCall(STATE_NAME, CALLBACK_NAME, "pre", self, pre, target_pre); \
+        Orig(self); \
+        const R247StateSnapshot post = R247Snapshot(self); \
+        const bool target_post = R247IsTargetState(self, post); \
+        R247LogStateCall(STATE_NAME, CALLBACK_NAME, "post", self, post, target_post); \
+    } \
+};
+
+R247_DEFINE_STATE_HOOK(R247LoadEnterHook,    "Load",   "enter")
+R247_DEFINE_STATE_HOOK(R247LoadUpdateHook,   "Load",   "update")
+R247_DEFINE_STATE_HOOK(R247CreateEnterHook,  "Create", "enter")
+R247_DEFINE_STATE_HOOK(R247CreateUpdateHook, "Create", "update")
+R247_DEFINE_STATE_HOOK(R247WaitEnterHook,    "Wait",   "enter")
+R247_DEFINE_STATE_HOOK(R247WaitUpdateHook,   "Wait",   "update")
+R247_DEFINE_STATE_HOOK(R247SelectEnterHook,  "Select", "enter")
+R247_DEFINE_STATE_HOOK(R247SelectUpdateHook, "Select", "update")
+
+#undef R247_DEFINE_STATE_HOOK
 
 HOOK_DEFINE_TRAMPOLINE(LoadOwnerStateHook) {
     static uint32_t Callback(void* owner) {
@@ -6997,6 +7111,83 @@ bool InstallR245GPreviewStateGateTrace() {
         "[NSC:R245G] DECISION no_gate=UPSTREAM_DISPATCH "
         "regA0=FIRST_REGISTRY one_registry_then_exit=MID_GATE_OR_REGB_PTR "
         "two_plus_registries=CHECK_RESULTS advanced1=STATE_GATE_PASS");
+    return ok;
+}
+
+bool InstallR247R204WStateTableRetest() {
+    static constexpr uint32_t kOwnerRegisterExpected[] = {
+        0xD10143FF, 0xA90167FE, 0xA9025FF8, 0xA90357F6,
+        0xA9044FF4, 0xF9400008, 0x2A0403F5, 0x2A0303F6,
+    };
+    static constexpr uint32_t kLoadEnterExpected[] = {
+        0xD10643FF,0xA9137BFD,0xA9146FFC,0xA91567FA,
+        0xA9165FF8,0xA91757F6,0xA9184FF4,0xF9400008,
+    };
+    static constexpr uint32_t kLoadUpdateExpected[] = {
+        0xA9BF4FFE,0xAA0003F3,0xF9405400,0xB4000260,
+        0x94306121,0x34000220,0xF9406260,0xB40000C0,
+    };
+    static constexpr uint32_t kCreateEnterExpected[] = {
+        0xF81E0FFE,0xA9014FF4,0xF9400008,0xAA0003F3,
+        0xF9400908,0xD63F0100,0xF9405A68,0xB40000E8,
+    };
+    static constexpr uint32_t kCreateUpdateExpected[] = {
+        0xA9BF4FFE,0xAA0003F3,0xF9405800,0xB40000E0,
+        0x94068CA1,0x340000A0,0x52800028,0xB9006E68,
+    };
+    static constexpr uint32_t kWaitEnterExpected[] = {
+        0xD10303FF,0xA9095FFE,0xA90A57F6,0xA90B4FF4,
+        0xF9405808,0xB4001048,0xD000DFD6,0xF94246D6,
+    };
+    static constexpr uint32_t kWaitUpdateExpected[] = {
+        0x14000001,0xF81D0FFE,0xA90157F6,0xA9024FF4,
+        0xB9414008,0x340004C8,0xA958A015,0xAA0003F3,
+    };
+    static constexpr uint32_t kSelectEnterExpected[] = {
+        0xD10303FF,0xA9095FFE,0xA90A57F6,0xA90B4FF4,
+        0xF9405808,0xB4001208,0xD000DFD6,0xF94246D6,
+    };
+    static constexpr uint32_t kSelectUpdateExpected[] = {
+        0xA9BF4FFE,0xAA0003F3,0xF9405800,0xB40000E0,
+        0x94068B46,0x340000A0,0x52800028,0xB9006E68,
+    };
+
+    bool ok = true;
+#define R247_VERIFY(NAME, OFF, WORDS) \
+    do { if (!MatchWords(OFF, WORDS)) { LogFingerprintFail(NAME, OFF); ok = false; } } while (0)
+    R247_VERIFY("R247_OWNER_REGISTER", kLoadOwnerRegisterOffset, kOwnerRegisterExpected);
+    R247_VERIFY("R247_LOAD_ENTER", kR247LoadEnterOffset, kLoadEnterExpected);
+    R247_VERIFY("R247_LOAD_UPDATE", kR247LoadUpdateOffset, kLoadUpdateExpected);
+    R247_VERIFY("R247_CREATE_ENTER", kR247CreateEnterOffset, kCreateEnterExpected);
+    R247_VERIFY("R247_CREATE_UPDATE", kR247CreateUpdateOffset, kCreateUpdateExpected);
+    R247_VERIFY("R247_WAIT_ENTER", kR247WaitEnterOffset, kWaitEnterExpected);
+    R247_VERIFY("R247_WAIT_UPDATE", kR247WaitUpdateOffset, kWaitUpdateExpected);
+    R247_VERIFY("R247_SELECT_ENTER", kR247SelectEnterOffset, kSelectEnterExpected);
+    R247_VERIFY("R247_SELECT_UPDATE", kR247SelectUpdateOffset, kSelectUpdateExpected);
+#undef R247_VERIFY
+
+    if (ok) {
+        R247TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
+        R247LoadEnterHook::InstallAtOffset(kR247LoadEnterOffset);
+        R247LoadUpdateHook::InstallAtOffset(kR247LoadUpdateOffset);
+        R247CreateEnterHook::InstallAtOffset(kR247CreateEnterOffset);
+        R247CreateUpdateHook::InstallAtOffset(kR247CreateUpdateOffset);
+        R247WaitEnterHook::InstallAtOffset(kR247WaitEnterOffset);
+        R247WaitUpdateHook::InstallAtOffset(kR247WaitUpdateOffset);
+        R247SelectEnterHook::InstallAtOffset(kR247SelectEnterOffset);
+        R247SelectUpdateHook::InstallAtOffset(kR247SelectUpdateOffset);
+    }
+
+    Logging.Log(
+        "[NSC:R247] READY installed=%u readonly=1 reconstructed_r204w=1 hooks=9 "
+        "load=0x548094/0x549804 create=0x549868/0x54991C "
+        "wait=0x549950/0x549B80 select=0x549C40/0x549EA8 "
+        "cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",
+        ok ? 1u : 0u);
+    Logging.Log(
+        "[NSC:R247] DECISION target_load_update_then_wait=STATE_DISPATCH_PASS "
+        "target_load_update_no_next_state=POST_LOAD_SCHEDULER_OR_TRANSITION "
+        "target_wait_update=TRACE_WAIT_CONSUMER_NEXT");
     return ok;
 }
 

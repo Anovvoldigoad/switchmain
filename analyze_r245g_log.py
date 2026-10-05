@@ -35,14 +35,14 @@ elif mtob_ready and not enters:
     decision='UPSTREAM_GATE_NOT_CALLED_AFTER_TARGET_READY'
 elif enters and not matched:
     decision='RECOVERED_GATE_ACTIVE_BUT_TARGET_REGISTRY_NOT_OWNED_BY_OBSERVED_INSTANCE'
-elif matched and zero_regs:
-    decision='STATE_GATE_REGISTRY_READINESS_FAILURE'
-elif matched and alt_zero:
-    decision='STATE_GATE_ALT_OWNER_STATE_FAILURE'
 elif advanced and not mtob_lookup:
     decision='STATE_GATE_PASS_CONSUMER_DISPATCH_STILL_ABSENT'
 elif advanced and mtob_lookup:
     decision='STATE_GATE_PASS_RESOURCE_CONSUMPTION_REACHED'
+elif matched and zero_regs:
+    decision='STATE_GATE_REGISTRY_READINESS_FAILURE'
+elif matched and alt_zero:
+    decision='STATE_GATE_ALT_OWNER_STATE_FAILURE'
 elif matched:
     decision='STATE_GATE_DID_NOT_ADVANCE_REVIEW_ORDERED_GATE_EVENTS'
 else:
