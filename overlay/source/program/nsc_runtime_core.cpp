@@ -4,9 +4,9 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R268 continues only after R267 proved base visual draw is reached.
-    // Read-only: inspect secondary+0x28 visual list -> 0x11A3E3C child gate -> 0x11A2444 child draw.
-    return nsc::InstallR268BaseVisualChildGateTrace();
+    // R269 follows R268: count20==1 but child[0]==NULL.
+    // Read-only: source188 link -> visual population -> descriptor matcher -> final list slot.
+    return nsc::InstallR269BaseVisualPopulationTrace();
 }
 
 } // namespace nsc::runtime

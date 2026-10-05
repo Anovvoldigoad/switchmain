@@ -73,6 +73,10 @@ constexpr ptrdiff_t kR267BaseVisualDrawOffset         = 0x117E0D8;
 // R268: downstream base-visual list / child-gate trace after R267 proved base visual draw is reached.
 constexpr ptrdiff_t kR268VisualChildGateOffset        = 0x11A3E3C;
 constexpr ptrdiff_t kR268VisualChildDrawOffset        = 0x11A2444;
+// R269: exact base-visual slot population chain after R268 proved count=1 but child[0]=NULL.
+constexpr ptrdiff_t kR269VisualPopulateOffset          = 0x117BA00;
+constexpr ptrdiff_t kR269VisualCandidateMatchOffset    = 0x11A2D4C;
+constexpr ptrdiff_t kR269VisualSourceLinkOffset        = 0x117D390;
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -572,6 +576,10 @@ std::atomic<uint32_t> g_r268_visual_list_logs{0};
 std::atomic<uint32_t> g_r268_child_gate_logs{0};
 std::atomic<uint32_t> g_r268_child_draw_logs{0};
 std::atomic<uint32_t> g_r268_visual_active{0};
+std::atomic<uint32_t> g_r269_link_logs{0};
+std::atomic<uint32_t> g_r269_populate_logs{0};
+std::atomic<uint32_t> g_r269_match_logs{0};
+std::atomic<uint32_t> g_r269_populate_active{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -3346,6 +3354,146 @@ HOOK_DEFINE_TRAMPOLINE(R268VisualChildDrawHook) {
                             seq, object, byte121, byte127, reinterpret_cast<void*>(next28));
         }
         Orig(object);
+    }
+};
+
+
+// R269: exact population chain for the base-visual list. R268 proved that
+// secondary+0x28 exists and count20==1, but entries[0] remains NULL for the
+// target. Static recovery shows main+0x117BA00 fills a 0x68-stride entry only
+// when source188 (linked from model+0x90) matches the typed charsel descriptor
+// through main+0x11A2D4C. These hooks observe that chain only.
+HOOK_DEFINE_TRAMPOLINE(R269VisualSourceLinkHook) {
+    static void Callback(void* secondary, void* source188) {
+        const bool target = g_r264_secondary_active.load(std::memory_order_relaxed) != 0u;
+        uint32_t seq = 0u;
+        if (target) {
+            seq = g_r269_link_logs.fetch_add(1u, std::memory_order_relaxed);
+            uintptr_t pre188 = 0u;
+            if (secondary)
+                pre188 = *reinterpret_cast<volatile uintptr_t*>(
+                    reinterpret_cast<volatile uint8_t*>(secondary) + 0x188u);
+            if (seq < 32u)
+                Logging.Log("[NSC:R269] SOURCE_LINK_PRE seq=%u secondary=%p source188_arg=%p pre188=%p",
+                            seq, secondary, source188, reinterpret_cast<void*>(pre188));
+        }
+        Orig(secondary, source188);
+        if (target && seq < 32u) {
+            uintptr_t post188 = 0u;
+            if (secondary)
+                post188 = *reinterpret_cast<volatile uintptr_t*>(
+                    reinterpret_cast<volatile uint8_t*>(secondary) + 0x188u);
+            Logging.Log("[NSC:R269] SOURCE_LINK_POST seq=%u secondary=%p source188_arg=%p post188=%p equal=%u",
+                        seq, secondary, source188, reinterpret_cast<void*>(post188),
+                        post188 == reinterpret_cast<uintptr_t>(source188) ? 1u : 0u);
+        }
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R269VisualPopulateHook) {
+    static void Callback(void* secondary, void* typed_holder, void* aux) {
+        const bool target = g_r264_secondary_active.load(std::memory_order_relaxed) != 0u;
+        uint32_t seq = 0u, match_before = 0u;
+        uintptr_t typed = 0u, source188 = 0u, list28 = 0u, entries18 = 0u;
+        uintptr_t child0_pre = 0u, desc_table = 0u, desc0 = 0u;
+        uint32_t typed_count_b0 = 0u, list_count20 = 0u;
+        if (target) {
+            seq = g_r269_populate_logs.fetch_add(1u, std::memory_order_relaxed);
+            match_before = g_r269_match_logs.load(std::memory_order_relaxed);
+            if (typed_holder)
+                typed = *reinterpret_cast<volatile uintptr_t*>(typed_holder);
+            if (secondary) {
+                auto* sb = reinterpret_cast<volatile uint8_t*>(secondary);
+                source188 = *reinterpret_cast<volatile uintptr_t*>(sb + 0x188u);
+                list28 = *reinterpret_cast<volatile uintptr_t*>(sb + 0x28u);
+            }
+            if (typed) {
+                auto* tb = reinterpret_cast<volatile uint8_t*>(typed);
+                desc_table = *reinterpret_cast<volatile uintptr_t*>(tb + 0xA8u);
+                typed_count_b0 = *reinterpret_cast<volatile uint16_t*>(tb + 0xB0u);
+                if (desc_table)
+                    desc0 = *reinterpret_cast<volatile uintptr_t*>(desc_table);
+            }
+            if (list28) {
+                auto* lb = reinterpret_cast<volatile uint8_t*>(list28);
+                entries18 = *reinterpret_cast<volatile uintptr_t*>(lb + 0x18u);
+                list_count20 = *reinterpret_cast<volatile uint16_t*>(lb + 0x20u);
+                if (entries18 && list_count20)
+                    child0_pre = *reinterpret_cast<volatile uintptr_t*>(entries18);
+            }
+            if (seq < 32u)
+                Logging.Log("[NSC:R269] POPULATE_PRE seq=%u secondary=%p typed_holder=%p typed=%p source188=%p typed_count_b0=%u desc_table=%p desc0=%p list28=%p list_count20=%u entries18=%p child0_pre=%p aux=%p",
+                            seq, secondary, typed_holder, reinterpret_cast<void*>(typed),
+                            reinterpret_cast<void*>(source188), typed_count_b0,
+                            reinterpret_cast<void*>(desc_table), reinterpret_cast<void*>(desc0),
+                            reinterpret_cast<void*>(list28), list_count20,
+                            reinterpret_cast<void*>(entries18), reinterpret_cast<void*>(child0_pre), aux);
+            g_r269_populate_active.store(1u, std::memory_order_relaxed);
+        }
+        Orig(secondary, typed_holder, aux);
+        if (target) {
+            g_r269_populate_active.store(0u, std::memory_order_relaxed);
+            uintptr_t child0_post = 0u, post_list28 = 0u, post_entries18 = 0u;
+            uint32_t post_count20 = 0u;
+            if (secondary) {
+                auto* sb = reinterpret_cast<volatile uint8_t*>(secondary);
+                post_list28 = *reinterpret_cast<volatile uintptr_t*>(sb + 0x28u);
+                if (post_list28) {
+                    auto* lb = reinterpret_cast<volatile uint8_t*>(post_list28);
+                    post_entries18 = *reinterpret_cast<volatile uintptr_t*>(lb + 0x18u);
+                    post_count20 = *reinterpret_cast<volatile uint16_t*>(lb + 0x20u);
+                    if (post_entries18 && post_count20)
+                        child0_post = *reinterpret_cast<volatile uintptr_t*>(post_entries18);
+                }
+            }
+            const uint32_t match_after = g_r269_match_logs.load(std::memory_order_relaxed);
+            if (seq < 32u)
+                Logging.Log("[NSC:R269] POPULATE_POST seq=%u secondary=%p list28=%p count20=%u entries18=%p child0_post=%p match_delta=%u",
+                            seq, secondary, reinterpret_cast<void*>(post_list28), post_count20,
+                            reinterpret_cast<void*>(post_entries18), reinterpret_cast<void*>(child0_post),
+                            match_after - match_before);
+        }
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R269VisualCandidateMatchHook) {
+    static uint32_t Callback(void* candidate, void* descriptor) {
+        const bool target = g_r269_populate_active.load(std::memory_order_relaxed) != 0u;
+        uint32_t seq = 0u;
+        uintptr_t candidate18 = 0u, candidate118 = 0u, meta38 = 0u, meta40 = 0u;
+        uintptr_t dvt = 0u, dfn20 = 0u, dfn50 = 0u;
+        if (target) {
+            seq = g_r269_match_logs.fetch_add(1u, std::memory_order_relaxed);
+            if (candidate) {
+                auto* cb = reinterpret_cast<volatile uint8_t*>(candidate);
+                candidate18 = *reinterpret_cast<volatile uintptr_t*>(cb + 0x18u);
+                candidate118 = *reinterpret_cast<volatile uintptr_t*>(cb + 0x118u);
+                if (candidate118) {
+                    auto* mb = reinterpret_cast<volatile uint8_t*>(candidate118);
+                    meta38 = *reinterpret_cast<volatile uintptr_t*>(mb + 0x38u);
+                    meta40 = *reinterpret_cast<volatile uintptr_t*>(mb + 0x40u);
+                }
+            }
+            if (descriptor) {
+                dvt = *reinterpret_cast<volatile uintptr_t*>(descriptor);
+                if (dvt) {
+                    auto* vb = reinterpret_cast<volatile uint8_t*>(dvt);
+                    dfn20 = *reinterpret_cast<volatile uintptr_t*>(vb + 0x20u);
+                    dfn50 = *reinterpret_cast<volatile uintptr_t*>(vb + 0x50u);
+                }
+            }
+            if (seq < 64u)
+                Logging.Log("[NSC:R269] MATCH_PRE seq=%u candidate=%p candidate18=%p candidate118=%p meta38=%p meta40=%p descriptor=%p dvt=%p dfn20=%p dfn50=%p",
+                            seq, candidate, reinterpret_cast<void*>(candidate18),
+                            reinterpret_cast<void*>(candidate118), reinterpret_cast<void*>(meta38),
+                            reinterpret_cast<void*>(meta40), descriptor, reinterpret_cast<void*>(dvt),
+                            reinterpret_cast<void*>(dfn20), reinterpret_cast<void*>(dfn50));
+        }
+        const uint32_t result = Orig(candidate, descriptor);
+        if (target && seq < 64u)
+            Logging.Log("[NSC:R269] MATCH_POST seq=%u candidate=%p descriptor=%p result=%u",
+                        seq, candidate, descriptor, result);
+        return result;
     }
 };
 
@@ -7997,6 +8145,63 @@ bool InstallR268BaseVisualChildGateTrace() {
     }
     Logging.Log("[NSC:R268] READY installed=%u readonly=1 hooks=9 visual_list=0x117E0D8 child_gate=0x11A3E3C child_draw=0x11A2444 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",ok?1u:0u);
     Logging.Log("[NSC:R268] DECISION count20=0=BASE_VISUAL_LIST_EMPTY entry_bit2=0=CHILD_DISABLED bit2=1_draw0=CHILD_GATE_OR_VCALL_BLOCK child_draw_gt0=DOWNSTREAM_CHILD_DRAW");
+    return ok;
+}
+
+
+bool InstallR269BaseVisualPopulationTrace() {
+    static constexpr uint32_t kOwnerRegisterExpected[] = {
+        0xD10143FF,0xA90167FE,0xA9025FF8,0xA90357F6,0xA9044FF4,0xF9400008,0x2A0403F5,0x2A0303F6,
+    };
+    static constexpr uint32_t kWaitEnterExpected[] = {
+        0xD10303FF,0xA9095FFE,0xA90A57F6,0xA90B4FF4,0xF9405808,0xB4001048,0xD000DFD6,0xF94246D6,
+    };
+    static constexpr uint32_t kSecondaryBuildExpected[] = {
+        0xD105C3FF,0xFD0093E8,0xA9137BFD,0xA9145FF8,0xA91557F6,0xA9164FF4,0xF9400008,0xAA0203F4,
+    };
+    static constexpr uint32_t kDrawExpected[] = {
+        0xA9BF4FFE,0xAA0003F3,0x97FFFF87,0xF9405A60,0xB4000180,0x94068783,0x34000140,0xB000DFC8,
+    };
+    static constexpr uint32_t kBaseModelDrawExpected[] = {
+        0xF81E0FFE,0xA9014FF4,0xAA0003F3,0xF9404C00,0xB4000160,0xB96A9268,0x340000A8,0xF9400C08,
+    };
+    static constexpr uint32_t kBaseVisualDrawExpected[] = {
+        0xA9BE57FE,0xA9014FF4,0xF9401408,0xB4000288,0x79404109,0x34000249,0x52800D0A,0x9B0A7D29,
+    };
+    static constexpr uint32_t kPopulateExpected[] = {
+        0xD10383FF,0xFD003BE8,0xA9087BFD,0xA9096FFC,0xA90A67FA,0xA90B5FF8,0xA90C57F6,0xA90D4FF4,
+    };
+    static constexpr uint32_t kMatchExpected[] = {
+        0xA9BE57FE,0xA9014FF4,0xAA0003F3,0xF9400C00,0xAA0103F4,0xF9400008,0xF9400D08,0xD63F0100,
+    };
+    static constexpr uint32_t kSourceLinkExpected[] = {
+        0xF900C401,0xD65F03C0,0xF940C408,0xB4000068,0x52800020,0xD65F03C0,0xF9401408,0xB4000128,
+    };
+    bool ok=true;
+#define R269_VERIFY(NAME,OFF,WORDS) do { if (!MatchWords(OFF,WORDS)) { LogFingerprintFail(NAME,OFF); ok=false; } } while(0)
+    R269_VERIFY("R269_OWNER_REGISTER",kLoadOwnerRegisterOffset,kOwnerRegisterExpected);
+    R269_VERIFY("R269_WAIT_ENTER",kR264WaitEnterOffset,kWaitEnterExpected);
+    R269_VERIFY("R269_SECONDARY_BUILD",kR264SecondaryBuildOffset,kSecondaryBuildExpected);
+    R269_VERIFY("R269_CHARSEL_DRAW",kR264DrawOffset,kDrawExpected);
+    R269_VERIFY("R269_BASE_MODEL_DRAW",kR267BaseModelDrawOffset,kBaseModelDrawExpected);
+    R269_VERIFY("R269_BASE_VISUAL_LIST",kR267BaseVisualDrawOffset,kBaseVisualDrawExpected);
+    R269_VERIFY("R269_VISUAL_POPULATE",kR269VisualPopulateOffset,kPopulateExpected);
+    R269_VERIFY("R269_CANDIDATE_MATCH",kR269VisualCandidateMatchOffset,kMatchExpected);
+    R269_VERIFY("R269_SOURCE_LINK",kR269VisualSourceLinkOffset,kSourceLinkExpected);
+#undef R269_VERIFY
+    if (ok) {
+        R264TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
+        R264WaitEnterHook::InstallAtOffset(kR264WaitEnterOffset);
+        R264SecondaryBuildHook::InstallAtOffset(kR264SecondaryBuildOffset);
+        R264DrawHook::InstallAtOffset(kR264DrawOffset);
+        R267BaseModelDrawHook::InstallAtOffset(kR267BaseModelDrawOffset);
+        R268BaseVisualListHook::InstallAtOffset(kR267BaseVisualDrawOffset);
+        R269VisualPopulateHook::InstallAtOffset(kR269VisualPopulateOffset);
+        R269VisualCandidateMatchHook::InstallAtOffset(kR269VisualCandidateMatchOffset);
+        R269VisualSourceLinkHook::InstallAtOffset(kR269VisualSourceLinkOffset);
+    }
+    Logging.Log("[NSC:R269] READY installed=%u readonly=1 hooks=9 source_link=0x117D390 populate=0x117BA00 matcher=0x11A2D4C visual_list=0x117E0D8 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",ok?1u:0u);
+    Logging.Log("[NSC:R269] DECISION source188=0=BASE90_LINK_MISSING source188_nonzero_match0=CHARSEL_DESCRIPTOR_MISMATCH match1_child0=POST_MATCH_FILL_BLOCK child_post_nonzero_visual0=LATER_CLEAR_AFTER_POPULATE");
     return ok;
 }
 

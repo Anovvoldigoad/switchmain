@@ -8,6 +8,7 @@ bool InstallR265DownstreamRenderGateTrace();
 bool InstallR266RenderRegistrationProducerTrace();
 bool InstallR267SecondaryInnerBaseDrawTrace();
 bool InstallR268BaseVisualChildGateTrace();
+bool InstallR269BaseVisualPopulationTrace();
 bool InstallR252WaitChildReadinessTrace();
 void InstallP50AConditionCompat();
 void InstallP52APreUjProbe();
