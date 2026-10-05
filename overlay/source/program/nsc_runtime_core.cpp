@@ -4,9 +4,9 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R269 follows R268: count20==1 but child[0]==NULL.
-    // Read-only: source188 link -> visual population -> descriptor matcher -> final list slot.
-    return nsc::InstallR269BaseVisualPopulationTrace();
+    // R270 follows log44: source188 and populate are healthy, but matcher returns 0.
+    // Read-only exact fallback compare capture at main+0x11A2E34.
+    return nsc::InstallR270MatcherFallbackCompareTrace();
 }
 
 } // namespace nsc::runtime

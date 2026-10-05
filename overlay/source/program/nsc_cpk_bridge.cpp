@@ -77,6 +77,8 @@ constexpr ptrdiff_t kR268VisualChildDrawOffset        = 0x11A2444;
 constexpr ptrdiff_t kR269VisualPopulateOffset          = 0x117BA00;
 constexpr ptrdiff_t kR269VisualCandidateMatchOffset    = 0x11A2D4C;
 constexpr ptrdiff_t kR269VisualSourceLinkOffset        = 0x117D390;
+// R270: exact fallback key/type compare capture inside the R269 matcher.
+constexpr ptrdiff_t kR270FallbackCompareCaptureOffset   = 0x11A2E34;
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -580,6 +582,7 @@ std::atomic<uint32_t> g_r269_link_logs{0};
 std::atomic<uint32_t> g_r269_populate_logs{0};
 std::atomic<uint32_t> g_r269_match_logs{0};
 std::atomic<uint32_t> g_r269_populate_active{0};
+std::atomic<uint32_t> g_r270_compare_logs{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -3357,6 +3360,43 @@ HOOK_DEFINE_TRAMPOLINE(R268VisualChildDrawHook) {
     }
 };
 
+
+
+// R270: exact fallback compare capture. R269/log44 proves the matcher reaches
+// the fallback path and returns 0. At main+0x11A2E34, X20 is the descriptor
+// key/type record returned by descriptor vtable+0x50 and X0 is the candidate
+// key/type record returned by candidate18 vtable+0x50. The overwritten native
+// instruction is LDRB W8,[X20,#4]; replay it exactly after observation.
+HOOK_DEFINE_INLINE(R270FallbackCompareCaptureHook) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        const bool target = g_r269_populate_active.load(std::memory_order_relaxed) != 0u;
+        const uintptr_t desc_rec = static_cast<uintptr_t>(ctx->X[20]);
+        const uintptr_t cand_rec = static_cast<uintptr_t>(ctx->X[0]);
+        uint32_t desc_key = 0u, cand_key = 0u;
+        uint8_t desc_type = 0u, cand_type = 0u;
+        if (desc_rec) {
+            const auto* p = reinterpret_cast<const volatile uint8_t*>(desc_rec);
+            desc_key = *reinterpret_cast<const volatile uint32_t*>(p);
+            desc_type = *reinterpret_cast<const volatile uint8_t*>(p + 0x4u);
+        }
+        if (cand_rec) {
+            const auto* p = reinterpret_cast<const volatile uint8_t*>(cand_rec);
+            cand_key = *reinterpret_cast<const volatile uint32_t*>(p);
+            cand_type = *reinterpret_cast<const volatile uint8_t*>(p + 0x4u);
+        }
+        if (target) {
+            const uint32_t n = g_r270_compare_logs.fetch_add(1u, std::memory_order_relaxed);
+            if (n < 64u) {
+                Logging.Log("[NSC:R270] FALLBACK_COMPARE n=%u desc_rec=%p desc_key=0x%08x desc_type=%u cand_rec=%p cand_key=0x%08x cand_type=%u key_equal=%u type_equal=%u",
+                            n, reinterpret_cast<void*>(desc_rec), desc_key, static_cast<unsigned>(desc_type),
+                            reinterpret_cast<void*>(cand_rec), cand_key, static_cast<unsigned>(cand_type),
+                            desc_key == cand_key ? 1u : 0u, desc_type == cand_type ? 1u : 0u);
+            }
+        }
+        // Exact replay of native main+0x11A2E34: LDRB W8,[X20,#4].
+        ctx->W[8] = static_cast<uint32_t>(desc_type);
+    }
+};
 
 // R269: exact population chain for the base-visual list. R268 proved that
 // secondary+0x28 exists and count20==1, but entries[0] remains NULL for the
@@ -8202,6 +8242,66 @@ bool InstallR269BaseVisualPopulationTrace() {
     }
     Logging.Log("[NSC:R269] READY installed=%u readonly=1 hooks=9 source_link=0x117D390 populate=0x117BA00 matcher=0x11A2D4C visual_list=0x117E0D8 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",ok?1u:0u);
     Logging.Log("[NSC:R269] DECISION source188=0=BASE90_LINK_MISSING source188_nonzero_match0=CHARSEL_DESCRIPTOR_MISMATCH match1_child0=POST_MATCH_FILL_BLOCK child_post_nonzero_visual0=LATER_CLEAR_AFTER_POPULATE");
+    return ok;
+}
+
+
+bool InstallR270MatcherFallbackCompareTrace() {
+    static constexpr uint32_t kOwnerRegisterExpected[] = {
+        0xD10143FF,0xA90167FE,0xA9025FF8,0xA90357F6,0xA9044FF4,0xF9400008,0x2A0403F5,0x2A0303F6,
+    };
+    static constexpr uint32_t kWaitEnterExpected[] = {
+        0xD10303FF,0xA9095FFE,0xA90A57F6,0xA90B4FF4,0xF9405808,0xB4001048,0xD000DFD6,0xF94246D6,
+    };
+    static constexpr uint32_t kSecondaryBuildExpected[] = {
+        0xD105C3FF,0xFD0093E8,0xA9137BFD,0xA9145FF8,0xA91557F6,0xA9164FF4,0xF9400008,0xAA0203F4,
+    };
+    static constexpr uint32_t kDrawExpected[] = {
+        0xA9BF4FFE,0xAA0003F3,0x97FFFF87,0xF9405A60,0xB4000180,0x94068783,0x34000140,0xB000DFC8,
+    };
+    static constexpr uint32_t kBaseModelDrawExpected[] = {
+        0xF81E0FFE,0xA9014FF4,0xAA0003F3,0xF9404C00,0xB4000160,0xB96A9268,0x340000A8,0xF9400C08,
+    };
+    static constexpr uint32_t kBaseVisualDrawExpected[] = {
+        0xA9BE57FE,0xA9014FF4,0xF9401408,0xB4000288,0x79404109,0x34000249,0x52800D0A,0x9B0A7D29,
+    };
+    static constexpr uint32_t kPopulateExpected[] = {
+        0xD10383FF,0xFD003BE8,0xA9087BFD,0xA9096FFC,0xA90A67FA,0xA90B5FF8,0xA90C57F6,0xA90D4FF4,
+    };
+    static constexpr uint32_t kMatchExpected[] = {
+        0xA9BE57FE,0xA9014FF4,0xAA0003F3,0xF9400C00,0xAA0103F4,0xF9400008,0xF9400D08,0xD63F0100,
+    };
+    static constexpr uint32_t kSourceLinkExpected[] = {
+        0xF900C401,0xD65F03C0,0xF940C408,0xB4000068,0x52800020,0xD65F03C0,0xF9401408,0xB4000128,
+    };
+    static constexpr uint32_t kFallbackCompareExpected[] = {0x39401288};
+    bool ok=true;
+#define R270_VERIFY(NAME,OFF,WORDS) do { if (!MatchWords(OFF,WORDS)) { LogFingerprintFail(NAME,OFF); ok=false; } } while(0)
+    R270_VERIFY("R270_OWNER_REGISTER",kLoadOwnerRegisterOffset,kOwnerRegisterExpected);
+    R270_VERIFY("R270_WAIT_ENTER",kR264WaitEnterOffset,kWaitEnterExpected);
+    R270_VERIFY("R270_SECONDARY_BUILD",kR264SecondaryBuildOffset,kSecondaryBuildExpected);
+    R270_VERIFY("R270_CHARSEL_DRAW",kR264DrawOffset,kDrawExpected);
+    R270_VERIFY("R270_BASE_MODEL_DRAW",kR267BaseModelDrawOffset,kBaseModelDrawExpected);
+    R270_VERIFY("R270_BASE_VISUAL_LIST",kR267BaseVisualDrawOffset,kBaseVisualDrawExpected);
+    R270_VERIFY("R270_VISUAL_POPULATE",kR269VisualPopulateOffset,kPopulateExpected);
+    R270_VERIFY("R270_CANDIDATE_MATCH",kR269VisualCandidateMatchOffset,kMatchExpected);
+    R270_VERIFY("R270_SOURCE_LINK",kR269VisualSourceLinkOffset,kSourceLinkExpected);
+    R270_VERIFY("R270_FALLBACK_COMPARE",kR270FallbackCompareCaptureOffset,kFallbackCompareExpected);
+#undef R270_VERIFY
+    if (ok) {
+        R264TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
+        R264WaitEnterHook::InstallAtOffset(kR264WaitEnterOffset);
+        R264SecondaryBuildHook::InstallAtOffset(kR264SecondaryBuildOffset);
+        R264DrawHook::InstallAtOffset(kR264DrawOffset);
+        R267BaseModelDrawHook::InstallAtOffset(kR267BaseModelDrawOffset);
+        R268BaseVisualListHook::InstallAtOffset(kR267BaseVisualDrawOffset);
+        R269VisualPopulateHook::InstallAtOffset(kR269VisualPopulateOffset);
+        R269VisualCandidateMatchHook::InstallAtOffset(kR269VisualCandidateMatchOffset);
+        R269VisualSourceLinkHook::InstallAtOffset(kR269VisualSourceLinkOffset);
+        R270FallbackCompareCaptureHook::InstallAtOffset(kR270FallbackCompareCaptureOffset);
+    }
+    Logging.Log("[NSC:R270] READY installed=%u readonly=1 hooks=10 matcher=0x11A2D4C fallback_compare=0x11A2E34 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",ok?1u:0u);
+    Logging.Log("[NSC:R270] DECISION key_equal0=FALLBACK_KEY_MISMATCH type_equal0=FALLBACK_TYPE_MISMATCH both_equal1_match0=EARLIER_OR_LATER_MATCH_LOGIC_REAUDIT");
     return ok;
 }
 
