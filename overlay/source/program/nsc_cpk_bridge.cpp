@@ -52,6 +52,11 @@ constexpr ptrdiff_t kR252WaitUpdateOffset     = 0x549B80;
 constexpr ptrdiff_t kR252WaitReadyOffset      = 0x58498;
 constexpr ptrdiff_t kR252WaitSecondaryOffset  = 0x58490;
 constexpr ptrdiff_t kR252WaitConsumeOffset    = 0x54ADE8;
+// R253: Load::enter child-vector construction trace after R252 proved Wait vector empty.
+constexpr ptrdiff_t kR253LoadEnterOffset          = 0x548094;
+constexpr ptrdiff_t kR253SourceListBuildOffset    = 0x3FCE60;
+constexpr ptrdiff_t kR253CandidateResolveOffset   = 0x3FBC4C;
+constexpr ptrdiff_t kR253ChildProducerOffset      = 0x549610;
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -519,6 +524,16 @@ std::atomic<uint32_t> g_r252_wait_seq{0};
 std::atomic<uint32_t> g_r252_gate_logs{0};
 std::atomic<uint32_t> g_r252_consume_logs{0};
 std::atomic<uint32_t> g_r252_capture_logs{0};
+// R253: scope helpers executed inside Load::enter and correlate them to target mtobcharsel.
+std::atomic<uintptr_t> g_r253_current_load_self{0};
+std::atomic<uintptr_t> g_r253_target_registry{0};
+std::atomic<uintptr_t> g_r253_target_state_self{0};
+std::atomic<uint32_t> g_r253_load_depth{0};
+std::atomic<uint32_t> g_r253_capture_logs{0};
+std::atomic<uint32_t> g_r253_load_logs{0};
+std::atomic<uint32_t> g_r253_source_logs{0};
+std::atomic<uint32_t> g_r253_candidate_logs{0};
+std::atomic<uint32_t> g_r253_producer_logs{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -2772,6 +2787,125 @@ R247_DEFINE_STATE_HOOK(R247SelectUpdateHook, "Select", "update")
 
 #undef R247_DEFINE_STATE_HOOK
 
+
+
+struct R253VectorSnapshot {
+    uint32_t state5c;
+    uint32_t phase6c;
+    uint32_t entryCC;
+    uint32_t count140;
+    uintptr_t begin188;
+    uintptr_t end190;
+    uintptr_t cap198;
+    uint32_t child_count;
+};
+
+R253VectorSnapshot R253Snapshot(void* self) {
+    R253VectorSnapshot out{0xFFFFFFFFu,0xFFFFFFFFu,0xFFFFFFFFu,0u,0u,0u,0u,0u};
+    if (!self) return out;
+    auto* b = reinterpret_cast<volatile uint8_t*>(self);
+    out.state5c = *reinterpret_cast<volatile uint32_t*>(b + 0x5Cu);
+    out.phase6c = *reinterpret_cast<volatile uint32_t*>(b + 0x6Cu);
+    out.entryCC = *reinterpret_cast<volatile uint32_t*>(b + 0xCCu);
+    out.count140 = *reinterpret_cast<volatile uint32_t*>(b + 0x140u);
+    out.begin188 = *reinterpret_cast<volatile uintptr_t*>(b + 0x188u);
+    out.end190 = *reinterpret_cast<volatile uintptr_t*>(b + 0x190u);
+    out.cap198 = *reinterpret_cast<volatile uintptr_t*>(b + 0x198u);
+    if (out.begin188 && out.end190 >= out.begin188) {
+        const uintptr_t d = out.end190 - out.begin188;
+        if ((d % sizeof(uintptr_t)) == 0u && d <= 0x4000u)
+            out.child_count = static_cast<uint32_t>(d / sizeof(uintptr_t));
+    }
+    return out;
+}
+
+void R253LogVector(const char* phase, void* self, const R253VectorSnapshot& v, uint32_t target) {
+    Logging.Log("[NSC:R253] LOAD_VECTOR phase=%s target=%u self=%p state5c=%u phase6c=%u entryCC=%u count140=%u begin188=%p end190=%p cap198=%p child_count=%u",
+                phase, target, self, v.state5c, v.phase6c, v.entryCC, v.count140,
+                reinterpret_cast<void*>(v.begin188), reinterpret_cast<void*>(v.end190),
+                reinterpret_cast<void*>(v.cap198), v.child_count);
+}
+
+bool R253IsTargetSelf(void* self) {
+    return self && g_r253_target_state_self.load(std::memory_order_relaxed) == reinterpret_cast<uintptr_t>(self);
+}
+
+HOOK_DEFINE_TRAMPOLINE(R253TargetRegistryCaptureHook) {
+    static uint32_t Callback(void* registry, const char* path, uint32_t p2, uint32_t p3, uint32_t p4) {
+        const uint32_t result = Orig(registry, path, p2, p3, p4);
+        if (IsR204JTargetCharselPath(path)) {
+            g_r253_target_registry.store(reinterpret_cast<uintptr_t>(registry), std::memory_order_relaxed);
+            const uintptr_t cur = g_r253_current_load_self.load(std::memory_order_relaxed);
+            if (cur) g_r253_target_state_self.store(cur, std::memory_order_relaxed);
+            if (g_r253_capture_logs.fetch_add(1u, std::memory_order_relaxed) < 16u)
+                Logging.Log("[NSC:R253] TARGET_REGISTRY_CAPTURE registry=%p current_load_self=%p path=%s hash=%u readonly=1",
+                            registry, reinterpret_cast<void*>(cur), path ? path : "<null>", result);
+        }
+        return result;
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R253LoadEnterHook) {
+    static void Callback(void* self) {
+        const uint32_t depth = g_r253_load_depth.fetch_add(1u, std::memory_order_relaxed);
+        const uintptr_t prev = g_r253_current_load_self.exchange(reinterpret_cast<uintptr_t>(self), std::memory_order_relaxed);
+        const bool target_pre = R253IsTargetSelf(self);
+        const uint32_t pre_idx = g_r253_load_logs.fetch_add(1u, std::memory_order_relaxed);
+        if (target_pre || pre_idx < 12u) R253LogVector("enter_pre", self, R253Snapshot(self), target_pre ? 1u : 0u);
+        Orig(self);
+        const bool target_post = R253IsTargetSelf(self);
+        if (target_post || pre_idx < 12u) R253LogVector("enter_post", self, R253Snapshot(self), target_post ? 1u : 0u);
+        g_r253_current_load_self.store(prev, std::memory_order_relaxed);
+        g_r253_load_depth.store(depth, std::memory_order_relaxed);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R253SourceListBuildHook) {
+    static void Callback(void* manager, void* out_vec, uint32_t kind) {
+        Orig(manager, out_vec, kind);
+        const uintptr_t self = g_r253_current_load_self.load(std::memory_order_relaxed);
+        if (!self || g_r253_source_logs.fetch_add(1u, std::memory_order_relaxed) >= 128u) return;
+        uintptr_t begin=0,end=0,cap=0; uint32_t count=0;
+        if (out_vec) {
+            auto* b = reinterpret_cast<volatile uint8_t*>(out_vec);
+            begin = *reinterpret_cast<volatile uintptr_t*>(b + 0x0u);
+            end   = *reinterpret_cast<volatile uintptr_t*>(b + 0x8u);
+            cap   = *reinterpret_cast<volatile uintptr_t*>(b + 0x10u);
+            if (begin && end >= begin) {
+                const uintptr_t d=end-begin;
+                if ((d%sizeof(uintptr_t))==0u && d<=0x4000u) count=static_cast<uint32_t>(d/sizeof(uintptr_t));
+            }
+        }
+        Logging.Log("[NSC:R253] SOURCE_LIST self=%p target=%u manager=%p kind=%u out=%p begin=%p end=%p cap=%p count=%u",
+                    reinterpret_cast<void*>(self), R253IsTargetSelf(reinterpret_cast<void*>(self))?1u:0u,
+                    manager, kind, out_vec, reinterpret_cast<void*>(begin), reinterpret_cast<void*>(end), reinterpret_cast<void*>(cap), count);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R253CandidateResolveHook) {
+    static void* Callback(void* candidate) {
+        void* result = Orig(candidate);
+        const uintptr_t self = g_r253_current_load_self.load(std::memory_order_relaxed);
+        if (self && g_r253_candidate_logs.fetch_add(1u, std::memory_order_relaxed) < 256u)
+            Logging.Log("[NSC:R253] CANDIDATE_RESOLVE self=%p target=%u candidate=%p result=%p",
+                        reinterpret_cast<void*>(self), R253IsTargetSelf(reinterpret_cast<void*>(self))?1u:0u,
+                        candidate, result);
+        return result;
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R253ChildProducerHook) {
+    static void Callback(void* self, void* source, uint32_t mode) {
+        const R253VectorSnapshot pre = R253Snapshot(self);
+        Orig(self, source, mode);
+        const R253VectorSnapshot post = R253Snapshot(self);
+        if (g_r253_producer_logs.fetch_add(1u, std::memory_order_relaxed) < 256u)
+            Logging.Log("[NSC:R253] CHILD_PRODUCER target=%u self=%p source=%p mode=%u entryCC=%u pre_count=%u post_count=%u pre_begin=%p pre_end=%p post_begin=%p post_end=%p",
+                        R253IsTargetSelf(self)?1u:0u, self, source, mode, pre.entryCC, pre.child_count, post.child_count,
+                        reinterpret_cast<void*>(pre.begin188), reinterpret_cast<void*>(pre.end190),
+                        reinterpret_cast<void*>(post.begin188), reinterpret_cast<void*>(post.end190));
+    }
+};
 
 HOOK_DEFINE_TRAMPOLINE(R252TargetRegistryCaptureHook) {
     static uint32_t Callback(void* registry, const char* path, uint32_t p2, uint32_t p3, uint32_t p4) {
@@ -7273,6 +7407,43 @@ bool InstallR245GPreviewStateGateTrace() {
         "[NSC:R245G] DECISION no_gate=UPSTREAM_DISPATCH "
         "regA0=FIRST_REGISTRY one_registry_then_exit=MID_GATE_OR_REGB_PTR "
         "two_plus_registries=CHECK_RESULTS advanced1=STATE_GATE_PASS");
+    return ok;
+}
+
+
+bool InstallR253LoadChildConstructionTrace() {
+    static constexpr uint32_t kOwnerRegisterExpected[] = {
+        0xD10143FF,0xA90167FE,0xA9025FF8,0xA90357F6,0xA9044FF4,0xF9400008,0x2A0403F5,0x2A0303F6,
+    };
+    static constexpr uint32_t kLoadEnterExpected[] = {
+        0xD10643FF,0xA9137BFD,0xA9146FFC,0xA91567FA,0xA9165FF8,0xA91757F6,0xA9184FF4,0xF9400008,
+    };
+    static constexpr uint32_t kSourceListExpected[] = {
+        0xF81D0FFE,0xA90157F6,0xA9024FF4,0xF9400028,0xF9000428,0xA941A016,0xEB0802DF,0x54000220,
+    };
+    static constexpr uint32_t kCandidateExpected[] = {
+        0xF9402400,0xD65F03C0,0x91014000,0xD65F03C0,0x91017000,0xD65F03C0,0xA9BF4FFE,0xF9400800,
+    };
+    static constexpr uint32_t kProducerExpected[] = {
+        0xD101C3FF,0xA90367FE,0xA9045FF8,0xA90557F6,0xA9064FF4,0xD000DFC8,0xF9424508,0xF976B509,
+    };
+    bool ok=true;
+#define R253_VERIFY(NAME,OFF,WORDS) do { if (!MatchWords(OFF,WORDS)) { LogFingerprintFail(NAME,OFF); ok=false; } } while(0)
+    R253_VERIFY("R253_OWNER_REGISTER",kLoadOwnerRegisterOffset,kOwnerRegisterExpected);
+    R253_VERIFY("R253_LOAD_ENTER",kR253LoadEnterOffset,kLoadEnterExpected);
+    R253_VERIFY("R253_SOURCE_LIST",kR253SourceListBuildOffset,kSourceListExpected);
+    R253_VERIFY("R253_CANDIDATE_RESOLVE",kR253CandidateResolveOffset,kCandidateExpected);
+    R253_VERIFY("R253_CHILD_PRODUCER",kR253ChildProducerOffset,kProducerExpected);
+#undef R253_VERIFY
+    if (ok) {
+        R253TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
+        R253LoadEnterHook::InstallAtOffset(kR253LoadEnterOffset);
+        R253SourceListBuildHook::InstallAtOffset(kR253SourceListBuildOffset);
+        R253CandidateResolveHook::InstallAtOffset(kR253CandidateResolveOffset);
+        R253ChildProducerHook::InstallAtOffset(kR253ChildProducerOffset);
+    }
+    Logging.Log("[NSC:R253] READY installed=%u readonly=1 hooks=5 load_enter=0x548094 source_list=0x3FCE60 candidate=0x3FBC4C producer=0x549610 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0", ok?1u:0u);
+    Logging.Log("[NSC:R253] DECISION source_count0=LOAD_CHILD_SOURCE_EMPTY source_gt0_no_candidate=SELECTOR_NO_MATCH candidate_null=CANDIDATE_RESOLVE_FAIL producer_no_growth=PRODUCER_EARLY_EXIT producer_growth=CHILD_VECTOR_BUILT");
     return ok;
 }
 

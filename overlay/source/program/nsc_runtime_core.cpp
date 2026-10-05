@@ -4,9 +4,9 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R247 reconstructs the already-designed R204W four-state table tracer
-    // on the materially changed R245C real-Tobi carrier. Read-only only.
-    return nsc::InstallR252WaitChildReadinessTrace();
+    // R253 traces the Load::enter child-vector construction that R252 proved missing.
+    // Read-only only; R250 sound.cpk remains the data carrier.
+    return nsc::InstallR253LoadChildConstructionTrace();
 }
 
 } // namespace nsc::runtime

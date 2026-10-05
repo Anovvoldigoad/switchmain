@@ -1,4 +1,4 @@
-name: Build NSC R252 Wait Child Readiness Trace
+name: Build NSC R253 Load Child Construction Trace
 
 on:
   workflow_dispatch:
@@ -13,8 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify R252 wait-child readiness source
-        run: python3 verify_r252.py
+      - name: Verify R253 load-child construction source
+        run: python3 verify_r253.py
 
       - name: Clone pinned exlaunch
         run: |
@@ -29,7 +29,7 @@ jobs:
         working-directory: exlaunch
         run: make -j2
 
-      - name: Package R252 read-only wait-child readiness runtime
+      - name: Package R253 read-only load-child construction runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -44,8 +44,8 @@ jobs:
           cd "$OUT"
           sha256sum runtime/atmosphere/contents/0100FA10190A0000/exefs/subsdk9 > SHA256SUMS.txt
           printf '%s\n' \
-            'NSC2Switch R252 diagnostic: focused ccUiCharacterSelect3DModel Wait child-readiness trace after R250 bod1 fix.' \
-            'Read-only. Six hooks: mtob registry capture + Wait enter/update + child ready/secondary gates + Wait consumer.' \
+            'NSC2Switch R253 diagnostic: focused Load::enter child-vector construction trace after R252 proved self+0x188 empty.' \
+            'Read-only. Five hooks: mtob registry capture + Load enter + source-list builder + candidate resolve + child producer.' \
             'Do not copy a game main file into this package.' \
             'Deploy beside the exact R250 bod1-internal-identity-fixed carrier. Replace only diagnostic subsdk9.' \
             > INSTALL.txt
@@ -60,6 +60,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC2Switch-R252-WAIT-CHILD-READINESS-TRACE
+          name: NSC2Switch-R253-LOAD-CHILD-CONSTRUCTION-TRACE
           path: out/**
           if-no-files-found: error
