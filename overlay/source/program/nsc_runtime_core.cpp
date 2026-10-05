@@ -4,9 +4,9 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R253 traces the Load::enter child-vector construction that R252 proved missing.
-    // Read-only only; R250 sound.cpk remains the data carrier.
-    return nsc::InstallR253LoadChildConstructionTrace();
+    // R264 traces the exact target secondary preview object (+0x98) and draw submit.
+    // Read-only only; no return/path/ID/state overrides.
+    return nsc::InstallR264SecondaryPreviewDrawTrace();
 }
 
 } // namespace nsc::runtime

@@ -52,11 +52,12 @@ constexpr ptrdiff_t kR252WaitUpdateOffset     = 0x549B80;
 constexpr ptrdiff_t kR252WaitReadyOffset      = 0x58498;
 constexpr ptrdiff_t kR252WaitSecondaryOffset  = 0x58490;
 constexpr ptrdiff_t kR252WaitConsumeOffset    = 0x54ADE8;
-// R253: Load::enter child-vector construction trace after R252 proved Wait vector empty.
-constexpr ptrdiff_t kR253LoadEnterOffset          = 0x548094;
-constexpr ptrdiff_t kR253SourceListBuildOffset    = 0x3FCE60;
-constexpr ptrdiff_t kR253CandidateResolveOffset   = 0x3FBC4C;
-constexpr ptrdiff_t kR253ChildProducerOffset      = 0x549610;
+
+// R264: focused target secondary-preview-object + draw-submit trace after R263.
+constexpr ptrdiff_t kR264WaitEnterOffset          = 0x549950;
+constexpr ptrdiff_t kR264SecondaryBuildOffset     = 0x6EB554;
+constexpr ptrdiff_t kR264DrawOffset               = 0x54ADA0;
+constexpr ptrdiff_t kR264DrawSubmitOffset         = 0x5B3AC;
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -524,16 +525,18 @@ std::atomic<uint32_t> g_r252_wait_seq{0};
 std::atomic<uint32_t> g_r252_gate_logs{0};
 std::atomic<uint32_t> g_r252_consume_logs{0};
 std::atomic<uint32_t> g_r252_capture_logs{0};
-// R253: scope helpers executed inside Load::enter and correlate them to target mtobcharsel.
-std::atomic<uintptr_t> g_r253_current_load_self{0};
-std::atomic<uintptr_t> g_r253_target_registry{0};
-std::atomic<uintptr_t> g_r253_target_state_self{0};
-std::atomic<uint32_t> g_r253_load_depth{0};
-std::atomic<uint32_t> g_r253_capture_logs{0};
-std::atomic<uint32_t> g_r253_load_logs{0};
-std::atomic<uint32_t> g_r253_source_logs{0};
-std::atomic<uint32_t> g_r253_candidate_logs{0};
-std::atomic<uint32_t> g_r253_producer_logs{0};
+
+
+// R264 target-scoped nested trace state.
+std::atomic<uintptr_t> g_r264_target_registry{0};
+std::atomic<uintptr_t> g_r264_target_state_self{0};
+std::atomic<uintptr_t> g_r264_target_model{0};
+std::atomic<uint32_t> g_r264_wait_enter_active{0};
+std::atomic<uint32_t> g_r264_secondary_active{0};
+std::atomic<uint32_t> g_r264_draw_active{0};
+std::atomic<uint32_t> g_r264_seq{0};
+std::atomic<uint32_t> g_r264_lookup_logs{0};
+std::atomic<uint32_t> g_r264_draw_logs{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -919,6 +922,37 @@ bool R252IsTargetState(void* self) {
     }
     return false;
 }
+bool R264IsTargetState(void* self) {
+    const uintptr_t remembered = g_r264_target_state_self.load(std::memory_order_relaxed);
+    if (remembered && remembered == reinterpret_cast<uintptr_t>(self)) return true;
+    const uintptr_t target_registry = g_r264_target_registry.load(std::memory_order_relaxed);
+    if (!target_registry || !self) return false;
+    const R247StateSnapshot snap = R247Snapshot(self);
+    if (R247SnapshotTouchesTargetRegistry(snap, target_registry)) {
+        g_r264_target_state_self.store(reinterpret_cast<uintptr_t>(self), std::memory_order_relaxed);
+        return true;
+    }
+    return false;
+}
+
+struct R264ModelSnapshot {
+    uintptr_t base90;
+    uintptr_t secondary98;
+    uint32_t identity38;
+    uint32_t variant40;
+};
+
+R264ModelSnapshot R264SnapshotModel(void* model) {
+    R264ModelSnapshot out{0u,0u,0xFFFFFFFFu,0xFFFFFFFFu};
+    if (!model) return out;
+    auto* b = reinterpret_cast<volatile uint8_t*>(model);
+    out.base90 = *reinterpret_cast<volatile uintptr_t*>(b + 0x90u);
+    out.secondary98 = *reinterpret_cast<volatile uintptr_t*>(b + 0x98u);
+    out.identity38 = *reinterpret_cast<volatile uint32_t*>(b + 0x38u);
+    out.variant40 = *reinterpret_cast<volatile uint32_t*>(b + 0x40u);
+    return out;
+}
+
 bool R247SnapshotTouchesTargetRegistry(const R247StateSnapshot& snap, uintptr_t target_registry) {
     if (target_registry == 0u) return false;
     const uintptr_t a = reinterpret_cast<uintptr_t>(snap.reg_a);
@@ -2788,125 +2822,6 @@ R247_DEFINE_STATE_HOOK(R247SelectUpdateHook, "Select", "update")
 #undef R247_DEFINE_STATE_HOOK
 
 
-
-struct R253VectorSnapshot {
-    uint32_t state5c;
-    uint32_t phase6c;
-    uint32_t entryCC;
-    uint32_t count140;
-    uintptr_t begin188;
-    uintptr_t end190;
-    uintptr_t cap198;
-    uint32_t child_count;
-};
-
-R253VectorSnapshot R253Snapshot(void* self) {
-    R253VectorSnapshot out{0xFFFFFFFFu,0xFFFFFFFFu,0xFFFFFFFFu,0u,0u,0u,0u,0u};
-    if (!self) return out;
-    auto* b = reinterpret_cast<volatile uint8_t*>(self);
-    out.state5c = *reinterpret_cast<volatile uint32_t*>(b + 0x5Cu);
-    out.phase6c = *reinterpret_cast<volatile uint32_t*>(b + 0x6Cu);
-    out.entryCC = *reinterpret_cast<volatile uint32_t*>(b + 0xCCu);
-    out.count140 = *reinterpret_cast<volatile uint32_t*>(b + 0x140u);
-    out.begin188 = *reinterpret_cast<volatile uintptr_t*>(b + 0x188u);
-    out.end190 = *reinterpret_cast<volatile uintptr_t*>(b + 0x190u);
-    out.cap198 = *reinterpret_cast<volatile uintptr_t*>(b + 0x198u);
-    if (out.begin188 && out.end190 >= out.begin188) {
-        const uintptr_t d = out.end190 - out.begin188;
-        if ((d % sizeof(uintptr_t)) == 0u && d <= 0x4000u)
-            out.child_count = static_cast<uint32_t>(d / sizeof(uintptr_t));
-    }
-    return out;
-}
-
-void R253LogVector(const char* phase, void* self, const R253VectorSnapshot& v, uint32_t target) {
-    Logging.Log("[NSC:R253] LOAD_VECTOR phase=%s target=%u self=%p state5c=%u phase6c=%u entryCC=%u count140=%u begin188=%p end190=%p cap198=%p child_count=%u",
-                phase, target, self, v.state5c, v.phase6c, v.entryCC, v.count140,
-                reinterpret_cast<void*>(v.begin188), reinterpret_cast<void*>(v.end190),
-                reinterpret_cast<void*>(v.cap198), v.child_count);
-}
-
-bool R253IsTargetSelf(void* self) {
-    return self && g_r253_target_state_self.load(std::memory_order_relaxed) == reinterpret_cast<uintptr_t>(self);
-}
-
-HOOK_DEFINE_TRAMPOLINE(R253TargetRegistryCaptureHook) {
-    static uint32_t Callback(void* registry, const char* path, uint32_t p2, uint32_t p3, uint32_t p4) {
-        const uint32_t result = Orig(registry, path, p2, p3, p4);
-        if (IsR204JTargetCharselPath(path)) {
-            g_r253_target_registry.store(reinterpret_cast<uintptr_t>(registry), std::memory_order_relaxed);
-            const uintptr_t cur = g_r253_current_load_self.load(std::memory_order_relaxed);
-            if (cur) g_r253_target_state_self.store(cur, std::memory_order_relaxed);
-            if (g_r253_capture_logs.fetch_add(1u, std::memory_order_relaxed) < 16u)
-                Logging.Log("[NSC:R253] TARGET_REGISTRY_CAPTURE registry=%p current_load_self=%p path=%s hash=%u readonly=1",
-                            registry, reinterpret_cast<void*>(cur), path ? path : "<null>", result);
-        }
-        return result;
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(R253LoadEnterHook) {
-    static void Callback(void* self) {
-        const uint32_t depth = g_r253_load_depth.fetch_add(1u, std::memory_order_relaxed);
-        const uintptr_t prev = g_r253_current_load_self.exchange(reinterpret_cast<uintptr_t>(self), std::memory_order_relaxed);
-        const bool target_pre = R253IsTargetSelf(self);
-        const uint32_t pre_idx = g_r253_load_logs.fetch_add(1u, std::memory_order_relaxed);
-        if (target_pre || pre_idx < 12u) R253LogVector("enter_pre", self, R253Snapshot(self), target_pre ? 1u : 0u);
-        Orig(self);
-        const bool target_post = R253IsTargetSelf(self);
-        if (target_post || pre_idx < 12u) R253LogVector("enter_post", self, R253Snapshot(self), target_post ? 1u : 0u);
-        g_r253_current_load_self.store(prev, std::memory_order_relaxed);
-        g_r253_load_depth.store(depth, std::memory_order_relaxed);
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(R253SourceListBuildHook) {
-    static void Callback(void* manager, void* out_vec, uint32_t kind) {
-        Orig(manager, out_vec, kind);
-        const uintptr_t self = g_r253_current_load_self.load(std::memory_order_relaxed);
-        if (!self || g_r253_source_logs.fetch_add(1u, std::memory_order_relaxed) >= 128u) return;
-        uintptr_t begin=0,end=0,cap=0; uint32_t count=0;
-        if (out_vec) {
-            auto* b = reinterpret_cast<volatile uint8_t*>(out_vec);
-            begin = *reinterpret_cast<volatile uintptr_t*>(b + 0x0u);
-            end   = *reinterpret_cast<volatile uintptr_t*>(b + 0x8u);
-            cap   = *reinterpret_cast<volatile uintptr_t*>(b + 0x10u);
-            if (begin && end >= begin) {
-                const uintptr_t d=end-begin;
-                if ((d%sizeof(uintptr_t))==0u && d<=0x4000u) count=static_cast<uint32_t>(d/sizeof(uintptr_t));
-            }
-        }
-        Logging.Log("[NSC:R253] SOURCE_LIST self=%p target=%u manager=%p kind=%u out=%p begin=%p end=%p cap=%p count=%u",
-                    reinterpret_cast<void*>(self), R253IsTargetSelf(reinterpret_cast<void*>(self))?1u:0u,
-                    manager, kind, out_vec, reinterpret_cast<void*>(begin), reinterpret_cast<void*>(end), reinterpret_cast<void*>(cap), count);
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(R253CandidateResolveHook) {
-    static void* Callback(void* candidate) {
-        void* result = Orig(candidate);
-        const uintptr_t self = g_r253_current_load_self.load(std::memory_order_relaxed);
-        if (self && g_r253_candidate_logs.fetch_add(1u, std::memory_order_relaxed) < 256u)
-            Logging.Log("[NSC:R253] CANDIDATE_RESOLVE self=%p target=%u candidate=%p result=%p",
-                        reinterpret_cast<void*>(self), R253IsTargetSelf(reinterpret_cast<void*>(self))?1u:0u,
-                        candidate, result);
-        return result;
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(R253ChildProducerHook) {
-    static void Callback(void* self, void* source, uint32_t mode) {
-        const R253VectorSnapshot pre = R253Snapshot(self);
-        Orig(self, source, mode);
-        const R253VectorSnapshot post = R253Snapshot(self);
-        if (g_r253_producer_logs.fetch_add(1u, std::memory_order_relaxed) < 256u)
-            Logging.Log("[NSC:R253] CHILD_PRODUCER target=%u self=%p source=%p mode=%u entryCC=%u pre_count=%u post_count=%u pre_begin=%p pre_end=%p post_begin=%p post_end=%p",
-                        R253IsTargetSelf(self)?1u:0u, self, source, mode, pre.entryCC, pre.child_count, post.child_count,
-                        reinterpret_cast<void*>(pre.begin188), reinterpret_cast<void*>(pre.end190),
-                        reinterpret_cast<void*>(post.begin188), reinterpret_cast<void*>(post.end190));
-    }
-};
-
 HOOK_DEFINE_TRAMPOLINE(R252TargetRegistryCaptureHook) {
     static uint32_t Callback(void* registry, const char* path, uint32_t p2, uint32_t p3, uint32_t p4) {
         const uint32_t result = Orig(registry, path, p2, p3, p4);
@@ -2986,6 +2901,129 @@ HOOK_DEFINE_TRAMPOLINE(R252WaitConsumeHook) {
             g_r252_consume_logs.fetch_add(1u, std::memory_order_relaxed) < 256u)
             Logging.Log("[NSC:R252] WAIT_CONSUME self=%p child_b0=%p mode=%u", self, child_b0, mode);
         Orig(self, child_b0, mode);
+    }
+};
+
+// R264: registry capture reused only to identify the exact mtob state object.
+HOOK_DEFINE_TRAMPOLINE(R264TargetRegistryCaptureHook) {
+    static uint32_t Callback(void* registry, const char* path, uint32_t p2, uint32_t p3, uint32_t p4) {
+        const uint32_t result = Orig(registry, path, p2, p3, p4);
+        if (IsR204JTargetCharselPath(path)) {
+            g_r264_target_registry.store(reinterpret_cast<uintptr_t>(registry), std::memory_order_relaxed);
+            g_r264_target_state_self.store(0u, std::memory_order_relaxed);
+            g_r264_target_model.store(0u, std::memory_order_relaxed);
+            g_r264_seq.store(0u, std::memory_order_relaxed);
+            Logging.Log("[NSC:R264] TARGET_REGISTRY_CAPTURE registry=%p path=%s hash=%u readonly=1",
+                        registry, path ? path : "<null>", result);
+        }
+        return result;
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R264WaitEnterHook) {
+    static void Callback(void* self) {
+        const bool target = R264IsTargetState(self);
+        void* pre_model = self ? *reinterpret_cast<void* volatile*>(reinterpret_cast<uint8_t*>(self)+0xB0u) : nullptr;
+        if (target) {
+            g_r264_wait_enter_active.store(1u, std::memory_order_relaxed);
+            g_r264_target_model.store(reinterpret_cast<uintptr_t>(pre_model), std::memory_order_relaxed);
+            const auto m = R264SnapshotModel(pre_model);
+            Logging.Log("[NSC:R264] WAIT_ENTER_PRE self=%p model=%p base90=%p secondary98=%p id38=%u variant40=%u",
+                        self, pre_model, reinterpret_cast<void*>(m.base90), reinterpret_cast<void*>(m.secondary98), m.identity38, m.variant40);
+        }
+        Orig(self);
+        if (target) {
+            void* post_model = self ? *reinterpret_cast<void* volatile*>(reinterpret_cast<uint8_t*>(self)+0xB0u) : nullptr;
+            const auto m = R264SnapshotModel(post_model);
+            g_r264_target_model.store(reinterpret_cast<uintptr_t>(post_model), std::memory_order_relaxed);
+            Logging.Log("[NSC:R264] WAIT_ENTER_POST self=%p model=%p base90=%p secondary98=%p id38=%u variant40=%u",
+                        self, post_model, reinterpret_cast<void*>(m.base90), reinterpret_cast<void*>(m.secondary98), m.identity38, m.variant40);
+            g_r264_wait_enter_active.store(0u, std::memory_order_relaxed);
+        }
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R264SecondaryBuildHook) {
+    static void Callback(void* model, void* file_name_obj, void* chunk_key_obj) {
+        const bool target = g_r264_wait_enter_active.load(std::memory_order_relaxed) != 0u &&
+            reinterpret_cast<uintptr_t>(model) == g_r264_target_model.load(std::memory_order_relaxed);
+        uint32_t seq=0;
+        if (target) {
+            seq=g_r264_seq.fetch_add(1u,std::memory_order_relaxed);
+            const auto m=R264SnapshotModel(model);
+            Logging.Log("[NSC:R264] SECONDARY_BUILD_PRE seq=%u model=%p file_obj=%p key_obj=%p base90=%p secondary98=%p",
+                        seq,model,file_name_obj,chunk_key_obj,reinterpret_cast<void*>(m.base90),reinterpret_cast<void*>(m.secondary98));
+            g_r264_secondary_active.store(1u,std::memory_order_relaxed);
+        }
+        Orig(model,file_name_obj,chunk_key_obj);
+        if (target) {
+            g_r264_secondary_active.store(0u,std::memory_order_relaxed);
+            const auto m=R264SnapshotModel(model);
+            Logging.Log("[NSC:R264] SECONDARY_BUILD_POST seq=%u model=%p base90=%p secondary98=%p",
+                        seq,model,reinterpret_cast<void*>(m.base90),reinterpret_cast<void*>(m.secondary98));
+        }
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R264FileResourceLookupHook) {
+    static void* Callback(void* manager, const char* path) {
+        void* result=Orig(manager,path);
+        if (g_r264_secondary_active.load(std::memory_order_relaxed) &&
+            g_r264_lookup_logs.fetch_add(1u,std::memory_order_relaxed)<64u) {
+            Logging.Log("[NSC:R264] SECONDARY_FILE_LOOKUP manager=%p path=%s result=%p",
+                        manager,path?path:"<null>",result);
+        }
+        return result;
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R264ChunkResourceLookupHook) {
+    static void* Callback(void* resource, const void* type_desc, const void* key_desc) {
+        uint32_t key_hash=0xFFFFFFFFu,key_has_text=0xFFFFFFFFu,type_tag=0xFFFFFFFFu;
+        uintptr_t key_ptr=0u; char key_text[97]{}; uint32_t key_len=0,key_printable=0;
+        if (key_desc) {
+            const auto* k=reinterpret_cast<const volatile uint8_t*>(key_desc);
+            key_hash=*reinterpret_cast<const volatile uint32_t*>(k+0x0);
+            key_has_text=*(k+0x4); key_ptr=*reinterpret_cast<const volatile uintptr_t*>(k+0x8);
+        }
+        if (type_desc) { const auto* t=reinterpret_cast<const volatile uint8_t*>(type_desc); type_tag=*reinterpret_cast<const volatile uint16_t*>(t+0xA); }
+        if (key_has_text==1u && key_ptr) {
+            key_printable=1u; const auto* src=reinterpret_cast<const volatile uint8_t*>(key_ptr);
+            for (uint32_t i=0;i<96u;++i) { const uint8_t c=src[i]; if (!c) {key_len=i;break;} if (c<0x20||c>0x7e){key_printable=0u;key_len=i;break;} key_text[i]=char(c); key_len=i+1u; }
+            key_text[key_len]='\0';
+        }
+        void* result=Orig(resource,type_desc,key_desc);
+        if (g_r264_secondary_active.load(std::memory_order_relaxed) &&
+            g_r264_lookup_logs.fetch_add(1u,std::memory_order_relaxed)<64u) {
+            Logging.Log("[NSC:R264] SECONDARY_CHUNK_LOOKUP resource=%p type_tag=%u key_hash=%u key_has_text=%u key=%s result=%p",
+                        resource,type_tag,key_hash,key_has_text,key_printable?key_text:"<nonprintable>",result);
+        }
+        return result;
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R264DrawHook) {
+    static void Callback(void* self) {
+        const bool target=R264IsTargetState(self);
+        if (target) {
+            void* model=self?*reinterpret_cast<void* volatile*>(reinterpret_cast<uint8_t*>(self)+0xB0u):nullptr;
+            const auto m=R264SnapshotModel(model);
+            const uint32_t seq=g_r264_draw_logs.fetch_add(1u,std::memory_order_relaxed);
+            if (seq<128u) Logging.Log("[NSC:R264] DRAW_PRE seq=%u self=%p model=%p base90=%p secondary98=%p id38=%u variant40=%u",
+                                     seq,self,model,reinterpret_cast<void*>(m.base90),reinterpret_cast<void*>(m.secondary98),m.identity38,m.variant40);
+            g_r264_draw_active.store(1u,std::memory_order_relaxed);
+        }
+        Orig(self);
+        if (target) g_r264_draw_active.store(0u,std::memory_order_relaxed);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R264DrawSubmitHook) {
+    static void Callback(void* draw_ctx, uint32_t slot, uint32_t identity) {
+        if (g_r264_draw_active.load(std::memory_order_relaxed) &&
+            g_r264_draw_logs.fetch_add(1u,std::memory_order_relaxed)<256u)
+            Logging.Log("[NSC:R264] DRAW_SUBMIT ctx=%p slot=%u identity=%u",draw_ctx,slot,identity);
+        Orig(draw_ctx,slot,identity);
     }
 };
 
@@ -7410,40 +7448,49 @@ bool InstallR245GPreviewStateGateTrace() {
     return ok;
 }
 
-
-bool InstallR253LoadChildConstructionTrace() {
+bool InstallR264SecondaryPreviewDrawTrace() {
     static constexpr uint32_t kOwnerRegisterExpected[] = {
         0xD10143FF,0xA90167FE,0xA9025FF8,0xA90357F6,0xA9044FF4,0xF9400008,0x2A0403F5,0x2A0303F6,
     };
-    static constexpr uint32_t kLoadEnterExpected[] = {
-        0xD10643FF,0xA9137BFD,0xA9146FFC,0xA91567FA,0xA9165FF8,0xA91757F6,0xA9184FF4,0xF9400008,
+    static constexpr uint32_t kWaitEnterExpected[] = {
+        0xD10303FF,0xA9095FFE,0xA90A57F6,0xA90B4FF4,0xF9405808,0xB4001048,0xD000DFD6,0xF94246D6,
     };
-    static constexpr uint32_t kSourceListExpected[] = {
-        0xF81D0FFE,0xA90157F6,0xA9024FF4,0xF9400028,0xF9000428,0xA941A016,0xEB0802DF,0x54000220,
+    static constexpr uint32_t kSecondaryBuildExpected[] = {
+        0xD105C3FF,0xFD0093E8,0xA9137BFD,0xA9145FF8,0xA91557F6,0xA9164FF4,0xF9400008,0xAA0203F4,
     };
-    static constexpr uint32_t kCandidateExpected[] = {
-        0xF9402400,0xD65F03C0,0x91014000,0xD65F03C0,0x91017000,0xD65F03C0,0xA9BF4FFE,0xF9400800,
+    static constexpr uint32_t kFileLookupExpected[] = {
+        0xF81F0FFE,0x97FFFC27,0xB4000060,0xF84107FE,0x17FFFACB,0xF84107FE,0xD65F03C0,0xA9BD5FFE,
     };
-    static constexpr uint32_t kProducerExpected[] = {
-        0xD101C3FF,0xA90367FE,0xA9045FF8,0xA90557F6,0xA9064FF4,0xD000DFC8,0xF9424508,0xF976B509,
+    static constexpr uint32_t kChunkLookupExpected[] = {
+        0xD10143FF,0xA90357FE,0xA9044FF4,0xAA0203F3,0xAA0103F4,0xB90003FF,0xAA0003F5,0x390013FF,
+    };
+    static constexpr uint32_t kDrawExpected[] = {
+        0xA9BF4FFE,0xAA0003F3,0x97FFFF87,0xF9405A60,0xB4000180,0x94068783,0x34000140,0xB000DFC8,
+    };
+    static constexpr uint32_t kDrawSubmitExpected[] = {
+        0xD10103FF,0xA90257F6,0xA9034FF4,0x91008013,0xF000D674,0x91284294,0x290007E2,0x910013F5,
     };
     bool ok=true;
-#define R253_VERIFY(NAME,OFF,WORDS) do { if (!MatchWords(OFF,WORDS)) { LogFingerprintFail(NAME,OFF); ok=false; } } while(0)
-    R253_VERIFY("R253_OWNER_REGISTER",kLoadOwnerRegisterOffset,kOwnerRegisterExpected);
-    R253_VERIFY("R253_LOAD_ENTER",kR253LoadEnterOffset,kLoadEnterExpected);
-    R253_VERIFY("R253_SOURCE_LIST",kR253SourceListBuildOffset,kSourceListExpected);
-    R253_VERIFY("R253_CANDIDATE_RESOLVE",kR253CandidateResolveOffset,kCandidateExpected);
-    R253_VERIFY("R253_CHILD_PRODUCER",kR253ChildProducerOffset,kProducerExpected);
-#undef R253_VERIFY
+#define R264_VERIFY(NAME,OFF,WORDS) do { if (!MatchWords(OFF,WORDS)) { LogFingerprintFail(NAME,OFF); ok=false; } } while(0)
+    R264_VERIFY("R264_OWNER_REGISTER",kLoadOwnerRegisterOffset,kOwnerRegisterExpected);
+    R264_VERIFY("R264_WAIT_ENTER",kR264WaitEnterOffset,kWaitEnterExpected);
+    R264_VERIFY("R264_SECONDARY_BUILD",kR264SecondaryBuildOffset,kSecondaryBuildExpected);
+    R264_VERIFY("R264_FILE_LOOKUP",kFileResourceLookupOffset,kFileLookupExpected);
+    R264_VERIFY("R264_CHUNK_LOOKUP",kChunkResourceLookupOffset,kChunkLookupExpected);
+    R264_VERIFY("R264_DRAW",kR264DrawOffset,kDrawExpected);
+    R264_VERIFY("R264_DRAW_SUBMIT",kR264DrawSubmitOffset,kDrawSubmitExpected);
+#undef R264_VERIFY
     if (ok) {
-        R253TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
-        R253LoadEnterHook::InstallAtOffset(kR253LoadEnterOffset);
-        R253SourceListBuildHook::InstallAtOffset(kR253SourceListBuildOffset);
-        R253CandidateResolveHook::InstallAtOffset(kR253CandidateResolveOffset);
-        R253ChildProducerHook::InstallAtOffset(kR253ChildProducerOffset);
+        R264TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
+        R264WaitEnterHook::InstallAtOffset(kR264WaitEnterOffset);
+        R264SecondaryBuildHook::InstallAtOffset(kR264SecondaryBuildOffset);
+        R264FileResourceLookupHook::InstallAtOffset(kFileResourceLookupOffset);
+        R264ChunkResourceLookupHook::InstallAtOffset(kChunkResourceLookupOffset);
+        R264DrawHook::InstallAtOffset(kR264DrawOffset);
+        R264DrawSubmitHook::InstallAtOffset(kR264DrawSubmitOffset);
     }
-    Logging.Log("[NSC:R253] READY installed=%u readonly=1 hooks=5 load_enter=0x548094 source_list=0x3FCE60 candidate=0x3FBC4C producer=0x549610 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0", ok?1u:0u);
-    Logging.Log("[NSC:R253] DECISION source_count0=LOAD_CHILD_SOURCE_EMPTY source_gt0_no_candidate=SELECTOR_NO_MATCH candidate_null=CANDIDATE_RESOLVE_FAIL producer_no_growth=PRODUCER_EARLY_EXIT producer_growth=CHILD_VECTOR_BUILT");
+    Logging.Log("[NSC:R264] READY installed=%u readonly=1 hooks=7 wait=0x549950 secondary=0x6EB554 file=0x1207B38 chunk=0x120A3D4 draw=0x54ADA0 submit=0x5B3AC cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",ok?1u:0u);
+    Logging.Log("[NSC:R264] DECISION secondary98_null=SECONDARY_BUILD_FAIL secondary98_nonnull_draw_no_submit=DRAW_CONTEXT_OR_GATE secondary98_nonnull_submit=DOWNSTREAM_RENDER");
     return ok;
 }
 
