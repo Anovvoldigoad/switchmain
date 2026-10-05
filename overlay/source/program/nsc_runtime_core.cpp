@@ -4,10 +4,9 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R266 follows the proven R265 objects=0 result upstream into the exact
-    // model-child -> registration-bridge -> render-producer chain.
-    // Read-only only; no return/path/ID/state overrides.
-    return nsc::InstallR266RenderRegistrationProducerTrace();
+    // R267 follows the actual character-select base-model vtable draw path.
+    // Read-only: typed nuccChunkAnm+0x08 -> secondary98+0x18 -> base visual draw.
+    return nsc::InstallR267SecondaryInnerBaseDrawTrace();
 }
 
 } // namespace nsc::runtime

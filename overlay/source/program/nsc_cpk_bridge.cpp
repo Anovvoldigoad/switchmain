@@ -66,6 +66,10 @@ constexpr ptrdiff_t kR266RegistrationTickOffset       = 0x6ED558;
 constexpr ptrdiff_t kR266RegistrationBridgeOffset     = 0x6ED110;
 constexpr ptrdiff_t kR266RenderProducerOffset         = 0x594D8;
 constexpr ptrdiff_t kR266RenderProducerGuardOffset    = 0x5E998;
+// R267: actual base-model visual binding path. R265/R266 submit/producer path is accessory context.
+constexpr ptrdiff_t kR267BaseModelDrawOffset          = 0x6ECAE4;
+constexpr ptrdiff_t kR267SecondaryInnerBindOffset     = 0x118001C;
+constexpr ptrdiff_t kR267BaseVisualDrawOffset         = 0x117E0D8;
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -557,6 +561,10 @@ std::atomic<uint32_t> g_r266_bridge_logs{0};
 std::atomic<uint32_t> g_r266_producer_logs{0};
 std::atomic<uint32_t> g_r266_guard_logs{0};
 std::atomic<uint32_t> g_r266_producer_active{0};
+std::atomic<uint32_t> g_r267_bind_logs{0};
+std::atomic<uint32_t> g_r267_base_draw_logs{0};
+std::atomic<uint32_t> g_r267_visual_logs{0};
+std::atomic<uint32_t> g_r267_base_draw_active{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -3143,6 +3151,82 @@ HOOK_DEFINE_TRAMPOLINE(R265RenderObjectGateHook) {
             }
         }
         Orig(object);
+    }
+};
+
+// R267: exact base-body visual binding trace. 0x118001C copies
+// typed nuccChunkAnm+0x08 directly into secondary98+0x18. 0x6ECAE4 then
+// skips the primary visual draw when that copied pointer is null.
+HOOK_DEFINE_TRAMPOLINE(R267SecondaryInnerBindHook) {
+    static void Callback(void* secondary, void* typed_chunk, uint32_t mode) {
+        const bool target = g_r264_secondary_active.load(std::memory_order_relaxed) != 0u;
+        uintptr_t typed_inner = 0u;
+        uintptr_t pre_inner = 0u;
+        if (typed_chunk)
+            typed_inner = *reinterpret_cast<volatile uintptr_t*>(reinterpret_cast<volatile uint8_t*>(typed_chunk) + 0x08u);
+        if (secondary)
+            pre_inner = *reinterpret_cast<volatile uintptr_t*>(reinterpret_cast<volatile uint8_t*>(secondary) + 0x18u);
+        const uint32_t seq = target ? g_r267_bind_logs.fetch_add(1u, std::memory_order_relaxed) : 0u;
+        if (target && seq < 32u) {
+            Logging.Log("[NSC:R267] INNER_BIND_PRE seq=%u secondary=%p typed=%p typed_inner08=%p pre_inner18=%p mode=%u",
+                        seq, secondary, typed_chunk, reinterpret_cast<void*>(typed_inner),
+                        reinterpret_cast<void*>(pre_inner), mode);
+        }
+        Orig(secondary, typed_chunk, mode);
+        if (target && seq < 32u) {
+            uintptr_t post_inner = 0u;
+            if (secondary)
+                post_inner = *reinterpret_cast<volatile uintptr_t*>(reinterpret_cast<volatile uint8_t*>(secondary) + 0x18u);
+            Logging.Log("[NSC:R267] INNER_BIND_POST seq=%u secondary=%p typed=%p typed_inner08=%p post_inner18=%p equal=%u",
+                        seq, secondary, typed_chunk, reinterpret_cast<void*>(typed_inner),
+                        reinterpret_cast<void*>(post_inner), post_inner == typed_inner ? 1u : 0u);
+        }
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R267BaseModelDrawHook) {
+    static void Callback(void* model) {
+        const bool target = model &&
+            (reinterpret_cast<uintptr_t>(model) == g_r264_target_model.load(std::memory_order_relaxed) ||
+             R264SnapshotModel(model).identity38 == 46u);
+        uint32_t seq = 0u;
+        if (target) {
+            seq = g_r267_base_draw_logs.fetch_add(1u, std::memory_order_relaxed);
+            auto* mb = reinterpret_cast<volatile uint8_t*>(model);
+            const uintptr_t base90 = *reinterpret_cast<volatile uintptr_t*>(mb + 0x90u);
+            const uintptr_t secondary98 = *reinterpret_cast<volatile uintptr_t*>(mb + 0x98u);
+            const uint32_t state2a90 = *reinterpret_cast<volatile uint32_t*>(mb + 0x2A90u);
+            uintptr_t inner18 = 0u;
+            if (secondary98)
+                inner18 = *reinterpret_cast<volatile uintptr_t*>(reinterpret_cast<volatile uint8_t*>(secondary98) + 0x18u);
+            if (seq < 128u)
+                Logging.Log("[NSC:R267] BASE_DRAW_PRE seq=%u model=%p base90=%p secondary98=%p inner18=%p state2a90=%u id38=%u",
+                            seq, model, reinterpret_cast<void*>(base90), reinterpret_cast<void*>(secondary98),
+                            reinterpret_cast<void*>(inner18), state2a90, R264SnapshotModel(model).identity38);
+            g_r267_base_draw_active.store(1u, std::memory_order_relaxed);
+        }
+        Orig(model);
+        if (target) {
+            g_r267_base_draw_active.store(0u, std::memory_order_relaxed);
+            if (seq < 128u)
+                Logging.Log("[NSC:R267] BASE_DRAW_POST seq=%u visual_calls=%u", seq,
+                            g_r267_visual_logs.load(std::memory_order_relaxed));
+        }
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R267BaseVisualDrawHook) {
+    static void Callback(void* secondary) {
+        if (g_r267_base_draw_active.load(std::memory_order_relaxed) != 0u) {
+            const uint32_t seq = g_r267_visual_logs.fetch_add(1u, std::memory_order_relaxed);
+            uintptr_t inner18 = 0u;
+            if (secondary)
+                inner18 = *reinterpret_cast<volatile uintptr_t*>(reinterpret_cast<volatile uint8_t*>(secondary) + 0x18u);
+            if (seq < 128u)
+                Logging.Log("[NSC:R267] BASE_VISUAL_DRAW seq=%u secondary=%p inner18=%p reached=1",
+                            seq, secondary, reinterpret_cast<void*>(inner18));
+        }
+        Orig(secondary);
     }
 };
 
@@ -7691,6 +7775,52 @@ bool InstallR265DownstreamRenderGateTrace() {
     }
     Logging.Log("[NSC:R265] READY installed=%u readonly=1 hooks=8 wait=0x549950 secondary=0x6EB554 file=0x1207B38 chunk=0x120A3D4 draw=0x54ADA0 submit=0x5B3AC render_gate=0x43F1F8 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",ok?1u:0u);
     Logging.Log("[NSC:R265] DECISION objects0=SUBMIT_LOOKUP_EMPTY objects_gt0_pass0=RENDER_OBJECT_GATE_BLOCK objects_gt0_pass_gt0=FINAL_VCALL_REACHED");
+    return ok;
+}
+
+bool InstallR267SecondaryInnerBaseDrawTrace() {
+    static constexpr uint32_t kOwnerRegisterExpected[] = {
+        0xD10143FF,0xA90167FE,0xA9025FF8,0xA90357F6,0xA9044FF4,0xF9400008,0x2A0403F5,0x2A0303F6,
+    };
+    static constexpr uint32_t kWaitEnterExpected[] = {
+        0xD10303FF,0xA9095FFE,0xA90A57F6,0xA90B4FF4,0xF9405808,0xB4001048,0xD000DFD6,0xF94246D6,
+    };
+    static constexpr uint32_t kSecondaryBuildExpected[] = {
+        0xD105C3FF,0xFD0093E8,0xA9137BFD,0xA9145FF8,0xA91557F6,0xA9164FF4,0xF9400008,0xAA0203F4,
+    };
+    static constexpr uint32_t kDrawExpected[] = {
+        0xA9BF4FFE,0xAA0003F3,0x97FFFF87,0xF9405A60,0xB4000180,0x94068783,0x34000140,0xB000DFC8,
+    };
+    static constexpr uint32_t kBaseModelDrawExpected[] = {
+        0xF81E0FFE,0xA9014FF4,0xAA0003F3,0xF9404C00,0xB4000160,0xB96A9268,0x340000A8,0xF9400C08,
+    };
+    static constexpr uint32_t kInnerBindExpected[] = {
+        0x7941B428,0x79007008,0xB9003C02,0xB9408828,0xB9004008,0x52A7F008,0xB9004808,0xF9400428,
+    };
+    static constexpr uint32_t kBaseVisualDrawExpected[] = {
+        0xA9BE57FE,0xA9014FF4,0xF9401408,0xB4000288,0x79404109,0x34000249,0x52800D0A,0x9B0A7D29,
+    };
+    bool ok=true;
+#define R267_VERIFY(NAME,OFF,WORDS) do { if (!MatchWords(OFF,WORDS)) { LogFingerprintFail(NAME,OFF); ok=false; } } while(0)
+    R267_VERIFY("R267_OWNER_REGISTER",kLoadOwnerRegisterOffset,kOwnerRegisterExpected);
+    R267_VERIFY("R267_WAIT_ENTER",kR264WaitEnterOffset,kWaitEnterExpected);
+    R267_VERIFY("R267_SECONDARY_BUILD",kR264SecondaryBuildOffset,kSecondaryBuildExpected);
+    R267_VERIFY("R267_CHARSEL_DRAW",kR264DrawOffset,kDrawExpected);
+    R267_VERIFY("R267_BASE_MODEL_DRAW",kR267BaseModelDrawOffset,kBaseModelDrawExpected);
+    R267_VERIFY("R267_INNER_BIND",kR267SecondaryInnerBindOffset,kInnerBindExpected);
+    R267_VERIFY("R267_BASE_VISUAL_DRAW",kR267BaseVisualDrawOffset,kBaseVisualDrawExpected);
+#undef R267_VERIFY
+    if (ok) {
+        R264TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
+        R264WaitEnterHook::InstallAtOffset(kR264WaitEnterOffset);
+        R264SecondaryBuildHook::InstallAtOffset(kR264SecondaryBuildOffset);
+        R264DrawHook::InstallAtOffset(kR264DrawOffset);
+        R267SecondaryInnerBindHook::InstallAtOffset(kR267SecondaryInnerBindOffset);
+        R267BaseModelDrawHook::InstallAtOffset(kR267BaseModelDrawOffset);
+        R267BaseVisualDrawHook::InstallAtOffset(kR267BaseVisualDrawOffset);
+    }
+    Logging.Log("[NSC:R267] READY installed=%u readonly=1 hooks=7 inner_bind=0x118001C base_draw=0x6ECAE4 visual_draw=0x117E0D8 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",ok?1u:0u);
+    Logging.Log("[NSC:R267] DECISION typed_inner08=0=ANM_INNER_BIND_MISSING inner18_nonzero_visual0=BASE_DRAW_CALL_BLOCK inner18_nonzero_visual1=DOWNSTREAM_VISUAL");
     return ok;
 }
 
