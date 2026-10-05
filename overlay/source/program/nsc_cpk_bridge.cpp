@@ -70,6 +70,9 @@ constexpr ptrdiff_t kR266RenderProducerGuardOffset    = 0x5E998;
 constexpr ptrdiff_t kR267BaseModelDrawOffset          = 0x6ECAE4;
 constexpr ptrdiff_t kR267SecondaryInnerBindOffset     = 0x118001C;
 constexpr ptrdiff_t kR267BaseVisualDrawOffset         = 0x117E0D8;
+// R268: downstream base-visual list / child-gate trace after R267 proved base visual draw is reached.
+constexpr ptrdiff_t kR268VisualChildGateOffset        = 0x11A3E3C;
+constexpr ptrdiff_t kR268VisualChildDrawOffset        = 0x11A2444;
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -565,6 +568,10 @@ std::atomic<uint32_t> g_r267_bind_logs{0};
 std::atomic<uint32_t> g_r267_base_draw_logs{0};
 std::atomic<uint32_t> g_r267_visual_logs{0};
 std::atomic<uint32_t> g_r267_base_draw_active{0};
+std::atomic<uint32_t> g_r268_visual_list_logs{0};
+std::atomic<uint32_t> g_r268_child_gate_logs{0};
+std::atomic<uint32_t> g_r268_child_draw_logs{0};
+std::atomic<uint32_t> g_r268_visual_active{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -3227,6 +3234,118 @@ HOOK_DEFINE_TRAMPOLINE(R267BaseVisualDrawHook) {
                             seq, secondary, reinterpret_cast<void*>(inner18));
         }
         Orig(secondary);
+    }
+};
+
+
+// R268: downstream inspection of the actual base visual list. R267 proved
+// main+0x117E0D8 is reached. This hook snapshots secondary+0x28, whose
+// +0x20 halfword is the entry count and +0x18 is the 0x68-stride entry array.
+// Each non-null entry is passed to main+0x11A3E3C.
+HOOK_DEFINE_TRAMPOLINE(R268BaseVisualListHook) {
+    static void Callback(void* secondary) {
+        const bool target = g_r267_base_draw_active.load(std::memory_order_relaxed) != 0u;
+        uint32_t seq = 0u;
+        uint32_t gate_before = 0u;
+        uint32_t draw_before = 0u;
+        if (target) {
+            seq = g_r268_visual_list_logs.fetch_add(1u, std::memory_order_relaxed);
+            gate_before = g_r268_child_gate_logs.load(std::memory_order_relaxed);
+            draw_before = g_r268_child_draw_logs.load(std::memory_order_relaxed);
+
+            uintptr_t list28 = 0u, entries18 = 0u;
+            uint32_t count20 = 0u;
+            if (secondary) {
+                auto* sb = reinterpret_cast<volatile uint8_t*>(secondary);
+                list28 = *reinterpret_cast<volatile uintptr_t*>(sb + 0x28u);
+                if (list28) {
+                    auto* lb = reinterpret_cast<volatile uint8_t*>(list28);
+                    entries18 = *reinterpret_cast<volatile uintptr_t*>(lb + 0x18u);
+                    count20 = *reinterpret_cast<volatile uint16_t*>(lb + 0x20u);
+                }
+            }
+            if (seq < 96u) {
+                Logging.Log("[NSC:R268] VISUAL_LIST_PRE seq=%u secondary=%p list28=%p count20=%u entries18=%p",
+                            seq, secondary, reinterpret_cast<void*>(list28), count20,
+                            reinterpret_cast<void*>(entries18));
+                const uint32_t lim = count20 < 16u ? count20 : 16u;
+                for (uint32_t i=0; i<lim; ++i) {
+                    uintptr_t child = 0u;
+                    if (entries18)
+                        child = *reinterpret_cast<volatile uintptr_t*>(
+                            reinterpret_cast<volatile uint8_t*>(entries18) + static_cast<uintptr_t>(i) * 0x68u);
+                    uint32_t flags2e4=0u, byte125=0u, count170=0u;
+                    uintptr_t vt=0u, fn30=0u;
+                    if (child) {
+                        auto* cb = reinterpret_cast<volatile uint8_t*>(child);
+                        flags2e4 = *reinterpret_cast<volatile uint8_t*>(cb + 0x2E4u);
+                        byte125 = *reinterpret_cast<volatile uint8_t*>(cb + 0x125u);
+                        count170 = *reinterpret_cast<volatile uint16_t*>(cb + 0x170u);
+                        vt = *reinterpret_cast<volatile uintptr_t*>(cb);
+                        if (vt) fn30 = *reinterpret_cast<volatile uintptr_t*>(reinterpret_cast<volatile uint8_t*>(vt) + 0x30u);
+                    }
+                    Logging.Log("[NSC:R268] VISUAL_ENTRY seq=%u i=%u child=%p flags2e4=0x%02x bit2=%u byte125=%u count170=%u vt=%p fn30=%p",
+                                seq, i, reinterpret_cast<void*>(child), flags2e4,
+                                (flags2e4 & 0x4u) ? 1u : 0u, byte125, count170,
+                                reinterpret_cast<void*>(vt), reinterpret_cast<void*>(fn30));
+                }
+            }
+            g_r268_visual_active.store(1u, std::memory_order_relaxed);
+        }
+        Orig(secondary);
+        if (target) {
+            g_r268_visual_active.store(0u, std::memory_order_relaxed);
+            if (seq < 96u) {
+                const uint32_t gate_after = g_r268_child_gate_logs.load(std::memory_order_relaxed);
+                const uint32_t draw_after = g_r268_child_draw_logs.load(std::memory_order_relaxed);
+                Logging.Log("[NSC:R268] VISUAL_LIST_POST seq=%u child_gate_delta=%u child_draw_delta=%u",
+                            seq, gate_after - gate_before, draw_after - draw_before);
+            }
+        }
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R268VisualChildGateHook) {
+    static void Callback(void* child) {
+        if (g_r268_visual_active.load(std::memory_order_relaxed) != 0u) {
+            const uint32_t seq = g_r268_child_gate_logs.fetch_add(1u, std::memory_order_relaxed);
+            uint32_t flags2e4=0u, byte125=0u, count170=0u;
+            uintptr_t vt=0u, fn30=0u;
+            if (child) {
+                auto* cb = reinterpret_cast<volatile uint8_t*>(child);
+                flags2e4 = *reinterpret_cast<volatile uint8_t*>(cb + 0x2E4u);
+                byte125 = *reinterpret_cast<volatile uint8_t*>(cb + 0x125u);
+                count170 = *reinterpret_cast<volatile uint16_t*>(cb + 0x170u);
+                vt = *reinterpret_cast<volatile uintptr_t*>(cb);
+                if (vt) fn30 = *reinterpret_cast<volatile uintptr_t*>(reinterpret_cast<volatile uint8_t*>(vt) + 0x30u);
+            }
+            if (seq < 256u) {
+                Logging.Log("[NSC:R268] CHILD_GATE seq=%u child=%p flags2e4=0x%02x bit2=%u byte125=%u count170=%u vt=%p fn30=%p",
+                            seq, child, flags2e4, (flags2e4 & 0x4u) ? 1u : 0u,
+                            byte125, count170, reinterpret_cast<void*>(vt), reinterpret_cast<void*>(fn30));
+            }
+        }
+        Orig(child);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R268VisualChildDrawHook) {
+    static void Callback(void* object) {
+        if (g_r268_visual_active.load(std::memory_order_relaxed) != 0u) {
+            const uint32_t seq = g_r268_child_draw_logs.fetch_add(1u, std::memory_order_relaxed);
+            uint32_t byte121=0u, byte127=0u;
+            uintptr_t next28=0u;
+            if (object) {
+                auto* ob = reinterpret_cast<volatile uint8_t*>(object);
+                byte121 = *reinterpret_cast<volatile uint8_t*>(ob + 0x121u);
+                byte127 = *reinterpret_cast<volatile uint8_t*>(ob + 0x127u);
+                next28 = *reinterpret_cast<volatile uintptr_t*>(ob + 0x28u);
+            }
+            if (seq < 256u)
+                Logging.Log("[NSC:R268] CHILD_DRAW seq=%u object=%p byte121=%u byte127=%u next28=%p",
+                            seq, object, byte121, byte127, reinterpret_cast<void*>(next28));
+        }
+        Orig(object);
     }
 };
 
@@ -7821,6 +7940,63 @@ bool InstallR267SecondaryInnerBaseDrawTrace() {
     }
     Logging.Log("[NSC:R267] READY installed=%u readonly=1 hooks=7 inner_bind=0x118001C base_draw=0x6ECAE4 visual_draw=0x117E0D8 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",ok?1u:0u);
     Logging.Log("[NSC:R267] DECISION typed_inner08=0=ANM_INNER_BIND_MISSING inner18_nonzero_visual0=BASE_DRAW_CALL_BLOCK inner18_nonzero_visual1=DOWNSTREAM_VISUAL");
+    return ok;
+}
+
+
+bool InstallR268BaseVisualChildGateTrace() {
+    static constexpr uint32_t kOwnerRegisterExpected[] = {
+        0xD10143FF,0xA90167FE,0xA9025FF8,0xA90357F6,0xA9044FF4,0xF9400008,0x2A0403F5,0x2A0303F6,
+    };
+    static constexpr uint32_t kWaitEnterExpected[] = {
+        0xD10303FF,0xA9095FFE,0xA90A57F6,0xA90B4FF4,0xF9405808,0xB4001048,0xD000DFD6,0xF94246D6,
+    };
+    static constexpr uint32_t kSecondaryBuildExpected[] = {
+        0xD105C3FF,0xFD0093E8,0xA9137BFD,0xA9145FF8,0xA91557F6,0xA9164FF4,0xF9400008,0xAA0203F4,
+    };
+    static constexpr uint32_t kDrawExpected[] = {
+        0xA9BF4FFE,0xAA0003F3,0x97FFFF87,0xF9405A60,0xB4000180,0x94068783,0x34000140,0xB000DFC8,
+    };
+    static constexpr uint32_t kBaseModelDrawExpected[] = {
+        0xF81E0FFE,0xA9014FF4,0xAA0003F3,0xF9404C00,0xB4000160,0xB96A9268,0x340000A8,0xF9400C08,
+    };
+    static constexpr uint32_t kInnerBindExpected[] = {
+        0x7941B428,0x79007008,0xB9003C02,0xB9408828,0xB9004008,0x52A7F008,0xB9004808,0xF9400428,
+    };
+    static constexpr uint32_t kBaseVisualDrawExpected[] = {
+        0xA9BE57FE,0xA9014FF4,0xF9401408,0xB4000288,0x79404109,0x34000249,0x52800D0A,0x9B0A7D29,
+    };
+    static constexpr uint32_t kChildGateExpected[] = {
+        0xF81E0FFE,0xA9014FF4,0x394B9008,0x37100088,0xA9414FF4,0xF84207FE,0xD65F03C0,0xF9400008,
+    };
+    static constexpr uint32_t kChildDrawExpected[] = {
+        0xA9BA7BFD,0xA9016FFC,0xA90267FA,0xA9035FF8,0xA90457F6,0xA9054FF4,0xD14007FF,0xD10183FF,
+    };
+    bool ok=true;
+#define R268_VERIFY(NAME,OFF,WORDS) do { if (!MatchWords(OFF,WORDS)) { LogFingerprintFail(NAME,OFF); ok=false; } } while(0)
+    R268_VERIFY("R268_OWNER_REGISTER",kLoadOwnerRegisterOffset,kOwnerRegisterExpected);
+    R268_VERIFY("R268_WAIT_ENTER",kR264WaitEnterOffset,kWaitEnterExpected);
+    R268_VERIFY("R268_SECONDARY_BUILD",kR264SecondaryBuildOffset,kSecondaryBuildExpected);
+    R268_VERIFY("R268_CHARSEL_DRAW",kR264DrawOffset,kDrawExpected);
+    R268_VERIFY("R268_BASE_MODEL_DRAW",kR267BaseModelDrawOffset,kBaseModelDrawExpected);
+    R268_VERIFY("R268_INNER_BIND",kR267SecondaryInnerBindOffset,kInnerBindExpected);
+    R268_VERIFY("R268_BASE_VISUAL_LIST",kR267BaseVisualDrawOffset,kBaseVisualDrawExpected);
+    R268_VERIFY("R268_CHILD_GATE",kR268VisualChildGateOffset,kChildGateExpected);
+    R268_VERIFY("R268_CHILD_DRAW",kR268VisualChildDrawOffset,kChildDrawExpected);
+#undef R268_VERIFY
+    if (ok) {
+        R264TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
+        R264WaitEnterHook::InstallAtOffset(kR264WaitEnterOffset);
+        R264SecondaryBuildHook::InstallAtOffset(kR264SecondaryBuildOffset);
+        R264DrawHook::InstallAtOffset(kR264DrawOffset);
+        R267SecondaryInnerBindHook::InstallAtOffset(kR267SecondaryInnerBindOffset);
+        R267BaseModelDrawHook::InstallAtOffset(kR267BaseModelDrawOffset);
+        R268BaseVisualListHook::InstallAtOffset(kR267BaseVisualDrawOffset);
+        R268VisualChildGateHook::InstallAtOffset(kR268VisualChildGateOffset);
+        R268VisualChildDrawHook::InstallAtOffset(kR268VisualChildDrawOffset);
+    }
+    Logging.Log("[NSC:R268] READY installed=%u readonly=1 hooks=9 visual_list=0x117E0D8 child_gate=0x11A3E3C child_draw=0x11A2444 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",ok?1u:0u);
+    Logging.Log("[NSC:R268] DECISION count20=0=BASE_VISUAL_LIST_EMPTY entry_bit2=0=CHILD_DISABLED bit2=1_draw0=CHILD_GATE_OR_VCALL_BLOCK child_draw_gt0=DOWNSTREAM_CHILD_DRAW");
     return ok;
 }
 

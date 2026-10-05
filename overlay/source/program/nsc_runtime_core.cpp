@@ -4,9 +4,9 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R267 follows the actual character-select base-model vtable draw path.
-    // Read-only: typed nuccChunkAnm+0x08 -> secondary98+0x18 -> base visual draw.
-    return nsc::InstallR267SecondaryInnerBaseDrawTrace();
+    // R268 continues only after R267 proved base visual draw is reached.
+    // Read-only: inspect secondary+0x28 visual list -> 0x11A3E3C child gate -> 0x11A2444 child draw.
+    return nsc::InstallR268BaseVisualChildGateTrace();
 }
 
 } // namespace nsc::runtime
