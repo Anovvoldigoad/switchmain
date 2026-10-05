@@ -1,4 +1,4 @@
-name: Build NSC R264 Secondary Preview Draw Trace
+name: Build NSC R265 Downstream Render Gate Trace
 
 on:
   workflow_dispatch:
@@ -13,8 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify R264 secondary preview draw source
-        run: python3 verify_r264.py
+      - name: Verify R265 downstream render gate source
+        run: python3 verify_r265.py
 
       - name: Clone pinned exlaunch
         run: |
@@ -29,7 +29,7 @@ jobs:
         working-directory: exlaunch
         run: make -j2
 
-      - name: Package R264 read-only secondary preview draw runtime
+      - name: Package R265 read-only downstream render gate runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -44,8 +44,8 @@ jobs:
           cd "$OUT"
           sha256sum runtime/atmosphere/contents/0100FA10190A0000/exefs/subsdk9 > SHA256SUMS.txt
           printf '%s\n' \
-            'NSC2Switch R264 diagnostic: target secondary preview object (+0x98), nested resource/chunk lookup, draw gate, and draw-submit trace after R263.' \
-            'Read-only. Seven hooks: mtob registry capture + Wait enter + secondary builder + nested file/chunk lookup + Draw + Draw submit.' \
+            'NSC2Switch R265 diagnostic: target downstream render-object gates after R264 proved secondary98 and draw-submit PASS.' \
+            'Read-only. Eight hooks: R264 target chain plus downstream per-render-object gate at main+0x43F1F8.' \
             'Do not copy a game main file into this package.' \
             'Deploy beside the exact R263 sound.cpk diagnostic carrier. Replace only diagnostic subsdk9.' \
             > INSTALL.txt
@@ -60,6 +60,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC2Switch-R264-SECONDARY-PREVIEW-DRAW-TRACE
+          name: NSC2Switch-R265-DOWNSTREAM-RENDER-GATE-TRACE
           path: out/**
           if-no-files-found: error

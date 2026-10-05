@@ -4,7 +4,7 @@ namespace nsc {
 bool InstallR204JNativeCharselOwnerTrace();
 bool InstallR245GPreviewStateGateTrace();
 bool InstallR247R204WStateTableRetest();
-bool InstallR264SecondaryPreviewDrawTrace();
+bool InstallR265DownstreamRenderGateTrace();
 bool InstallR252WaitChildReadinessTrace();
 void InstallP50AConditionCompat();
 void InstallP52APreUjProbe();

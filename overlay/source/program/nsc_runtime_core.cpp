@@ -4,9 +4,9 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R264 traces the exact target secondary preview object (+0x98) and draw submit.
+    // R265 extends the proven R264 target chain into the downstream per-render-object gate.
     // Read-only only; no return/path/ID/state overrides.
-    return nsc::InstallR264SecondaryPreviewDrawTrace();
+    return nsc::InstallR265DownstreamRenderGateTrace();
 }
 
 } // namespace nsc::runtime

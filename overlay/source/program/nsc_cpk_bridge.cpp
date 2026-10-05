@@ -58,6 +58,8 @@ constexpr ptrdiff_t kR264WaitEnterOffset          = 0x549950;
 constexpr ptrdiff_t kR264SecondaryBuildOffset     = 0x6EB554;
 constexpr ptrdiff_t kR264DrawOffset               = 0x54ADA0;
 constexpr ptrdiff_t kR264DrawSubmitOffset         = 0x5B3AC;
+// R265: downstream per-render-object gate reached from draw submit.
+constexpr ptrdiff_t kR265RenderObjectGateOffset   = 0x43F1F8;
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -537,6 +539,12 @@ std::atomic<uint32_t> g_r264_draw_active{0};
 std::atomic<uint32_t> g_r264_seq{0};
 std::atomic<uint32_t> g_r264_lookup_logs{0};
 std::atomic<uint32_t> g_r264_draw_logs{0};
+std::atomic<uint32_t> g_r265_submit_active{0};
+std::atomic<uint32_t> g_r265_submit_seq{0};
+std::atomic<uint32_t> g_r265_current_submit{0};
+std::atomic<uint32_t> g_r265_object_count{0};
+std::atomic<uint32_t> g_r265_pass_count{0};
+std::atomic<uint32_t> g_r265_render_logs{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -3018,12 +3026,77 @@ HOOK_DEFINE_TRAMPOLINE(R264DrawHook) {
     }
 };
 
-HOOK_DEFINE_TRAMPOLINE(R264DrawSubmitHook) {
+HOOK_DEFINE_TRAMPOLINE(R265DrawSubmitHook) {
     static void Callback(void* draw_ctx, uint32_t slot, uint32_t identity) {
-        if (g_r264_draw_active.load(std::memory_order_relaxed) &&
-            g_r264_draw_logs.fetch_add(1u,std::memory_order_relaxed)<256u)
-            Logging.Log("[NSC:R264] DRAW_SUBMIT ctx=%p slot=%u identity=%u",draw_ctx,slot,identity);
+        const bool target = g_r264_draw_active.load(std::memory_order_relaxed) != 0u;
+        uint32_t seq = 0u;
+        if (target) {
+            seq = g_r265_submit_seq.fetch_add(1u, std::memory_order_relaxed);
+            g_r265_current_submit.store(seq, std::memory_order_relaxed);
+            g_r265_object_count.store(0u, std::memory_order_relaxed);
+            g_r265_pass_count.store(0u, std::memory_order_relaxed);
+            g_r265_submit_active.store(1u, std::memory_order_relaxed);
+            if (seq < 64u)
+                Logging.Log("[NSC:R265] SUBMIT_BEGIN seq=%u ctx=%p slot=%u identity=%u", seq, draw_ctx, slot, identity);
+        }
         Orig(draw_ctx,slot,identity);
+        if (target) {
+            g_r265_submit_active.store(0u, std::memory_order_relaxed);
+            if (seq < 64u)
+                Logging.Log("[NSC:R265] SUBMIT_END seq=%u objects=%u gate_pass=%u", seq,
+                            g_r265_object_count.load(std::memory_order_relaxed),
+                            g_r265_pass_count.load(std::memory_order_relaxed));
+        }
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R265RenderObjectGateHook) {
+    static void Callback(void* object) {
+        if (g_r265_submit_active.load(std::memory_order_relaxed) != 0u && object) {
+            g_r265_object_count.fetch_add(1u, std::memory_order_relaxed);
+            auto* b = reinterpret_cast<volatile uint8_t*>(object);
+            const uint32_t dc  = *reinterpret_cast<volatile uint32_t*>(b + 0xDCu);
+            const uint32_t e0  = *reinterpret_cast<volatile uint32_t*>(b + 0xE0u);
+            const uint32_t e4  = *reinterpret_cast<volatile uint32_t*>(b + 0xE4u);
+            const uint32_t ec  = *reinterpret_cast<volatile uint32_t*>(b + 0xECu);
+            const uint32_t f0  = *reinterpret_cast<volatile uint32_t*>(b + 0xF0u);
+            const uint32_t f4  = *reinterpret_cast<volatile uint32_t*>(b + 0xF4u);
+            const uint32_t mode= *reinterpret_cast<volatile uint32_t*>(b + 0xF8u);
+            const uint32_t s1b0= *reinterpret_cast<volatile uint32_t*>(b + 0x1B0u);
+            const uintptr_t p88= *reinterpret_cast<volatile uintptr_t*>(b + 0x88u);
+            const uintptr_t p90= *reinterpret_cast<volatile uintptr_t*>(b + 0x90u);
+            uint32_t value4c_bits = 0u;
+            uintptr_t final_fn = 0u;
+            if (p90) {
+                auto* pb = reinterpret_cast<volatile uint8_t*>(p90);
+                value4c_bits = *reinterpret_cast<volatile uint32_t*>(pb + 0x4Cu);
+                const uintptr_t vt = *reinterpret_cast<volatile uintptr_t*>(pb);
+                if (vt) final_fn = *reinterpret_cast<volatile uintptr_t*>(vt + 0x50u);
+            }
+            bool mode_gate = false;
+            switch (mode) {
+                case 0u: mode_gate = true; break;
+                case 1u: mode_gate = (e4 == 0u); break;
+                case 2u: mode_gate = (e4 != 0u); break;
+                case 3u: mode_gate = (ec != 0u); break;
+                case 4u: mode_gate = (f0 != 0u); break;
+                case 5u: mode_gate = (f4 != 0u); break;
+                case 6u: case 7u: case 8u: case 9u: case 10u: mode_gate = (s1b0 == mode); break;
+                default: mode_gate = false; break;
+            }
+            const bool value_nonzero = (value4c_bits & 0x7FFFFFFFu) != 0u;
+            const bool pass = dc != 0u && e0 != 0u && mode <= 10u && mode_gate && p90 != 0u && value_nonzero;
+            if (pass) g_r265_pass_count.fetch_add(1u, std::memory_order_relaxed);
+            const uint32_t logseq = g_r265_render_logs.fetch_add(1u, std::memory_order_relaxed);
+            if (logseq < 192u) {
+                Logging.Log("[NSC:R265] RENDER_GATE submit=%u obj=%p dc=%u e0=%u mode=%u e4=%u ec=%u f0=%u f4=%u s1b0=%u p88=%p p90=%p value4c_bits=0x%08x final_fn=%p pass=%u",
+                            g_r265_current_submit.load(std::memory_order_relaxed), object,
+                            dc,e0,mode,e4,ec,f0,f4,s1b0,
+                            reinterpret_cast<void*>(p88), reinterpret_cast<void*>(p90),
+                            value4c_bits, reinterpret_cast<void*>(final_fn), pass ? 1u : 0u);
+            }
+        }
+        Orig(object);
     }
 };
 
@@ -7448,7 +7521,7 @@ bool InstallR245GPreviewStateGateTrace() {
     return ok;
 }
 
-bool InstallR264SecondaryPreviewDrawTrace() {
+bool InstallR265DownstreamRenderGateTrace() {
     static constexpr uint32_t kOwnerRegisterExpected[] = {
         0xD10143FF,0xA90167FE,0xA9025FF8,0xA90357F6,0xA9044FF4,0xF9400008,0x2A0403F5,0x2A0303F6,
     };
@@ -7470,6 +7543,9 @@ bool InstallR264SecondaryPreviewDrawTrace() {
     static constexpr uint32_t kDrawSubmitExpected[] = {
         0xD10103FF,0xA90257F6,0xA9034FF4,0x91008013,0xF000D674,0x91284294,0x290007E2,0x910013F5,
     };
+    static constexpr uint32_t kRenderObjectGateExpected[] = {
+        0xA9BF4FFE,0xB940DC08,0x340007E8,0xB940E008,0xAA0003F3,0x34000788,0xB940FA68,0x7100291F,
+    };
     bool ok=true;
 #define R264_VERIFY(NAME,OFF,WORDS) do { if (!MatchWords(OFF,WORDS)) { LogFingerprintFail(NAME,OFF); ok=false; } } while(0)
     R264_VERIFY("R264_OWNER_REGISTER",kLoadOwnerRegisterOffset,kOwnerRegisterExpected);
@@ -7479,6 +7555,7 @@ bool InstallR264SecondaryPreviewDrawTrace() {
     R264_VERIFY("R264_CHUNK_LOOKUP",kChunkResourceLookupOffset,kChunkLookupExpected);
     R264_VERIFY("R264_DRAW",kR264DrawOffset,kDrawExpected);
     R264_VERIFY("R264_DRAW_SUBMIT",kR264DrawSubmitOffset,kDrawSubmitExpected);
+    R264_VERIFY("R265_RENDER_OBJECT_GATE",kR265RenderObjectGateOffset,kRenderObjectGateExpected);
 #undef R264_VERIFY
     if (ok) {
         R264TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
@@ -7487,10 +7564,11 @@ bool InstallR264SecondaryPreviewDrawTrace() {
         R264FileResourceLookupHook::InstallAtOffset(kFileResourceLookupOffset);
         R264ChunkResourceLookupHook::InstallAtOffset(kChunkResourceLookupOffset);
         R264DrawHook::InstallAtOffset(kR264DrawOffset);
-        R264DrawSubmitHook::InstallAtOffset(kR264DrawSubmitOffset);
+        R265DrawSubmitHook::InstallAtOffset(kR264DrawSubmitOffset);
+        R265RenderObjectGateHook::InstallAtOffset(kR265RenderObjectGateOffset);
     }
-    Logging.Log("[NSC:R264] READY installed=%u readonly=1 hooks=7 wait=0x549950 secondary=0x6EB554 file=0x1207B38 chunk=0x120A3D4 draw=0x54ADA0 submit=0x5B3AC cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",ok?1u:0u);
-    Logging.Log("[NSC:R264] DECISION secondary98_null=SECONDARY_BUILD_FAIL secondary98_nonnull_draw_no_submit=DRAW_CONTEXT_OR_GATE secondary98_nonnull_submit=DOWNSTREAM_RENDER");
+    Logging.Log("[NSC:R265] READY installed=%u readonly=1 hooks=8 wait=0x549950 secondary=0x6EB554 file=0x1207B38 chunk=0x120A3D4 draw=0x54ADA0 submit=0x5B3AC render_gate=0x43F1F8 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",ok?1u:0u);
+    Logging.Log("[NSC:R265] DECISION objects0=SUBMIT_LOOKUP_EMPTY objects_gt0_pass0=RENDER_OBJECT_GATE_BLOCK objects_gt0_pass_gt0=FINAL_VCALL_REACHED");
     return ok;
 }
 
