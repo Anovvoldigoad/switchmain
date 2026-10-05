@@ -4,11 +4,11 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R204V is a temporary read-only post-registry state-gate diagnostic.
-    // Historical R204J + R238A proved the primary mtob registry reaches result=1.
-    // This run isolates the native ccUiCharacterSelect3DModel gates that must pass
-    // before state fields +0x6C=1 and +0x5C=2 are committed.
-    return nsc::InstallR204VCharselStateGateTrace();
+    // R245G is a temporary read-only diagnostic runtime.
+    // It preserves the proven R204J loader/registry visibility and adds only
+    // the exact ccUiCharacterSelect3DModel state-advance gate trace.
+    // No gameplay patches, CPK binder, numeric-ID expansion, or resource mutation.
+    return nsc::InstallR245GPreviewStateGateTrace();
 }
 
 } // namespace nsc::runtime

@@ -1,8 +1,8 @@
 #pragma once
 
 namespace nsc {
-bool InstallR204VCharselStateGateTrace();
 bool InstallR204JNativeCharselOwnerTrace();
+bool InstallR245GPreviewStateGateTrace();
 void InstallP50AConditionCompat();
 void InstallP52APreUjProbe();
 void InstallP53AInputPromotionProbe();

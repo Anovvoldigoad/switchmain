@@ -33,9 +33,9 @@ constexpr ptrdiff_t kLoadOwnerRegisterOffset   = 0x1161B88; // owner registry lo
 constexpr ptrdiff_t kLoadOwnerRegistryProcessOffset = 0x1161C98; // registry traversal; polls owners until first not-ready
 constexpr ptrdiff_t kLoadOwnerReadyOffset      = 0x11617CC; // load-object ready poll -> bool(status==2)
 constexpr ptrdiff_t kLoadOwnerStateOffset      = 0x1161858; // load-object status-class mapping
-// R204V: ccUiCharacterSelect3DModel post-registry state gate.
-constexpr ptrdiff_t kCharsel3DStateGateOffset      = 0x549804;  // first registry + helper gates + state advance
-constexpr ptrdiff_t kLoadOwnerRegistryStateOffset  = 0x1161D20; // secondary registry state/helper used by 0x58498
+// R245G: ccUiCharacterSelect3DModel post-owner-readiness state-advance gate.
+constexpr ptrdiff_t kR245GPreviewStateGateOffset = 0x549804;
+constexpr ptrdiff_t kR245GAltReadyWrapperOffset  = 0x58498;
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -483,12 +483,13 @@ std::atomic<uint32_t> g_r204j_target_hash{0};
 std::atomic<uint32_t> g_r204j_registry_process_logs{0};
 std::atomic<uint32_t> g_r204j_target_scan_logs{0};
 std::atomic<uint32_t> g_r204j_target_poll_active{0};
-// R204V: exact post-registry state-gate trace.
-std::atomic<uint32_t> g_r204v_gate_active{0};
-std::atomic<uintptr_t> g_r204v_gate_state{0};
-std::atomic<uint32_t> g_r204v_gate_logs{0};
-std::atomic<uint32_t> g_r204v_registry_logs{0};
-std::atomic<uint32_t> g_r204v_registry_state_logs{0};
+// R245G: scoped state-gate tracing.
+std::atomic<uint32_t> g_r245g_gate_active{0};
+std::atomic<uintptr_t> g_r245g_gate_self{0};
+std::atomic<uint32_t> g_r245g_gate_calls{0};
+std::atomic<uint32_t> g_r245g_gate_registry_seq{0};
+std::atomic<uint32_t> g_r245g_gate_registry_logs{0};
+std::atomic<uint32_t> g_r245g_alt_ready_logs{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -2421,6 +2422,10 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerRegisterHook) {
         if (IsR204JTargetCharselPath(path)) {
             g_r204j_target_registry.store(reinterpret_cast<uintptr_t>(registry), std::memory_order_relaxed);
             g_r204j_target_hash.store(result, std::memory_order_relaxed);
+            g_r245g_gate_calls.store(0u, std::memory_order_relaxed);
+            g_r245g_gate_registry_seq.store(0u, std::memory_order_relaxed);
+            g_r245g_gate_registry_logs.store(0u, std::memory_order_relaxed);
+            g_r245g_alt_ready_logs.store(0u, std::memory_order_relaxed);
             void* node = FindOwnerNodeByHash(registry, result);
             void* tree_owner = OwnerFromRegistryNode(node);
             void* init_owner = reinterpret_cast<void*>(g_r204j_target_init_owner.load(std::memory_order_relaxed));
@@ -2463,6 +2468,16 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerRegistryProcessHook) {
         const bool target = target_registry != 0u && reinterpret_cast<uintptr_t>(registry) == target_registry;
         if (target) g_r204j_target_poll_active.store(1u, std::memory_order_relaxed);
         const uint32_t result = Orig(registry);
+
+        if (g_r245g_gate_active.load(std::memory_order_relaxed) != 0u) {
+            const uint32_t seq =
+                g_r245g_gate_registry_seq.fetch_add(1u, std::memory_order_relaxed);
+            if (g_r245g_gate_registry_logs.fetch_add(1u, std::memory_order_relaxed) < 256u) {
+                Logging.Log("[NSC:R245G] GATE_REGISTRY_PROCESS seq=%u registry=%p result=%u target_registry=%u",
+                            seq, registry, result, target ? 1u : 0u);
+            }
+        }
+
         if (target) {
             g_r204j_target_poll_active.store(0u, std::memory_order_relaxed);
             const uint32_t hash = g_r204j_target_hash.load(std::memory_order_relaxed);
@@ -2478,6 +2493,92 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerRegistryProcessHook) {
     }
 };
 
+
+// R245G: exact ccUiCharacterSelect3DModel state-advance gate recovered from
+// clean v1.70 main. Read-only: calls Orig(self) exactly once and only logs.
+HOOK_DEFINE_TRAMPOLINE(R245GPreviewStateGateHook) {
+    static void Callback(void* self) {
+        uint32_t pre_state = 0xFFFFFFFFu;
+        uint32_t pre_phase = 0xFFFFFFFFu;
+        void* registry_a = nullptr;
+        void* mid_ready = nullptr;
+        void* registry_b = nullptr;
+
+        if (self) {
+            auto* b = reinterpret_cast<uint8_t*>(self);
+            pre_state = *reinterpret_cast<volatile uint32_t*>(b + 0x5Cu);
+            pre_phase = *reinterpret_cast<volatile uint32_t*>(b + 0x6Cu);
+            registry_a = *reinterpret_cast<void* volatile*>(b + 0xA8u);
+            mid_ready = *reinterpret_cast<void* volatile*>(b + 0xC0u);
+
+            void* end_ptr = *reinterpret_cast<void* volatile*>(b + 0x80u);
+            if (end_ptr) {
+                registry_b = *reinterpret_cast<void* volatile*>(
+                    reinterpret_cast<uint8_t*>(end_ptr) - 0x18u);
+            }
+        }
+
+        const uintptr_t target_registry =
+            g_r204j_target_registry.load(std::memory_order_relaxed);
+        if (target_registry == 0u) {
+            Orig(self);
+            return;
+        }
+
+        const uintptr_t reg_a_u = reinterpret_cast<uintptr_t>(registry_a);
+        const uintptr_t reg_b_u = reinterpret_cast<uintptr_t>(registry_b);
+        const uintptr_t mid_u = reinterpret_cast<uintptr_t>(mid_ready);
+        const bool target_match =
+            reg_a_u == target_registry ||
+            reg_b_u == target_registry ||
+            (mid_u != 0u && (mid_u + 8u) == target_registry);
+
+        const uint32_t call =
+            g_r245g_gate_calls.fetch_add(1u, std::memory_order_relaxed);
+        g_r245g_gate_self.store(reinterpret_cast<uintptr_t>(self), std::memory_order_relaxed);
+        g_r245g_gate_registry_seq.store(0u, std::memory_order_relaxed);
+        g_r245g_gate_active.store(1u, std::memory_order_relaxed);
+
+        if (call < 256u) {
+            Logging.Log("[NSC:R245G] GATE_ENTER call=%u self=%p state5c=%u phase6c=%u regA=%p mid=%p regB=%p target_registry=%p target_match=%u",
+                        call, self, pre_state, pre_phase, registry_a, mid_ready, registry_b,
+                        reinterpret_cast<void*>(target_registry), target_match ? 1u : 0u);
+        }
+
+        Orig(self);
+
+        g_r245g_gate_active.store(0u, std::memory_order_relaxed);
+
+        uint32_t post_state = 0xFFFFFFFFu;
+        uint32_t post_phase = 0xFFFFFFFFu;
+        if (self) {
+            auto* b = reinterpret_cast<uint8_t*>(self);
+            post_state = *reinterpret_cast<volatile uint32_t*>(b + 0x5Cu);
+            post_phase = *reinterpret_cast<volatile uint32_t*>(b + 0x6Cu);
+        }
+        if (call < 256u) {
+            Logging.Log("[NSC:R245G] GATE_EXIT call=%u self=%p state5c=%u phase6c=%u registry_calls=%u advanced=%u",
+                        call, self, post_state, post_phase,
+                        g_r245g_gate_registry_seq.load(std::memory_order_relaxed),
+                        (post_state == 2u && post_phase == 1u) ? 1u : 0u);
+        }
+        g_r245g_gate_self.store(0u, std::memory_order_relaxed);
+    }
+};
+
+// Native main+0x58498 is ADD X0,X0,#8; B main+0x1161D20.
+// This fallback runs only if the mid registry readiness path returns zero.
+HOOK_DEFINE_TRAMPOLINE(R245GAltReadyWrapperHook) {
+    static uint32_t Callback(void* p) {
+        const uint32_t result = Orig(p);
+        if (g_r245g_gate_active.load(std::memory_order_relaxed) != 0u &&
+            g_r245g_alt_ready_logs.fetch_add(1u, std::memory_order_relaxed) < 128u) {
+            Logging.Log("[NSC:R245G] GATE_ALT_READY ptr=%p result=%u", p, result);
+        }
+        return result;
+    }
+};
+
 HOOK_DEFINE_TRAMPOLINE(LoadOwnerStateHook) {
     static uint32_t Callback(void* owner) {
         const char* path = LoadOwnerPath(owner);
@@ -2487,76 +2588,6 @@ HOOK_DEFINE_TRAMPOLINE(LoadOwnerStateHook) {
             g_owner_state_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
             Logging.Log("[NSC:R204J] OWNER_STATE owner=%p path=%s load=%p state=%u",
                         owner, path ? path : "<null>", load, result);
-        }
-        return result;
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(R204VCharselStateGateHook) {
-    static void Callback(void* state) {
-        if (!state) {
-            Orig(state);
-            return;
-        }
-        auto* b = reinterpret_cast<uint8_t*>(state);
-        void* const primary_registry = *reinterpret_cast<void**>(b + 0xA8);
-        const uintptr_t target_registry = g_r204j_target_registry.load(std::memory_order_relaxed);
-        const bool target = target_registry != 0u &&
-            reinterpret_cast<uintptr_t>(primary_registry) == target_registry;
-        if (!target) {
-            Orig(state);
-            return;
-        }
-
-        const uint32_t pre_5c = *reinterpret_cast<volatile uint32_t*>(b + 0x5C);
-        const uint32_t pre_6c = *reinterpret_cast<volatile uint32_t*>(b + 0x6C);
-        void* const helper_obj = *reinterpret_cast<void**>(b + 0xC0);
-        void* const p80 = *reinterpret_cast<void**>(b + 0x80);
-        void* secondary_registry = nullptr;
-        if (p80) {
-            secondary_registry = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(p80) - 0x18);
-        }
-        if (g_r204v_gate_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:R204V] GATE_ENTER state=%p primary=%p helper_obj=%p p80=%p secondary=%p s5c=%u s6c=%u",
-                        state, primary_registry, helper_obj, p80, secondary_registry, pre_5c, pre_6c);
-        }
-        g_r204v_gate_state.store(reinterpret_cast<uintptr_t>(state), std::memory_order_relaxed);
-        g_r204v_gate_active.store(1u, std::memory_order_relaxed);
-        Orig(state);
-        g_r204v_gate_active.store(0u, std::memory_order_relaxed);
-        g_r204v_gate_state.store(0u, std::memory_order_relaxed);
-
-        const uint32_t post_5c = *reinterpret_cast<volatile uint32_t*>(b + 0x5C);
-        const uint32_t post_6c = *reinterpret_cast<volatile uint32_t*>(b + 0x6C);
-        if (g_r204v_gate_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            Logging.Log("[NSC:R204V] GATE_EXIT state=%p s5c=%u->%u s6c=%u->%u advanced=%u",
-                        state, pre_5c, post_5c, pre_6c, post_6c,
-                        (post_5c == 2u && post_6c == 1u) ? 1u : 0u);
-        }
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(R204VRegistryProcessHook) {
-    static uint32_t Callback(void* registry) {
-        const uint32_t result = Orig(registry);
-        if (g_r204v_gate_active.load(std::memory_order_relaxed) != 0u &&
-            g_r204v_registry_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
-            const uintptr_t target_registry = g_r204j_target_registry.load(std::memory_order_relaxed);
-            Logging.Log("[NSC:R204V] GATE_REGISTRY registry=%p role=%s result=%u",
-                        registry,
-                        reinterpret_cast<uintptr_t>(registry) == target_registry ? "primary" : "secondary",
-                        result);
-        }
-        return result;
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(R204VRegistryStateHook) {
-    static uint32_t Callback(void* registry) {
-        const uint32_t result = Orig(registry);
-        if (g_r204v_gate_active.load(std::memory_order_relaxed) != 0u &&
-            g_r204v_registry_state_logs.fetch_add(1, std::memory_order_relaxed) < 128) {
-            Logging.Log("[NSC:R204V] GATE_REGISTRY_STATE registry=%p result=%u", registry, result);
         }
         return result;
     }
@@ -6919,50 +6950,6 @@ bool InstallP52PreUjTraceHooks() {
 
 } // namespace
 
-bool InstallR204VCharselStateGateTrace() {
-    static constexpr uint32_t kOwnerRegisterExpected[] = {
-        0xD10143FF, 0xA90167FE, 0xA9025FF8, 0xA90357F6,
-        0xA9044FF4, 0xF9400008, 0x2A0403F5, 0x2A0303F6,
-    };
-    static constexpr uint32_t kRegistryProcessExpected[] = {
-        0xF81E0FFE, 0xA9014FF4, 0xF9400C14, 0x91008013,
-        0x14000002, 0xAA0903F4, 0xEB13029F, 0x540002E0,
-    };
-    static constexpr uint32_t kRegistryStateExpected[] = {
-        0xF81E0FFE, 0xA9014FF4, 0xF9400C14, 0x91008013,
-        0x14000002, 0xAA0903F4, 0xEB13029F, 0x540002E0,
-    };
-    static constexpr uint32_t kCharselGateExpected[] = {
-        0xA9BF4FFE, 0xAA0003F3, 0xF9405400, 0xB4000260,
-        0x94306121, 0x34000220, 0xF9406260, 0xB40000C0,
-    };
-
-    bool ok = true;
-    if (!MatchWords(kLoadOwnerRegisterOffset, kOwnerRegisterExpected)) {
-        LogFingerprintFail("R204V_OWNER_REGISTER", kLoadOwnerRegisterOffset); ok = false;
-    }
-    if (!MatchWords(kLoadOwnerRegistryProcessOffset, kRegistryProcessExpected)) {
-        LogFingerprintFail("R204V_REGISTRY_PROCESS", kLoadOwnerRegistryProcessOffset); ok = false;
-    }
-    if (!MatchWords(kLoadOwnerRegistryStateOffset, kRegistryStateExpected)) {
-        LogFingerprintFail("R204V_REGISTRY_STATE", kLoadOwnerRegistryStateOffset); ok = false;
-    }
-    if (!MatchWords(kCharsel3DStateGateOffset, kCharselGateExpected)) {
-        LogFingerprintFail("R204V_CHARSEL_STATE_GATE", kCharsel3DStateGateOffset); ok = false;
-    }
-    if (!ok) return false;
-
-    LoadOwnerRegisterHook::InstallAtOffset(kLoadOwnerRegisterOffset);
-    R204VRegistryProcessHook::InstallAtOffset(kLoadOwnerRegistryProcessOffset);
-    R204VRegistryStateHook::InstallAtOffset(kLoadOwnerRegistryStateOffset);
-    R204VCharselStateGateHook::InstallAtOffset(kCharsel3DStateGateOffset);
-
-    Logging.Log("[NSC:R204V] READY installed=1 readonly=1 target=ccUiCharacterSelect3DModel_state_gate trampolines=4");
-    Logging.Log("[NSC:R204V] READY_OFFSETS gate=0x549804 registry=0x1161c98 registry_state=0x1161d20 owner_register=0x1161b88");
-    Logging.Log("[NSC:R204V] READY_FLAGS cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0");
-    return true;
-}
-
 bool InstallR204JNativeCharselOwnerTrace() {
     const bool ok = InstallTraceHooks();
     Logging.Log(
@@ -6972,6 +6959,44 @@ bool InstallR204JNativeCharselOwnerTrace() {
         "[NSC:R204J] READY_FLAGS trace_all_charsel=1 readonly=1 fixture=mtob native_id_control=46 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0");
     Logging.Log(
         "[NSC:R204J] READY_HOOKS mandatory_hooks=LOAD_REQ,LOAD_CREATE,LOAD_STATUS,FILE_OPEN,PROCESS,CHUNK,STATE_SET,SUCCESS_SET,RESOURCE_LOOKUP,CHUNK_LOW,OWNER_INIT,OWNER_INIT5,OWNER_REGISTER,REGISTRY_PROCESS,OWNER_READY,OWNER_STATE");
+    return ok;
+}
+
+
+bool InstallR245GPreviewStateGateTrace() {
+    bool ok = InstallTraceHooks();
+
+    static constexpr uint32_t kGateExpected[] = {
+        0xA9BF4FFE, 0xAA0003F3, 0xF9405400, 0xB4000260,
+        0x94306121, 0x34000220, 0xF9406260, 0xB40000C0,
+    };
+    static constexpr uint32_t kAltExpected[] = {
+        0x91002000, 0x14442621,
+    };
+
+    if (!MatchWords(kR245GPreviewStateGateOffset, kGateExpected)) {
+        LogFingerprintFail("R245G_PREVIEW_STATE_GATE", kR245GPreviewStateGateOffset);
+        ok = false;
+    }
+    if (!MatchWords(kR245GAltReadyWrapperOffset, kAltExpected)) {
+        LogFingerprintFail("R245G_ALT_READY_WRAPPER", kR245GAltReadyWrapperOffset);
+        ok = false;
+    }
+
+    if (ok) {
+        R245GPreviewStateGateHook::InstallAtOffset(kR245GPreviewStateGateOffset);
+        R245GAltReadyWrapperHook::InstallAtOffset(kR245GAltReadyWrapperOffset);
+    }
+
+    Logging.Log(
+        "[NSC:R245G] READY installed=%u readonly=1 fixture=mtob native_id_control=46 "
+        "gate=0x549804 alt=0x58498 cpk_bind=0 main_patch=0 gameplay_patch=0 "
+        "id_patch=0 path_rewrite=0 return_override=0",
+        ok ? 1u : 0u);
+    Logging.Log(
+        "[NSC:R245G] DECISION no_gate=UPSTREAM_DISPATCH "
+        "regA0=FIRST_REGISTRY one_registry_then_exit=MID_GATE_OR_REGB_PTR "
+        "two_plus_registries=CHECK_RESULTS advanced1=STATE_GATE_PASS");
     return ok;
 }
 
