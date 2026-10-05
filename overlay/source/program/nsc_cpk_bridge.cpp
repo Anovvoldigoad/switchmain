@@ -54,6 +54,9 @@ constexpr ptrdiff_t kR248DescriptorLookupOffset = 0x64ED30;
 constexpr ptrdiff_t kR248ModelInitOffset        = 0x6EAC24;
 constexpr ptrdiff_t kR248IdentityLookupOffset   = 0x3F4130;
 constexpr ptrdiff_t kR248ReadyPredicateOffset   = 0x6ECBB0;
+// R249: R248 hardware proved identity=46 lookup is non-null while model+0x90 remains null.
+// Trace the exact post-identity resource/chunk/allocator corridor inside model init.
+constexpr ptrdiff_t kR249AllocatorOffset        = 0x116AE60;
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -526,6 +529,16 @@ std::atomic<uint32_t> g_r248_descriptor_logs{0};
 std::atomic<uint32_t> g_r248_init_logs{0};
 std::atomic<uint32_t> g_r248_identity_logs{0};
 std::atomic<uint32_t> g_r248_ready_logs{0};
+// R249: scoped post-identity model-init corridor. Target scope is inherited from the
+// proven R248 Create::enter target classifier; only calls made while target model init
+// is executing are logged.
+std::atomic<uint32_t> g_r249_init_active{0};
+std::atomic<uint32_t> g_r249_init_target{0};
+std::atomic<uintptr_t> g_r249_init_model{0};
+std::atomic<uint32_t> g_r249_model_logs{0};
+std::atomic<uint32_t> g_r249_resource_logs{0};
+std::atomic<uint32_t> g_r249_chunk_logs{0};
+std::atomic<uint32_t> g_r249_alloc_logs{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -2890,6 +2903,113 @@ HOOK_DEFINE_TRAMPOLINE(R248ReadyPredicateHook) {
             g_r248_ready_logs.fetch_add(1u, std::memory_order_relaxed) < 64u) {
             Logging.Log("[NSC:R248] READY_PREDICATE target=1 model=%p ready90=%p result=%u",
                         model, ready90, result);
+        }
+        return result;
+    }
+};
+
+
+// R249 model-init scope. R248 hardware proved target identity lookup is non-null but
+// model+0x90 remains null. Keep the proven Create::enter target classifier and scope
+// only the native model init call for target observations.
+HOOK_DEFINE_TRAMPOLINE(R249ModelInitScopeHook) {
+    static void Callback(void* model) {
+        const bool target = g_r248_create_scope_target.load(std::memory_order_relaxed) != 0u;
+        const uint32_t prev_active = g_r249_init_active.exchange(1u, std::memory_order_relaxed);
+        const uint32_t prev_target = g_r249_init_target.exchange(target ? 1u : 0u, std::memory_order_relaxed);
+        const uintptr_t prev_model = g_r249_init_model.exchange(reinterpret_cast<uintptr_t>(model), std::memory_order_relaxed);
+        if (target && g_r249_model_logs.fetch_add(1u, std::memory_order_relaxed) < 16u) {
+            const R248ModelSnapshot m = R248SnapshotModel(model);
+            Logging.Log("[NSC:R249] MODEL_INIT phase=pre target=1 model=%p identity=%u ready90=%p",
+                        model, m.p38, m.ready90);
+        }
+        Orig(model);
+        if (target && g_r249_model_logs.fetch_add(1u, std::memory_order_relaxed) < 16u) {
+            const R248ModelSnapshot m = R248SnapshotModel(model);
+            Logging.Log("[NSC:R249] MODEL_INIT phase=post target=1 model=%p identity=%u ready90=%p",
+                        model, m.p38, m.ready90);
+        }
+        g_r249_init_model.store(prev_model, std::memory_order_relaxed);
+        g_r249_init_target.store(prev_target, std::memory_order_relaxed);
+        g_r249_init_active.store(prev_active, std::memory_order_relaxed);
+    }
+};
+
+// First post-identity gate in model init: main+0x6EACF8 -> main+0x1207B38.
+// Log the exact file path and completed-resource pointer only while target init runs.
+HOOK_DEFINE_TRAMPOLINE(R249FileResourceLookupHook) {
+    static void* Callback(void* manager, const char* path) {
+        void* const result = Orig(manager, path);
+        if (g_r249_init_active.load(std::memory_order_relaxed) != 0u &&
+            g_r249_init_target.load(std::memory_order_relaxed) != 0u &&
+            g_r249_resource_logs.fetch_add(1u, std::memory_order_relaxed) < 16u) {
+            Logging.Log("[NSC:R249] RESOURCE_GATE target=1 model=%p manager=%p path=%s result=%p",
+                        reinterpret_cast<void*>(g_r249_init_model.load(std::memory_order_relaxed)),
+                        manager, path ? path : "<null>", result);
+        }
+        return result;
+    }
+};
+
+// Second post-identity gate: main+0x6EAD50 -> main+0x120A3D4.
+// Preserve native args/result and expose type/key identity for the target only.
+HOOK_DEFINE_TRAMPOLINE(R249ChunkResourceLookupHook) {
+    static void* Callback(void* resource, const void* type_desc, const void* key_desc) {
+        uint32_t key_hash = 0xFFFFFFFFu;
+        uint32_t key_has_text = 0xFFFFFFFFu;
+        uintptr_t key_ptr = 0u;
+        uint32_t type_tag = 0xFFFFFFFFu;
+        char key_text[97]{};
+        uint32_t key_text_len = 0u;
+        uint32_t key_text_printable = 0u;
+        if (key_desc) {
+            const auto* k = reinterpret_cast<const volatile uint8_t*>(key_desc);
+            key_hash = *reinterpret_cast<const volatile uint32_t*>(k + 0x0u);
+            key_has_text = *(k + 0x4u);
+            key_ptr = *reinterpret_cast<const volatile uintptr_t*>(k + 0x8u);
+        }
+        if (type_desc) {
+            const auto* t = reinterpret_cast<const volatile uint8_t*>(type_desc);
+            type_tag = *reinterpret_cast<const volatile uint16_t*>(t + 0xAu);
+        }
+        if (key_has_text == 1u && key_ptr != 0u) {
+            const auto* src = reinterpret_cast<const volatile uint8_t*>(key_ptr);
+            key_text_printable = 1u;
+            for (uint32_t i = 0; i < 96u; ++i) {
+                const uint8_t c = src[i];
+                if (c == 0u) { key_text_len = i; break; }
+                if (c < 0x20u || c > 0x7Eu) { key_text_printable = 0u; key_text_len = i; break; }
+                key_text[i] = static_cast<char>(c);
+                key_text_len = i + 1u;
+            }
+            key_text[key_text_len] = '\0';
+        }
+        void* const result = Orig(resource, type_desc, key_desc);
+        if (g_r249_init_active.load(std::memory_order_relaxed) != 0u &&
+            g_r249_init_target.load(std::memory_order_relaxed) != 0u &&
+            g_r249_chunk_logs.fetch_add(1u, std::memory_order_relaxed) < 16u) {
+            Logging.Log("[NSC:R249] CHUNK_GATE target=1 model=%p resource=%p type=%p type_tag=%u "
+                        "key_hash=%u key_has_text=%u key_ptr=%p key_printable=%u key_len=%u key_text=%s result=%p",
+                        reinterpret_cast<void*>(g_r249_init_model.load(std::memory_order_relaxed)),
+                        resource, type_desc, type_tag, key_hash, key_has_text,
+                        reinterpret_cast<void*>(key_ptr), key_text_printable, key_text_len,
+                        key_text_printable ? key_text : "<nonprintable>", result);
+        }
+        return result;
+    }
+};
+
+// Allocator used twice by model init. The second call (size 0x3B0) produces X21,
+// which is stored directly to model+0x90. Log only target-scoped calls.
+HOOK_DEFINE_TRAMPOLINE(R249AllocatorHook) {
+    static void* Callback(uint64_t size, const void* source, uint32_t line) {
+        void* const result = Orig(size, source, line);
+        if (g_r249_init_active.load(std::memory_order_relaxed) != 0u &&
+            g_r249_init_target.load(std::memory_order_relaxed) != 0u &&
+            g_r249_alloc_logs.fetch_add(1u, std::memory_order_relaxed) < 16u) {
+            Logging.Log("[NSC:R249] ALLOC target=1 model=%p size=%llu source=%p line=%u result=%p",
+                        reinterpret_cast<void*>(g_r249_init_model.load(std::memory_order_relaxed)),
+                        static_cast<unsigned long long>(size), source, line, result);
         }
         return result;
     }
@@ -7447,6 +7567,68 @@ bool InstallR248CreateIdentityReadinessTrace() {
         "[NSC:R248] DECISION identity_lookup_null=IDENTITY_OR_TABLE_MISSING "
         "identity_lookup_nonnull_ready90_null=POST_LOOKUP_MODEL_ALLOC_INIT "
         "ready90_nonnull=CREATE_READY_PASS");
+    return ok;
+}
+
+
+bool InstallR249PostLookupResourceTrace() {
+    static constexpr uint32_t kOwnerRegisterExpected[] = {
+        0xD10143FF,0xA90167FE,0xA9025FF8,0xA90357F6,
+        0xA9044FF4,0xF9400008,0x2A0403F5,0x2A0303F6,
+    };
+    static constexpr uint32_t kCreateEnterExpected[] = {
+        0xF81E0FFE,0xA9014FF4,0xF9400008,0xAA0003F3,
+        0xF9400908,0xD63F0100,0xF9405A68,0xB40000E8,
+    };
+    static constexpr uint32_t kModelInitExpected[] = {
+        0xD10283FF,0xFD003BE8,0xA90857FE,0xA9094FF4,
+        0xF9400008,0xAA0003F3,0xF9400908,0xD63F0100,
+    };
+    static constexpr uint32_t kFileResourceLookupExpected[] = {
+        0xF81F0FFE,0x97FFFC27,0xB4000060,0xF84107FE,
+        0x17FFFACB,0xF84107FE,0xD65F03C0,0xA9BD5FFE,
+    };
+    static constexpr uint32_t kChunkResourceLookupExpected[] = {
+        0xD10143FF,0xA90357FE,0xA9044FF4,0xAA0203F3,
+        0xAA0103F4,0xB90003FF,0xAA0003F5,0x390013FF,
+    };
+    static constexpr uint32_t kAllocatorExpected[] = {
+        0xF81D0FFE,0xA90157F6,0xA9024FF4,0x2A0203F3,
+        0xAA0103F4,0xAA0003F5,0x9400024E,0xAA0003F6,
+    };
+
+    bool ok = true;
+#define R249_VERIFY(NAME, OFF, WORDS) \
+    do { if (!MatchWords(OFF, WORDS)) { LogFingerprintFail(NAME, OFF); ok = false; } } while (0)
+    R249_VERIFY("R249_OWNER_REGISTER", kLoadOwnerRegisterOffset, kOwnerRegisterExpected);
+    R249_VERIFY("R249_CREATE_ENTER", kR247CreateEnterOffset, kCreateEnterExpected);
+    R249_VERIFY("R249_MODEL_INIT", kR248ModelInitOffset, kModelInitExpected);
+    R249_VERIFY("R249_RESOURCE_LOOKUP", kFileResourceLookupOffset, kFileResourceLookupExpected);
+    R249_VERIFY("R249_CHUNK_LOOKUP", kChunkResourceLookupOffset, kChunkResourceLookupExpected);
+    R249_VERIFY("R249_ALLOCATOR", kR249AllocatorOffset, kAllocatorExpected);
+#undef R249_VERIFY
+
+    if (ok) {
+        // Reuse R248's proven target classifier / Create scope; the R249-specific
+        // observations begin at model init and remain read-only.
+        R248TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
+        R248CreateEnterHook::InstallAtOffset(kR247CreateEnterOffset);
+        R249ModelInitScopeHook::InstallAtOffset(kR248ModelInitOffset);
+        R249FileResourceLookupHook::InstallAtOffset(kFileResourceLookupOffset);
+        R249ChunkResourceLookupHook::InstallAtOffset(kChunkResourceLookupOffset);
+        R249AllocatorHook::InstallAtOffset(kR249AllocatorOffset);
+    }
+
+    Logging.Log(
+        "[NSC:R249] READY installed=%u readonly=1 hooks=6 model_init=0x6EAC24 "
+        "resource_gate=0x1207B38 chunk_gate=0x120A3D4 allocator=0x116AE60 "
+        "cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",
+        ok ? 1u : 0u);
+    Logging.Log(
+        "[NSC:R249] DECISION resource_null=FILE_RESOURCE_MISSING "
+        "resource_nonnull_chunk_null=CHUNK_KEY_OR_TYPE_MISS "
+        "chunk_nonnull_alloc_3b0_null=MODEL_OBJECT_ALLOC_FAIL "
+        "alloc_3b0_nonnull_ready90_null=POST_ALLOC_CONSTRUCTOR_OR_STORE_CORRIDOR");
     return ok;
 }
 
