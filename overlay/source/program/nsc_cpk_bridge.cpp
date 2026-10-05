@@ -46,6 +46,14 @@ constexpr ptrdiff_t kR247WaitEnterOffset   = 0x549950;
 constexpr ptrdiff_t kR247WaitUpdateOffset  = 0x549B80;
 constexpr ptrdiff_t kR247SelectEnterOffset = 0x549C40;
 constexpr ptrdiff_t kR247SelectUpdateOffset= 0x549EA8;
+// R248: Create-state model identity/readiness producer boundary recovered after R247 hardware.
+// Create::enter uses descriptor lookup 0x64ED30, initializes model at 0x6EAC24.
+// 0x6EAC24 looks up model+0x38 through 0x3F4130; a null result bails before model+0x90 is set.
+// Create::update 0x54991C calls 0x6ECBB0, which is exactly (model+0x90 != nullptr).
+constexpr ptrdiff_t kR248DescriptorLookupOffset = 0x64ED30;
+constexpr ptrdiff_t kR248ModelInitOffset        = 0x6EAC24;
+constexpr ptrdiff_t kR248IdentityLookupOffset   = 0x3F4130;
+constexpr ptrdiff_t kR248ReadyPredicateOffset   = 0x6ECBB0;
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -505,6 +513,19 @@ std::atomic<uintptr_t> g_r247_target_registry{0};
 std::atomic<uintptr_t> g_r247_target_state_self{0};
 std::atomic<uint32_t> g_r247_state_logs{0};
 std::atomic<uint32_t> g_r247_target_capture_logs{0};
+// R248: focused Create-state model identity/readiness trace.
+std::atomic<uintptr_t> g_r248_target_registry{0};
+std::atomic<uintptr_t> g_r248_target_state_self{0};
+std::atomic<uintptr_t> g_r248_target_model{0};
+std::atomic<uintptr_t> g_r248_create_scope_self{0};
+std::atomic<uint32_t> g_r248_create_scope_target{0};
+std::atomic<uintptr_t> g_r248_init_model{0};
+std::atomic<uint32_t> g_r248_capture_logs{0};
+std::atomic<uint32_t> g_r248_create_logs{0};
+std::atomic<uint32_t> g_r248_descriptor_logs{0};
+std::atomic<uint32_t> g_r248_init_logs{0};
+std::atomic<uint32_t> g_r248_identity_logs{0};
+std::atomic<uint32_t> g_r248_ready_logs{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -855,6 +876,58 @@ void R247LogStateCall(const char* state_name, const char* callback, const char* 
         state_name, callback, phase, target ? 1u : 0u, self,
         snap.state5c, snap.phase6c, snap.reg_a, snap.model_b0, snap.helper_c0, snap.reg_b,
         reinterpret_cast<void*>(g_r247_target_registry.load(std::memory_order_relaxed)));
+}
+
+
+struct R248ModelSnapshot {
+    uint32_t p38;
+    uint32_t p3c;
+    uint32_t p40;
+    uint32_t p44;
+    uint32_t p48;
+    uint32_t p4c;
+    void* ready90;
+    void* alt98;
+};
+
+R248ModelSnapshot R248SnapshotModel(void* model) {
+    R248ModelSnapshot out{0,0,0,0,0,0,nullptr,nullptr};
+    if (!model) return out;
+    auto* b = reinterpret_cast<uint8_t*>(model);
+    out.p38 = *reinterpret_cast<volatile uint32_t*>(b + 0x38u);
+    out.p3c = *reinterpret_cast<volatile uint32_t*>(b + 0x3Cu);
+    out.p40 = *reinterpret_cast<volatile uint32_t*>(b + 0x40u);
+    out.p44 = *reinterpret_cast<volatile uint32_t*>(b + 0x44u);
+    out.p48 = *reinterpret_cast<volatile uint32_t*>(b + 0x48u);
+    out.p4c = *reinterpret_cast<volatile uint32_t*>(b + 0x4Cu);
+    out.ready90 = *reinterpret_cast<void* volatile*>(b + 0x90u);
+    out.alt98 = *reinterpret_cast<void* volatile*>(b + 0x98u);
+    return out;
+}
+
+bool R248SnapshotTouchesTargetRegistry(const R247StateSnapshot& snap) {
+    const uintptr_t target_registry = g_r248_target_registry.load(std::memory_order_relaxed);
+    return R247SnapshotTouchesTargetRegistry(snap, target_registry);
+}
+
+bool R248IsTargetState(void* self, const R247StateSnapshot& snap) {
+    const uintptr_t self_u = reinterpret_cast<uintptr_t>(self);
+    const uintptr_t remembered = g_r248_target_state_self.load(std::memory_order_relaxed);
+    if (remembered != 0u && remembered == self_u) return true;
+    if (R248SnapshotTouchesTargetRegistry(snap)) {
+        g_r248_target_state_self.store(self_u, std::memory_order_relaxed);
+        return true;
+    }
+    return false;
+}
+
+void R248LogModel(const char* tag, void* self, void* model, const R248ModelSnapshot& m, bool target) {
+    if (g_r248_init_logs.fetch_add(1u, std::memory_order_relaxed) >= 128u) return;
+    Logging.Log(
+        "[NSC:R248] MODEL tag=%s target=%u self=%p model=%p p38=%u p3c=%u p40=%u "
+        "p44=%u p48=%u p4c=%u ready90=%p alt98=%p",
+        tag, target ? 1u : 0u, self, model, m.p38, m.p3c, m.p40,
+        m.p44, m.p48, m.p4c, m.ready90, m.alt98);
 }
 
 void* FindOwnerNodeByHash(void* registry, uint32_t hash) {
@@ -2692,6 +2765,135 @@ R247_DEFINE_STATE_HOOK(R247SelectEnterHook,  "Select", "enter")
 R247_DEFINE_STATE_HOOK(R247SelectUpdateHook, "Select", "update")
 
 #undef R247_DEFINE_STATE_HOOK
+
+// R248 target registry capture: same proven owner-register boundary, independent state.
+HOOK_DEFINE_TRAMPOLINE(R248TargetRegistryCaptureHook) {
+    static uint32_t Callback(void* registry, const char* path, uint32_t p2, uint32_t p3, uint32_t p4) {
+        const uint32_t result = Orig(registry, path, p2, p3, p4);
+        if (IsR204JTargetCharselPath(path)) {
+            g_r248_target_registry.store(reinterpret_cast<uintptr_t>(registry), std::memory_order_relaxed);
+            g_r248_target_state_self.store(0u, std::memory_order_relaxed);
+            g_r248_target_model.store(0u, std::memory_order_relaxed);
+            if (g_r248_capture_logs.fetch_add(1u, std::memory_order_relaxed) < 16u) {
+                Logging.Log("[NSC:R248] TARGET_REGISTRY_CAPTURE registry=%p path=%s hash=%u readonly=1",
+                            registry, path ? path : "<null>", result);
+            }
+        }
+        return result;
+    }
+};
+
+// Create::enter scope. The native function executes once; no argument or return modification.
+HOOK_DEFINE_TRAMPOLINE(R248CreateEnterHook) {
+    static void Callback(void* self) {
+        const R247StateSnapshot pre = R247Snapshot(self);
+        const bool target_pre = R248IsTargetState(self, pre);
+        auto* b = reinterpret_cast<uint8_t*>(self);
+        const uint32_t entry_cc = self ? *reinterpret_cast<volatile uint32_t*>(b + 0xCCu) : 0xFFFFFFFFu;
+        const uint32_t aux_10c = self ? *reinterpret_cast<volatile uint32_t*>(b + 0x10Cu) : 0xFFFFFFFFu;
+        const uint32_t aux_144 = self ? *reinterpret_cast<volatile uint32_t*>(b + 0x144u) : 0xFFFFFFFFu;
+
+        g_r248_create_scope_self.store(reinterpret_cast<uintptr_t>(self), std::memory_order_relaxed);
+        g_r248_create_scope_target.store(target_pre ? 1u : 0u, std::memory_order_relaxed);
+        if (g_r248_create_logs.fetch_add(1u, std::memory_order_relaxed) < 128u) {
+            Logging.Log(
+                "[NSC:R248] CREATE_ENTER phase=pre target=%u self=%p entryCC=%u aux10C=%u aux144=%u model=%p",
+                target_pre ? 1u : 0u, self, entry_cc, aux_10c, aux_144, pre.model_b0);
+        }
+
+        Orig(self);
+
+        const R247StateSnapshot post = R247Snapshot(self);
+        const bool target_post = R248IsTargetState(self, post);
+        if (target_post && post.model_b0) {
+            g_r248_target_model.store(reinterpret_cast<uintptr_t>(post.model_b0), std::memory_order_relaxed);
+        }
+        const R248ModelSnapshot ms = R248SnapshotModel(post.model_b0);
+        if (g_r248_create_logs.fetch_add(1u, std::memory_order_relaxed) < 128u) {
+            Logging.Log(
+                "[NSC:R248] CREATE_ENTER phase=post target=%u self=%p entryCC=%u model=%p "
+                "p38=%u p3c=%u p40=%u p44=%u p48=%u p4c=%u ready90=%p alt98=%p",
+                target_post ? 1u : 0u, self, entry_cc, post.model_b0,
+                ms.p38, ms.p3c, ms.p40, ms.p44, ms.p48, ms.p4c, ms.ready90, ms.alt98);
+        }
+        g_r248_create_scope_target.store(0u, std::memory_order_relaxed);
+        g_r248_create_scope_self.store(0u, std::memory_order_relaxed);
+    }
+};
+
+// Descriptor lookup used by Create::enter: manager + self->0xCC -> descriptor.
+HOOK_DEFINE_TRAMPOLINE(R248DescriptorLookupHook) {
+    static void* Callback(void* manager, uint32_t key) {
+        void* const result = Orig(manager, key);
+        const uintptr_t scope_self = g_r248_create_scope_self.load(std::memory_order_relaxed);
+        if (scope_self != 0u && g_r248_descriptor_logs.fetch_add(1u, std::memory_order_relaxed) < 128u) {
+            uint32_t d4=0xFFFFFFFFu,d8=0xFFFFFFFFu,d18=0xFFFFFFFFu,d1c=0xFFFFFFFFu;
+            if (result) {
+                auto* r = reinterpret_cast<uint8_t*>(result);
+                d4=*reinterpret_cast<volatile uint32_t*>(r+0x4u);
+                d8=*reinterpret_cast<volatile uint32_t*>(r+0x8u);
+                d18=*reinterpret_cast<volatile uint32_t*>(r+0x18u);
+                d1c=*reinterpret_cast<volatile uint32_t*>(r+0x1Cu);
+            }
+            Logging.Log(
+                "[NSC:R248] DESCRIPTOR_LOOKUP target=%u self=%p manager=%p key=%u result=%p "
+                "d4=%u d8=%u d18=%u d1c=%u",
+                g_r248_create_scope_target.load(std::memory_order_relaxed),
+                reinterpret_cast<void*>(scope_self), manager, key, result, d4,d8,d18,d1c);
+        }
+        return result;
+    }
+};
+
+// Model initialization producer. Static proof: model+0x38 is looked up via 0x3F4130;
+// a null lookup branches to the epilogue before model+0x90 is written.
+HOOK_DEFINE_TRAMPOLINE(R248ModelInitHook) {
+    static void Callback(void* model) {
+        const uintptr_t prev = g_r248_init_model.exchange(reinterpret_cast<uintptr_t>(model), std::memory_order_relaxed);
+        const R248ModelSnapshot pre = R248SnapshotModel(model);
+        const uintptr_t target_model = g_r248_target_model.load(std::memory_order_relaxed);
+        const bool known_target = target_model != 0u && target_model == reinterpret_cast<uintptr_t>(model);
+        R248LogModel("init_pre", reinterpret_cast<void*>(g_r248_create_scope_self.load(std::memory_order_relaxed)),
+                     model, pre, known_target || g_r248_create_scope_target.load(std::memory_order_relaxed) != 0u);
+        Orig(model);
+        const R248ModelSnapshot post = R248SnapshotModel(model);
+        R248LogModel("init_post", reinterpret_cast<void*>(g_r248_create_scope_self.load(std::memory_order_relaxed)),
+                     model, post, known_target || g_r248_create_scope_target.load(std::memory_order_relaxed) != 0u);
+        g_r248_init_model.store(prev, std::memory_order_relaxed);
+    }
+};
+
+// Identity lookup called from model init. Pure observation of ID/result.
+HOOK_DEFINE_TRAMPOLINE(R248IdentityLookupHook) {
+    static void* Callback(uint32_t identity) {
+        void* const result = Orig(identity);
+        const uintptr_t model = g_r248_init_model.load(std::memory_order_relaxed);
+        if (model != 0u && g_r248_identity_logs.fetch_add(1u, std::memory_order_relaxed) < 128u) {
+            Logging.Log(
+                "[NSC:R248] IDENTITY_LOOKUP target=%u self=%p model=%p identity=%u result=%p",
+                g_r248_create_scope_target.load(std::memory_order_relaxed),
+                reinterpret_cast<void*>(g_r248_create_scope_self.load(std::memory_order_relaxed)),
+                reinterpret_cast<void*>(model), identity, result);
+        }
+        return result;
+    }
+};
+
+// Exact Create::update readiness predicate: returns whether model+0x90 is non-null.
+HOOK_DEFINE_TRAMPOLINE(R248ReadyPredicateHook) {
+    static uint32_t Callback(void* model) {
+        void* ready90 = nullptr;
+        if (model) ready90 = *reinterpret_cast<void* volatile*>(reinterpret_cast<uint8_t*>(model) + 0x90u);
+        const uint32_t result = Orig(model);
+        const uintptr_t target_model = g_r248_target_model.load(std::memory_order_relaxed);
+        if (target_model != 0u && target_model == reinterpret_cast<uintptr_t>(model) &&
+            g_r248_ready_logs.fetch_add(1u, std::memory_order_relaxed) < 64u) {
+            Logging.Log("[NSC:R248] READY_PREDICATE target=1 model=%p ready90=%p result=%u",
+                        model, ready90, result);
+        }
+        return result;
+    }
+};
 
 HOOK_DEFINE_TRAMPOLINE(LoadOwnerStateHook) {
     static uint32_t Callback(void* owner) {
@@ -7188,6 +7390,63 @@ bool InstallR247R204WStateTableRetest() {
         "[NSC:R247] DECISION target_load_update_then_wait=STATE_DISPATCH_PASS "
         "target_load_update_no_next_state=POST_LOAD_SCHEDULER_OR_TRANSITION "
         "target_wait_update=TRACE_WAIT_CONSUMER_NEXT");
+    return ok;
+}
+
+bool InstallR248CreateIdentityReadinessTrace() {
+    static constexpr uint32_t kOwnerRegisterExpected[] = {
+        0xD10143FF, 0xA90167FE, 0xA9025FF8, 0xA90357F6,
+        0xA9044FF4, 0xF9400008, 0x2A0403F5, 0x2A0303F6,
+    };
+    static constexpr uint32_t kCreateEnterExpected[] = {
+        0xF81E0FFE,0xA9014FF4,0xF9400008,0xAA0003F3,
+        0xF9400908,0xD63F0100,0xF9405A68,0xB40000E8,
+    };
+    static constexpr uint32_t kDescriptorLookupExpected[] = {
+        0xF8408409,0x14000002,0xAA0A03E9,0xEB00013F,
+        0x540002E0,0xAA0903E8,0xB8428D0A,0x6B01015F,
+    };
+    static constexpr uint32_t kModelInitExpected[] = {
+        0xD10283FF,0xFD003BE8,0xA90857FE,0xA9094FF4,
+        0xF9400008,0xAA0003F3,0xF9400908,0xD63F0100,
+    };
+    static constexpr uint32_t kIdentityLookupExpected[] = {
+        0xF000EA68,0xF9424508,0xF9760908,0x2A0003E1,
+        0xF9409500,0x1410AC8E,
+    };
+    static constexpr uint32_t kReadyExpected[] = {
+        0xF9404808,0xF100011F,0x1A9F07E0,0xD65F03C0,
+    };
+
+    bool ok = true;
+#define R248_VERIFY(NAME, OFF, WORDS) \
+    do { if (!MatchWords(OFF, WORDS)) { LogFingerprintFail(NAME, OFF); ok = false; } } while (0)
+    R248_VERIFY("R248_OWNER_REGISTER", kLoadOwnerRegisterOffset, kOwnerRegisterExpected);
+    R248_VERIFY("R248_CREATE_ENTER", kR247CreateEnterOffset, kCreateEnterExpected);
+    R248_VERIFY("R248_DESCRIPTOR_LOOKUP", kR248DescriptorLookupOffset, kDescriptorLookupExpected);
+    R248_VERIFY("R248_MODEL_INIT", kR248ModelInitOffset, kModelInitExpected);
+    R248_VERIFY("R248_IDENTITY_LOOKUP", kR248IdentityLookupOffset, kIdentityLookupExpected);
+    R248_VERIFY("R248_READY_PREDICATE", kR248ReadyPredicateOffset, kReadyExpected);
+#undef R248_VERIFY
+
+    if (ok) {
+        R248TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
+        R248CreateEnterHook::InstallAtOffset(kR247CreateEnterOffset);
+        R248DescriptorLookupHook::InstallAtOffset(kR248DescriptorLookupOffset);
+        R248ModelInitHook::InstallAtOffset(kR248ModelInitOffset);
+        R248IdentityLookupHook::InstallAtOffset(kR248IdentityLookupOffset);
+        R248ReadyPredicateHook::InstallAtOffset(kR248ReadyPredicateOffset);
+    }
+
+    Logging.Log(
+        "[NSC:R248] READY installed=%u readonly=1 hooks=6 create=0x549868 descriptor=0x64ED30 "
+        "model_init=0x6EAC24 identity_lookup=0x3F4130 ready_pred=0x6ECBB0 "
+        "cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",
+        ok ? 1u : 0u);
+    Logging.Log(
+        "[NSC:R248] DECISION identity_lookup_null=IDENTITY_OR_TABLE_MISSING "
+        "identity_lookup_nonnull_ready90_null=POST_LOOKUP_MODEL_ALLOC_INIT "
+        "ready90_nonnull=CREATE_READY_PASS");
     return ok;
 }
 

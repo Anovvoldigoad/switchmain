@@ -4,9 +4,10 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R247 reconstructs the already-designed R204W four-state table tracer
-    // on the materially changed R245C real-Tobi carrier. Read-only only.
-    return nsc::InstallR247R204WStateTableRetest();
+    // R248 follows the R247 hardware proof: target Load passes, Create::enter creates
+    // a model, but Create::update never advances. Trace the exact model identity
+    // lookup and model+0x90 readiness producer. Read-only only.
+    return nsc::InstallR248CreateIdentityReadinessTrace();
 }
 
 } // namespace nsc::runtime

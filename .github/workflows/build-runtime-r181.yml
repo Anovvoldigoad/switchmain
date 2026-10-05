@@ -1,4 +1,4 @@
-name: Build NSC R247 R204W State Table Retest
+name: Build NSC R248 Create Identity Readiness Trace
 
 on:
   workflow_dispatch:
@@ -13,8 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify R247 reconstructed R204W source
-        run: python3 verify_r247.py
+      - name: Verify R248 create identity/readiness source
+        run: python3 verify_r248.py
 
       - name: Clone pinned exlaunch
         run: |
@@ -29,7 +29,7 @@ jobs:
         working-directory: exlaunch
         run: make -j2
 
-      - name: Package R247 read-only state-table retest runtime
+      - name: Package R248 read-only create identity/readiness runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -44,8 +44,8 @@ jobs:
           cd "$OUT"
           sha256sum runtime/atmosphere/contents/0100FA10190A0000/exefs/subsdk9 > SHA256SUMS.txt
           printf '%s\n' \
-            'NSC2Switch R247 diagnostic: reconstructed equivalent of historical R204W four-state ccUiCharacterSelect3DModel tracer.' \
-            'Read-only. Nine hooks: mtob registry capture + Load/Create/Wait/Select enter/update.' \
+            'NSC2Switch R248 diagnostic: Create-state model identity/readiness producer trace.' \
+            'Read-only. Six hooks: mtob registry capture, Create enter, descriptor lookup, model init, identity lookup, readiness predicate.' \
             'Do not copy a game main file into this package.' \
             'Deploy beside the exact R245C real-Tobi native-ID46 carrier. Replace only diagnostic subsdk9.' \
             > INSTALL.txt
@@ -60,6 +60,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC2Switch-R247-R204W-STATE-TABLE-RETEST
+          name: NSC2Switch-R248-CREATE-IDENTITY-READINESS-TRACE
           path: out/**
           if-no-files-found: error
