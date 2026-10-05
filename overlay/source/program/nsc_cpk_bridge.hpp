@@ -5,6 +5,7 @@ bool InstallR204JNativeCharselOwnerTrace();
 bool InstallR245GPreviewStateGateTrace();
 bool InstallR247R204WStateTableRetest();
 bool InstallR265DownstreamRenderGateTrace();
+bool InstallR266RenderRegistrationProducerTrace();
 bool InstallR252WaitChildReadinessTrace();
 void InstallP50AConditionCompat();
 void InstallP52APreUjProbe();

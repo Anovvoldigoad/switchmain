@@ -60,6 +60,12 @@ constexpr ptrdiff_t kR264DrawOffset               = 0x54ADA0;
 constexpr ptrdiff_t kR264DrawSubmitOffset         = 0x5B3AC;
 // R265: downstream per-render-object gate reached from draw submit.
 constexpr ptrdiff_t kR265RenderObjectGateOffset   = 0x43F1F8;
+// R266: exact pre-submit render-registration construction chain.
+constexpr ptrdiff_t kR266ModelChildCreateOffset       = 0x6ECEE8;
+constexpr ptrdiff_t kR266RegistrationTickOffset       = 0x6ED558;
+constexpr ptrdiff_t kR266RegistrationBridgeOffset     = 0x6ED110;
+constexpr ptrdiff_t kR266RenderProducerOffset         = 0x594D8;
+constexpr ptrdiff_t kR266RenderProducerGuardOffset    = 0x5E998;
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -545,6 +551,12 @@ std::atomic<uint32_t> g_r265_current_submit{0};
 std::atomic<uint32_t> g_r265_object_count{0};
 std::atomic<uint32_t> g_r265_pass_count{0};
 std::atomic<uint32_t> g_r265_render_logs{0};
+std::atomic<uint32_t> g_r266_child_logs{0};
+std::atomic<uint32_t> g_r266_tick_logs{0};
+std::atomic<uint32_t> g_r266_bridge_logs{0};
+std::atomic<uint32_t> g_r266_producer_logs{0};
+std::atomic<uint32_t> g_r266_guard_logs{0};
+std::atomic<uint32_t> g_r266_producer_active{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -959,6 +971,40 @@ R264ModelSnapshot R264SnapshotModel(void* model) {
     out.identity38 = *reinterpret_cast<volatile uint32_t*>(b + 0x38u);
     out.variant40 = *reinterpret_cast<volatile uint32_t*>(b + 0x40u);
     return out;
+}
+
+struct R266RegistrationSnapshot {
+    uintptr_t begin2b38;
+    uintptr_t end2b40;
+    uintptr_t cap2b48;
+    uint32_t count;
+    uint32_t flag2b68;
+    uint32_t mode2b6c;
+    uint32_t identity38;
+};
+
+R266RegistrationSnapshot R266SnapshotRegistration(void* model) {
+    R266RegistrationSnapshot out{0u,0u,0u,0xFFFFFFFFu,0u,0u,0xFFFFFFFFu};
+    if (!model) return out;
+    auto* b = reinterpret_cast<volatile uint8_t*>(model);
+    out.begin2b38 = *reinterpret_cast<volatile uintptr_t*>(b + 0x2B38u);
+    out.end2b40   = *reinterpret_cast<volatile uintptr_t*>(b + 0x2B40u);
+    out.cap2b48   = *reinterpret_cast<volatile uintptr_t*>(b + 0x2B48u);
+    out.flag2b68  = *reinterpret_cast<volatile uint32_t*>(b + 0x2B68u);
+    out.mode2b6c  = *reinterpret_cast<volatile uint32_t*>(b + 0x2B6Cu);
+    out.identity38= *reinterpret_cast<volatile uint32_t*>(b + 0x38u);
+    if (out.end2b40 >= out.begin2b38) {
+        const uintptr_t diff = out.end2b40 - out.begin2b38;
+        if ((diff & 7u) == 0u && diff <= (4096u * sizeof(uintptr_t)))
+            out.count = static_cast<uint32_t>(diff / sizeof(uintptr_t));
+    }
+    return out;
+}
+
+bool R266IsTargetModel(void* model) {
+    if (!model) return false;
+    if (reinterpret_cast<uintptr_t>(model) == g_r264_target_model.load(std::memory_order_relaxed)) return true;
+    return R266SnapshotRegistration(model).identity38 == 46u;
 }
 
 bool R247SnapshotTouchesTargetRegistry(const R247StateSnapshot& snap, uintptr_t target_registry) {
@@ -3097,6 +3143,82 @@ HOOK_DEFINE_TRAMPOLINE(R265RenderObjectGateHook) {
             }
         }
         Orig(object);
+    }
+};
+
+// R266: read-only producer-chain trace. These hooks only observe whether the
+// model has internal registration children, whether the registration bridge is
+// reached, and whether the shared render producer/guard accepts native-ID46.
+HOOK_DEFINE_TRAMPOLINE(R266ModelChildCreateHook) {
+    static void Callback(void* model, uint32_t selector, void* source_obj, uint32_t mode) {
+        const auto pre = R266SnapshotRegistration(model);
+        Orig(model, selector, source_obj, mode);
+        const auto post = R266SnapshotRegistration(model);
+        if (post.identity38 == 46u && g_r266_child_logs.fetch_add(1u, std::memory_order_relaxed) < 64u) {
+            Logging.Log("[NSC:R266] MODEL_CHILD_CREATE model=%p selector=%u mode=%u source_obj=%p pre_id=%u pre_count=%u post_id=%u post_count=%u begin=%p end=%p flag2b68=%u mode2b6c=%u",
+                        model, selector, mode, source_obj, pre.identity38, pre.count,
+                        post.identity38, post.count,
+                        reinterpret_cast<void*>(post.begin2b38), reinterpret_cast<void*>(post.end2b40),
+                        post.flag2b68, post.mode2b6c);
+        }
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R266RegistrationTickHook) {
+    static void Callback(void* model) {
+        if (R266IsTargetModel(model) && g_r266_tick_logs.fetch_add(1u, std::memory_order_relaxed) < 128u) {
+            const auto m = R266SnapshotRegistration(model);
+            Logging.Log("[NSC:R266] REG_TICK_PRE model=%p id38=%u count=%u begin=%p end=%p cap=%p flag2b68=%u mode2b6c=%u",
+                        model, m.identity38, m.count,
+                        reinterpret_cast<void*>(m.begin2b38), reinterpret_cast<void*>(m.end2b40), reinterpret_cast<void*>(m.cap2b48),
+                        m.flag2b68, m.mode2b6c);
+        }
+        Orig(model);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R266RegistrationBridgeHook) {
+    static void Callback(void* model, void* source_name_obj, uint32_t mode) {
+        if (R266IsTargetModel(model) && g_r266_bridge_logs.fetch_add(1u, std::memory_order_relaxed) < 128u) {
+            const auto m = R266SnapshotRegistration(model);
+            Logging.Log("[NSC:R266] REG_BRIDGE model=%p id38=%u mode=%u source_obj=%p child_count=%u flag2b68=%u mode2b6c=%u base90=%p",
+                        model, m.identity38, mode, source_name_obj, m.count, m.flag2b68, m.mode2b6c,
+                        reinterpret_cast<void*>(R264SnapshotModel(model).base90));
+        }
+        Orig(model, source_name_obj, mode);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R266RenderProducerHook) {
+    static void Callback(void* manager, void* resource, void* base90, void* name_a, void* name_b,
+                         uint32_t mode, uint32_t slot, uint32_t identity) {
+        const bool target = (slot == 0u && identity == 46u);
+        if (target) {
+            g_r266_producer_active.store(1u, std::memory_order_relaxed);
+            if (g_r266_producer_logs.fetch_add(1u, std::memory_order_relaxed) < 128u)
+                Logging.Log("[NSC:R266] RENDER_PRODUCER_PRE manager=%p resource=%p base90=%p nameA=%p nameB=%p mode=%u slot=%u identity=%u",
+                            manager, resource, base90, name_a, name_b, mode, slot, identity);
+        }
+        Orig(manager, resource, base90, name_a, name_b, mode, slot, identity);
+        if (target) {
+            g_r266_producer_active.store(0u, std::memory_order_relaxed);
+            if (g_r266_producer_logs.fetch_add(1u, std::memory_order_relaxed) < 128u)
+                Logging.Log("[NSC:R266] RENDER_PRODUCER_POST manager=%p mode=%u slot=%u identity=%u", manager, mode, slot, identity);
+        }
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R266RenderProducerGuardHook) {
+    static uint32_t Callback(void* manager, void* name_b, void* name_a, void* mode_ptr, uint32_t slot, uint32_t zero) {
+        const uint32_t result = Orig(manager, name_b, name_a, mode_ptr, slot, zero);
+        if (g_r266_producer_active.load(std::memory_order_relaxed) != 0u &&
+            g_r266_guard_logs.fetch_add(1u, std::memory_order_relaxed) < 128u) {
+            uint32_t mode = 0xFFFFFFFFu;
+            if (mode_ptr) mode = *reinterpret_cast<volatile uint32_t*>(mode_ptr);
+            Logging.Log("[NSC:R266] PRODUCER_GUARD manager=%p nameA=%p nameB=%p mode=%u slot=%u zero=%u result=%u",
+                        manager, name_a, name_b, mode, slot, zero, result);
+        }
+        return result;
     }
 };
 
@@ -7569,6 +7691,72 @@ bool InstallR265DownstreamRenderGateTrace() {
     }
     Logging.Log("[NSC:R265] READY installed=%u readonly=1 hooks=8 wait=0x549950 secondary=0x6EB554 file=0x1207B38 chunk=0x120A3D4 draw=0x54ADA0 submit=0x5B3AC render_gate=0x43F1F8 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",ok?1u:0u);
     Logging.Log("[NSC:R265] DECISION objects0=SUBMIT_LOOKUP_EMPTY objects_gt0_pass0=RENDER_OBJECT_GATE_BLOCK objects_gt0_pass_gt0=FINAL_VCALL_REACHED");
+    return ok;
+}
+
+bool InstallR266RenderRegistrationProducerTrace() {
+    static constexpr uint32_t kOwnerRegisterExpected[] = {
+        0xD10143FF,0xA90167FE,0xA9025FF8,0xA90357F6,0xA9044FF4,0xF9400008,0x2A0403F5,0x2A0303F6,
+    };
+    static constexpr uint32_t kWaitEnterExpected[] = {
+        0xD10303FF,0xA9095FFE,0xA90A57F6,0xA90B4FF4,0xF9405808,0xB4001048,0xD000DFD6,0xF94246D6,
+    };
+    static constexpr uint32_t kSecondaryBuildExpected[] = {
+        0xD105C3FF,0xFD0093E8,0xA9137BFD,0xA9145FF8,0xA91557F6,0xA9164FF4,0xF9400008,0xAA0203F4,
+    };
+    static constexpr uint32_t kDrawExpected[] = {
+        0xA9BF4FFE,0xAA0003F3,0x97FFFF87,0xF9405A60,0xB4000180,0x94068783,0x34000140,0xB000DFC8,
+    };
+    static constexpr uint32_t kDrawSubmitExpected[] = {
+        0xD10103FF,0xA90257F6,0xA9034FF4,0x91008013,0xF000D674,0x91284294,0x290007E2,0x910013F5,
+    };
+    static constexpr uint32_t kRenderObjectGateExpected[] = {
+        0xA9BF4FFE,0xB940DC08,0x340007E8,0xB940E008,0xAA0003F3,0x34000788,0xB940FA68,0x7100291F,
+    };
+    static constexpr uint32_t kChildCreateExpected[] = {
+        0xD10203FF,0xA9036FFE,0xA90467FA,0xA9055FF8,0xA90657F6,0xA9074FF4,0xF000D2A8,0xF9424508,
+    };
+    static constexpr uint32_t kRegTickExpected[] = {
+        0xF81D0FFE,0xA90157F6,0xA9024FF4,0xB96B6808,0x340004E8,0xF955A008,0xAA0003F3,0xF9559C15,
+    };
+    static constexpr uint32_t kRegBridgeExpected[] = {
+        0xD10303FF,0xF9003BFE,0xA90867FA,0xA9095FF8,0xA90A57F6,0xA90B4FF4,0xD000D2B7,0xF94246F7,
+    };
+    static constexpr uint32_t kProducerExpected[] = {
+        0xD107C3FF,0xFD00C3E8,0xA9197BFD,0xA91A6FFC,0xA91B67FA,0xA91C5FF8,0xA91D57F6,0xA91E4FF4,
+    };
+    static constexpr uint32_t kGuardExpected[] = {
+        0xD10643FF,0xA9137BFD,0xA9146FFC,0xA91567FA,0xA9165FF8,0xA91757F6,0xA9184FF4,0xA90103E3,
+    };
+    bool ok=true;
+#define R266_VERIFY(NAME,OFF,WORDS) do { if (!MatchWords(OFF,WORDS)) { LogFingerprintFail(NAME,OFF); ok=false; } } while(0)
+    R266_VERIFY("R266_OWNER_REGISTER",kLoadOwnerRegisterOffset,kOwnerRegisterExpected);
+    R266_VERIFY("R266_WAIT_ENTER",kR264WaitEnterOffset,kWaitEnterExpected);
+    R266_VERIFY("R266_SECONDARY_BUILD",kR264SecondaryBuildOffset,kSecondaryBuildExpected);
+    R266_VERIFY("R266_DRAW",kR264DrawOffset,kDrawExpected);
+    R266_VERIFY("R266_DRAW_SUBMIT",kR264DrawSubmitOffset,kDrawSubmitExpected);
+    R266_VERIFY("R266_RENDER_OBJECT_GATE",kR265RenderObjectGateOffset,kRenderObjectGateExpected);
+    R266_VERIFY("R266_MODEL_CHILD_CREATE",kR266ModelChildCreateOffset,kChildCreateExpected);
+    R266_VERIFY("R266_REG_TICK",kR266RegistrationTickOffset,kRegTickExpected);
+    R266_VERIFY("R266_REG_BRIDGE",kR266RegistrationBridgeOffset,kRegBridgeExpected);
+    R266_VERIFY("R266_RENDER_PRODUCER",kR266RenderProducerOffset,kProducerExpected);
+    R266_VERIFY("R266_PRODUCER_GUARD",kR266RenderProducerGuardOffset,kGuardExpected);
+#undef R266_VERIFY
+    if (ok) {
+        R264TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
+        R264WaitEnterHook::InstallAtOffset(kR264WaitEnterOffset);
+        R264SecondaryBuildHook::InstallAtOffset(kR264SecondaryBuildOffset);
+        R264DrawHook::InstallAtOffset(kR264DrawOffset);
+        R265DrawSubmitHook::InstallAtOffset(kR264DrawSubmitOffset);
+        R265RenderObjectGateHook::InstallAtOffset(kR265RenderObjectGateOffset);
+        R266ModelChildCreateHook::InstallAtOffset(kR266ModelChildCreateOffset);
+        R266RegistrationTickHook::InstallAtOffset(kR266RegistrationTickOffset);
+        R266RegistrationBridgeHook::InstallAtOffset(kR266RegistrationBridgeOffset);
+        R266RenderProducerHook::InstallAtOffset(kR266RenderProducerOffset);
+        R266RenderProducerGuardHook::InstallAtOffset(kR266RenderProducerGuardOffset);
+    }
+    Logging.Log("[NSC:R266] READY installed=%u readonly=1 hooks=11 child_create=0x6ECEE8 reg_tick=0x6ED558 reg_bridge=0x6ED110 producer=0x594D8 guard=0x5E998 submit=0x5B3AC cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",ok?1u:0u);
+    Logging.Log("[NSC:R266] DECISION child_count0=MODEL_REG_CHILD_VECTOR_EMPTY count_gt0_no_bridge=CHILD_READINESS_BLOCK bridge_no_producer=BRIDGE_RESOURCE_OR_MANAGER_BLOCK producer_guard0=PRODUCER_GUARD_BLOCK producer_guard1_submit_empty=POST_GUARD_INDEX_OR_FILL_BLOCK");
     return ok;
 }
 

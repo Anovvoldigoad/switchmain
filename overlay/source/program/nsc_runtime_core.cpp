@@ -4,9 +4,10 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R265 extends the proven R264 target chain into the downstream per-render-object gate.
+    // R266 follows the proven R265 objects=0 result upstream into the exact
+    // model-child -> registration-bridge -> render-producer chain.
     // Read-only only; no return/path/ID/state overrides.
-    return nsc::InstallR265DownstreamRenderGateTrace();
+    return nsc::InstallR266RenderRegistrationProducerTrace();
 }
 
 } // namespace nsc::runtime
