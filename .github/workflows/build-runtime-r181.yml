@@ -1,4 +1,4 @@
-name: Build NSC R248 Create Identity Readiness Trace
+name: Build NSC R252 Wait Child Readiness Trace
 
 on:
   workflow_dispatch:
@@ -13,8 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify R248 create identity/readiness source
-        run: python3 verify_r249.py
+      - name: Verify R252 wait-child readiness source
+        run: python3 verify_r252.py
 
       - name: Clone pinned exlaunch
         run: |
@@ -29,7 +29,7 @@ jobs:
         working-directory: exlaunch
         run: make -j2
 
-      - name: Package R248 read-only create identity/readiness runtime
+      - name: Package R252 read-only wait-child readiness runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -44,10 +44,10 @@ jobs:
           cd "$OUT"
           sha256sum runtime/atmosphere/contents/0100FA10190A0000/exefs/subsdk9 > SHA256SUMS.txt
           printf '%s\n' \
-            'NSC2Switch R248 diagnostic: Create-state model identity/readiness producer trace.' \
-            'Read-only. Six hooks: mtob registry capture, Create enter, descriptor lookup, model init, identity lookup, readiness predicate.' \
+            'NSC2Switch R252 diagnostic: focused ccUiCharacterSelect3DModel Wait child-readiness trace after R250 bod1 fix.' \
+            'Read-only. Six hooks: mtob registry capture + Wait enter/update + child ready/secondary gates + Wait consumer.' \
             'Do not copy a game main file into this package.' \
-            'Deploy beside the exact R245C real-Tobi native-ID46 carrier. Replace only diagnostic subsdk9.' \
+            'Deploy beside the exact R250 bod1-internal-identity-fixed carrier. Replace only diagnostic subsdk9.' \
             > INSTALL.txt
 
       - name: Assert no main override is shipped
@@ -60,6 +60,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NSC2Switch-R249-POST-IDENTITY-RESOURCE-TRACE
+          name: NSC2Switch-R252-WAIT-CHILD-READINESS-TRACE
           path: out/**
           if-no-files-found: error

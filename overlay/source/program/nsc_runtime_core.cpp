@@ -4,9 +4,9 @@
 namespace nsc::runtime {
 
 bool Initialize() {
-    // R249 follows R248 hardware: identity=46 resolves non-null, but model+0x90 stays null.
-    // Trace the exact post-identity file-resource, chunk, and allocation gates. Read-only only.
-    return nsc::InstallR249PostLookupResourceTrace();
+    // R247 reconstructs the already-designed R204W four-state table tracer
+    // on the materially changed R245C real-Tobi carrier. Read-only only.
+    return nsc::InstallR252WaitChildReadinessTrace();
 }
 
 } // namespace nsc::runtime

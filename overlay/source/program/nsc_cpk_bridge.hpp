@@ -4,8 +4,7 @@ namespace nsc {
 bool InstallR204JNativeCharselOwnerTrace();
 bool InstallR245GPreviewStateGateTrace();
 bool InstallR247R204WStateTableRetest();
-bool InstallR248CreateIdentityReadinessTrace();
-bool InstallR249PostLookupResourceTrace();
+bool InstallR252WaitChildReadinessTrace();
 void InstallP50AConditionCompat();
 void InstallP52APreUjProbe();
 void InstallP53AInputPromotionProbe();

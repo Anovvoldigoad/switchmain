@@ -46,17 +46,12 @@ constexpr ptrdiff_t kR247WaitEnterOffset   = 0x549950;
 constexpr ptrdiff_t kR247WaitUpdateOffset  = 0x549B80;
 constexpr ptrdiff_t kR247SelectEnterOffset = 0x549C40;
 constexpr ptrdiff_t kR247SelectUpdateOffset= 0x549EA8;
-// R248: Create-state model identity/readiness producer boundary recovered after R247 hardware.
-// Create::enter uses descriptor lookup 0x64ED30, initializes model at 0x6EAC24.
-// 0x6EAC24 looks up model+0x38 through 0x3F4130; a null result bails before model+0x90 is set.
-// Create::update 0x54991C calls 0x6ECBB0, which is exactly (model+0x90 != nullptr).
-constexpr ptrdiff_t kR248DescriptorLookupOffset = 0x64ED30;
-constexpr ptrdiff_t kR248ModelInitOffset        = 0x6EAC24;
-constexpr ptrdiff_t kR248IdentityLookupOffset   = 0x3F4130;
-constexpr ptrdiff_t kR248ReadyPredicateOffset   = 0x6ECBB0;
-// R249: R248 hardware proved identity=46 lookup is non-null while model+0x90 remains null.
-// Trace the exact post-identity resource/chunk/allocator corridor inside model init.
-constexpr ptrdiff_t kR249AllocatorOffset        = 0x116AE60;
+// R252: focused Wait-state child-readiness trace after R250 fixed bod1 internal identity.
+constexpr ptrdiff_t kR252WaitEnterOffset      = 0x549950;
+constexpr ptrdiff_t kR252WaitUpdateOffset     = 0x549B80;
+constexpr ptrdiff_t kR252WaitReadyOffset      = 0x58498;
+constexpr ptrdiff_t kR252WaitSecondaryOffset  = 0x58490;
+constexpr ptrdiff_t kR252WaitConsumeOffset    = 0x54ADE8;
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
 // as a named character-voice cue. Native Switch v1.70 event-table proof maps
@@ -516,29 +511,14 @@ std::atomic<uintptr_t> g_r247_target_registry{0};
 std::atomic<uintptr_t> g_r247_target_state_self{0};
 std::atomic<uint32_t> g_r247_state_logs{0};
 std::atomic<uint32_t> g_r247_target_capture_logs{0};
-// R248: focused Create-state model identity/readiness trace.
-std::atomic<uintptr_t> g_r248_target_registry{0};
-std::atomic<uintptr_t> g_r248_target_state_self{0};
-std::atomic<uintptr_t> g_r248_target_model{0};
-std::atomic<uintptr_t> g_r248_create_scope_self{0};
-std::atomic<uint32_t> g_r248_create_scope_target{0};
-std::atomic<uintptr_t> g_r248_init_model{0};
-std::atomic<uint32_t> g_r248_capture_logs{0};
-std::atomic<uint32_t> g_r248_create_logs{0};
-std::atomic<uint32_t> g_r248_descriptor_logs{0};
-std::atomic<uint32_t> g_r248_init_logs{0};
-std::atomic<uint32_t> g_r248_identity_logs{0};
-std::atomic<uint32_t> g_r248_ready_logs{0};
-// R249: scoped post-identity model-init corridor. Target scope is inherited from the
-// proven R248 Create::enter target classifier; only calls made while target model init
-// is executing are logged.
-std::atomic<uint32_t> g_r249_init_active{0};
-std::atomic<uint32_t> g_r249_init_target{0};
-std::atomic<uintptr_t> g_r249_init_model{0};
-std::atomic<uint32_t> g_r249_model_logs{0};
-std::atomic<uint32_t> g_r249_resource_logs{0};
-std::atomic<uint32_t> g_r249_chunk_logs{0};
-std::atomic<uint32_t> g_r249_alloc_logs{0};
+std::atomic<uintptr_t> g_r252_target_registry{0};
+std::atomic<uintptr_t> g_r252_target_state_self{0};
+std::atomic<uintptr_t> g_r252_wait_active_self{0};
+std::atomic<uint32_t> g_r252_wait_active{0};
+std::atomic<uint32_t> g_r252_wait_seq{0};
+std::atomic<uint32_t> g_r252_gate_logs{0};
+std::atomic<uint32_t> g_r252_consume_logs{0};
+std::atomic<uint32_t> g_r252_capture_logs{0};
 std::atomic_flag g_load_path_lock = ATOMIC_FLAG_INIT;
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic<uint32_t> g_event236_logs{0};
@@ -859,6 +839,71 @@ R247StateSnapshot R247Snapshot(void* self) {
     return out;
 }
 
+
+
+bool R247SnapshotTouchesTargetRegistry(const R247StateSnapshot& snap, uintptr_t target_registry);
+
+struct R252WaitSnapshot {
+    uint32_t state5c;
+    uint32_t phase6c;
+    uint32_t count140;
+    uintptr_t begin188;
+    uintptr_t end190;
+    uint32_t child_count;
+};
+
+R252WaitSnapshot R252SnapshotWait(void* self) {
+    R252WaitSnapshot out{0xFFFFFFFFu,0xFFFFFFFFu,0u,0u,0u,0u};
+    if (!self) return out;
+    auto* b = reinterpret_cast<uint8_t*>(self);
+    out.state5c = *reinterpret_cast<volatile uint32_t*>(b + 0x5Cu);
+    out.phase6c = *reinterpret_cast<volatile uint32_t*>(b + 0x6Cu);
+    out.count140 = *reinterpret_cast<volatile uint32_t*>(b + 0x140u);
+    out.begin188 = *reinterpret_cast<volatile uintptr_t*>(b + 0x188u);
+    out.end190 = *reinterpret_cast<volatile uintptr_t*>(b + 0x190u);
+    if (out.begin188 && out.end190 >= out.begin188) {
+        const uintptr_t diff = out.end190 - out.begin188;
+        if ((diff % sizeof(uintptr_t)) == 0u && diff <= 0x2000u)
+            out.child_count = static_cast<uint32_t>(diff / sizeof(uintptr_t));
+    }
+    return out;
+}
+
+void R252LogChildren(const char* phase, void* self, const R252WaitSnapshot& s, uint32_t seq) {
+    if (!self) return;
+    Logging.Log(
+        "[NSC:R252] WAIT_SUMMARY seq=%u phase=%s self=%p state5c=%u phase6c=%u count140=%u begin188=%p end190=%p child_count=%u",
+        seq, phase, self, s.state5c, s.phase6c, s.count140,
+        reinterpret_cast<void*>(s.begin188), reinterpret_cast<void*>(s.end190), s.child_count);
+    const uint32_t n = s.child_count < 8u ? s.child_count : 8u;
+    if (!s.begin188 || n == 0u) return;
+    auto* slots = reinterpret_cast<volatile uintptr_t*>(s.begin188);
+    for (uint32_t i=0;i<n;++i) {
+        const uintptr_t child = slots[i];
+        if (!child) {
+            Logging.Log("[NSC:R252] WAIT_CHILD seq=%u idx=%u child=0x0", seq, i);
+            continue;
+        }
+        auto* cb = reinterpret_cast<volatile uint8_t*>(child);
+        const uint32_t e0 = *reinterpret_cast<volatile uint32_t*>(cb + 0xE0u);
+        const uint32_t e4 = *reinterpret_cast<volatile uint32_t*>(cb + 0xE4u);
+        Logging.Log("[NSC:R252] WAIT_CHILD seq=%u idx=%u child=%p e0=%u e4=%u",
+                    seq, i, reinterpret_cast<void*>(child), e0, e4);
+    }
+}
+
+bool R252IsTargetState(void* self) {
+    const uintptr_t remembered = g_r252_target_state_self.load(std::memory_order_relaxed);
+    if (remembered && remembered == reinterpret_cast<uintptr_t>(self)) return true;
+    const uintptr_t target_registry = g_r252_target_registry.load(std::memory_order_relaxed);
+    if (!target_registry || !self) return false;
+    const R247StateSnapshot snap = R247Snapshot(self);
+    if (R247SnapshotTouchesTargetRegistry(snap, target_registry)) {
+        g_r252_target_state_self.store(reinterpret_cast<uintptr_t>(self), std::memory_order_relaxed);
+        return true;
+    }
+    return false;
+}
 bool R247SnapshotTouchesTargetRegistry(const R247StateSnapshot& snap, uintptr_t target_registry) {
     if (target_registry == 0u) return false;
     const uintptr_t a = reinterpret_cast<uintptr_t>(snap.reg_a);
@@ -889,58 +934,6 @@ void R247LogStateCall(const char* state_name, const char* callback, const char* 
         state_name, callback, phase, target ? 1u : 0u, self,
         snap.state5c, snap.phase6c, snap.reg_a, snap.model_b0, snap.helper_c0, snap.reg_b,
         reinterpret_cast<void*>(g_r247_target_registry.load(std::memory_order_relaxed)));
-}
-
-
-struct R248ModelSnapshot {
-    uint32_t p38;
-    uint32_t p3c;
-    uint32_t p40;
-    uint32_t p44;
-    uint32_t p48;
-    uint32_t p4c;
-    void* ready90;
-    void* alt98;
-};
-
-R248ModelSnapshot R248SnapshotModel(void* model) {
-    R248ModelSnapshot out{0,0,0,0,0,0,nullptr,nullptr};
-    if (!model) return out;
-    auto* b = reinterpret_cast<uint8_t*>(model);
-    out.p38 = *reinterpret_cast<volatile uint32_t*>(b + 0x38u);
-    out.p3c = *reinterpret_cast<volatile uint32_t*>(b + 0x3Cu);
-    out.p40 = *reinterpret_cast<volatile uint32_t*>(b + 0x40u);
-    out.p44 = *reinterpret_cast<volatile uint32_t*>(b + 0x44u);
-    out.p48 = *reinterpret_cast<volatile uint32_t*>(b + 0x48u);
-    out.p4c = *reinterpret_cast<volatile uint32_t*>(b + 0x4Cu);
-    out.ready90 = *reinterpret_cast<void* volatile*>(b + 0x90u);
-    out.alt98 = *reinterpret_cast<void* volatile*>(b + 0x98u);
-    return out;
-}
-
-bool R248SnapshotTouchesTargetRegistry(const R247StateSnapshot& snap) {
-    const uintptr_t target_registry = g_r248_target_registry.load(std::memory_order_relaxed);
-    return R247SnapshotTouchesTargetRegistry(snap, target_registry);
-}
-
-bool R248IsTargetState(void* self, const R247StateSnapshot& snap) {
-    const uintptr_t self_u = reinterpret_cast<uintptr_t>(self);
-    const uintptr_t remembered = g_r248_target_state_self.load(std::memory_order_relaxed);
-    if (remembered != 0u && remembered == self_u) return true;
-    if (R248SnapshotTouchesTargetRegistry(snap)) {
-        g_r248_target_state_self.store(self_u, std::memory_order_relaxed);
-        return true;
-    }
-    return false;
-}
-
-void R248LogModel(const char* tag, void* self, void* model, const R248ModelSnapshot& m, bool target) {
-    if (g_r248_init_logs.fetch_add(1u, std::memory_order_relaxed) >= 128u) return;
-    Logging.Log(
-        "[NSC:R248] MODEL tag=%s target=%u self=%p model=%p p38=%u p3c=%u p40=%u "
-        "p44=%u p48=%u p4c=%u ready90=%p alt98=%p",
-        tag, target ? 1u : 0u, self, model, m.p38, m.p3c, m.p40,
-        m.p44, m.p48, m.p4c, m.ready90, m.alt98);
 }
 
 void* FindOwnerNodeByHash(void* registry, uint32_t hash) {
@@ -2779,239 +2772,86 @@ R247_DEFINE_STATE_HOOK(R247SelectUpdateHook, "Select", "update")
 
 #undef R247_DEFINE_STATE_HOOK
 
-// R248 target registry capture: same proven owner-register boundary, independent state.
-HOOK_DEFINE_TRAMPOLINE(R248TargetRegistryCaptureHook) {
+
+HOOK_DEFINE_TRAMPOLINE(R252TargetRegistryCaptureHook) {
     static uint32_t Callback(void* registry, const char* path, uint32_t p2, uint32_t p3, uint32_t p4) {
         const uint32_t result = Orig(registry, path, p2, p3, p4);
         if (IsR204JTargetCharselPath(path)) {
-            g_r248_target_registry.store(reinterpret_cast<uintptr_t>(registry), std::memory_order_relaxed);
-            g_r248_target_state_self.store(0u, std::memory_order_relaxed);
-            g_r248_target_model.store(0u, std::memory_order_relaxed);
-            if (g_r248_capture_logs.fetch_add(1u, std::memory_order_relaxed) < 16u) {
-                Logging.Log("[NSC:R248] TARGET_REGISTRY_CAPTURE registry=%p path=%s hash=%u readonly=1",
+            g_r252_target_registry.store(reinterpret_cast<uintptr_t>(registry), std::memory_order_relaxed);
+            g_r252_target_state_self.store(0u, std::memory_order_relaxed);
+            g_r252_wait_seq.store(0u, std::memory_order_relaxed);
+            if (g_r252_capture_logs.fetch_add(1u, std::memory_order_relaxed) < 16u)
+                Logging.Log("[NSC:R252] TARGET_REGISTRY_CAPTURE registry=%p path=%s hash=%u readonly=1",
                             registry, path ? path : "<null>", result);
-            }
         }
         return result;
     }
 };
 
-// Create::enter scope. The native function executes once; no argument or return modification.
-HOOK_DEFINE_TRAMPOLINE(R248CreateEnterHook) {
+HOOK_DEFINE_TRAMPOLINE(R252WaitEnterHook) {
     static void Callback(void* self) {
-        const R247StateSnapshot pre = R247Snapshot(self);
-        const bool target_pre = R248IsTargetState(self, pre);
-        auto* b = reinterpret_cast<uint8_t*>(self);
-        const uint32_t entry_cc = self ? *reinterpret_cast<volatile uint32_t*>(b + 0xCCu) : 0xFFFFFFFFu;
-        const uint32_t aux_10c = self ? *reinterpret_cast<volatile uint32_t*>(b + 0x10Cu) : 0xFFFFFFFFu;
-        const uint32_t aux_144 = self ? *reinterpret_cast<volatile uint32_t*>(b + 0x144u) : 0xFFFFFFFFu;
-
-        g_r248_create_scope_self.store(reinterpret_cast<uintptr_t>(self), std::memory_order_relaxed);
-        g_r248_create_scope_target.store(target_pre ? 1u : 0u, std::memory_order_relaxed);
-        if (g_r248_create_logs.fetch_add(1u, std::memory_order_relaxed) < 128u) {
-            Logging.Log(
-                "[NSC:R248] CREATE_ENTER phase=pre target=%u self=%p entryCC=%u aux10C=%u aux144=%u model=%p",
-                target_pre ? 1u : 0u, self, entry_cc, aux_10c, aux_144, pre.model_b0);
-        }
-
+        const bool target_pre = R252IsTargetState(self);
         Orig(self);
-
-        const R247StateSnapshot post = R247Snapshot(self);
-        const bool target_post = R248IsTargetState(self, post);
-        if (target_post && post.model_b0) {
-            g_r248_target_model.store(reinterpret_cast<uintptr_t>(post.model_b0), std::memory_order_relaxed);
+        const bool target_post = R252IsTargetState(self);
+        if (target_pre || target_post) {
+            const uint32_t seq = g_r252_wait_seq.fetch_add(1u, std::memory_order_relaxed);
+            const R252WaitSnapshot s = R252SnapshotWait(self);
+            if (seq < 64u) R252LogChildren("enter_post", self, s, seq);
         }
-        const R248ModelSnapshot ms = R248SnapshotModel(post.model_b0);
-        if (g_r248_create_logs.fetch_add(1u, std::memory_order_relaxed) < 128u) {
-            Logging.Log(
-                "[NSC:R248] CREATE_ENTER phase=post target=%u self=%p entryCC=%u model=%p "
-                "p38=%u p3c=%u p40=%u p44=%u p48=%u p4c=%u ready90=%p alt98=%p",
-                target_post ? 1u : 0u, self, entry_cc, post.model_b0,
-                ms.p38, ms.p3c, ms.p40, ms.p44, ms.p48, ms.p4c, ms.ready90, ms.alt98);
-        }
-        g_r248_create_scope_target.store(0u, std::memory_order_relaxed);
-        g_r248_create_scope_self.store(0u, std::memory_order_relaxed);
     }
 };
 
-// Descriptor lookup used by Create::enter: manager + self->0xCC -> descriptor.
-HOOK_DEFINE_TRAMPOLINE(R248DescriptorLookupHook) {
-    static void* Callback(void* manager, uint32_t key) {
-        void* const result = Orig(manager, key);
-        const uintptr_t scope_self = g_r248_create_scope_self.load(std::memory_order_relaxed);
-        if (scope_self != 0u && g_r248_descriptor_logs.fetch_add(1u, std::memory_order_relaxed) < 128u) {
-            uint32_t d4=0xFFFFFFFFu,d8=0xFFFFFFFFu,d18=0xFFFFFFFFu,d1c=0xFFFFFFFFu;
-            if (result) {
-                auto* r = reinterpret_cast<uint8_t*>(result);
-                d4=*reinterpret_cast<volatile uint32_t*>(r+0x4u);
-                d8=*reinterpret_cast<volatile uint32_t*>(r+0x8u);
-                d18=*reinterpret_cast<volatile uint32_t*>(r+0x18u);
-                d1c=*reinterpret_cast<volatile uint32_t*>(r+0x1Cu);
-            }
-            Logging.Log(
-                "[NSC:R248] DESCRIPTOR_LOOKUP target=%u self=%p manager=%p key=%u result=%p "
-                "d4=%u d8=%u d18=%u d1c=%u",
-                g_r248_create_scope_target.load(std::memory_order_relaxed),
-                reinterpret_cast<void*>(scope_self), manager, key, result, d4,d8,d18,d1c);
+HOOK_DEFINE_TRAMPOLINE(R252WaitUpdateHook) {
+    static void Callback(void* self) {
+        const bool target = R252IsTargetState(self);
+        uint32_t seq = 0xFFFFFFFFu;
+        if (target) {
+            seq = g_r252_wait_seq.fetch_add(1u, std::memory_order_relaxed);
+            g_r252_wait_active_self.store(reinterpret_cast<uintptr_t>(self), std::memory_order_relaxed);
+            g_r252_wait_active.store(1u, std::memory_order_relaxed);
+            if (seq < 128u) R252LogChildren("update_pre", self, R252SnapshotWait(self), seq);
+        }
+        Orig(self);
+        if (target) {
+            g_r252_wait_active.store(0u, std::memory_order_relaxed);
+            if (seq < 128u) R252LogChildren("update_post", self, R252SnapshotWait(self), seq);
+            g_r252_wait_active_self.store(0u, std::memory_order_relaxed);
+        }
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(R252WaitReadyHook) {
+    static uint32_t Callback(void* child) {
+        const uint32_t result = Orig(child);
+        if (g_r252_wait_active.load(std::memory_order_relaxed) &&
+            g_r252_gate_logs.fetch_add(1u, std::memory_order_relaxed) < 1024u) {
+            uint32_t e0=0xFFFFFFFFu,e4=0xFFFFFFFFu;
+            if (child) { auto* b=reinterpret_cast<volatile uint8_t*>(child); e0=*reinterpret_cast<volatile uint32_t*>(b+0xE0u); e4=*reinterpret_cast<volatile uint32_t*>(b+0xE4u); }
+            Logging.Log("[NSC:R252] WAIT_READY_GATE self=%p child=%p e0=%u e4=%u result=%u",
+                        reinterpret_cast<void*>(g_r252_wait_active_self.load(std::memory_order_relaxed)), child, e0, e4, result);
         }
         return result;
     }
 };
 
-// Model initialization producer. Static proof: model+0x38 is looked up via 0x3F4130;
-// a null lookup branches to the epilogue before model+0x90 is written.
-HOOK_DEFINE_TRAMPOLINE(R248ModelInitHook) {
-    static void Callback(void* model) {
-        const uintptr_t prev = g_r248_init_model.exchange(reinterpret_cast<uintptr_t>(model), std::memory_order_relaxed);
-        const R248ModelSnapshot pre = R248SnapshotModel(model);
-        const uintptr_t target_model = g_r248_target_model.load(std::memory_order_relaxed);
-        const bool known_target = target_model != 0u && target_model == reinterpret_cast<uintptr_t>(model);
-        R248LogModel("init_pre", reinterpret_cast<void*>(g_r248_create_scope_self.load(std::memory_order_relaxed)),
-                     model, pre, known_target || g_r248_create_scope_target.load(std::memory_order_relaxed) != 0u);
-        Orig(model);
-        const R248ModelSnapshot post = R248SnapshotModel(model);
-        R248LogModel("init_post", reinterpret_cast<void*>(g_r248_create_scope_self.load(std::memory_order_relaxed)),
-                     model, post, known_target || g_r248_create_scope_target.load(std::memory_order_relaxed) != 0u);
-        g_r248_init_model.store(prev, std::memory_order_relaxed);
-    }
-};
-
-// Identity lookup called from model init. Pure observation of ID/result.
-HOOK_DEFINE_TRAMPOLINE(R248IdentityLookupHook) {
-    static void* Callback(uint32_t identity) {
-        void* const result = Orig(identity);
-        const uintptr_t model = g_r248_init_model.load(std::memory_order_relaxed);
-        if (model != 0u && g_r248_identity_logs.fetch_add(1u, std::memory_order_relaxed) < 128u) {
-            Logging.Log(
-                "[NSC:R248] IDENTITY_LOOKUP target=%u self=%p model=%p identity=%u result=%p",
-                g_r248_create_scope_target.load(std::memory_order_relaxed),
-                reinterpret_cast<void*>(g_r248_create_scope_self.load(std::memory_order_relaxed)),
-                reinterpret_cast<void*>(model), identity, result);
+HOOK_DEFINE_TRAMPOLINE(R252WaitSecondaryHook) {
+    static uint32_t Callback(void* child) {
+        const uint32_t result = Orig(child);
+        if (g_r252_wait_active.load(std::memory_order_relaxed) &&
+            g_r252_gate_logs.fetch_add(1u, std::memory_order_relaxed) < 1024u) {
+            Logging.Log("[NSC:R252] WAIT_SECONDARY_GATE self=%p child=%p result=%u",
+                        reinterpret_cast<void*>(g_r252_wait_active_self.load(std::memory_order_relaxed)), child, result);
         }
         return result;
     }
 };
 
-// Exact Create::update readiness predicate: returns whether model+0x90 is non-null.
-HOOK_DEFINE_TRAMPOLINE(R248ReadyPredicateHook) {
-    static uint32_t Callback(void* model) {
-        void* ready90 = nullptr;
-        if (model) ready90 = *reinterpret_cast<void* volatile*>(reinterpret_cast<uint8_t*>(model) + 0x90u);
-        const uint32_t result = Orig(model);
-        const uintptr_t target_model = g_r248_target_model.load(std::memory_order_relaxed);
-        if (target_model != 0u && target_model == reinterpret_cast<uintptr_t>(model) &&
-            g_r248_ready_logs.fetch_add(1u, std::memory_order_relaxed) < 64u) {
-            Logging.Log("[NSC:R248] READY_PREDICATE target=1 model=%p ready90=%p result=%u",
-                        model, ready90, result);
-        }
-        return result;
-    }
-};
-
-
-// R249 model-init scope. R248 hardware proved target identity lookup is non-null but
-// model+0x90 remains null. Keep the proven Create::enter target classifier and scope
-// only the native model init call for target observations.
-HOOK_DEFINE_TRAMPOLINE(R249ModelInitScopeHook) {
-    static void Callback(void* model) {
-        const bool target = g_r248_create_scope_target.load(std::memory_order_relaxed) != 0u;
-        const uint32_t prev_active = g_r249_init_active.exchange(1u, std::memory_order_relaxed);
-        const uint32_t prev_target = g_r249_init_target.exchange(target ? 1u : 0u, std::memory_order_relaxed);
-        const uintptr_t prev_model = g_r249_init_model.exchange(reinterpret_cast<uintptr_t>(model), std::memory_order_relaxed);
-        if (target && g_r249_model_logs.fetch_add(1u, std::memory_order_relaxed) < 16u) {
-            const R248ModelSnapshot m = R248SnapshotModel(model);
-            Logging.Log("[NSC:R249] MODEL_INIT phase=pre target=1 model=%p identity=%u ready90=%p",
-                        model, m.p38, m.ready90);
-        }
-        Orig(model);
-        if (target && g_r249_model_logs.fetch_add(1u, std::memory_order_relaxed) < 16u) {
-            const R248ModelSnapshot m = R248SnapshotModel(model);
-            Logging.Log("[NSC:R249] MODEL_INIT phase=post target=1 model=%p identity=%u ready90=%p",
-                        model, m.p38, m.ready90);
-        }
-        g_r249_init_model.store(prev_model, std::memory_order_relaxed);
-        g_r249_init_target.store(prev_target, std::memory_order_relaxed);
-        g_r249_init_active.store(prev_active, std::memory_order_relaxed);
-    }
-};
-
-// First post-identity gate in model init: main+0x6EACF8 -> main+0x1207B38.
-// Log the exact file path and completed-resource pointer only while target init runs.
-HOOK_DEFINE_TRAMPOLINE(R249FileResourceLookupHook) {
-    static void* Callback(void* manager, const char* path) {
-        void* const result = Orig(manager, path);
-        if (g_r249_init_active.load(std::memory_order_relaxed) != 0u &&
-            g_r249_init_target.load(std::memory_order_relaxed) != 0u &&
-            g_r249_resource_logs.fetch_add(1u, std::memory_order_relaxed) < 16u) {
-            Logging.Log("[NSC:R249] RESOURCE_GATE target=1 model=%p manager=%p path=%s result=%p",
-                        reinterpret_cast<void*>(g_r249_init_model.load(std::memory_order_relaxed)),
-                        manager, path ? path : "<null>", result);
-        }
-        return result;
-    }
-};
-
-// Second post-identity gate: main+0x6EAD50 -> main+0x120A3D4.
-// Preserve native args/result and expose type/key identity for the target only.
-HOOK_DEFINE_TRAMPOLINE(R249ChunkResourceLookupHook) {
-    static void* Callback(void* resource, const void* type_desc, const void* key_desc) {
-        uint32_t key_hash = 0xFFFFFFFFu;
-        uint32_t key_has_text = 0xFFFFFFFFu;
-        uintptr_t key_ptr = 0u;
-        uint32_t type_tag = 0xFFFFFFFFu;
-        char key_text[97]{};
-        uint32_t key_text_len = 0u;
-        uint32_t key_text_printable = 0u;
-        if (key_desc) {
-            const auto* k = reinterpret_cast<const volatile uint8_t*>(key_desc);
-            key_hash = *reinterpret_cast<const volatile uint32_t*>(k + 0x0u);
-            key_has_text = *(k + 0x4u);
-            key_ptr = *reinterpret_cast<const volatile uintptr_t*>(k + 0x8u);
-        }
-        if (type_desc) {
-            const auto* t = reinterpret_cast<const volatile uint8_t*>(type_desc);
-            type_tag = *reinterpret_cast<const volatile uint16_t*>(t + 0xAu);
-        }
-        if (key_has_text == 1u && key_ptr != 0u) {
-            const auto* src = reinterpret_cast<const volatile uint8_t*>(key_ptr);
-            key_text_printable = 1u;
-            for (uint32_t i = 0; i < 96u; ++i) {
-                const uint8_t c = src[i];
-                if (c == 0u) { key_text_len = i; break; }
-                if (c < 0x20u || c > 0x7Eu) { key_text_printable = 0u; key_text_len = i; break; }
-                key_text[i] = static_cast<char>(c);
-                key_text_len = i + 1u;
-            }
-            key_text[key_text_len] = '\0';
-        }
-        void* const result = Orig(resource, type_desc, key_desc);
-        if (g_r249_init_active.load(std::memory_order_relaxed) != 0u &&
-            g_r249_init_target.load(std::memory_order_relaxed) != 0u &&
-            g_r249_chunk_logs.fetch_add(1u, std::memory_order_relaxed) < 16u) {
-            Logging.Log("[NSC:R249] CHUNK_GATE target=1 model=%p resource=%p type=%p type_tag=%u "
-                        "key_hash=%u key_has_text=%u key_ptr=%p key_printable=%u key_len=%u key_text=%s result=%p",
-                        reinterpret_cast<void*>(g_r249_init_model.load(std::memory_order_relaxed)),
-                        resource, type_desc, type_tag, key_hash, key_has_text,
-                        reinterpret_cast<void*>(key_ptr), key_text_printable, key_text_len,
-                        key_text_printable ? key_text : "<nonprintable>", result);
-        }
-        return result;
-    }
-};
-
-// Allocator used twice by model init. The second call (size 0x3B0) produces X21,
-// which is stored directly to model+0x90. Log only target-scoped calls.
-HOOK_DEFINE_TRAMPOLINE(R249AllocatorHook) {
-    static void* Callback(uint64_t size, const void* source, uint32_t line) {
-        void* const result = Orig(size, source, line);
-        if (g_r249_init_active.load(std::memory_order_relaxed) != 0u &&
-            g_r249_init_target.load(std::memory_order_relaxed) != 0u &&
-            g_r249_alloc_logs.fetch_add(1u, std::memory_order_relaxed) < 16u) {
-            Logging.Log("[NSC:R249] ALLOC target=1 model=%p size=%llu source=%p line=%u result=%p",
-                        reinterpret_cast<void*>(g_r249_init_model.load(std::memory_order_relaxed)),
-                        static_cast<unsigned long long>(size), source, line, result);
-        }
-        return result;
+HOOK_DEFINE_TRAMPOLINE(R252WaitConsumeHook) {
+    static void Callback(void* self, void* child_b0, uint32_t mode) {
+        if (g_r252_wait_active.load(std::memory_order_relaxed) &&
+            g_r252_consume_logs.fetch_add(1u, std::memory_order_relaxed) < 256u)
+            Logging.Log("[NSC:R252] WAIT_CONSUME self=%p child_b0=%p mode=%u", self, child_b0, mode);
+        Orig(self, child_b0, mode);
     }
 };
 
@@ -7436,6 +7276,43 @@ bool InstallR245GPreviewStateGateTrace() {
     return ok;
 }
 
+bool InstallR252WaitChildReadinessTrace() {
+    static constexpr uint32_t kOwnerRegisterExpected[] = {
+        0xD10143FF,0xA90167FE,0xA9025FF8,0xA90357F6,0xA9044FF4,0xF9400008,0x2A0403F5,0x2A0303F6,
+    };
+    static constexpr uint32_t kWaitEnterExpected[] = {
+        0xD10303FF,0xA9095FFE,0xA90A57F6,0xA90B4FF4,0xF9405808,0xB4001048,0xD000DFD6,0xF94246D6,
+    };
+    static constexpr uint32_t kWaitUpdateExpected[] = {
+        0x14000001,0xF81D0FFE,0xA90157F6,0xA9024FF4,0xB9414008,0x340004C8,0xA958A015,0xAA0003F3,
+    };
+    static constexpr uint32_t kReadyExpected[] = {0x91002000,0x14442621};
+    static constexpr uint32_t kSecondaryExpected[] = {0x91002000,0x14442601};
+    static constexpr uint32_t kConsumeExpected[] = {
+        0xD10303FF,0xA9076FFE,0xA90867FA,0xA9095FF8,0xA90A57F6,0xA90B4FF4,0xF9405808,0xB4001CE8,
+    };
+    bool ok=true;
+#define R252_VERIFY(NAME,OFF,WORDS) do { if (!MatchWords(OFF,WORDS)) { LogFingerprintFail(NAME,OFF); ok=false; } } while(0)
+    R252_VERIFY("R252_OWNER_REGISTER",kLoadOwnerRegisterOffset,kOwnerRegisterExpected);
+    R252_VERIFY("R252_WAIT_ENTER",kR252WaitEnterOffset,kWaitEnterExpected);
+    R252_VERIFY("R252_WAIT_UPDATE",kR252WaitUpdateOffset,kWaitUpdateExpected);
+    R252_VERIFY("R252_WAIT_READY",kR252WaitReadyOffset,kReadyExpected);
+    R252_VERIFY("R252_WAIT_SECONDARY",kR252WaitSecondaryOffset,kSecondaryExpected);
+    R252_VERIFY("R252_WAIT_CONSUME",kR252WaitConsumeOffset,kConsumeExpected);
+#undef R252_VERIFY
+    if (ok) {
+        R252TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
+        R252WaitEnterHook::InstallAtOffset(kR252WaitEnterOffset);
+        R252WaitUpdateHook::InstallAtOffset(kR252WaitUpdateOffset);
+        R252WaitReadyHook::InstallAtOffset(kR252WaitReadyOffset);
+        R252WaitSecondaryHook::InstallAtOffset(kR252WaitSecondaryOffset);
+        R252WaitConsumeHook::InstallAtOffset(kR252WaitConsumeOffset);
+    }
+    Logging.Log("[NSC:R252] READY installed=%u readonly=1 hooks=6 wait=0x549950/0x549B80 ready=0x58498 secondary=0x58490 consume=0x54ADE8 cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0", ok?1u:0u);
+    Logging.Log("[NSC:R252] DECISION ready0=WAIT_CHILD_NOT_READY ready1_secondary0=WAIT_CHILD_SECONDARY_NOT_READY ready1_secondary1_consume=WAIT_CHILD_CONSUME_REACHED");
+    return ok;
+}
+
 bool InstallR247R204WStateTableRetest() {
     static constexpr uint32_t kOwnerRegisterExpected[] = {
         0xD10143FF, 0xA90167FE, 0xA9025FF8, 0xA90357F6,
@@ -7510,125 +7387,6 @@ bool InstallR247R204WStateTableRetest() {
         "[NSC:R247] DECISION target_load_update_then_wait=STATE_DISPATCH_PASS "
         "target_load_update_no_next_state=POST_LOAD_SCHEDULER_OR_TRANSITION "
         "target_wait_update=TRACE_WAIT_CONSUMER_NEXT");
-    return ok;
-}
-
-bool InstallR248CreateIdentityReadinessTrace() {
-    static constexpr uint32_t kOwnerRegisterExpected[] = {
-        0xD10143FF, 0xA90167FE, 0xA9025FF8, 0xA90357F6,
-        0xA9044FF4, 0xF9400008, 0x2A0403F5, 0x2A0303F6,
-    };
-    static constexpr uint32_t kCreateEnterExpected[] = {
-        0xF81E0FFE,0xA9014FF4,0xF9400008,0xAA0003F3,
-        0xF9400908,0xD63F0100,0xF9405A68,0xB40000E8,
-    };
-    static constexpr uint32_t kDescriptorLookupExpected[] = {
-        0xF8408409,0x14000002,0xAA0A03E9,0xEB00013F,
-        0x540002E0,0xAA0903E8,0xB8428D0A,0x6B01015F,
-    };
-    static constexpr uint32_t kModelInitExpected[] = {
-        0xD10283FF,0xFD003BE8,0xA90857FE,0xA9094FF4,
-        0xF9400008,0xAA0003F3,0xF9400908,0xD63F0100,
-    };
-    static constexpr uint32_t kIdentityLookupExpected[] = {
-        0xF000EA68,0xF9424508,0xF9760908,0x2A0003E1,
-        0xF9409500,0x1410AC8E,
-    };
-    static constexpr uint32_t kReadyExpected[] = {
-        0xF9404808,0xF100011F,0x1A9F07E0,0xD65F03C0,
-    };
-
-    bool ok = true;
-#define R248_VERIFY(NAME, OFF, WORDS) \
-    do { if (!MatchWords(OFF, WORDS)) { LogFingerprintFail(NAME, OFF); ok = false; } } while (0)
-    R248_VERIFY("R248_OWNER_REGISTER", kLoadOwnerRegisterOffset, kOwnerRegisterExpected);
-    R248_VERIFY("R248_CREATE_ENTER", kR247CreateEnterOffset, kCreateEnterExpected);
-    R248_VERIFY("R248_DESCRIPTOR_LOOKUP", kR248DescriptorLookupOffset, kDescriptorLookupExpected);
-    R248_VERIFY("R248_MODEL_INIT", kR248ModelInitOffset, kModelInitExpected);
-    R248_VERIFY("R248_IDENTITY_LOOKUP", kR248IdentityLookupOffset, kIdentityLookupExpected);
-    R248_VERIFY("R248_READY_PREDICATE", kR248ReadyPredicateOffset, kReadyExpected);
-#undef R248_VERIFY
-
-    if (ok) {
-        R248TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
-        R248CreateEnterHook::InstallAtOffset(kR247CreateEnterOffset);
-        R248DescriptorLookupHook::InstallAtOffset(kR248DescriptorLookupOffset);
-        R248ModelInitHook::InstallAtOffset(kR248ModelInitOffset);
-        R248IdentityLookupHook::InstallAtOffset(kR248IdentityLookupOffset);
-        R248ReadyPredicateHook::InstallAtOffset(kR248ReadyPredicateOffset);
-    }
-
-    Logging.Log(
-        "[NSC:R248] READY installed=%u readonly=1 hooks=6 create=0x549868 descriptor=0x64ED30 "
-        "model_init=0x6EAC24 identity_lookup=0x3F4130 ready_pred=0x6ECBB0 "
-        "cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",
-        ok ? 1u : 0u);
-    Logging.Log(
-        "[NSC:R248] DECISION identity_lookup_null=IDENTITY_OR_TABLE_MISSING "
-        "identity_lookup_nonnull_ready90_null=POST_LOOKUP_MODEL_ALLOC_INIT "
-        "ready90_nonnull=CREATE_READY_PASS");
-    return ok;
-}
-
-
-bool InstallR249PostLookupResourceTrace() {
-    static constexpr uint32_t kOwnerRegisterExpected[] = {
-        0xD10143FF,0xA90167FE,0xA9025FF8,0xA90357F6,
-        0xA9044FF4,0xF9400008,0x2A0403F5,0x2A0303F6,
-    };
-    static constexpr uint32_t kCreateEnterExpected[] = {
-        0xF81E0FFE,0xA9014FF4,0xF9400008,0xAA0003F3,
-        0xF9400908,0xD63F0100,0xF9405A68,0xB40000E8,
-    };
-    static constexpr uint32_t kModelInitExpected[] = {
-        0xD10283FF,0xFD003BE8,0xA90857FE,0xA9094FF4,
-        0xF9400008,0xAA0003F3,0xF9400908,0xD63F0100,
-    };
-    static constexpr uint32_t kFileResourceLookupExpected[] = {
-        0xF81F0FFE,0x97FFFC27,0xB4000060,0xF84107FE,
-        0x17FFFACB,0xF84107FE,0xD65F03C0,0xA9BD5FFE,
-    };
-    static constexpr uint32_t kChunkResourceLookupExpected[] = {
-        0xD10143FF,0xA90357FE,0xA9044FF4,0xAA0203F3,
-        0xAA0103F4,0xB90003FF,0xAA0003F5,0x390013FF,
-    };
-    static constexpr uint32_t kAllocatorExpected[] = {
-        0xF81D0FFE,0xA90157F6,0xA9024FF4,0x2A0203F3,
-        0xAA0103F4,0xAA0003F5,0x9400024E,0xAA0003F6,
-    };
-
-    bool ok = true;
-#define R249_VERIFY(NAME, OFF, WORDS) \
-    do { if (!MatchWords(OFF, WORDS)) { LogFingerprintFail(NAME, OFF); ok = false; } } while (0)
-    R249_VERIFY("R249_OWNER_REGISTER", kLoadOwnerRegisterOffset, kOwnerRegisterExpected);
-    R249_VERIFY("R249_CREATE_ENTER", kR247CreateEnterOffset, kCreateEnterExpected);
-    R249_VERIFY("R249_MODEL_INIT", kR248ModelInitOffset, kModelInitExpected);
-    R249_VERIFY("R249_RESOURCE_LOOKUP", kFileResourceLookupOffset, kFileResourceLookupExpected);
-    R249_VERIFY("R249_CHUNK_LOOKUP", kChunkResourceLookupOffset, kChunkResourceLookupExpected);
-    R249_VERIFY("R249_ALLOCATOR", kR249AllocatorOffset, kAllocatorExpected);
-#undef R249_VERIFY
-
-    if (ok) {
-        // Reuse R248's proven target classifier / Create scope; the R249-specific
-        // observations begin at model init and remain read-only.
-        R248TargetRegistryCaptureHook::InstallAtOffset(kLoadOwnerRegisterOffset);
-        R248CreateEnterHook::InstallAtOffset(kR247CreateEnterOffset);
-        R249ModelInitScopeHook::InstallAtOffset(kR248ModelInitOffset);
-        R249FileResourceLookupHook::InstallAtOffset(kFileResourceLookupOffset);
-        R249ChunkResourceLookupHook::InstallAtOffset(kChunkResourceLookupOffset);
-        R249AllocatorHook::InstallAtOffset(kR249AllocatorOffset);
-    }
-
-    Logging.Log(
-        "[NSC:R249] READY installed=%u readonly=1 hooks=6 model_init=0x6EAC24 "
-        "resource_gate=0x1207B38 chunk_gate=0x120A3D4 allocator=0x116AE60 "
-        "cpk_bind=0 main_patch=0 gameplay_patch=0 id_patch=0 path_rewrite=0 return_override=0",
-        ok ? 1u : 0u);
-    Logging.Log(
-        "[NSC:R249] DECISION resource_null=FILE_RESOURCE_MISSING "
-        "resource_nonnull_chunk_null=CHUNK_KEY_OR_TYPE_MISS "
-        "chunk_nonnull_alloc_3b0_null=MODEL_OBJECT_ALLOC_FAIL "
-        "alloc_3b0_nonnull_ready90_null=POST_ALLOC_CONSTRUCTOR_OR_STORE_CORRIDOR");
     return ok;
 }
 
