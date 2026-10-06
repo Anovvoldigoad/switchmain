@@ -1,16 +1,14 @@
 #include "lib.hpp"
-#include "nsc_runtime_core.hpp"
+#include "nsc_cpk_bridge.hpp"
 
-// exlaunch is only the bootstrap adapter. Gameplay/runtime initialization lives
-// behind nsc_runtime_initialize(), so a future external loader can call the same
-// stable entrypoint without rewriting the NSC2Switch core.
 extern "C" void exl_main(void* x0, void* x1) {
     (void)x0;
     (void)x1;
+
     exl::hook::Initialize();
-    (void)nsc_runtime_initialize();
+    nsc::InstallMinimalCpkBridge();
 }
 
 extern "C" NORETURN void exl_exception_entry() {
-    EXL_ABORT("NSC runtime bootstrap exception");
+    EXL_ABORT("R276H19B unexpected exlaunch exception");
 }
