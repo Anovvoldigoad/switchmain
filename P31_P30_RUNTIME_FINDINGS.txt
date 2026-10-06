@@ -1,0 +1,18 @@
+P30 fresh runtime findings (uzuy_log(11).txt)
+==============================================
+P30 READY: cpk=1 trace=1 req=0x1206b4c create=0x1206c9c status=0x1207efc chunk=0x3eae70
+CPK bind: success, bind_id=3
+ID281: mtob
+Parent: data/spcload/mtobprm_load.bin.xfbin status=2
+
+P30 status budget statistics:
+- parent prm_load: status2 x1
+- data/spc/mtobbod1acc.bin.xfbin: status0 x2, status5 x340; first transition 0 -> 5
+- data/spc/mtobbod1_col3.xfbin: status0 x2, status5 x167; first transition 0 -> 5
+- total status logs: 512 (budget exhausted)
+- CHUNK logs: 0
+- mtobskl3 requests: 0
+
+The two failing paths exist in the clean external CPK TOC, so this is not a
+simple missing-path diagnosis. P31 exists to reveal final status transitions
+for the remaining custom child files without polling spam.
