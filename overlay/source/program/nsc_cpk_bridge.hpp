@@ -1,5 +1,5 @@
 #pragma once
 
 namespace nsc {
-bool InstallMinimalCpkBridge();
+void InstallP32Trace();
 }
