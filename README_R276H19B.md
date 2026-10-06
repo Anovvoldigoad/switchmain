@@ -49,3 +49,7 @@ Download artifact `NSC-R276H19B-minimal-binder` and report:
 - full build log if compilation fails.
 
 Do not deploy until static audit of the produced NSO is complete.
+
+
+## R276H19C CI PATH fix
+The current devkitPro devkita64 image does not guarantee devkitA64/bin is on PATH for GitHub Actions shell steps. The build step now explicitly sets DEVKITPRO=/opt/devkitpro, DEVKITA64=/opt/devkitpro/devkitA64, prepends both tool directories to PATH, and fails closed if aarch64-none-elf-g++ is absent. No runtime source or hook semantics changed.
