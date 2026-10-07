@@ -414,6 +414,44 @@ HOOK_DEFINE_TRAMPOLINE(NullVcallTraceHook) {
     }
 };
 
+
+
+// R276H19U: read-only upstream trace for the object that feeds H19S.
+// Proven native path:
+//   main+0x439FDC: x25 = outer(arg0)
+//   main+0x43A43C: x0 = *(x25+0x20)
+//   main+0x43A440: x1 = sp+0x70
+//   main+0x43A444: BL main+0x11A1C00
+// H19S proved that callee arg0 is NULL, therefore outer+0x20 is the immediate missing pointer.
+static std::atomic<uint32_t> g_h19u_outer_logs{0};
+
+HOOK_DEFINE_TRAMPOLINE(OuterField20TraceHook) {
+    static void Callback(void* outer, void* arg1, uint32_t arg2) {
+        void* f18 = nullptr;
+        void* f20 = nullptr;
+        void* f28 = nullptr;
+        void* f50 = nullptr;
+        uint32_t f3608 = 0xFFFFFFFFu;
+
+        if (outer) {
+            auto* p = reinterpret_cast<uint8_t*>(outer);
+            f18 = *reinterpret_cast<void**>(p + 0x18);
+            f20 = *reinterpret_cast<void**>(p + 0x20);
+            f28 = *reinterpret_cast<void**>(p + 0x28);
+            f50 = *reinterpret_cast<void**>(p + 0x50);
+            f3608 = *reinterpret_cast<volatile uint32_t*>(p + 0x3608);
+        }
+
+        const uint32_t n = g_h19u_outer_logs.fetch_add(1, std::memory_order_relaxed);
+        if (n < 128 || f20 == nullptr) {
+            Logging.Log("[NSC:H19U] OUTER n=%u outer=%p arg1=%p arg2=%u f18=%p f20=%p f28=%p f50=%p f3608=%u",
+                        n, outer, arg1, arg2, f18, f20, f28, f50, f3608);
+        }
+
+        Orig(outer, arg1, arg2);
+    }
+};
+
 bool InstallTraceHooks() {
     static constexpr uint32_t kCharExpected[] = {
         0xF000EA68, 0xF9424508, 0xF9760908, 0x2A0003E1, 0xF9409500, 0x1410AC93,
@@ -448,6 +486,11 @@ bool InstallTraceHooks() {
         0xF9400C00, 0xAA0103F3, 0xF9400008, 0xF9400908,
     };
 
+    static constexpr uint32_t kH19UOuterExpected[] = {
+        0xD10443FF, 0xA90B7BFD, 0xA90C6FFC, 0xA90D67FA,
+        0xA90E5FF8, 0xA90F57F6, 0xA9104FF4, 0xAA0003F9,
+    };
+
     bool ok = true;
     if (!MatchWords(kCharacodeGetterOffset, kCharExpected)) {
         LogFingerprintFail("CHAR", kCharacodeGetterOffset); ok = false;
@@ -473,6 +516,9 @@ bool InstallTraceHooks() {
     if (!MatchWords(0x11A1C00, kNullVcallExpected)) {
         LogFingerprintFail("H19S_VCALL", 0x11A1C00); ok = false;
     }
+    if (!MatchWords(0x439FDC, kH19UOuterExpected)) {
+        LogFingerprintFail("H19U_OUTER", 0x439FDC); ok = false;
+    }
     if (!ok) return false;
 
     CharacodeGetterHook::InstallAtOffset(kCharacodeGetterOffset);
@@ -484,6 +530,8 @@ bool InstallTraceHooks() {
     FileOpenHook::InstallAtOffset(kFileOpenOffset);
     NullVcallTraceHook::InstallAtOffset(0x11A1C00);
     Logging.Log("[NSC:H19S] READY vcall=1 off=0x11a1c00");
+    OuterField20TraceHook::InstallAtOffset(0x439FDC);
+    Logging.Log("[NSC:H19U] READY outer=1 off=0x439fdc");
     return true;
 }
 
