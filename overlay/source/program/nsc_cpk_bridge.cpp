@@ -601,6 +601,64 @@ HOOK_DEFINE_TRAMPOLINE(H19XLookupTraceHook) {
     }
 };
 
+
+// R276H19Y: trace registry lookup used by the strongest upstream producer of
+// H19X arg2. Static v1.70 candidate path:
+//
+//   main+0x7EBD58  BL  main+0x1207B38
+//   main+0x7EBD5C  MOV X21,X0
+//   ...
+//   main+0x7EBE48  MOV X2,X21
+//   main+0x7EBE74  BL  main+0x436018
+//
+// Nearby string construction appends literal "bod3" before the 0x1207B38 lookup.
+// This hook is read-only: native return is preserved unchanged.
+static std::atomic<uint32_t> g_h19y_reg_logs{0};
+
+HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
+    static void* Callback(void* registry, const char* key) {
+        void* result = Orig(registry, key);
+
+        char text[65]{};
+        if (key) {
+            for (size_t i = 0; i < 64; ++i) {
+                const unsigned char c = static_cast<unsigned char>(key[i]);
+                if (c == 0) {
+                    text[i] = '\0';
+                    break;
+                }
+                text[i] = (c >= 0x20 && c <= 0x7E) ? static_cast<char>(c) : '.';
+                if (i == 63) text[64] = '\0';
+            }
+        }
+
+        bool interesting = (result == nullptr);
+        if (key) {
+            // Fixture filter only, diagnostic-not-final.
+            const char* needles[] = {"mtob", "bod3"};
+            for (const char* n : needles) {
+                const char* h = text;
+                while (*h) {
+                    const char* a = h;
+                    const char* b = n;
+                    while (*a && *b && *a == *b) { ++a; ++b; }
+                    if (*b == '\0') { interesting = true; break; }
+                    ++h;
+                }
+                if (interesting) break;
+            }
+        }
+
+        const uint32_t n = g_h19y_reg_logs.fetch_add(1, std::memory_order_relaxed);
+        if (interesting && n < 512) {
+            Logging.Log("[NSC:H19Y] REG n=%u registry=%p keyptr=%p key=%s result=%p",
+                        n, registry, key, key ? text : "<null>", result);
+        }
+
+        return result;
+    }
+};
+
 bool InstallTraceHooks() {
     static constexpr uint32_t kCharExpected[] = {
         0xF000EA68, 0xF9424508, 0xF9760908, 0x2A0003E1, 0xF9409500, 0x1410AC93,
@@ -654,6 +712,11 @@ bool InstallTraceHooks() {
         0xA9095FF8, 0xA90A57F6, 0xA90B4FF4, 0x52863908,
     };
 
+    static constexpr uint32_t kH19YRegistryExpected[] = {
+        0xF81F0FFE, 0x97FFFC27, 0xB4000060, 0xF84107FE,
+        0x17FFFACB, 0xF84107FE, 0xD65F03C0,
+    };
+
     bool ok = true;
     if (!MatchWords(kCharacodeGetterOffset, kCharExpected)) {
         LogFingerprintFail("CHAR", kCharacodeGetterOffset); ok = false;
@@ -691,6 +754,9 @@ bool InstallTraceHooks() {
     if (!MatchWords(0x436018, kH19XInitExpected)) {
         LogFingerprintFail("H19X_INIT", 0x436018); ok = false;
     }
+    if (!MatchWords(0x1207B38, kH19YRegistryExpected)) {
+        LogFingerprintFail("H19Y_REG", 0x1207B38); ok = false;
+    }
     if (!ok) return false;
 
     CharacodeGetterHook::InstallAtOffset(kCharacodeGetterOffset);
@@ -710,6 +776,8 @@ bool InstallTraceHooks() {
     RealField20InitTraceHook::InstallAtOffset(0x436018);
     H19XLookupTraceHook::InstallAtOffset(0x120A3D4);
     Logging.Log("[NSC:H19X] READY init=1 off=0x436018 lookup=1 off=0x120a3d4");
+    H19YRegistryLookupHook::InstallAtOffset(0x1207B38);
+    Logging.Log("[NSC:H19Y] READY reg=1 off=0x1207b38");
     return true;
 }
 
