@@ -615,6 +615,57 @@ HOOK_DEFINE_TRAMPOLINE(H19XLookupTraceHook) {
 // This hook is read-only: native return is preserved unchanged.
 static std::atomic<uint32_t> g_h19y_reg_logs{0};
 
+static std::atomic<uintptr_t> g_h19z_active_actor{0};
+static std::atomic<uint32_t> g_h19z_active_char{0xFFFFFFFFu};
+static std::atomic<uint32_t> g_h19z_parent_logs{0};
+static std::atomic<uint32_t> g_h19z_reg_logs{0};
+
+// R276H19Z: caller-scoped trace for the function that statically feeds X21 into
+// X2 of main+0x436018.
+//
+// main+0x7EB94C is the function entry.
+// Inside it:
+//   main+0x7EBD58  BL  main+0x1207B38
+//   main+0x7EBD5C  MOV X21,X0
+//   main+0x7EBE48  MOV X2,X21
+//   main+0x7EBE74  BL  main+0x436018
+//
+// Important correction: local "bod3" is passed as X1 to 0x436018,
+// not as the 0x1207B38 registry key.
+HOOK_DEFINE_TRAMPOLINE(H19ZParentHook) {
+    static void Callback(void* actor, uint32_t mode) {
+        uint32_t char_id = 0xFFFFFFFFu;
+        if (actor) {
+            auto* p = reinterpret_cast<volatile uint8_t*>(actor);
+            char_id = *reinterpret_cast<volatile uint32_t*>(p + 0xE54);
+        }
+
+        const uint32_t n = g_h19z_parent_logs.fetch_add(1, std::memory_order_relaxed);
+        const bool custom = char_id > 280u;
+
+        if (custom || n < 16) {
+            Logging.Log("[NSC:H19Z] ENTER n=%u actor=%p char=%u mode=%u",
+                        n, actor, char_id, mode);
+        }
+
+        if (custom) {
+            g_h19z_active_char.store(char_id, std::memory_order_release);
+            g_h19z_active_actor.store(reinterpret_cast<uintptr_t>(actor),
+                                      std::memory_order_release);
+        }
+
+        Orig(actor, mode);
+
+        if (custom) {
+            g_h19z_active_actor.store(0, std::memory_order_release);
+            g_h19z_active_char.store(0xFFFFFFFFu, std::memory_order_release);
+            Logging.Log("[NSC:H19Z] EXIT n=%u actor=%p char=%u mode=%u",
+                        n, actor, char_id, mode);
+        }
+    }
+};
+
+
 HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
     static void* Callback(void* registry, const char* key) {
         void* result = Orig(registry, key);
@@ -650,7 +701,22 @@ HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
         }
 
         const uint32_t n = g_h19y_reg_logs.fetch_add(1, std::memory_order_relaxed);
-        if (interesting && n < 512) {
+
+        const uintptr_t active_actor =
+            g_h19z_active_actor.load(std::memory_order_acquire);
+        if (active_actor != 0) {
+            const uint32_t char_id =
+                g_h19z_active_char.load(std::memory_order_acquire);
+            const uint32_t zn =
+                g_h19z_reg_logs.fetch_add(1, std::memory_order_relaxed);
+            if (zn < 128) {
+                Logging.Log("[NSC:H19Z] REG n=%u actor=%p char=%u registry=%p keyptr=%p key=%s result=%p",
+                            zn, reinterpret_cast<void*>(active_actor), char_id,
+                            registry, key, key ? text : "<null>", result);
+            }
+        }
+
+        if (interesting && n < 64) {
             Logging.Log("[NSC:H19Y] REG n=%u registry=%p keyptr=%p key=%s result=%p",
                         n, registry, key, key ? text : "<null>", result);
         }
@@ -717,6 +783,11 @@ bool InstallTraceHooks() {
         0x17FFFACB, 0xF84107FE, 0xD65F03C0,
     };
 
+    static constexpr uint32_t kH19ZParentExpected[] = {
+        0xD10783FF, 0xA9187BFD, 0xA9196FFC, 0xA91A67FA,
+        0xA91B5FF8, 0xA91C57F6, 0xA91D4FF4, 0x5281F888,
+    };
+
     bool ok = true;
     if (!MatchWords(kCharacodeGetterOffset, kCharExpected)) {
         LogFingerprintFail("CHAR", kCharacodeGetterOffset); ok = false;
@@ -757,6 +828,9 @@ bool InstallTraceHooks() {
     if (!MatchWords(0x1207B38, kH19YRegistryExpected)) {
         LogFingerprintFail("H19Y_REG", 0x1207B38); ok = false;
     }
+    if (!MatchWords(0x7EB94C, kH19ZParentExpected)) {
+        LogFingerprintFail("H19Z_PARENT", 0x7EB94C); ok = false;
+    }
     if (!ok) return false;
 
     CharacodeGetterHook::InstallAtOffset(kCharacodeGetterOffset);
@@ -778,6 +852,8 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19X] READY init=1 off=0x436018 lookup=1 off=0x120a3d4");
     H19YRegistryLookupHook::InstallAtOffset(0x1207B38);
     Logging.Log("[NSC:H19Y] READY reg=1 off=0x1207b38");
+    H19ZParentHook::InstallAtOffset(0x7EB94C);
+    Logging.Log("[NSC:H19Z] READY parent=1 off=0x7eb94c reg_scope=0x1207b38");
     return true;
 }
 

@@ -1,4 +1,4 @@
-name: Build NSC H19Y registry key trace
+name: Build NSC H19Z parent scoped registry trace
 
 on:
   workflow_dispatch:
@@ -96,7 +96,7 @@ jobs:
       - name: Upload P32 subsdk9
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-H19Y-registry-key-trace-subsdk9
+          name: NSC-H19Z-parent-scoped-registry-trace-subsdk9
           path: artifact/
           if-no-files-found: error
           compression-level: 9
