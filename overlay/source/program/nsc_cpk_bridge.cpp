@@ -781,6 +781,28 @@ HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
                         registry, key, key ? text : "<null>", result);
         }
 
+        // R276H19AD: fixture-specific SAME-CALL-TIME prefix probe.
+        // Diagnostic only; native return value is NOT substituted.
+        if (result == nullptr && key) {
+            const char target[] = "mtobbod1.xfbin";
+            bool exact = true;
+            size_t i = 0;
+            for (; target[i] != '\0'; ++i) {
+                if (text[i] != target[i]) {
+                    exact = false;
+                    break;
+                }
+            }
+            if (exact && text[i] == '\0') {
+                const char prefixed[] = "data/spc/mtobbod1.xfbin";
+                Logging.Log("[NSC:H19AD] PROBE_BEGIN key=%s alt=%s",
+                            text, prefixed);
+                void* alt = Orig(registry, prefixed);
+                Logging.Log("[NSC:H19AD] PROBE_RESULT key=%s alt=%s result=%p",
+                            text, prefixed, alt);
+            }
+        }
+
         // R276H19AC: diagnostic-only key normalization probe.\n        if (result == nullptr && key) {\n            size_t klen = 0;\n            bool has_sep = false;\n            while (klen < 80 && key[klen] != '\0') {\n                if (key[klen] == '/' || key[klen] == ':') has_sep = true;\n                ++klen;\n            }\n            const char suffix[] = ".xfbin";\n            constexpr size_t suffix_len = 6;\n            bool ends_xfbin = klen > suffix_len;\n            if (ends_xfbin) {\n                for (size_t i=0;i<suffix_len;++i) if (key[klen-suffix_len+i] != suffix[i]) { ends_xfbin=false; break; }\n            }\n            if (!has_sep && ends_xfbin) {\n                char pfxext[96]{}; char strip[96]{}; char pfxstrip[96]{};\n                const char prefix[] = "data/spc/"; constexpr size_t plen=9;\n                const size_t blen=klen-suffix_len;\n                size_t p=0; for(;p<plen && p+1<sizeof(pfxext);++p) pfxext[p]=prefix[p];\n                for(size_t i=0;i<klen && p+1<sizeof(pfxext);++i,++p) pfxext[p]=key[i];\n                size_t s=0; for(;s<blen && s+1<sizeof(strip);++s) strip[s]=key[s];\n                p=0; for(;p<plen && p+1<sizeof(pfxstrip);++p) pfxstrip[p]=prefix[p];\n                for(size_t i=0;i<blen && p+1<sizeof(pfxstrip);++i,++p) pfxstrip[p]=key[i];\n                void* a=Orig(registry,pfxext); void* b=Orig(registry,strip); void* c=Orig(registry,pfxstrip);\n                Logging.Log("[NSC:H19AC] PROBE key=%s pfxext=%s:%p strip=%s:%p pfxstrip=%s:%p",\n                            text,pfxext,a,strip,b,pfxstrip,c);\n            }\n        }\n\n
         const uintptr_t aa_actor =
             g_h19aa_active_actor.load(std::memory_order_acquire);
@@ -961,6 +983,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AA] READY parent=1 off=0x7e64d4 reg_scope=0x1207b38");
     Logging.Log("[NSC:H19AB] READY uncapped_filter=mtob|bod1 reg=0x1207b38");
     Logging.Log("[NSC:H19AC] READY bare_xfbin_probe=1 forms=pfxext|strip|pfxstrip");
+    Logging.Log("[NSC:H19AD] READY exact_prefix_probe=mtobbod1.xfbin->data/spc/mtobbod1.xfbin");
     return true;
 }
 
