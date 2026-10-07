@@ -452,6 +452,70 @@ HOOK_DEFINE_TRAMPOLINE(OuterField20TraceHook) {
     }
 };
 
+
+// R276H19W: trace the exact native initializer that owns outer+0x20.
+// Static v1.70 proof:
+//   main+0x4332B4  BL 0x120A3D4
+//   main+0x4332B8  CBZ X0, 0x433444
+//   main+0x4332FC  STR X20,[X19,#0x20]
+//   main+0x433444  STR XZR,[X19,#0x20]
+static std::atomic<uint32_t> g_h19w_init_logs{0};
+static std::atomic<uint32_t> g_h19w_lookup_logs{0};
+static std::atomic<uintptr_t> g_h19w_active_outer{0};
+
+HOOK_DEFINE_TRAMPOLINE(Field20InitTraceHook) {
+    static void Callback(void* outer, void* arg1, void* arg2) {
+        uint32_t id18 = 0xFFFFFFFFu;
+        void* pre20 = nullptr;
+        void* pre50 = nullptr;
+
+        if (outer) {
+            auto* p = reinterpret_cast<uint8_t*>(outer);
+            id18 = *reinterpret_cast<volatile uint32_t*>(p + 0x18);
+            pre20 = *reinterpret_cast<void**>(p + 0x20);
+            pre50 = *reinterpret_cast<void**>(p + 0x50);
+        }
+
+        const uint32_t n = g_h19w_init_logs.fetch_add(1, std::memory_order_relaxed);
+        if (n < 256) {
+            Logging.Log("[NSC:H19W] INIT_PRE n=%u outer=%p id18=%u arg1=%p arg2=%p f20=%p f50=%p",
+                        n, outer, id18, arg1, arg2, pre20, pre50);
+        }
+
+        g_h19w_active_outer.store(reinterpret_cast<uintptr_t>(outer), std::memory_order_release);
+        Orig(outer, arg1, arg2);
+        g_h19w_active_outer.store(0, std::memory_order_release);
+
+        void* post20 = nullptr;
+        void* post50 = nullptr;
+        if (outer) {
+            auto* p = reinterpret_cast<uint8_t*>(outer);
+            post20 = *reinterpret_cast<void**>(p + 0x20);
+            post50 = *reinterpret_cast<void**>(p + 0x50);
+        }
+
+        if (n < 256 || post20 == nullptr) {
+            Logging.Log("[NSC:H19W] INIT_POST n=%u outer=%p id18=%u f20=%p->%p f50=%p->%p",
+                        n, outer, id18, pre20, post20, pre50, post50);
+        }
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(Field20LookupTraceHook) {
+    static void* Callback(void* a0, void* a1, void* a2) {
+        void* result = Orig(a0, a1, a2);
+        const uintptr_t active = g_h19w_active_outer.load(std::memory_order_acquire);
+        if (active != 0) {
+            const uint32_t n = g_h19w_lookup_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < 256) {
+                Logging.Log("[NSC:H19W] LOOKUP n=%u outer=%p a0=%p a1=%p a2=%p result=%p",
+                            n, reinterpret_cast<void*>(active), a0, a1, a2, result);
+            }
+        }
+        return result;
+    }
+};
+
 bool InstallTraceHooks() {
     static constexpr uint32_t kCharExpected[] = {
         0xF000EA68, 0xF9424508, 0xF9760908, 0x2A0003E1, 0xF9409500, 0x1410AC93,
@@ -491,6 +555,15 @@ bool InstallTraceHooks() {
         0xA90E5FF8, 0xA90F57F6, 0xA9104FF4, 0xAA0003F9,
     };
 
+    static constexpr uint32_t kH19WInitExpected[] = {
+        0xD100C3FF, 0xA90157FE, 0xA9024FF4, 0xF9400008,
+        0xAA0203F5, 0xAA0103F4, 0xAA0003F3, 0xF9400908,
+    };
+    static constexpr uint32_t kH19WLookupExpected[] = {
+        0xD10143FF, 0xA90357FE, 0xA9044FF4, 0xAA0203F3,
+        0xAA0103F4, 0xB90003FF, 0xAA0003F5, 0x390013FF,
+    };
+
     bool ok = true;
     if (!MatchWords(kCharacodeGetterOffset, kCharExpected)) {
         LogFingerprintFail("CHAR", kCharacodeGetterOffset); ok = false;
@@ -519,6 +592,12 @@ bool InstallTraceHooks() {
     if (!MatchWords(0x439FDC, kH19UOuterExpected)) {
         LogFingerprintFail("H19U_OUTER", 0x439FDC); ok = false;
     }
+    if (!MatchWords(0x433258, kH19WInitExpected)) {
+        LogFingerprintFail("H19W_INIT", 0x433258); ok = false;
+    }
+    if (!MatchWords(0x120A3D4, kH19WLookupExpected)) {
+        LogFingerprintFail("H19W_LOOKUP", 0x120A3D4); ok = false;
+    }
     if (!ok) return false;
 
     CharacodeGetterHook::InstallAtOffset(kCharacodeGetterOffset);
@@ -532,6 +611,9 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19S] READY vcall=1 off=0x11a1c00");
     OuterField20TraceHook::InstallAtOffset(0x439FDC);
     Logging.Log("[NSC:H19U] READY outer=1 off=0x439fdc");
+    Field20InitTraceHook::InstallAtOffset(0x433258);
+    Field20LookupTraceHook::InstallAtOffset(0x120A3D4);
+    Logging.Log("[NSC:H19W] READY init=1 off=0x433258 lookup=1 off=0x120a3d4");
     return true;
 }
 
