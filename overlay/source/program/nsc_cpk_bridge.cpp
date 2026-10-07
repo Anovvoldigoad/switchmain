@@ -375,6 +375,45 @@ bool InstallCpkBridge() {
     return true;
 }
 
+
+
+// R276H19S: read-only trace for the proven null virtual call at main+0x11A1C20.
+// Native chain at main+0x11A1C00:
+//   child = *(arg0+0x18); vtable = *child; fn = *(vtable+0x10); BLR fn.
+// This hook does not alter pointers, IDs, resources, or return state.
+static std::atomic<uint32_t> g_h19s_vcall_logs{0};
+
+HOOK_DEFINE_TRAMPOLINE(NullVcallTraceHook) {
+    static void Callback(void* arg0, void* arg1) {
+        void* child = nullptr;
+        void* vtable = nullptr;
+        void* slot10 = nullptr;
+        uint32_t field170 = 0xFFFFFFFFu;
+        uint32_t field172 = 0xFFFFFFFFu;
+
+        if (arg0) {
+            auto* p = reinterpret_cast<uint8_t*>(arg0);
+            child = *reinterpret_cast<void**>(p + 0x18);
+            field170 = *reinterpret_cast<volatile uint16_t*>(p + 0x170);
+            field172 = *reinterpret_cast<volatile uint16_t*>(p + 0x172);
+            if (child) {
+                vtable = *reinterpret_cast<void**>(child);
+                if (vtable) {
+                    slot10 = *reinterpret_cast<void**>(reinterpret_cast<uint8_t*>(vtable) + 0x10);
+                }
+            }
+        }
+
+        const uint32_t n = g_h19s_vcall_logs.fetch_add(1, std::memory_order_relaxed);
+        if (n < 256 || slot10 == nullptr) {
+            Logging.Log("[NSC:H19S] VCALL n=%u arg0=%p arg1=%p child=%p vtable=%p slot10=%p f170=%u f172=%u",
+                        n, arg0, arg1, child, vtable, slot10, field170, field172);
+        }
+
+        Orig(arg0, arg1);
+    }
+};
+
 bool InstallTraceHooks() {
     static constexpr uint32_t kCharExpected[] = {
         0xF000EA68, 0xF9424508, 0xF9760908, 0x2A0003E1, 0xF9409500, 0x1410AC93,
@@ -404,6 +443,11 @@ bool InstallTraceHooks() {
         0xAA0003F6, 0xB0007ED7, 0x3C838EC0, 0xB90106C2,
     };
 
+    static constexpr uint32_t kNullVcallExpected[] = {
+        0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0xAA0003F4,
+        0xF9400C00, 0xAA0103F3, 0xF9400008, 0xF9400908,
+    };
+
     bool ok = true;
     if (!MatchWords(kCharacodeGetterOffset, kCharExpected)) {
         LogFingerprintFail("CHAR", kCharacodeGetterOffset); ok = false;
@@ -426,6 +470,9 @@ bool InstallTraceHooks() {
     if (!MatchWords(kFileOpenOffset, kFileOpenExpected)) {
         LogFingerprintFail("FILE_OPEN", kFileOpenOffset); ok = false;
     }
+    if (!MatchWords(0x11A1C00, kNullVcallExpected)) {
+        LogFingerprintFail("H19S_VCALL", 0x11A1C00); ok = false;
+    }
     if (!ok) return false;
 
     CharacodeGetterHook::InstallAtOffset(kCharacodeGetterOffset);
@@ -435,6 +482,8 @@ bool InstallTraceHooks() {
     ChunkBinaryHook::InstallAtOffset(kChunkBinaryOffset);
     LoadRequestProcessHook::InstallAtOffset(kLoadRequestProcessOffset);
     FileOpenHook::InstallAtOffset(kFileOpenOffset);
+    NullVcallTraceHook::InstallAtOffset(0x11A1C00);
+    Logging.Log("[NSC:H19S] READY vcall=1 off=0x11a1c00");
     return true;
 }
 

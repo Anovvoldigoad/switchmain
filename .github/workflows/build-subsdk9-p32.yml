@@ -1,4 +1,4 @@
-name: Build NSC P32 file-open vs XFBIN-read trace
+name: Build NSC H19S null-vcall object trace
 
 on:
   workflow_dispatch:
@@ -96,7 +96,7 @@ jobs:
       - name: Upload P32 subsdk9
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P32-file-open-xfbin-read-trace-subsdk9
+          name: NSC-H19S-null-vcall-object-trace-subsdk9
           path: artifact/
           if-no-files-found: error
           compression-level: 9
