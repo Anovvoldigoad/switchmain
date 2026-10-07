@@ -760,6 +760,28 @@ HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
 
         const uint32_t n = g_h19y_reg_logs.fetch_add(1, std::memory_order_relaxed);
 
+        bool h19ab_match = false;
+        if (key) {
+            const char* needles[] = {"mtob", "bod1"};
+            for (const char* nd : needles) {
+                const char* h = text;
+                while (*h) {
+                    const char* a = h;
+                    const char* b = nd;
+                    while (*a && *b && *a == *b) { ++a; ++b; }
+                    if (*b == '\0') { h19ab_match = true; break; }
+                    ++h;
+                }
+                if (h19ab_match) break;
+            }
+        }
+
+        if (h19ab_match) {
+            Logging.Log("[NSC:H19AB] REG registry=%p keyptr=%p key=%s result=%p",
+                        registry, key, key ? text : "<null>", result);
+        }
+
+
         const uintptr_t aa_actor =
             g_h19aa_active_actor.load(std::memory_order_acquire);
         if (aa_actor != 0) {
@@ -937,6 +959,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19Z] READY parent=1 off=0x7eb94c reg_scope=0x1207b38");
     H19AAParentHook::InstallAtOffset(0x7E64D4);
     Logging.Log("[NSC:H19AA] READY parent=1 off=0x7e64d4 reg_scope=0x1207b38");
+    Logging.Log("[NSC:H19AB] READY uncapped_filter=mtob|bod1 reg=0x1207b38");
     return true;
 }
 
