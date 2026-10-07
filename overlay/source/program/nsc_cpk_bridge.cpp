@@ -781,8 +781,10 @@ HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
                         registry, key, key ? text : "<null>", result);
         }
 
-        // R276H19AD: fixture-specific SAME-CALL-TIME prefix probe.
-        // Diagnostic only; native return value is NOT substituted.
+        // R276H19AE: fixture-specific causal substitution test.
+        // If the exact proven bare-key miss occurs, retry the exact proven
+        // prefixed identity and return that native object when available.
+        // Diagnostic only: this is NOT the final generic architecture.
         if (result == nullptr && key) {
             const char target[] = "mtobbod1.xfbin";
             bool exact = true;
@@ -793,13 +795,23 @@ HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
                     break;
                 }
             }
+
             if (exact && text[i] == '\0') {
                 const char prefixed[] = "data/spc/mtobbod1.xfbin";
-                Logging.Log("[NSC:H19AD] PROBE_BEGIN key=%s alt=%s",
+
+                Logging.Log("[NSC:H19AE] RETRY_BEGIN key=%s alt=%s",
                             text, prefixed);
+
                 void* alt = Orig(registry, prefixed);
-                Logging.Log("[NSC:H19AD] PROBE_RESULT key=%s alt=%s result=%p",
+
+                Logging.Log("[NSC:H19AE] RETRY_RESULT key=%s alt=%s result=%p",
                             text, prefixed, alt);
+
+                if (alt != nullptr) {
+                    result = alt;
+                    Logging.Log("[NSC:H19AE] SUBSTITUTE key=%s result=%p",
+                                text, result);
+                }
             }
         }
 
@@ -984,6 +996,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AB] READY uncapped_filter=mtob|bod1 reg=0x1207b38");
     Logging.Log("[NSC:H19AC] READY bare_xfbin_probe=1 forms=pfxext|strip|pfxstrip");
     Logging.Log("[NSC:H19AD] READY exact_prefix_probe=mtobbod1.xfbin->data/spc/mtobbod1.xfbin");
+    Logging.Log("[NSC:H19AE] READY exact_substitute=mtobbod1.xfbin->data/spc/mtobbod1.xfbin diagnostic_only=1");
     return true;
 }
 
