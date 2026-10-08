@@ -740,6 +740,33 @@ static bool H19AJBMakeActionPath(const char* stem,
     return true;
 }
 
+// H19AKB: prm_load uses the game's spcload namespace, not data/spc/.
+// Generic by discovered stem; no character IDs/codes or donor aliases.
+static bool H19AKBMakeSpcLoadPath(const char* stem,
+                                   const char* suffix,
+                                   char* out,
+                                   size_t cap) {
+    static constexpr char kPrefix[] = "data/spcload/";
+    if (!stem || !stem[0] || !suffix || !out || cap == 0)
+        return false;
+
+    size_t p = 0;
+    for (size_t i = 0; kPrefix[i]; ++i) {
+        if (p + 1 >= cap) return false;
+        out[p++] = kPrefix[i];
+    }
+    for (size_t i = 0; stem[i]; ++i) {
+        if (p + 1 >= cap) return false;
+        out[p++] = stem[i];
+    }
+    for (size_t i = 0; suffix[i]; ++i) {
+        if (p + 1 >= cap) return false;
+        out[p++] = suffix[i];
+    }
+    out[p] = '\0';
+    return true;
+}
+
 // Returns true when this charsel occurrence should attempt a prefetch.
 // attempt_out is 1-based. State is marked done only after accepted requests.
 static bool H19AJBBeginAttempt(const char* stem, unsigned* attempt_out) {
@@ -867,10 +894,10 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
                                      h19ak_prm,
                                      sizeof(h19ak_prm));
             const bool h19ak_prm_load_ok =
-                H19AJBMakeActionPath(h19ajb_stem,
-                                     "prm_load.bin.xfbin",
-                                     h19ak_prm_load,
-                                     sizeof(h19ak_prm_load));
+                H19AKBMakeSpcLoadPath(h19ajb_stem,
+                                      "prm_load.bin.xfbin",
+                                      h19ak_prm_load,
+                                      sizeof(h19ak_prm_load));
 
             Logging.Log("[NSC:H19AJB] PREFETCH_ATTEMPT stem=%s attempt=%u manager=%p options=%p combo=%s anmofs=%s",
                         h19ajb_stem,
@@ -1775,6 +1802,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AI] READY multi_stem_scope=1 stem_cap=16 hardcoded_id=0 hardcoded_code=0");
     Logging.Log("[NSC:H19AJB] READY charsel_prefetch=1 families=comboPrm|anmofs retry_cap=3 hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AK] READY charsel_prm_prefetch=1 families=prm|prm_load hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AKB] READY prm_load_namespace=spcload prm_namespace=spc hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
