@@ -208,6 +208,184 @@ static std::atomic<uint32_t> g_h19ag_loaded_paths{0};
 static std::atomic<uint32_t> g_h19ag_cache_hits{0};
 static std::atomic<uint32_t> g_h19ag_transform_hits{0};
 
+static constexpr size_t kH19AHCodeCap = 32;
+static constexpr size_t kH19AHSeenCap = 384;
+
+struct H19AHSeenEntry {
+    char kind[20];
+    char key[kH19AGKeyCap];
+};
+
+static char g_h19ah_code[kH19AHCodeCap]{};
+static std::atomic<bool> g_h19ah_code_ready{false};
+static std::atomic_flag g_h19ah_code_lock = ATOMIC_FLAG_INIT;
+
+static H19AHSeenEntry g_h19ah_seen[kH19AHSeenCap]{};
+static size_t g_h19ah_seen_count = 0;
+static std::atomic_flag g_h19ah_seen_lock = ATOMIC_FLAG_INIT;
+
+static bool H19AHContains(const char* s, const char* needle) {
+    if (!s || !needle || !needle[0]) return false;
+    for (size_t i = 0; s[i]; ++i) {
+        size_t a = i;
+        size_t b = 0;
+        while (s[a] && needle[b] && s[a] == needle[b]) {
+            ++a;
+            ++b;
+        }
+        if (!needle[b]) return true;
+    }
+    return false;
+}
+
+static bool H19AHEndsWith(const char* s, const char* suffix) {
+    if (!s || !suffix) return false;
+    const size_t ns = H19AGLen(s);
+    const size_t nx = H19AGLen(suffix);
+    if (ns < nx) return false;
+    for (size_t i = 0; i < nx; ++i) {
+        if (s[ns - nx + i] != suffix[i]) return false;
+    }
+    return true;
+}
+
+static const char* H19AHStripScheme(const char* s) {
+    if (!s) return s;
+    if (H19AGStarts(s, "disc:")) return s + 5;
+    if (H19AGStarts(s, "ROM:/")) return s + 5;
+    if (H19AGStarts(s, "/")) return s + 1;
+    return s;
+}
+
+static void H19AHMaybeDiscoverCode(const char* canonical) {
+    if (!canonical || g_h19ah_code_ready.load(std::memory_order_acquire))
+        return;
+
+    const char* p = H19AHStripScheme(canonical);
+    if (!p || !H19AGStarts(p, "data/spc/"))
+        return;
+
+    p += 9;
+
+    const char* suffix = nullptr;
+    if (H19AHEndsWith(p, "bod1.xfbin"))
+        suffix = "bod1.xfbin";
+    else if (H19AHEndsWith(p, "bod1"))
+        suffix = "bod1";
+    else
+        return;
+
+    const size_t np = H19AGLen(p);
+    const size_t ns = H19AGLen(suffix);
+    if (np <= ns)
+        return;
+
+    const size_t code_len = np - ns;
+    if (code_len == 0 || code_len >= kH19AHCodeCap)
+        return;
+
+    H19AGLock(g_h19ah_code_lock);
+
+    if (!g_h19ah_code_ready.load(std::memory_order_relaxed)) {
+        for (size_t i = 0; i < code_len; ++i)
+            g_h19ah_code[i] = p[i];
+        g_h19ah_code[code_len] = '\0';
+
+        g_h19ah_code_ready.store(true, std::memory_order_release);
+
+        Logging.Log("[NSC:H19AH] DISCOVER code=%s canonical=%s",
+                    g_h19ah_code, canonical);
+    }
+
+    H19AGUnlock(g_h19ah_code_lock);
+}
+
+static bool H19AHRelevant(const char* key) {
+    if (!key || !g_h19ah_code_ready.load(std::memory_order_acquire))
+        return false;
+    return H19AHContains(key, g_h19ah_code);
+}
+
+static bool H19AHMarkSeen(const char* kind, const char* key) {
+    if (!kind || !key) return false;
+
+    bool fresh = false;
+    H19AGLock(g_h19ah_seen_lock);
+
+    for (size_t i = 0; i < g_h19ah_seen_count; ++i) {
+        if (H19AGEq(g_h19ah_seen[i].kind, kind) &&
+            H19AGEq(g_h19ah_seen[i].key, key)) {
+            H19AGUnlock(g_h19ah_seen_lock);
+            return false;
+        }
+    }
+
+    if (g_h19ah_seen_count < kH19AHSeenCap) {
+        auto& e = g_h19ah_seen[g_h19ah_seen_count++];
+        H19AGCopy(e.kind, sizeof(e.kind), kind);
+        H19AGCopy(e.key, sizeof(e.key), key);
+        fresh = true;
+    }
+
+    H19AGUnlock(g_h19ah_seen_lock);
+    return fresh;
+}
+
+static void H19AHTraceLoaded(const char* path) {
+    H19AHMaybeDiscoverCode(path);
+
+    if (!H19AHRelevant(path))
+        return;
+
+    if (H19AHMarkSeen("LOADED", path))
+        Logging.Log("[NSC:H19AH] LOADED path=%s", path);
+}
+
+static void H19AHTraceRegistry(void* registry,
+                               const char* key,
+                               void* exact_result,
+                               void* final_result,
+                               const char* mode,
+                               const char* alt) {
+    if (final_result != nullptr) {
+        H19AHMaybeDiscoverCode(key);
+        if (alt && alt[0])
+            H19AHMaybeDiscoverCode(alt);
+    }
+
+    const bool relevant =
+        H19AHRelevant(key) || (alt && alt[0] && H19AHRelevant(alt));
+
+    if (!relevant)
+        return;
+
+    if (exact_result != nullptr) {
+        if (H19AHMarkSeen("EXACT", key))
+            Logging.Log("[NSC:H19AH] EXACT registry=%p key=%s result=%p",
+                        registry, key, exact_result);
+        return;
+    }
+
+    if (final_result != nullptr) {
+        const char* resolved_mode = (mode && mode[0]) ? mode : "FALLBACK";
+        char dedupe_kind[20]{};
+        H19AGCopy(dedupe_kind, sizeof(dedupe_kind), resolved_mode);
+
+        if (H19AHMarkSeen(dedupe_kind, key))
+            Logging.Log("[NSC:H19AH] RESOLVE mode=%s registry=%p key=%s alt=%s result=%p",
+                        resolved_mode,
+                        registry,
+                        key,
+                        (alt && alt[0]) ? alt : "<none>",
+                        final_result);
+        return;
+    }
+
+    if (H19AHMarkSeen("MISS", key))
+        Logging.Log("[NSC:H19AH] MISS registry=%p key=%s", registry, key);
+}
+
+
 static bool H19AGCopy(char* dst, size_t cap, const char* src) {
     if (!dst || cap == 0 || !src) return false;
     size_t i = 0;
@@ -378,6 +556,7 @@ static void H19AGObserveLoadedPath(const char* path) {
     if (!path || !path[0]) return;
     g_h19ag_loaded_paths.fetch_add(1, std::memory_order_relaxed);
     H19AGObserveCanonical(path);
+    H19AHTraceLoaded(path);
 }
 
 static void H19AGLogUnresolvedOnce(void* registry, const char* key) {
@@ -956,6 +1135,10 @@ HOOK_DEFINE_TRAMPOLINE(H19ZParentHook) {
 HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
     static void* Callback(void* registry, const char* key) {
         void* result = Orig(registry, key);
+        void* h19ah_exact_result = result;
+        const char* h19ah_mode = result ? "EXACT" : "MISS";
+        char h19ah_alt[kH19AGKeyCap]{};
+
         if (result != nullptr)
             H19AGObserveRegistrySuccess(key);
 
@@ -1026,6 +1209,10 @@ HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
                 H19AGAddAlias(key, candidate);
                 H19AGObserveRegistrySuccess(candidate);
 
+                h19ah_mode = cache_hit ? "CACHE" : "TRANSFORM";
+                H19AGCopy(h19ah_alt, sizeof(h19ah_alt), candidate);
+                H19AHMaybeDiscoverCode(candidate);
+
                 if (cache_hit)
                     g_h19ag_cache_hits.fetch_add(1, std::memory_order_relaxed);
                 else
@@ -1071,9 +1258,15 @@ HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
                     accept_candidate(candidate, false);
             }
 
-            if (result == nullptr)
-                H19AGLogUnresolvedOnce(registry, key);
+            // H19AH replaces global unresolved dumping with scoped telemetry.
         }
+
+        H19AHTraceRegistry(registry,
+                           key,
+                           h19ah_exact_result,
+                           result,
+                           h19ah_mode,
+                           h19ah_alt);
 
         // R276H19AC: diagnostic-only key normalization probe.\n        if (result == nullptr && key) {\n            size_t klen = 0;\n            bool has_sep = false;\n            while (klen < 80 && key[klen] != '\0') {\n                if (key[klen] == '/' || key[klen] == ':') has_sep = true;\n                ++klen;\n            }\n            const char suffix[] = ".xfbin";\n            constexpr size_t suffix_len = 6;\n            bool ends_xfbin = klen > suffix_len;\n            if (ends_xfbin) {\n                for (size_t i=0;i<suffix_len;++i) if (key[klen-suffix_len+i] != suffix[i]) { ends_xfbin=false; break; }\n            }\n            if (!has_sep && ends_xfbin) {\n                char pfxext[96]{}; char strip[96]{}; char pfxstrip[96]{};\n                const char prefix[] = "data/spc/"; constexpr size_t plen=9;\n                const size_t blen=klen-suffix_len;\n                size_t p=0; for(;p<plen && p+1<sizeof(pfxext);++p) pfxext[p]=prefix[p];\n                for(size_t i=0;i<klen && p+1<sizeof(pfxext);++i,++p) pfxext[p]=key[i];\n                size_t s=0; for(;s<blen && s+1<sizeof(strip);++s) strip[s]=key[s];\n                p=0; for(;p<plen && p+1<sizeof(pfxstrip);++p) pfxstrip[p]=prefix[p];\n                for(size_t i=0;i<blen && p+1<sizeof(pfxstrip);++i,++p) pfxstrip[p]=key[i];\n                void* a=Orig(registry,pfxext); void* b=Orig(registry,strip); void* c=Orig(registry,pfxstrip);\n                Logging.Log("[NSC:H19AC] PROBE key=%s pfxext=%s:%p strip=%s:%p pfxstrip=%s:%p",\n                            text,pfxext,a,strip,b,pfxstrip,c);\n            }\n        }\n\n
         const uintptr_t aa_actor =
@@ -1257,6 +1450,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AC] READY bare_xfbin_probe=1 forms=pfxext|strip|pfxstrip");
     Logging.Log("[NSC:H19AD] READY exact_prefix_probe=mtobbod1.xfbin->data/spc/mtobbod1.xfbin");
     Logging.Log("[NSC:H19AG] READY adaptive=1 success_keys=1 loaded_paths=1 alias_cache=1 unresolved_only=1 hardcoded_id=0 hardcoded_code=0");
+    Logging.Log("[NSC:H19AH] READY scoped_graph=1 runtime_code_discovery=1 exact=1 cache=1 transform=1 miss=1 loaded=1 hardcoded_id=0 hardcoded_code=0");
     return true;
 }
 
