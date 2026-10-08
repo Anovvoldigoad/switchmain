@@ -2,6 +2,7 @@
 
 #include "lib.hpp"
 #include <lib/hook/trampoline.hpp>
+#include <lib/hook/inline.hpp>
 #include <lib/util/modules.hpp>
 #include <program/loggers.hpp>
 
@@ -1707,6 +1708,58 @@ HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
     }
 };
 
+
+// R276H19AM: trace the two known callsites that feed main+0x436018.
+// Inline hooks faithfully re-emulate only the replaced MOV X2 instruction.
+static std::atomic<uint32_t> g_h19am_a_logs{0};
+static std::atomic<uint32_t> g_h19am_b_logs{0};
+
+static void H19AMLogRegs(const char* site,
+                         uint32_t n,
+                         exl::hook::nx64::InlineCtx* ctx) {
+    if (!ctx) return;
+
+    Logging.Log(
+        "[NSC:H19AM] SITE=%s n=%u "
+        "x0=%p x1=%p x2=%p x3=%p x4=%p x5=%p x6=%p x7=%p "
+        "x19=%p x20=%p x21=%p x22=%p x23=%p x24=%p x25=%p x26=%p x27=%p x28=%p",
+        site, n,
+        reinterpret_cast<void*>(ctx->X[0]),
+        reinterpret_cast<void*>(ctx->X[1]),
+        reinterpret_cast<void*>(ctx->X[2]),
+        reinterpret_cast<void*>(ctx->X[3]),
+        reinterpret_cast<void*>(ctx->X[4]),
+        reinterpret_cast<void*>(ctx->X[5]),
+        reinterpret_cast<void*>(ctx->X[6]),
+        reinterpret_cast<void*>(ctx->X[7]),
+        reinterpret_cast<void*>(ctx->X[19]),
+        reinterpret_cast<void*>(ctx->X[20]),
+        reinterpret_cast<void*>(ctx->X[21]),
+        reinterpret_cast<void*>(ctx->X[22]),
+        reinterpret_cast<void*>(ctx->X[23]),
+        reinterpret_cast<void*>(ctx->X[24]),
+        reinterpret_cast<void*>(ctx->X[25]),
+        reinterpret_cast<void*>(ctx->X[26]),
+        reinterpret_cast<void*>(ctx->X[27]),
+        reinterpret_cast<void*>(ctx->X[28]));
+}
+
+HOOK_DEFINE_INLINE(H19AMCallsiteA) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        const uint32_t n = g_h19am_a_logs.fetch_add(1, std::memory_order_relaxed);
+        ctx->X[2] = ctx->X[22]; // original MOV X2,X22
+        if (n < 64) H19AMLogRegs("7E7EBC", n, ctx);
+    }
+};
+
+HOOK_DEFINE_INLINE(H19AMCallsiteB) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        const uint32_t n = g_h19am_b_logs.fetch_add(1, std::memory_order_relaxed);
+        ctx->X[2] = ctx->X[21]; // original MOV X2,X21
+        if (n < 64) H19AMLogRegs("7EBE48", n, ctx);
+    }
+};
+
 bool InstallTraceHooks() {
     static constexpr uint32_t kCharExpected[] = {
         0xF000EA68, 0xF9424508, 0xF9760908, 0x2A0003E1, 0xF9409500, 0x1410AC93,
@@ -1775,6 +1828,13 @@ bool InstallTraceHooks() {
         0xA9175FF8, 0xA91857F6, 0xA9194FF4, 0x5280E408,
     };
 
+    static constexpr uint32_t kH19AMCallAExpected[] = {
+        0xAA1603E2,
+    };
+    static constexpr uint32_t kH19AMCallBExpected[] = {
+        0xAA1503E2,
+    };
+
     bool ok = true;
     if (!MatchWords(kCharacodeGetterOffset, kCharExpected)) {
         LogFingerprintFail("CHAR", kCharacodeGetterOffset); ok = false;
@@ -1821,6 +1881,12 @@ bool InstallTraceHooks() {
     if (!MatchWords(0x7E64D4, kH19AAParentExpected)) {
         LogFingerprintFail("H19AA_PARENT", 0x7E64D4); ok = false;
     }
+    if (!MatchWords(0x7E7EBC, kH19AMCallAExpected)) {
+        LogFingerprintFail("H19AM_CALL_A", 0x7E7EBC); ok = false;
+    }
+    if (!MatchWords(0x7EBE48, kH19AMCallBExpected)) {
+        LogFingerprintFail("H19AM_CALL_B", 0x7EBE48); ok = false;
+    }
     if (!ok) return false;
 
     CharacodeGetterHook::InstallAtOffset(kCharacodeGetterOffset);
@@ -1857,6 +1923,9 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AK] READY charsel_prm_prefetch=1 families=prm|prm_load hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AKB] READY prm_load_namespace=spcload prm_namespace=spc hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AL] READY child_graph_prefetch=1 families=acc1|aws|bod1c|bod1l|bod1s|eff1|skl1|skl3|spl1|spl1_fin01 hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    H19AMCallsiteA::InstallAtOffset(0x7E7EBC);
+    H19AMCallsiteB::InstallAtOffset(0x7EBE48);
+    Logging.Log("[NSC:H19AM] READY x3_producer_trace=1 callsites=0x7e7ebc|0x7ebe48 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
