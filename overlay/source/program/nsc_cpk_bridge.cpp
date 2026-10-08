@@ -217,6 +217,7 @@ static void H19AGLock(std::atomic_flag& f);
 static void H19AGUnlock(std::atomic_flag& f);
 
 static constexpr size_t kH19AHCodeCap = 32;
+static constexpr size_t kH19AHStemCap = 16;
 static constexpr size_t kH19AHSeenCap = 384;
 
 struct H19AHSeenEntry {
@@ -224,15 +225,15 @@ struct H19AHSeenEntry {
     char key[kH19AGKeyCap];
 };
 
-static char g_h19ah_code[kH19AHCodeCap]{};
-static std::atomic<bool> g_h19ah_code_ready{false};
+static char g_h19ah_stems[kH19AHStemCap][kH19AHCodeCap]{};
+static size_t g_h19ah_stem_count = 0;
 static std::atomic_flag g_h19ah_code_lock = ATOMIC_FLAG_INIT;
 
 static H19AHSeenEntry g_h19ah_seen[kH19AHSeenCap]{};
 static size_t g_h19ah_seen_count = 0;
 static std::atomic_flag g_h19ah_seen_lock = ATOMIC_FLAG_INIT;
 
-static bool H19AHContains(const char* s, const char* needle) {
+[[maybe_unused]] static bool H19AHContains(const char* s, const char* needle) {
     if (!s || !needle || !needle[0]) return false;
     for (size_t i = 0; s[i]; ++i) {
         size_t a = i;
@@ -246,7 +247,7 @@ static bool H19AHContains(const char* s, const char* needle) {
     return false;
 }
 
-static bool H19AHEndsWith(const char* s, const char* suffix) {
+[[maybe_unused]] static bool H19AHEndsWith(const char* s, const char* suffix) {
     if (!s || !suffix) return false;
     const size_t ns = H19AGLen(s);
     const size_t nx = H19AGLen(suffix);
@@ -257,7 +258,7 @@ static bool H19AHEndsWith(const char* s, const char* suffix) {
     return true;
 }
 
-static const char* H19AHStripScheme(const char* s) {
+[[maybe_unused]] static const char* H19AHStripScheme(const char* s) {
     if (!s) return s;
     if (H19AGStarts(s, "disc:")) return s + 5;
     if (H19AGStarts(s, "ROM:/")) return s + 5;
@@ -265,8 +266,8 @@ static const char* H19AHStripScheme(const char* s) {
     return s;
 }
 
-static void H19AHMaybeDiscoverCode(const char* canonical) {
-    if (!canonical || g_h19ah_code_ready.load(std::memory_order_acquire))
+[[maybe_unused]] static void H19AHMaybeDiscoverCode(const char* canonical) {
+    if (!canonical)
         return;
 
     const char* p = H19AHStripScheme(canonical);
@@ -292,29 +293,54 @@ static void H19AHMaybeDiscoverCode(const char* canonical) {
     if (code_len == 0 || code_len >= kH19AHCodeCap)
         return;
 
+    char stem[kH19AHCodeCap]{};
+    for (size_t i = 0; i < code_len; ++i)
+        stem[i] = p[i];
+    stem[code_len] = '\0';
+
     H19AGLock(g_h19ah_code_lock);
 
-    if (!g_h19ah_code_ready.load(std::memory_order_relaxed)) {
-        for (size_t i = 0; i < code_len; ++i)
-            g_h19ah_code[i] = p[i];
-        g_h19ah_code[code_len] = '\0';
+    for (size_t i = 0; i < g_h19ah_stem_count; ++i) {
+        if (H19AGEq(g_h19ah_stems[i], stem)) {
+            H19AGUnlock(g_h19ah_code_lock);
+            return;
+        }
+    }
 
-        g_h19ah_code_ready.store(true, std::memory_order_release);
+    if (g_h19ah_stem_count < kH19AHStemCap) {
+        H19AGCopy(g_h19ah_stems[g_h19ah_stem_count],
+                  kH19AHCodeCap,
+                  stem);
+        ++g_h19ah_stem_count;
 
-        Logging.Log("[NSC:H19AH] DISCOVER code=%s canonical=%s",
-                    g_h19ah_code, canonical);
+        Logging.Log("[NSC:H19AI] DISCOVER_STEM stem=%s canonical=%s count=%u",
+                    stem,
+                    canonical,
+                    static_cast<unsigned>(g_h19ah_stem_count));
     }
 
     H19AGUnlock(g_h19ah_code_lock);
 }
 
-static bool H19AHRelevant(const char* key) {
-    if (!key || !g_h19ah_code_ready.load(std::memory_order_acquire))
+[[maybe_unused]] static bool H19AHRelevant(const char* key) {
+    if (!key)
         return false;
-    return H19AHContains(key, g_h19ah_code);
+
+    bool relevant = false;
+
+    H19AGLock(g_h19ah_code_lock);
+    for (size_t i = 0; i < g_h19ah_stem_count; ++i) {
+        if (H19AHContains(key, g_h19ah_stems[i])) {
+            relevant = true;
+            break;
+        }
+    }
+    H19AGUnlock(g_h19ah_code_lock);
+
+    return relevant;
 }
 
-static bool H19AHMarkSeen(const char* kind, const char* key) {
+[[maybe_unused]] static bool H19AHMarkSeen(const char* kind, const char* key) {
     if (!kind || !key) return false;
 
     bool fresh = false;
@@ -339,7 +365,7 @@ static bool H19AHMarkSeen(const char* kind, const char* key) {
     return fresh;
 }
 
-static void H19AHTraceLoaded(const char* path) {
+[[maybe_unused]] static void H19AHTraceLoaded(const char* path) {
     H19AHMaybeDiscoverCode(path);
 
     if (!H19AHRelevant(path))
@@ -349,7 +375,7 @@ static void H19AHTraceLoaded(const char* path) {
         Logging.Log("[NSC:H19AH] LOADED path=%s", path);
 }
 
-static void H19AHTraceRegistry(void* registry,
+[[maybe_unused]] static void H19AHTraceRegistry(void* registry,
                                const char* key,
                                void* exact_result,
                                void* final_result,
@@ -1460,6 +1486,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AG] READY adaptive=1 success_keys=1 loaded_paths=1 alias_cache=1 unresolved_only=1 hardcoded_id=0 hardcoded_code=0");
     Logging.Log("[NSC:H19AH] READY scoped_graph=1 runtime_code_discovery=1 exact=1 cache=1 transform=1 miss=1 loaded=1 hardcoded_id=0 hardcoded_code=0");
     Logging.Log("[NSC:H19AHB] READY build_fix=forward_decls+unused_annotation runtime_semantics=unchanged");
+    Logging.Log("[NSC:H19AI] READY multi_stem_scope=1 stem_cap=16 hardcoded_id=0 hardcoded_code=0");
     return true;
 }
 
