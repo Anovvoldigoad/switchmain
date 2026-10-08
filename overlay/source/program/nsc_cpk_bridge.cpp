@@ -847,6 +847,8 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
 
             char h19ajb_combo[kH19AJBPathCap]{};
             char h19ajb_anmofs[kH19AJBPathCap]{};
+            char h19ak_prm[kH19AJBPathCap]{};
+            char h19ak_prm_load[kH19AJBPathCap]{};
 
             const bool combo_ok =
                 H19AJBMakeActionPath(h19ajb_stem,
@@ -859,6 +861,17 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
                                      h19ajb_anmofs,
                                      sizeof(h19ajb_anmofs));
 
+            const bool h19ak_prm_ok =
+                H19AJBMakeActionPath(h19ajb_stem,
+                                     "prm.bin.xfbin",
+                                     h19ak_prm,
+                                     sizeof(h19ak_prm));
+            const bool h19ak_prm_load_ok =
+                H19AJBMakeActionPath(h19ajb_stem,
+                                     "prm_load.bin.xfbin",
+                                     h19ak_prm_load,
+                                     sizeof(h19ak_prm_load));
+
             Logging.Log("[NSC:H19AJB] PREFETCH_ATTEMPT stem=%s attempt=%u manager=%p options=%p combo=%s anmofs=%s",
                         h19ajb_stem,
                         h19ajb_attempt,
@@ -869,6 +882,8 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
 
             void* combo_req = nullptr;
             void* anmofs_req = nullptr;
+            void* h19ak_prm_req = nullptr;
+            void* h19ak_prm_load_req = nullptr;
 
             if (combo_ok) {
                 Logging.Log("[NSC:H19AJB] NATIVE_REQ_BEGIN stem=%s family=comboPrm path=%s",
@@ -885,6 +900,35 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
                 Logging.Log("[NSC:H19AJB] NATIVE_REQ_RET stem=%s family=anmofs path=%s result=%p",
                             h19ajb_stem, h19ajb_anmofs, anmofs_req);
             }
+
+            Logging.Log("[NSC:H19AK] PREFETCH_ATTEMPT stem=%s manager=%p options=%p prm=%s prm_load=%s",
+                        h19ajb_stem,
+                        manager,
+                        options,
+                        h19ak_prm_ok ? h19ak_prm : "<build-fail>",
+                        h19ak_prm_load_ok ? h19ak_prm_load : "<build-fail>");
+
+            if (h19ak_prm_ok) {
+                Logging.Log("[NSC:H19AK] NATIVE_REQ_BEGIN stem=%s family=prm path=%s",
+                            h19ajb_stem, h19ak_prm);
+                h19ak_prm_req = H19AJBNativeRequest(manager, h19ak_prm, options);
+                Logging.Log("[NSC:H19AK] NATIVE_REQ_RET stem=%s family=prm path=%s result=%p",
+                            h19ajb_stem, h19ak_prm, h19ak_prm_req);
+            }
+
+            if (h19ak_prm_load_ok) {
+                Logging.Log("[NSC:H19AK] NATIVE_REQ_BEGIN stem=%s family=prm_load path=%s",
+                            h19ajb_stem, h19ak_prm_load);
+                h19ak_prm_load_req = H19AJBNativeRequest(manager, h19ak_prm_load, options);
+                Logging.Log("[NSC:H19AK] NATIVE_REQ_RET stem=%s family=prm_load path=%s result=%p",
+                            h19ajb_stem, h19ak_prm_load, h19ak_prm_load_req);
+            }
+
+            Logging.Log("[NSC:H19AK] PREFETCH_RESULT stem=%s accepted=%u prm_req=%p prm_load_req=%p",
+                        h19ajb_stem,
+                        (h19ak_prm_ok && h19ak_prm_load_ok && h19ak_prm_req && h19ak_prm_load_req) ? 1u : 0u,
+                        h19ak_prm_req,
+                        h19ak_prm_load_req);
 
             const bool accepted = combo_ok && anmofs_ok && combo_req && anmofs_req;
             H19AJBFinishAttempt(h19ajb_stem, accepted);
@@ -1730,6 +1774,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AHB] READY build_fix=forward_decls+unused_annotation runtime_semantics=unchanged");
     Logging.Log("[NSC:H19AI] READY multi_stem_scope=1 stem_cap=16 hardcoded_id=0 hardcoded_code=0");
     Logging.Log("[NSC:H19AJB] READY charsel_prefetch=1 families=comboPrm|anmofs retry_cap=3 hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AK] READY charsel_prm_prefetch=1 families=prm|prm_load hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
