@@ -619,6 +619,181 @@ static void H19AGObserveLoadedPath(const char* path) {
 }
 
 
+
+// ===========================================================================
+// R276H19AJB - generic charsel-correlated action-resource causal prefetch
+// Diagnostic only: if this proves scheduling, final fix must move back to the
+// native prm_load/resource-graph path rather than keeping charsel prefetch.
+// ===========================================================================
+
+static constexpr size_t kH19AJBStemCap = 32;
+static constexpr size_t kH19AJBStemLen = 32;
+static constexpr size_t kH19AJBPathCap = 128;
+static constexpr unsigned kH19AJBMaxAttempts = 3;
+
+struct H19AJBState {
+    char stem[kH19AJBStemLen];
+    unsigned attempts;
+    bool done;
+};
+
+static H19AJBState g_h19ajb_states[kH19AJBStemCap]{};
+static size_t g_h19ajb_state_count = 0;
+static std::atomic_flag g_h19ajb_lock = ATOMIC_FLAG_INIT;
+
+static bool H19AJBStarts(const char* s, const char* pfx) {
+    if (!s || !pfx) return false;
+    size_t i = 0;
+    while (pfx[i]) {
+        if (s[i] != pfx[i]) return false;
+        ++i;
+    }
+    return true;
+}
+
+static size_t H19AJBLen(const char* s) {
+    if (!s) return 0;
+    size_t n = 0;
+    while (n < kH19AJBPathCap - 1 && s[n]) ++n;
+    return n;
+}
+
+static bool H19AJBEnds(const char* s, const char* suffix) {
+    if (!s || !suffix) return false;
+    const size_t ns = H19AJBLen(s);
+    const size_t nx = H19AJBLen(suffix);
+    if (ns < nx) return false;
+    for (size_t i = 0; i < nx; ++i) {
+        if (s[ns - nx + i] != suffix[i]) return false;
+    }
+    return true;
+}
+
+static bool H19AJBEq(const char* a, const char* b) {
+    if (!a || !b) return false;
+    size_t i = 0;
+    while (a[i] && b[i]) {
+        if (a[i] != b[i]) return false;
+        ++i;
+    }
+    return a[i] == b[i];
+}
+
+static bool H19AJBCopy(char* dst, size_t cap, const char* src) {
+    if (!dst || cap == 0 || !src) return false;
+    size_t i = 0;
+    for (; i + 1 < cap && src[i]; ++i)
+        dst[i] = src[i];
+    dst[i] = '\0';
+    return src[i] == '\0';
+}
+
+static bool H19AJBExtractCharselStem(const char* path,
+                                     char* stem,
+                                     size_t stem_cap) {
+    static constexpr char kPrefix[] = "data/ui/max/crsel/c/";
+    static constexpr char kSuffix[] = "charsel.xfbin";
+
+    if (!path || !stem || stem_cap == 0)
+        return false;
+    if (!H19AJBStarts(path, kPrefix) || !H19AJBEnds(path, kSuffix))
+        return false;
+
+    const size_t np = H19AJBLen(kPrefix);
+    const size_t n  = H19AJBLen(path);
+    const size_t ns = H19AJBLen(kSuffix);
+    if (n <= np + ns)
+        return false;
+
+    const size_t stem_len = n - np - ns;
+    if (stem_len == 0 || stem_len >= stem_cap)
+        return false;
+
+    for (size_t i = 0; i < stem_len; ++i)
+        stem[i] = path[np + i];
+    stem[stem_len] = '\0';
+    return true;
+}
+
+static bool H19AJBMakeActionPath(const char* stem,
+                                 const char* suffix,
+                                 char* out,
+                                 size_t cap) {
+    static constexpr char kPrefix[] = "data/spc/";
+    if (!stem || !stem[0] || !suffix || !out || cap == 0)
+        return false;
+
+    size_t p = 0;
+    for (size_t i = 0; kPrefix[i]; ++i) {
+        if (p + 1 >= cap) return false;
+        out[p++] = kPrefix[i];
+    }
+    for (size_t i = 0; stem[i]; ++i) {
+        if (p + 1 >= cap) return false;
+        out[p++] = stem[i];
+    }
+    for (size_t i = 0; suffix[i]; ++i) {
+        if (p + 1 >= cap) return false;
+        out[p++] = suffix[i];
+    }
+    out[p] = '\0';
+    return true;
+}
+
+// Returns true when this charsel occurrence should attempt a prefetch.
+// attempt_out is 1-based. State is marked done only after accepted requests.
+static bool H19AJBBeginAttempt(const char* stem, unsigned* attempt_out) {
+    if (!stem || !stem[0] || !attempt_out)
+        return false;
+
+    H19AGLock(g_h19ajb_lock);
+
+    for (size_t i = 0; i < g_h19ajb_state_count; ++i) {
+        H19AJBState& st = g_h19ajb_states[i];
+        if (!H19AJBEq(st.stem, stem))
+            continue;
+
+        if (st.done || st.attempts >= kH19AJBMaxAttempts) {
+            H19AGUnlock(g_h19ajb_lock);
+            return false;
+        }
+
+        ++st.attempts;
+        *attempt_out = st.attempts;
+        H19AGUnlock(g_h19ajb_lock);
+        return true;
+    }
+
+    if (g_h19ajb_state_count >= kH19AJBStemCap) {
+        H19AGUnlock(g_h19ajb_lock);
+        return false;
+    }
+
+    H19AJBState& st = g_h19ajb_states[g_h19ajb_state_count++];
+    H19AJBCopy(st.stem, sizeof(st.stem), stem);
+    st.attempts = 1;
+    st.done = false;
+    *attempt_out = 1;
+
+    H19AGUnlock(g_h19ajb_lock);
+    return true;
+}
+
+static void H19AJBFinishAttempt(const char* stem, bool accepted) {
+    if (!stem || !stem[0]) return;
+
+    H19AGLock(g_h19ajb_lock);
+    for (size_t i = 0; i < g_h19ajb_state_count; ++i) {
+        H19AJBState& st = g_h19ajb_states[i];
+        if (H19AJBEq(st.stem, stem)) {
+            if (accepted)
+                st.done = true;
+            break;
+        }
+    }
+    H19AGUnlock(g_h19ajb_lock);
+}
+
 HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
     static uint32_t Callback(CpkPathArg* desc, uint32_t* out_bind_id, int priority) {
         const uint32_t original_result = Orig(desc, out_bind_id, priority);
@@ -653,8 +828,75 @@ HOOK_DEFINE_TRAMPOLINE(CharacodeGetterHook) {
 // Signature proven by v1.70 disassembly at 0x1206B4C:
 // x0=nuccFileLoadList manager, x1=path C string, x2=options pointer.
 HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
+    // Calls Orig() directly, intentionally bypassing this hook's Callback.
+    // Therefore injected action requests will NOT emit the normal P32 LOAD_REQ
+    // line from this callback. H19AJB emits its own NATIVE_REQ markers instead.
+    static void* H19AJBNativeRequest(void* manager,
+                                     const char* path,
+                                     const void* options) {
+        return Orig(manager, path, options);
+    }
+
     static void* Callback(void* manager, const char* path, const void* options) {
         void* result = Orig(manager, path, options);
+
+        char h19ajb_stem[kH19AJBStemLen]{};
+        unsigned h19ajb_attempt = 0;
+        if (H19AJBExtractCharselStem(path, h19ajb_stem, sizeof(h19ajb_stem)) &&
+            H19AJBBeginAttempt(h19ajb_stem, &h19ajb_attempt)) {
+
+            char h19ajb_combo[kH19AJBPathCap]{};
+            char h19ajb_anmofs[kH19AJBPathCap]{};
+
+            const bool combo_ok =
+                H19AJBMakeActionPath(h19ajb_stem,
+                                     "_comboPrm.xfbin",
+                                     h19ajb_combo,
+                                     sizeof(h19ajb_combo));
+            const bool anmofs_ok =
+                H19AJBMakeActionPath(h19ajb_stem,
+                                     "_anmofs.xfbin",
+                                     h19ajb_anmofs,
+                                     sizeof(h19ajb_anmofs));
+
+            Logging.Log("[NSC:H19AJB] PREFETCH_ATTEMPT stem=%s attempt=%u manager=%p options=%p combo=%s anmofs=%s",
+                        h19ajb_stem,
+                        h19ajb_attempt,
+                        manager,
+                        options,
+                        combo_ok ? h19ajb_combo : "<build-fail>",
+                        anmofs_ok ? h19ajb_anmofs : "<build-fail>");
+
+            void* combo_req = nullptr;
+            void* anmofs_req = nullptr;
+
+            if (combo_ok) {
+                Logging.Log("[NSC:H19AJB] NATIVE_REQ_BEGIN stem=%s family=comboPrm path=%s",
+                            h19ajb_stem, h19ajb_combo);
+                combo_req = H19AJBNativeRequest(manager, h19ajb_combo, options);
+                Logging.Log("[NSC:H19AJB] NATIVE_REQ_RET stem=%s family=comboPrm path=%s result=%p",
+                            h19ajb_stem, h19ajb_combo, combo_req);
+            }
+
+            if (anmofs_ok) {
+                Logging.Log("[NSC:H19AJB] NATIVE_REQ_BEGIN stem=%s family=anmofs path=%s",
+                            h19ajb_stem, h19ajb_anmofs);
+                anmofs_req = H19AJBNativeRequest(manager, h19ajb_anmofs, options);
+                Logging.Log("[NSC:H19AJB] NATIVE_REQ_RET stem=%s family=anmofs path=%s result=%p",
+                            h19ajb_stem, h19ajb_anmofs, anmofs_req);
+            }
+
+            const bool accepted = combo_ok && anmofs_ok && combo_req && anmofs_req;
+            H19AJBFinishAttempt(h19ajb_stem, accepted);
+
+            Logging.Log("[NSC:H19AJB] PREFETCH_RESULT stem=%s attempt=%u accepted=%u combo_req=%p anmofs_req=%p",
+                        h19ajb_stem,
+                        h19ajb_attempt,
+                        accepted ? 1u : 0u,
+                        combo_req,
+                        anmofs_req);
+        }
+
         if (IsInterestingPath(path) &&
             g_request_logs.fetch_add(1, std::memory_order_relaxed) < 256) {
             Logging.Log("[NSC:P32] LOAD_REQ manager=%p path=%s options=%p result=%p",
@@ -1487,6 +1729,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AH] READY scoped_graph=1 runtime_code_discovery=1 exact=1 cache=1 transform=1 miss=1 loaded=1 hardcoded_id=0 hardcoded_code=0");
     Logging.Log("[NSC:H19AHB] READY build_fix=forward_decls+unused_annotation runtime_semantics=unchanged");
     Logging.Log("[NSC:H19AI] READY multi_stem_scope=1 stem_cap=16 hardcoded_id=0 hardcoded_code=0");
+    Logging.Log("[NSC:H19AJB] READY charsel_prefetch=1 families=comboPrm|anmofs retry_cap=3 hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
