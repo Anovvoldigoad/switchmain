@@ -224,9 +224,9 @@ struct H19AHSeenEntry {
     char key[kH19AGKeyCap];
 };
 
-static char g_h19ah_code[kH19AHCodeCap]{};
-static std::atomic<bool> g_h19ah_code_ready{false};
-static std::atomic_flag g_h19ah_code_lock = ATOMIC_FLAG_INIT;
+[[maybe_unused]] static char g_h19ah_code[kH19AHCodeCap]{};
+[[maybe_unused]] static std::atomic<bool> g_h19ah_code_ready{false};
+[[maybe_unused]] static std::atomic_flag g_h19ah_code_lock = ATOMIC_FLAG_INIT;
 
 static H19AHSeenEntry g_h19ah_seen[kH19AHSeenCap]{};
 static size_t g_h19ah_seen_count = 0;
@@ -265,9 +265,229 @@ static const char* H19AHStripScheme(const char* s) {
     return s;
 }
 
+// ===========================================================================
+// R276H19AI — character-init-correlated resource graph
+//
+// H19AH incorrectly scoped to the first generic bod1 identity (1cmn).
+// H19AI does not assume a numeric custom-ID boundary and does not hardcode
+// a character code.
+//
+// Correlation:
+//   body identity -> candidate code
+//   native CharacodeGetter(id) -> id/code cache
+//   H19X initializer(id) -> activate matching code
+//
+// A code can also activate when BOTH:
+//   - its body identity has been observed, and
+//   - CharacodeGetter resolves that same code.
+//
+// This excludes common resource stems such as 1cmn unless they are actually
+// resolved as a character code.
+// ===========================================================================
+
+static constexpr size_t kH19AICodeCap = 32;
+static constexpr size_t kH19AIBodyCap = 64;
+static constexpr size_t kH19AICharMapCap = 96;
+static constexpr size_t kH19AIActiveCap = 16;
+
+struct H19AIBodyEntry {
+    char code[kH19AICodeCap];
+    char canonical[kH19AGKeyCap];
+};
+
+struct H19AICharEntry {
+    uint32_t id;
+    char code[kH19AICodeCap];
+    bool valid;
+};
+
+static H19AIBodyEntry g_h19ai_bodies[kH19AIBodyCap]{};
+static size_t g_h19ai_body_count = 0;
+static std::atomic_flag g_h19ai_body_lock = ATOMIC_FLAG_INIT;
+
+static H19AICharEntry g_h19ai_chars[kH19AICharMapCap]{};
+static size_t g_h19ai_char_count = 0;
+static std::atomic_flag g_h19ai_char_lock = ATOMIC_FLAG_INIT;
+
+static char g_h19ai_active[kH19AIActiveCap][kH19AICodeCap]{};
+static size_t g_h19ai_active_count = 0;
+static std::atomic_flag g_h19ai_active_lock = ATOMIC_FLAG_INIT;
+
+static std::atomic<uint32_t> g_h19ai_pending_id{0xFFFFFFFFu};
+
+static bool H19AIContains(const char* s, const char* needle) {
+    if (!s || !needle || !needle[0]) return false;
+    for (size_t i = 0; s[i]; ++i) {
+        size_t a = i;
+        size_t b = 0;
+        while (s[a] && needle[b] && s[a] == needle[b]) {
+            ++a;
+            ++b;
+        }
+        if (!needle[b]) return true;
+    }
+    return false;
+}
+
+static bool H19AIBodyKnown(const char* code, char* canonical, size_t cap) {
+    if (!code || !code[0]) return false;
+
+    bool found = false;
+    H19AGLock(g_h19ai_body_lock);
+    for (size_t i = 0; i < g_h19ai_body_count; ++i) {
+        if (H19AGEq(g_h19ai_bodies[i].code, code)) {
+            if (canonical && cap)
+                H19AGCopy(canonical, cap, g_h19ai_bodies[i].canonical);
+            found = true;
+            break;
+        }
+    }
+    H19AGUnlock(g_h19ai_body_lock);
+    return found;
+}
+
+static void H19AIObserveBody(const char* code, const char* canonical) {
+    if (!code || !code[0] || !canonical || !canonical[0]) return;
+
+    H19AGLock(g_h19ai_body_lock);
+
+    for (size_t i = 0; i < g_h19ai_body_count; ++i) {
+        if (H19AGEq(g_h19ai_bodies[i].code, code)) {
+            H19AGUnlock(g_h19ai_body_lock);
+            return;
+        }
+    }
+
+    if (g_h19ai_body_count < kH19AIBodyCap) {
+        auto& e = g_h19ai_bodies[g_h19ai_body_count++];
+        H19AGCopy(e.code, sizeof(e.code), code);
+        H19AGCopy(e.canonical, sizeof(e.canonical), canonical);
+    }
+
+    H19AGUnlock(g_h19ai_body_lock);
+}
+
+static bool H19AIIsActive(const char* code) {
+    if (!code || !code[0]) return false;
+
+    bool found = false;
+    H19AGLock(g_h19ai_active_lock);
+    for (size_t i = 0; i < g_h19ai_active_count; ++i) {
+        if (H19AGEq(g_h19ai_active[i], code)) {
+            found = true;
+            break;
+        }
+    }
+    H19AGUnlock(g_h19ai_active_lock);
+    return found;
+}
+
+static void H19AIActivateCode(uint32_t id, const char* code, const char* reason) {
+    if (!code || !code[0]) return;
+    if (H19AIIsActive(code)) return;
+
+    bool added = false;
+    H19AGLock(g_h19ai_active_lock);
+
+    bool duplicate = false;
+    for (size_t i = 0; i < g_h19ai_active_count; ++i) {
+        if (H19AGEq(g_h19ai_active[i], code)) {
+            duplicate = true;
+            break;
+        }
+    }
+
+    if (!duplicate && g_h19ai_active_count < kH19AIActiveCap) {
+        H19AGCopy(g_h19ai_active[g_h19ai_active_count++],
+                  kH19AICodeCap, code);
+        added = true;
+    }
+
+    H19AGUnlock(g_h19ai_active_lock);
+
+    if (added) {
+        char body[kH19AGKeyCap]{};
+        const bool body_known = H19AIBodyKnown(code, body, sizeof(body));
+
+        Logging.Log("[NSC:H19AI] ACTIVATE id=%u code=%s reason=%s body=%s",
+                    id,
+                    code,
+                    reason ? reason : "<none>",
+                    body_known ? body : "<unknown>");
+    }
+}
+
+static void H19AIObserveChar(uint32_t id, const char* code) {
+    if (!code || !code[0]) return;
+
+    H19AGLock(g_h19ai_char_lock);
+
+    bool updated = false;
+    for (size_t i = 0; i < g_h19ai_char_count; ++i) {
+        if (g_h19ai_chars[i].valid && g_h19ai_chars[i].id == id) {
+            H19AGCopy(g_h19ai_chars[i].code, sizeof(g_h19ai_chars[i].code), code);
+            updated = true;
+            break;
+        }
+    }
+
+    if (!updated && g_h19ai_char_count < kH19AICharMapCap) {
+        auto& e = g_h19ai_chars[g_h19ai_char_count++];
+        e.id = id;
+        e.valid = true;
+        H19AGCopy(e.code, sizeof(e.code), code);
+    }
+
+    H19AGUnlock(g_h19ai_char_lock);
+
+    if (H19AIBodyKnown(code, nullptr, 0))
+        H19AIActivateCode(id, code, "body+char");
+
+    const uint32_t pending =
+        g_h19ai_pending_id.load(std::memory_order_acquire);
+    if (pending == id)
+        H19AIActivateCode(id, code, "h19x+char");
+}
+
+static void H19AIActivateId(uint32_t id) {
+    g_h19ai_pending_id.store(id, std::memory_order_release);
+
+    char code[kH19AICodeCap]{};
+    bool found = false;
+
+    H19AGLock(g_h19ai_char_lock);
+    for (size_t i = 0; i < g_h19ai_char_count; ++i) {
+        if (g_h19ai_chars[i].valid && g_h19ai_chars[i].id == id) {
+            H19AGCopy(code, sizeof(code), g_h19ai_chars[i].code);
+            found = true;
+            break;
+        }
+    }
+    H19AGUnlock(g_h19ai_char_lock);
+
+    if (found)
+        H19AIActivateCode(id, code, "h19x-id");
+}
+
+static bool H19AIRelevant(const char* key) {
+    if (!key || !key[0]) return false;
+
+    bool relevant = false;
+    H19AGLock(g_h19ai_active_lock);
+    for (size_t i = 0; i < g_h19ai_active_count; ++i) {
+        if (H19AIContains(key, g_h19ai_active[i])) {
+            relevant = true;
+            break;
+        }
+    }
+    H19AGUnlock(g_h19ai_active_lock);
+
+    return relevant;
+}
+
+
 static void H19AHMaybeDiscoverCode(const char* canonical) {
-    if (!canonical || g_h19ah_code_ready.load(std::memory_order_acquire))
-        return;
+    if (!canonical) return;
 
     const char* p = H19AHStripScheme(canonical);
     if (!p || !H19AGStarts(p, "data/spc/"))
@@ -289,29 +509,19 @@ static void H19AHMaybeDiscoverCode(const char* canonical) {
         return;
 
     const size_t code_len = np - ns;
-    if (code_len == 0 || code_len >= kH19AHCodeCap)
+    if (code_len == 0 || code_len >= kH19AICodeCap)
         return;
 
-    H19AGLock(g_h19ah_code_lock);
+    char code[kH19AICodeCap]{};
+    for (size_t i = 0; i < code_len; ++i)
+        code[i] = p[i];
+    code[code_len] = '\0';
 
-    if (!g_h19ah_code_ready.load(std::memory_order_relaxed)) {
-        for (size_t i = 0; i < code_len; ++i)
-            g_h19ah_code[i] = p[i];
-        g_h19ah_code[code_len] = '\0';
-
-        g_h19ah_code_ready.store(true, std::memory_order_release);
-
-        Logging.Log("[NSC:H19AH] DISCOVER code=%s canonical=%s",
-                    g_h19ah_code, canonical);
-    }
-
-    H19AGUnlock(g_h19ah_code_lock);
+    H19AIObserveBody(code, canonical);
 }
 
 static bool H19AHRelevant(const char* key) {
-    if (!key || !g_h19ah_code_ready.load(std::memory_order_acquire))
-        return false;
-    return H19AHContains(key, g_h19ah_code);
+    return H19AIRelevant(key);
 }
 
 static bool H19AHMarkSeen(const char* kind, const char* key) {
@@ -346,7 +556,7 @@ static void H19AHTraceLoaded(const char* path) {
         return;
 
     if (H19AHMarkSeen("LOADED", path))
-        Logging.Log("[NSC:H19AH] LOADED path=%s", path);
+        Logging.Log("[NSC:H19AI] LOADED path=%s", path);
 }
 
 static void H19AHTraceRegistry(void* registry,
@@ -369,7 +579,7 @@ static void H19AHTraceRegistry(void* registry,
 
     if (exact_result != nullptr) {
         if (H19AHMarkSeen("EXACT", key))
-            Logging.Log("[NSC:H19AH] EXACT registry=%p key=%s result=%p",
+            Logging.Log("[NSC:H19AI] EXACT registry=%p key=%s result=%p",
                         registry, key, exact_result);
         return;
     }
@@ -380,7 +590,7 @@ static void H19AHTraceRegistry(void* registry,
         H19AGCopy(dedupe_kind, sizeof(dedupe_kind), resolved_mode);
 
         if (H19AHMarkSeen(dedupe_kind, key))
-            Logging.Log("[NSC:H19AH] RESOLVE mode=%s registry=%p key=%s alt=%s result=%p",
+            Logging.Log("[NSC:H19AI] RESOLVE mode=%s registry=%p key=%s alt=%s result=%p",
                         resolved_mode,
                         registry,
                         key,
@@ -390,7 +600,7 @@ static void H19AHTraceRegistry(void* registry,
     }
 
     if (H19AHMarkSeen("MISS", key))
-        Logging.Log("[NSC:H19AH] MISS registry=%p key=%s", registry, key);
+        Logging.Log("[NSC:H19AI] MISS registry=%p key=%s", registry, key);
 }
 
 
@@ -615,6 +825,7 @@ HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
 HOOK_DEFINE_TRAMPOLINE(CharacodeGetterHook) {
     static const char* Callback(uint32_t id) {
         const char* result = Orig(id);
+        H19AIObserveChar(id, result);
         if (id > kVanillaMaxCharId && result && *result) TrackCustomCode(id, result);
         if (id >= kFirstCustomCharId && g_char_logs.fetch_add(1, std::memory_order_relaxed) < 96) {
             Logging.Log("[NSC:P32] CHAR id=%u result=%p code=%s", id,
@@ -965,6 +1176,7 @@ HOOK_DEFINE_TRAMPOLINE(RealField20InitTraceHook) {
         }
 
         const uint32_t id_arg = static_cast<uint32_t>(a6);
+        H19AIActivateId(id_arg);
         const uint32_t n = g_h19x_init_logs.fetch_add(1, std::memory_order_relaxed);
 
         if (n < 256 || id_arg >= 281) {
@@ -1460,6 +1672,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AG] READY adaptive=1 success_keys=1 loaded_paths=1 alias_cache=1 unresolved_only=1 hardcoded_id=0 hardcoded_code=0");
     Logging.Log("[NSC:H19AH] READY scoped_graph=1 runtime_code_discovery=1 exact=1 cache=1 transform=1 miss=1 loaded=1 hardcoded_id=0 hardcoded_code=0");
     Logging.Log("[NSC:H19AHB] READY build_fix=forward_decls+unused_annotation runtime_semantics=unchanged");
+    Logging.Log("[NSC:H19AI] READY scope=charcode+x19x body_candidates=1 multi_code=1 hardcoded_id=0 hardcoded_code=0");
     return true;
 }
 
