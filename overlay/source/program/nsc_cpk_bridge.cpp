@@ -179,6 +179,233 @@ void LogFingerprintFail(const char* name, ptrdiff_t offset) {
                 static_cast<unsigned long>(offset), actual);
 }
 
+
+// ===========================================================================
+// R276H19AG - Adaptive Resource Compatibility Resolver
+// No hardcoded character ID/code/donor/resource identity.
+// ===========================================================================
+
+static constexpr size_t kH19AGKeyCap = 128;
+static constexpr size_t kH19AGAliasCap = 768;
+static constexpr size_t kH19AGUnresolvedCap = 256;
+
+struct H19AGAliasEntry {
+    char alias[kH19AGKeyCap];
+    char canonical[kH19AGKeyCap];
+    bool ambiguous;
+};
+
+static H19AGAliasEntry g_h19ag_aliases[kH19AGAliasCap]{};
+static size_t g_h19ag_alias_count = 0;
+static std::atomic_flag g_h19ag_alias_lock = ATOMIC_FLAG_INIT;
+
+static char g_h19ag_unresolved[kH19AGUnresolvedCap][kH19AGKeyCap]{};
+static size_t g_h19ag_unresolved_count = 0;
+static std::atomic_flag g_h19ag_unresolved_lock = ATOMIC_FLAG_INIT;
+
+static std::atomic<uint32_t> g_h19ag_registry_success{0};
+static std::atomic<uint32_t> g_h19ag_loaded_paths{0};
+static std::atomic<uint32_t> g_h19ag_cache_hits{0};
+static std::atomic<uint32_t> g_h19ag_transform_hits{0};
+
+static bool H19AGCopy(char* dst, size_t cap, const char* src) {
+    if (!dst || cap == 0 || !src) return false;
+    size_t i = 0;
+    for (; i + 1 < cap && src[i] != '\0'; ++i) dst[i] = src[i];
+    dst[i] = '\0';
+    return src[i] == '\0';
+}
+
+static bool H19AGEq(const char* a, const char* b) {
+    if (!a || !b) return false;
+    size_t i = 0;
+    while (a[i] && b[i]) {
+        if (a[i] != b[i]) return false;
+        ++i;
+    }
+    return a[i] == b[i];
+}
+
+static bool H19AGStarts(const char* s, const char* pfx) {
+    if (!s || !pfx) return false;
+    size_t i = 0;
+    while (pfx[i]) {
+        if (s[i] != pfx[i]) return false;
+        ++i;
+    }
+    return true;
+}
+
+static size_t H19AGLen(const char* s) {
+    if (!s) return 0;
+    size_t n = 0;
+    while (n < kH19AGKeyCap - 1 && s[n]) ++n;
+    return n;
+}
+
+static bool H19AGEndsXfbin(const char* s) {
+    static constexpr char kSuffix[] = ".xfbin";
+    constexpr size_t kSuffixLen = 6;
+    const size_t n = H19AGLen(s);
+    if (n < kSuffixLen) return false;
+    for (size_t i = 0; i < kSuffixLen; ++i) {
+        if (s[n - kSuffixLen + i] != kSuffix[i]) return false;
+    }
+    return true;
+}
+
+static bool H19AGMakeStripXfbin(const char* s, char* out, size_t cap) {
+    if (!s || !out || !H19AGEndsXfbin(s)) return false;
+    const size_t n = H19AGLen(s);
+    if (n < 6 || n - 6 + 1 > cap) return false;
+    size_t i = 0;
+    for (; i < n - 6; ++i) out[i] = s[i];
+    out[i] = '\0';
+    return true;
+}
+
+static bool H19AGMakeAddXfbin(const char* s, char* out, size_t cap) {
+    if (!s || !out) return false;
+    static constexpr char kSuffix[] = ".xfbin";
+    size_t p = 0;
+    for (; s[p] && p + 1 < cap; ++p) out[p] = s[p];
+    if (s[p] != '\0') return false;
+    for (size_t i = 0; kSuffix[i] && p + 1 < cap; ++i) out[p++] = kSuffix[i];
+    out[p] = '\0';
+    return true;
+}
+
+static bool H19AGMakePrefix(const char* pfx, const char* s, char* out, size_t cap) {
+    if (!pfx || !s || !out) return false;
+    size_t p = 0;
+    for (size_t i = 0; pfx[i] && p + 1 < cap; ++i) out[p++] = pfx[i];
+    for (size_t i = 0; s[i] && p + 1 < cap; ++i) out[p++] = s[i];
+    out[p] = '\0';
+    return true;
+}
+
+static void H19AGLock(std::atomic_flag& f) {
+    while (f.test_and_set(std::memory_order_acquire)) {}
+}
+
+static void H19AGUnlock(std::atomic_flag& f) {
+    f.clear(std::memory_order_release);
+}
+
+static void H19AGAddAlias(const char* alias, const char* canonical) {
+    if (!alias || !canonical || !alias[0] || !canonical[0]) return;
+    if (H19AGEq(alias, canonical)) return;
+
+    H19AGLock(g_h19ag_alias_lock);
+
+    for (size_t i = 0; i < g_h19ag_alias_count; ++i) {
+        if (!H19AGEq(g_h19ag_aliases[i].alias, alias)) continue;
+        if (!H19AGEq(g_h19ag_aliases[i].canonical, canonical))
+            g_h19ag_aliases[i].ambiguous = true;
+        H19AGUnlock(g_h19ag_alias_lock);
+        return;
+    }
+
+    if (g_h19ag_alias_count < kH19AGAliasCap) {
+        auto& e = g_h19ag_aliases[g_h19ag_alias_count++];
+        H19AGCopy(e.alias, sizeof(e.alias), alias);
+        H19AGCopy(e.canonical, sizeof(e.canonical), canonical);
+        e.ambiguous = false;
+    }
+
+    H19AGUnlock(g_h19ag_alias_lock);
+}
+
+static bool H19AGFindAlias(const char* alias, char* canonical, size_t cap) {
+    if (!alias || !canonical || cap == 0) return false;
+
+    bool found = false;
+    H19AGLock(g_h19ag_alias_lock);
+
+    for (size_t i = 0; i < g_h19ag_alias_count; ++i) {
+        const auto& e = g_h19ag_aliases[i];
+        if (!e.ambiguous && H19AGEq(e.alias, alias)) {
+            found = H19AGCopy(canonical, cap, e.canonical);
+            break;
+        }
+    }
+
+    H19AGUnlock(g_h19ag_alias_lock);
+    return found;
+}
+
+static void H19AGObserveCanonical(const char* canonical) {
+    if (!canonical || !canonical[0]) return;
+
+    char stripped[kH19AGKeyCap]{};
+    char added[kH19AGKeyCap]{};
+
+    if (H19AGStarts(canonical, "disc:data/"))
+        H19AGAddAlias(canonical + 5, canonical);
+
+    if (H19AGStarts(canonical, "/data/"))
+        H19AGAddAlias(canonical + 1, canonical);
+
+    if (H19AGStarts(canonical, "data/spc/"))
+        H19AGAddAlias(canonical + 9, canonical);
+
+    if (H19AGEndsXfbin(canonical)) {
+        if (H19AGMakeStripXfbin(canonical, stripped, sizeof(stripped))) {
+            H19AGAddAlias(stripped, canonical);
+
+            if (H19AGStarts(canonical, "data/spc/"))
+                H19AGAddAlias(stripped + 9, canonical);
+
+            if (H19AGStarts(canonical, "disc:data/"))
+                H19AGAddAlias(stripped + 5, canonical);
+
+            if (H19AGStarts(canonical, "/data/"))
+                H19AGAddAlias(stripped + 1, canonical);
+        }
+    } else {
+        if (H19AGMakeAddXfbin(canonical, added, sizeof(added)))
+            H19AGAddAlias(added, canonical);
+    }
+}
+
+static void H19AGObserveRegistrySuccess(const char* key) {
+    if (!key || !key[0]) return;
+    g_h19ag_registry_success.fetch_add(1, std::memory_order_relaxed);
+    H19AGObserveCanonical(key);
+}
+
+static void H19AGObserveLoadedPath(const char* path) {
+    if (!path || !path[0]) return;
+    g_h19ag_loaded_paths.fetch_add(1, std::memory_order_relaxed);
+    H19AGObserveCanonical(path);
+}
+
+static void H19AGLogUnresolvedOnce(void* registry, const char* key) {
+    if (!key || !key[0]) return;
+
+    bool fresh = false;
+    H19AGLock(g_h19ag_unresolved_lock);
+
+    for (size_t i = 0; i < g_h19ag_unresolved_count; ++i) {
+        if (H19AGEq(g_h19ag_unresolved[i], key)) {
+            H19AGUnlock(g_h19ag_unresolved_lock);
+            return;
+        }
+    }
+
+    if (g_h19ag_unresolved_count < kH19AGUnresolvedCap) {
+        H19AGCopy(g_h19ag_unresolved[g_h19ag_unresolved_count++],
+                  kH19AGKeyCap, key);
+        fresh = true;
+    }
+
+    H19AGUnlock(g_h19ag_unresolved_lock);
+
+    if (fresh)
+        Logging.Log("[NSC:H19AG] UNRESOLVED registry=%p key=%s", registry, key);
+}
+
+
 HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
     static uint32_t Callback(CpkPathArg* desc, uint32_t* out_bind_id, int priority) {
         const uint32_t original_result = Orig(desc, out_bind_id, priority);
@@ -286,6 +513,8 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadStatusHook) {
             g_status_transition_logs.fetch_add(1, std::memory_order_relaxed) < 1024) {
             Logging.Log("[NSC:P32] LOAD_STATUS manager=%p path=%s first=%u prev=%u status=%u",
                         manager, path ? path : "<null>", first ? 1u : 0u, previous, status);
+        if (status == 2 && path)
+            H19AGObserveLoadedPath(path);
         }
         return status;
     }
@@ -727,6 +956,8 @@ HOOK_DEFINE_TRAMPOLINE(H19ZParentHook) {
 HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
     static void* Callback(void* registry, const char* key) {
         void* result = Orig(registry, key);
+        if (result != nullptr)
+            H19AGObserveRegistrySuccess(key);
 
         char text[65]{};
         if (key) {
@@ -776,43 +1007,72 @@ HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
             }
         }
 
-        if (h19ab_match) {
+        if (false && h19ab_match) {
             Logging.Log("[NSC:H19AB] REG registry=%p keyptr=%p key=%s result=%p",
                         registry, key, key ? text : "<null>", result);
         }
 
-        // R276H19AE: fixture-specific causal substitution test.
-        // If the exact proven bare-key miss occurs, retry the exact proven
-        // prefixed identity and return that native object when available.
-        // Diagnostic only: this is NOT the final generic architecture.
+        // R276H19AG adaptive compatibility path.
         if (result == nullptr && key) {
-            const char target[] = "mtobbod1.xfbin";
-            bool exact = true;
-            size_t i = 0;
-            for (; target[i] != '\0'; ++i) {
-                if (text[i] != target[i]) {
-                    exact = false;
-                    break;
-                }
+            auto accept_candidate = [&](const char* candidate, bool cache_hit) {
+                if (result != nullptr || !candidate || candidate[0] == '\0')
+                    return;
+
+                void* native = Orig(registry, candidate);
+                if (native == nullptr)
+                    return;
+
+                result = native;
+                H19AGAddAlias(key, candidate);
+                H19AGObserveRegistrySuccess(candidate);
+
+                if (cache_hit)
+                    g_h19ag_cache_hits.fetch_add(1, std::memory_order_relaxed);
+                else
+                    g_h19ag_transform_hits.fetch_add(1, std::memory_order_relaxed);
+            };
+
+            char cached[kH19AGKeyCap]{};
+            if (H19AGFindAlias(key, cached, sizeof(cached)))
+                accept_candidate(cached, true);
+
+            const bool ends_xfbin = H19AGEndsXfbin(key);
+
+            if (result == nullptr && !H19AGStarts(key, "data/") &&
+                !H19AGStarts(key, "/data/") &&
+                !H19AGStarts(key, "disc:") &&
+                ends_xfbin) {
+                char candidate[kH19AGKeyCap]{};
+                if (H19AGMakePrefix("data/spc/", key, candidate, sizeof(candidate)))
+                    accept_candidate(candidate, false);
             }
 
-            if (exact && text[i] == '\0') {
-                const char prefixed[] = "data/spc/mtobbod1.xfbin";
-
-                Logging.Log("[NSC:H19AE] RETRY_BEGIN key=%s alt=%s",
-                            text, prefixed);
-
-                void* alt = Orig(registry, prefixed);
-
-                Logging.Log("[NSC:H19AE] RETRY_RESULT key=%s alt=%s result=%p",
-                            text, prefixed, alt);
-
-                if (alt != nullptr) {
-                    result = alt;
-                    Logging.Log("[NSC:H19AE] SUBSTITUTE key=%s result=%p",
-                                text, result);
-                }
+            if (result == nullptr && H19AGStarts(key, "data/") && !ends_xfbin) {
+                char candidate[kH19AGKeyCap]{};
+                if (H19AGMakeAddXfbin(key, candidate, sizeof(candidate)))
+                    accept_candidate(candidate, false);
             }
+
+            if (result == nullptr && H19AGStarts(key, "data/") && ends_xfbin) {
+                char candidate[kH19AGKeyCap]{};
+                if (H19AGMakeStripXfbin(key, candidate, sizeof(candidate)))
+                    accept_candidate(candidate, false);
+            }
+
+            if (result == nullptr && H19AGStarts(key, "/data/"))
+                accept_candidate(key + 1, false);
+
+            if (result == nullptr && H19AGStarts(key, "disc:data/"))
+                accept_candidate(key + 5, false);
+
+            if (result == nullptr && H19AGStarts(key, "data/")) {
+                char candidate[kH19AGKeyCap]{};
+                if (H19AGMakePrefix("disc:", key, candidate, sizeof(candidate)))
+                    accept_candidate(candidate, false);
+            }
+
+            if (result == nullptr)
+                H19AGLogUnresolvedOnce(registry, key);
         }
 
         // R276H19AC: diagnostic-only key normalization probe.\n        if (result == nullptr && key) {\n            size_t klen = 0;\n            bool has_sep = false;\n            while (klen < 80 && key[klen] != '\0') {\n                if (key[klen] == '/' || key[klen] == ':') has_sep = true;\n                ++klen;\n            }\n            const char suffix[] = ".xfbin";\n            constexpr size_t suffix_len = 6;\n            bool ends_xfbin = klen > suffix_len;\n            if (ends_xfbin) {\n                for (size_t i=0;i<suffix_len;++i) if (key[klen-suffix_len+i] != suffix[i]) { ends_xfbin=false; break; }\n            }\n            if (!has_sep && ends_xfbin) {\n                char pfxext[96]{}; char strip[96]{}; char pfxstrip[96]{};\n                const char prefix[] = "data/spc/"; constexpr size_t plen=9;\n                const size_t blen=klen-suffix_len;\n                size_t p=0; for(;p<plen && p+1<sizeof(pfxext);++p) pfxext[p]=prefix[p];\n                for(size_t i=0;i<klen && p+1<sizeof(pfxext);++i,++p) pfxext[p]=key[i];\n                size_t s=0; for(;s<blen && s+1<sizeof(strip);++s) strip[s]=key[s];\n                p=0; for(;p<plen && p+1<sizeof(pfxstrip);++p) pfxstrip[p]=prefix[p];\n                for(size_t i=0;i<blen && p+1<sizeof(pfxstrip);++i,++p) pfxstrip[p]=key[i];\n                void* a=Orig(registry,pfxext); void* b=Orig(registry,strip); void* c=Orig(registry,pfxstrip);\n                Logging.Log("[NSC:H19AC] PROBE key=%s pfxext=%s:%p strip=%s:%p pfxstrip=%s:%p",\n                            text,pfxext,a,strip,b,pfxstrip,c);\n            }\n        }\n\n
@@ -845,7 +1105,7 @@ HOOK_DEFINE_TRAMPOLINE(H19YRegistryLookupHook) {
             }
         }
 
-        if (interesting && n < 64) {
+        if (false && interesting && n < 64) {
             Logging.Log("[NSC:H19Y] REG n=%u registry=%p keyptr=%p key=%s result=%p",
                         n, registry, key, key ? text : "<null>", result);
         }
@@ -996,7 +1256,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AB] READY uncapped_filter=mtob|bod1 reg=0x1207b38");
     Logging.Log("[NSC:H19AC] READY bare_xfbin_probe=1 forms=pfxext|strip|pfxstrip");
     Logging.Log("[NSC:H19AD] READY exact_prefix_probe=mtobbod1.xfbin->data/spc/mtobbod1.xfbin");
-    Logging.Log("[NSC:H19AE] READY exact_substitute=mtobbod1.xfbin->data/spc/mtobbod1.xfbin diagnostic_only=1");
+    Logging.Log("[NSC:H19AG] READY adaptive=1 success_keys=1 loaded_paths=1 alias_cache=1 unresolved_only=1 hardcoded_id=0 hardcoded_code=0");
     return true;
 }
 
