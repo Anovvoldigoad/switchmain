@@ -208,6 +208,14 @@ static std::atomic<uint32_t> g_h19ag_loaded_paths{0};
 static std::atomic<uint32_t> g_h19ag_cache_hits{0};
 static std::atomic<uint32_t> g_h19ag_transform_hits{0};
 
+// R276H19AHB: compile-order fix only.
+static bool H19AGCopy(char* dst, size_t cap, const char* src);
+static bool H19AGEq(const char* a, const char* b);
+static bool H19AGStarts(const char* s, const char* pfx);
+static size_t H19AGLen(const char* s);
+static void H19AGLock(std::atomic_flag& f);
+static void H19AGUnlock(std::atomic_flag& f);
+
 static constexpr size_t kH19AHCodeCap = 32;
 static constexpr size_t kH19AHSeenCap = 384;
 
@@ -559,7 +567,7 @@ static void H19AGObserveLoadedPath(const char* path) {
     H19AHTraceLoaded(path);
 }
 
-static void H19AGLogUnresolvedOnce(void* registry, const char* key) {
+[[maybe_unused]] static void H19AGLogUnresolvedOnce(void* registry, const char* key) {
     if (!key || !key[0]) return;
 
     bool fresh = false;
@@ -1451,6 +1459,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AD] READY exact_prefix_probe=mtobbod1.xfbin->data/spc/mtobbod1.xfbin");
     Logging.Log("[NSC:H19AG] READY adaptive=1 success_keys=1 loaded_paths=1 alias_cache=1 unresolved_only=1 hardcoded_id=0 hardcoded_code=0");
     Logging.Log("[NSC:H19AH] READY scoped_graph=1 runtime_code_discovery=1 exact=1 cache=1 transform=1 miss=1 loaded=1 hardcoded_id=0 hardcoded_code=0");
+    Logging.Log("[NSC:H19AHB] READY build_fix=forward_decls+unused_annotation runtime_semantics=unchanged");
     return true;
 }
 
