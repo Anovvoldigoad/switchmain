@@ -1760,6 +1760,61 @@ HOOK_DEFINE_INLINE(H19AMCallsiteB) {
     }
 };
 
+
+// R276H19AN: capture the real game's X30/LR inside main+0x436018 before
+// any BL instruction executes.
+//
+// Static v1.70 prologue:
+//   +0x00  D10303FF  SUB SP,SP,#0xC0
+//   +0x04  A9067BFD  STP X29,X30,[SP,#0x60]
+//   +0x08  A9076FFC  STP X28,X27,[SP,#0x70]
+//   +0x0C  A90867FA  STP X26,X25,[SP,#0x80]
+//   +0x10  A9095FF8  STP X24,X23,[SP,#0x90]
+//   +0x14  A90A57F6  STP X22,X21,[SP,#0xA0]
+//   +0x18  A90B4FF4  STP X20,X19,[SP,#0xB0]
+//   +0x1C  52863908  MOV W8,#0x31C8
+//
+// Hooking +0x1C preserves the original X30 from the actual game caller.
+// The replaced instruction is faithfully re-emulated by writing W8=0x31C8.
+// No pointer fabrication, donor alias, or character-specific mutation.
+static std::atomic<uint32_t> g_h19an_logs{0};
+
+HOOK_DEFINE_INLINE(H19ANRealCallerLRHook) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        ctx->X[8] = 0x31C8u;
+
+        const uint32_t n =
+            g_h19an_logs.fetch_add(1, std::memory_order_relaxed);
+
+        Logging.Log(
+            "[NSC:H19AN] CALL n=%u "
+            "lr=%p x0=%p x1=%p x2=%p x3=%p x4=%p x5=%p x6=%p x7=%p "
+            "x19=%p x20=%p x21=%p x22=%p x23=%p x24=%p x25=%p x26=%p x27=%p x28=%p",
+            n,
+            reinterpret_cast<void*>(ctx->X[30]),
+            reinterpret_cast<void*>(ctx->X[0]),
+            reinterpret_cast<void*>(ctx->X[1]),
+            reinterpret_cast<void*>(ctx->X[2]),
+            reinterpret_cast<void*>(ctx->X[3]),
+            reinterpret_cast<void*>(ctx->X[4]),
+            reinterpret_cast<void*>(ctx->X[5]),
+            reinterpret_cast<void*>(ctx->X[6]),
+            reinterpret_cast<void*>(ctx->X[7]),
+            reinterpret_cast<void*>(ctx->X[19]),
+            reinterpret_cast<void*>(ctx->X[20]),
+            reinterpret_cast<void*>(ctx->X[21]),
+            reinterpret_cast<void*>(ctx->X[22]),
+            reinterpret_cast<void*>(ctx->X[23]),
+            reinterpret_cast<void*>(ctx->X[24]),
+            reinterpret_cast<void*>(ctx->X[25]),
+            reinterpret_cast<void*>(ctx->X[26]),
+            reinterpret_cast<void*>(ctx->X[27]),
+            reinterpret_cast<void*>(ctx->X[28]));
+    }
+};
+
 bool InstallTraceHooks() {
     static constexpr uint32_t kCharExpected[] = {
         0xF000EA68, 0xF9424508, 0xF9760908, 0x2A0003E1, 0xF9409500, 0x1410AC93,
@@ -1835,6 +1890,10 @@ bool InstallTraceHooks() {
         0xAA1503E2,
     };
 
+    static constexpr uint32_t kH19ANExpected[] = {
+        0x52863908,
+    };
+
     bool ok = true;
     if (!MatchWords(kCharacodeGetterOffset, kCharExpected)) {
         LogFingerprintFail("CHAR", kCharacodeGetterOffset); ok = false;
@@ -1887,6 +1946,9 @@ bool InstallTraceHooks() {
     if (!MatchWords(0x7EBE48, kH19AMCallBExpected)) {
         LogFingerprintFail("H19AM_CALL_B", 0x7EBE48); ok = false;
     }
+    if (!MatchWords(0x436034, kH19ANExpected)) {
+        LogFingerprintFail("H19AN_CALLER_LR", 0x436034); ok = false;
+    }
     if (!ok) return false;
 
     CharacodeGetterHook::InstallAtOffset(kCharacodeGetterOffset);
@@ -1903,9 +1965,9 @@ bool InstallTraceHooks() {
     Field20InitTraceHook::InstallAtOffset(0x433258);
     // R276H19X: H19W lookup hook superseded by H19X at the same offset.
     Logging.Log("[NSC:H19W] READY init=1 off=0x433258 lookup=0 superseded=H19X");
-    RealField20InitTraceHook::InstallAtOffset(0x436018);
+    // R276H19AN: H19X entry trampoline disabled so original caller LR is preserved.
     H19XLookupTraceHook::InstallAtOffset(0x120A3D4);
-    Logging.Log("[NSC:H19X] READY init=1 off=0x436018 lookup=1 off=0x120a3d4");
+    Logging.Log("[NSC:H19X] READY init=0 superseded=H19AN caller_lr=1 lookup=1 off=0x120a3d4");
     H19YRegistryLookupHook::InstallAtOffset(0x1207B38);
     Logging.Log("[NSC:H19Y] READY reg=1 off=0x1207b38");
     H19ZParentHook::InstallAtOffset(0x7EB94C);
@@ -1926,6 +1988,8 @@ bool InstallTraceHooks() {
     H19AMCallsiteA::InstallAtOffset(0x7E7EBC);
     H19AMCallsiteB::InstallAtOffset(0x7EBE48);
     Logging.Log("[NSC:H19AM] READY x3_producer_trace=1 callsites=0x7e7ebc|0x7ebe48 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    H19ANRealCallerLRHook::InstallAtOffset(0x436034);
+    Logging.Log("[NSC:H19AN] READY real_caller_lr=1 hook=0x436034 original=mov_w8_31c8 h19x_entry_trampoline=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
