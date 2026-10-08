@@ -957,6 +957,59 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
                         h19ak_prm_req,
                         h19ak_prm_load_req);
 
+            // R276H19AL: diagnostic child-graph prefetch. Native control shows
+            // these per-character families present in the registry while the custom
+            // stem has none after prm/prm_load are already loaded. This is a causal
+            // test only; final architecture must consume the native prm_load graph.
+            if (h19ak_prm_load_req) {
+                static constexpr const char* kH19ALChildSuffixes[] = {
+                    "acc1.xfbin",
+                    "aws.xfbin",
+                    "bod1c.xfbin",
+                    "bod1l.xfbin",
+                    "bod1s.xfbin",
+                    "eff1.xfbin",
+                    "skl1.xfbin",
+                    "skl3.xfbin",
+                    "spl1.xfbin",
+                    "spl1_fin01.xfbin",
+                };
+
+                uint32_t h19al_req_nonnull = 0;
+                uint32_t h19al_path_ok = 0;
+                for (size_t h19al_i = 0;
+                     h19al_i < (sizeof(kH19ALChildSuffixes) / sizeof(kH19ALChildSuffixes[0]));
+                     ++h19al_i) {
+                    char h19al_path[kH19AJBPathCap]{};
+                    const char* h19al_suffix = kH19ALChildSuffixes[h19al_i];
+                    const bool h19al_ok =
+                        H19AJBMakeActionPath(h19ajb_stem,
+                                             h19al_suffix,
+                                             h19al_path,
+                                             sizeof(h19al_path));
+                    if (!h19al_ok) {
+                        Logging.Log("[NSC:H19AL] CHILD_PATH_FAIL stem=%s suffix=%s",
+                                    h19ajb_stem, h19al_suffix);
+                        continue;
+                    }
+                    ++h19al_path_ok;
+
+                    Logging.Log("[NSC:H19AL] CHILD_REQ_BEGIN stem=%s suffix=%s path=%s",
+                                h19ajb_stem, h19al_suffix, h19al_path);
+                    void* h19al_req =
+                        H19AJBNativeRequest(manager, h19al_path, options);
+                    if (h19al_req) ++h19al_req_nonnull;
+                    Logging.Log("[NSC:H19AL] CHILD_REQ_RET stem=%s suffix=%s path=%s result=%p",
+                                h19ajb_stem, h19al_suffix, h19al_path, h19al_req);
+                }
+
+                Logging.Log("[NSC:H19AL] CHILD_PREFETCH_RESULT stem=%s path_ok=%u req_nonnull=%u total=%u",
+                            h19ajb_stem,
+                            h19al_path_ok,
+                            h19al_req_nonnull,
+                            static_cast<uint32_t>(sizeof(kH19ALChildSuffixes) / sizeof(kH19ALChildSuffixes[0])));
+            }
+
             const bool accepted = combo_ok && anmofs_ok && combo_req && anmofs_req;
             H19AJBFinishAttempt(h19ajb_stem, accepted);
 
@@ -1803,6 +1856,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AJB] READY charsel_prefetch=1 families=comboPrm|anmofs retry_cap=3 hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AK] READY charsel_prm_prefetch=1 families=prm|prm_load hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AKB] READY prm_load_namespace=spcload prm_namespace=spc hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AL] READY child_graph_prefetch=1 families=acc1|aws|bod1c|bod1l|bod1s|eff1|skl1|skl3|spl1|spl1_fin01 hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
