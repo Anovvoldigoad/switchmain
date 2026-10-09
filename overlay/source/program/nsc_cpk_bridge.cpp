@@ -2178,7 +2178,7 @@ static void H19AUDumpContext(uint64_t main_base,
         reinterpret_cast<void*>(pc));
 }
 
-static void H19AUScanE50Refs(uint64_t lr_after_vfunc) {
+[[maybe_unused]] static void H19AUScanE50Refs(uint64_t lr_after_vfunc) {
     uint32_t expected = 0;
     if (!g_h19au_scanned.compare_exchange_strong(
             expected, 1, std::memory_order_relaxed)) {
@@ -2814,6 +2814,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19ASB] READY trampoline_cleanup=1 disabled=H19Z|H19AA|H19AM_A|H19AM_B freed_hooks=4 keep=H19AN|H19AQ|H19AS mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19ATC] READY factory_side_aux_trace=1 vfunc_site_hooks=0 field_e50_trace=1 vfunc48_pointer_trace=1 h19as_factory_trace=1 trampoline_delta_from_h19atb=-1 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AV] READY e50_init_cluster_dump=1 hooks_added=0 broad_scan=0 ranges=0x759f80-0x75a0a0|0x75c880-0x75cab0 target_pair=0x75c994|0x75c9c0 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AVB] READY build_fix_unused_h19au=1 runtime_delta=0 h19au_scan_retained=1 h19au_scan_called=0 mutation=none diagnostic_only=1");
     Logging.Log("[NSC:H19AU] READY e50_writer_scan=0 superseded=H19AV hooks_added=0 scan_fields=E50|E54 scan_ops=STRW|LDRW|STRX|LDRX context_writers=1 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
     H19ASFactoryPost::InstallAtOffset(0x794944);
