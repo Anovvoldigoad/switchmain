@@ -2261,8 +2261,8 @@ static void H19ATDumpVFuncCode(uint64_t fn) {
 
     if (!should_dump) return;
 
-    const uint64_t start = fn - 0x20ULL;
-    const uint64_t end   = fn + 0x180ULL;
+    const uint64_t start = fn;
+    const uint64_t end   = fn + 0x08ULL;
 
     Logging.Log("[NSC:H19AT] VFUNC_BASE fn=%p range=%p..%p",
                 reinterpret_cast<void*>(fn),
@@ -2297,6 +2297,8 @@ HOOK_DEFINE_INLINE(H19ATVFunc48Pre) {
         const uint64_t slot = ctx->X[22];
         const uint64_t actor =
             slot - 0x11660ULL - static_cast<uint64_t>(idx) * 8ULL;
+        const uint32_t field_e50 =
+            *reinterpret_cast<const volatile uint32_t*>(actor + 0xE50ULL);
         const uint32_t id =
             *reinterpret_cast<const volatile uint32_t*>(actor + 0xE54ULL);
 
@@ -2304,10 +2306,11 @@ HOOK_DEFINE_INLINE(H19ATVFunc48Pre) {
             g_h19at_pre_logs.fetch_add(1, std::memory_order_relaxed);
 
         Logging.Log(
-            "[NSC:H19AT] VFUNC_PRE n=%u actor=%p id=%u index=%u "
+            "[NSC:H19ATB] VFUNC_PRE n=%u actor=%p field_e50=%u id=%u index=%u "
             "vtable=%p fn=%p slot=%p",
             n,
             reinterpret_cast<void*>(actor),
+            static_cast<unsigned>(field_e50),
             static_cast<unsigned>(id),
             idx,
             reinterpret_cast<void*>(vtable),
@@ -2574,8 +2577,9 @@ bool InstallTraceHooks() {
     H19ASFactoryPre::InstallAtOffset(0x79493C);
     H19ASFactoryPost::InstallAtOffset(0x794944);
     Logging.Log("[NSC:H19AS] READY node_factory_trace=1 factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19ATB] READY safe_vfunc48_trace=1 pre_exl=0x794928 post_hook=0 field_e50_trace=1 h19as_factory_trace=1 trampoline_delta_from_h19at=-1 mutation=original_pre_instruction_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ATVFunc48Pre::InstallAtOffset(0x794928);
-    H19ATVFunc48Post::InstallAtOffset(0x794930);
+    // H19ATB disabled unsafe return-site POST hook at 0x794930.
     Logging.Log("[NSC:H19AT] READY vfunc48_trace=1 pre_exl=0x794928 post_exl=0x794930 retired_h19aq_hooks=2 trampoline_net_delta=0 mutation=original_instructions_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
