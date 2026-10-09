@@ -2271,6 +2271,75 @@ static void H19AUScanE50Refs(uint64_t lr_after_vfunc) {
         refs, writes, contexts);
 }
 
+
+// R276H19AV: focused read-only code dump around the strongest E50 writer sites.
+//
+// H19AU hardware found 38 direct E50 STRW writers but only 2 direct E54 STRW
+// writers. One E54 writer is paired tightly with an E50 writer:
+//
+//   main+0x75C994 STR W24,[X19,#0xE54]
+//   main+0x75C9C0 STR W25,[X19,#0xE50]
+//
+// This is the strongest current initializer candidate because the same X19
+// base receives both ID-like E54 and aux-like E50 fields in one code cluster.
+//
+// H19AV adds no hooks and mutates nothing. It dumps two focused regions once:
+//   region A: main+0x759F80..0x75A0A0 (standalone E50 writer 0x75A040)
+//   region B: main+0x75C880..0x75CAB0 (paired E54/E50 initializer cluster)
+static std::atomic<uint32_t> g_h19av_dumped{0};
+
+static void H19AVDumpRange(uint64_t main_base,
+                           uint64_t start_rel,
+                           uint64_t end_rel,
+                           const char* name) {
+    Logging.Log(
+        "[NSC:H19AV] RANGE_BEGIN name=%s start_rel=0x%llx end_rel=0x%llx",
+        name,
+        static_cast<unsigned long long>(start_rel),
+        static_cast<unsigned long long>(end_rel));
+
+    for (uint64_t rel = start_rel; rel <= end_rel; rel += 4) {
+        const uint64_t pc = main_base + rel;
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+        Logging.Log(
+            "[NSC:H19AV] CODE name=%s pc=%p rel=0x%llx word=0x%08x",
+            name,
+            reinterpret_cast<void*>(pc),
+            static_cast<unsigned long long>(rel),
+            word);
+    }
+
+    Logging.Log("[NSC:H19AV] RANGE_END name=%s", name);
+}
+
+static void H19AVDumpInitClusters(uint64_t lr_after_vfunc) {
+    uint32_t expected = 0;
+    if (!g_h19av_dumped.compare_exchange_strong(
+            expected, 1, std::memory_order_relaxed)) {
+        return;
+    }
+
+    if (lr_after_vfunc < 0x80000000ULL ||
+        lr_after_vfunc > 0x90000000ULL) {
+        Logging.Log("[NSC:H19AV] DUMP_SKIP lr=%p reason=bad_lr",
+                    reinterpret_cast<void*>(lr_after_vfunc));
+        return;
+    }
+
+    const uint64_t main_base = lr_after_vfunc - 0x798930ULL;
+
+    Logging.Log(
+        "[NSC:H19AV] DUMP_BEGIN main=%p candidate_a=0x75a040 "
+        "candidate_pair_e54=0x75c994 candidate_pair_e50=0x75c9c0",
+        reinterpret_cast<void*>(main_base));
+
+    H19AVDumpRange(main_base, 0x759F80ULL, 0x75A0A0ULL, "E50_A");
+    H19AVDumpRange(main_base, 0x75C880ULL, 0x75CAB0ULL, "E54_E50_PAIR");
+
+    Logging.Log("[NSC:H19AV] DUMP_END");
+}
+
 HOOK_DEFINE_INLINE(H19ASFactoryPre) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -2278,7 +2347,9 @@ HOOK_DEFINE_INLINE(H19ASFactoryPre) {
         // Original instruction: MOV W3,W19
         ctx->X[3] = static_cast<uint32_t>(ctx->X[19]);
 
-        H19AUScanE50Refs(ctx->X[30]);
+        // H19AV: broad H19AU scan retired after hardware candidate discovery.
+
+        H19AVDumpInitClusters(ctx->X[30]);
 
         const uint32_t idx = static_cast<uint32_t>(ctx->X[19]);
         const uint64_t slot = ctx->X[22];
@@ -2742,7 +2813,8 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AR] READY resolver_code_dump=1 resolver_runtime_rel=0x7988e8 range=-0x40..+0x200 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19ASB] READY trampoline_cleanup=1 disabled=H19Z|H19AA|H19AM_A|H19AM_B freed_hooks=4 keep=H19AN|H19AQ|H19AS mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19ATC] READY factory_side_aux_trace=1 vfunc_site_hooks=0 field_e50_trace=1 vfunc48_pointer_trace=1 h19as_factory_trace=1 trampoline_delta_from_h19atb=-1 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    Logging.Log("[NSC:H19AU] READY e50_writer_scan=1 hooks_added=0 scan_fields=E50|E54 scan_ops=STRW|LDRW|STRX|LDRX context_writers=1 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AV] READY e50_init_cluster_dump=1 hooks_added=0 broad_scan=0 ranges=0x759f80-0x75a0a0|0x75c880-0x75cab0 target_pair=0x75c994|0x75c9c0 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AU] READY e50_writer_scan=0 superseded=H19AV hooks_added=0 scan_fields=E50|E54 scan_ops=STRW|LDRW|STRX|LDRX context_writers=1 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
     H19ASFactoryPost::InstallAtOffset(0x794944);
     Logging.Log("[NSC:H19AS] READY node_factory_trace=1 factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
