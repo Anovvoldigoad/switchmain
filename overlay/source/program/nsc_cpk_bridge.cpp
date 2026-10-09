@@ -2204,6 +2204,151 @@ HOOK_DEFINE_INLINE(H19ASFactoryPost) {
     }
 };
 
+
+// R276H19AT: trace actor virtual method slot +0x48.
+//
+// H19ASB runtime:
+//   custom factory input : aux=0
+//   native factory input : aux=1
+//
+// H19AR decoded:
+//   runtime 0x79891C  LDR X8,[X0]
+//   runtime 0x798924  LDR W21,[X0,#0xE54]
+//   runtime 0x798928  LDR X8,[X8,#0x48]
+//   runtime 0x79892C  BLR X8
+//   runtime 0x798930  MOV W2,W0
+//
+// Exlaunch offsets = runtime-relative - 0x4000:
+//   PRE  = 0x794928
+//   POST = 0x794930
+static std::atomic<uint32_t> g_h19at_pre_logs{0};
+static std::atomic<uint32_t> g_h19at_post_logs{0};
+static std::atomic<uint64_t> g_h19at_fn1{0};
+static std::atomic<uint64_t> g_h19at_fn2{0};
+
+static void H19ATDumpVFuncCode(uint64_t fn) {
+    if (fn < 0x80000000ULL || fn > 0x90000000ULL) {
+        Logging.Log("[NSC:H19AT] VFUNC_DUMP_SKIP fn=%p reason=outside_main_window",
+                    reinterpret_cast<void*>(fn));
+        return;
+    }
+
+    bool should_dump = false;
+    uint64_t cur1 = g_h19at_fn1.load(std::memory_order_relaxed);
+    if (cur1 == fn) return;
+
+    if (cur1 == 0) {
+        uint64_t expected = 0;
+        if (g_h19at_fn1.compare_exchange_strong(
+                expected, fn, std::memory_order_relaxed)) {
+            should_dump = true;
+        } else if (expected == fn) {
+            return;
+        }
+    }
+
+    if (!should_dump) {
+        uint64_t cur2 = g_h19at_fn2.load(std::memory_order_relaxed);
+        if (cur2 == fn) return;
+        if (cur2 == 0) {
+            uint64_t expected = 0;
+            if (g_h19at_fn2.compare_exchange_strong(
+                    expected, fn, std::memory_order_relaxed)) {
+                should_dump = true;
+            }
+        }
+    }
+
+    if (!should_dump) return;
+
+    const uint64_t start = fn - 0x20ULL;
+    const uint64_t end   = fn + 0x180ULL;
+
+    Logging.Log("[NSC:H19AT] VFUNC_BASE fn=%p range=%p..%p",
+                reinterpret_cast<void*>(fn),
+                reinterpret_cast<void*>(start),
+                reinterpret_cast<void*>(end));
+
+    for (uint64_t pc = start; pc <= end; pc += 4) {
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+        Logging.Log(
+            "[NSC:H19AT] CODE pc=%p fn=%p delta=%lld word=0x%08x",
+            reinterpret_cast<void*>(pc),
+            reinterpret_cast<void*>(fn),
+            static_cast<long long>(
+                static_cast<int64_t>(pc) - static_cast<int64_t>(fn)),
+            word);
+    }
+}
+
+HOOK_DEFINE_INLINE(H19ATVFunc48Pre) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint64_t vtable = ctx->X[8];
+        const uint64_t fn =
+            *reinterpret_cast<const volatile uint64_t*>(vtable + 0x48ULL);
+
+        // Original: LDR X8,[X8,#0x48]
+        ctx->X[8] = fn;
+
+        const uint32_t idx = static_cast<uint32_t>(ctx->X[1]);
+        const uint64_t slot = ctx->X[22];
+        const uint64_t actor =
+            slot - 0x11660ULL - static_cast<uint64_t>(idx) * 8ULL;
+        const uint32_t id =
+            *reinterpret_cast<const volatile uint32_t*>(actor + 0xE54ULL);
+
+        const uint32_t n =
+            g_h19at_pre_logs.fetch_add(1, std::memory_order_relaxed);
+
+        Logging.Log(
+            "[NSC:H19AT] VFUNC_PRE n=%u actor=%p id=%u index=%u "
+            "vtable=%p fn=%p slot=%p",
+            n,
+            reinterpret_cast<void*>(actor),
+            static_cast<unsigned>(id),
+            idx,
+            reinterpret_cast<void*>(vtable),
+            reinterpret_cast<void*>(fn),
+            reinterpret_cast<void*>(slot));
+
+        H19ATDumpVFuncCode(fn);
+    }
+};
+
+HOOK_DEFINE_INLINE(H19ATVFunc48Post) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint32_t ret = static_cast<uint32_t>(ctx->X[0]);
+
+        // Original: MOV W2,W0
+        ctx->X[2] = static_cast<uint64_t>(ret);
+
+        const uint32_t idx = static_cast<uint32_t>(ctx->X[19]);
+        const uint64_t slot = ctx->X[22];
+        const uint64_t actor =
+            slot - 0x11660ULL - static_cast<uint64_t>(idx) * 8ULL;
+        const uint32_t id =
+            *reinterpret_cast<const volatile uint32_t*>(actor + 0xE54ULL);
+
+        const uint32_t n =
+            g_h19at_post_logs.fetch_add(1, std::memory_order_relaxed);
+
+        Logging.Log(
+            "[NSC:H19AT] VFUNC_POST n=%u actor=%p id=%u index=%u "
+            "ret=%u slot=%p",
+            n,
+            reinterpret_cast<void*>(actor),
+            static_cast<unsigned>(id),
+            idx,
+            static_cast<unsigned>(ret),
+            reinterpret_cast<void*>(slot));
+    }
+};
+
 bool InstallTraceHooks() {
     static constexpr uint32_t kCharExpected[] = {
         0xF000EA68, 0xF9424508, 0xF9760908, 0x2A0003E1, 0xF9409500, 0x1410AC93,
@@ -2297,6 +2442,13 @@ bool InstallTraceHooks() {
         0xAA0003E8,
     };
 
+    static constexpr uint32_t kH19ATPreExpected[] = {
+        0xF9402508,
+    };
+    static constexpr uint32_t kH19ATPostExpected[] = {
+        0x2A0003E2,
+    };
+
     bool ok = true;
     if (!MatchWords(kCharacodeGetterOffset, kCharExpected)) {
         LogFingerprintFail("CHAR", kCharacodeGetterOffset); ok = false;
@@ -2364,6 +2516,12 @@ bool InstallTraceHooks() {
     if (!MatchWords(0x794944, kH19ASPostExpected)) {
         LogFingerprintFail("H19AS_FACTORY_POST", 0x794944); ok = false;
     }
+    if (!MatchWords(0x794928, kH19ATPreExpected)) {
+        LogFingerprintFail("H19AT_VFUNC48_PRE", 0x794928); ok = false;
+    }
+    if (!MatchWords(0x794930, kH19ATPostExpected)) {
+        LogFingerprintFail("H19AT_VFUNC48_POST", 0x794930); ok = false;
+    }
     if (!ok) return false;
 
     CharacodeGetterHook::InstallAtOffset(kCharacodeGetterOffset);
@@ -2408,14 +2566,17 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AO] READY x21_source_scan=1 regs=x19|x24|x28 range=0x00-0x78 hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AP] READY caller_code_dump=1 proven_bl=0x75f0c4 range=lr-0x100..lr+0x20 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19APB] READY caller_code_dump_guard_fix=1 valid_lr=0x80000000-0x90000000 proven_lr=0x8075f0c8 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    H19AQResolverNodeQ0::InstallAtOffset(0x75B050);
-    H19AQResolverNodeQ8::InstallAtOffset(0x75B068);
-    Logging.Log("[NSC:H19AQ] READY resolver_node_trace=1 resolver_exl=0x7948e8 q0_site_exl=0x75b050 q8_site_exl=0x75b068 runtime_bias=0x4000 mutation=original_loads_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    // H19AT retired proven H19AQ runtime hook: H19AQResolverNodeQ0::InstallAtOffset(0x75B050);
+    // H19AT retired proven H19AQ runtime hook: H19AQResolverNodeQ8::InstallAtOffset(0x75B068);
+    Logging.Log("[NSC:H19AQ] READY resolver_node_trace=0 superseded=H19AT resolver_exl=0x7948e8 q0_site_exl=0x75b050 q8_site_exl=0x75b068 runtime_bias=0x4000 mutation=original_loads_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AR] READY resolver_code_dump=1 resolver_runtime_rel=0x7988e8 range=-0x40..+0x200 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19ASB] READY trampoline_cleanup=1 disabled=H19Z|H19AA|H19AM_A|H19AM_B freed_hooks=4 keep=H19AN|H19AQ|H19AS mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
     H19ASFactoryPost::InstallAtOffset(0x794944);
     Logging.Log("[NSC:H19AS] READY node_factory_trace=1 factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    H19ATVFunc48Pre::InstallAtOffset(0x794928);
+    H19ATVFunc48Post::InstallAtOffset(0x794930);
+    Logging.Log("[NSC:H19AT] READY vfunc48_trace=1 pre_exl=0x794928 post_exl=0x794930 retired_h19aq_hooks=2 trampoline_net_delta=0 mutation=original_instructions_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
