@@ -2385,10 +2385,10 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19X] READY init=0 superseded=H19AN caller_lr=1 lookup=1 off=0x120a3d4");
     H19YRegistryLookupHook::InstallAtOffset(0x1207B38);
     Logging.Log("[NSC:H19Y] READY reg=1 off=0x1207b38");
-    H19ZParentHook::InstallAtOffset(0x7EB94C);
-    Logging.Log("[NSC:H19Z] READY parent=1 off=0x7eb94c reg_scope=0x1207b38");
-    H19AAParentHook::InstallAtOffset(0x7E64D4);
-    Logging.Log("[NSC:H19AA] READY parent=1 off=0x7e64d4 reg_scope=0x1207b38");
+    // H19ASB disabled superseded diagnostic: H19ZParentHook::InstallAtOffset(0x7EB94C);
+    Logging.Log("[NSC:H19Z] READY parent=0 superseded=H19ASB off=0x7eb94c reg_scope=0x1207b38");
+    // H19ASB disabled superseded diagnostic: H19AAParentHook::InstallAtOffset(0x7E64D4);
+    Logging.Log("[NSC:H19AA] READY parent=0 superseded=H19ASB off=0x7e64d4 reg_scope=0x1207b38");
     Logging.Log("[NSC:H19AB] READY uncapped_filter=mtob|bod1 reg=0x1207b38");
     Logging.Log("[NSC:H19AC] READY bare_xfbin_probe=1 forms=pfxext|strip|pfxstrip");
     Logging.Log("[NSC:H19AD] READY exact_prefix_probe=mtobbod1.xfbin->data/spc/mtobbod1.xfbin");
@@ -2400,9 +2400,9 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AK] READY charsel_prm_prefetch=1 families=prm|prm_load hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AKB] READY prm_load_namespace=spcload prm_namespace=spc hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AL] READY child_graph_prefetch=1 families=acc1|aws|bod1c|bod1l|bod1s|eff1|skl1|skl3|spl1|spl1_fin01 hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    H19AMCallsiteA::InstallAtOffset(0x7E7EBC);
-    H19AMCallsiteB::InstallAtOffset(0x7EBE48);
-    Logging.Log("[NSC:H19AM] READY x3_producer_trace=1 callsites=0x7e7ebc|0x7ebe48 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    // H19ASB disabled superseded diagnostic: H19AMCallsiteA::InstallAtOffset(0x7E7EBC);
+    // H19ASB disabled superseded diagnostic: H19AMCallsiteB::InstallAtOffset(0x7EBE48);
+    Logging.Log("[NSC:H19AM] READY x3_producer_trace=0 superseded=H19ASB callsites=0x7e7ebc|0x7ebe48 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ANRealCallerLRHook::InstallAtOffset(0x436034);
     Logging.Log("[NSC:H19AN] READY real_caller_lr=1 hook=0x436034 original=mov_w8_31c8 h19x_entry_trampoline=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AO] READY x21_source_scan=1 regs=x19|x24|x28 range=0x00-0x78 hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
@@ -2412,6 +2412,7 @@ bool InstallTraceHooks() {
     H19AQResolverNodeQ8::InstallAtOffset(0x75B068);
     Logging.Log("[NSC:H19AQ] READY resolver_node_trace=1 resolver_exl=0x7948e8 q0_site_exl=0x75b050 q8_site_exl=0x75b068 runtime_bias=0x4000 mutation=original_loads_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AR] READY resolver_code_dump=1 resolver_runtime_rel=0x7988e8 range=-0x40..+0x200 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19ASB] READY trampoline_cleanup=1 disabled=H19Z|H19AA|H19AM_A|H19AM_B freed_hooks=4 keep=H19AN|H19AQ|H19AS mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
     H19ASFactoryPost::InstallAtOffset(0x794944);
     Logging.Log("[NSC:H19AS] READY node_factory_trace=1 factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
