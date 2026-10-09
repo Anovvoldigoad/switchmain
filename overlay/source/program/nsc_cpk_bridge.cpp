@@ -2506,8 +2506,8 @@ static void H19AYDumpLiveCaller(uint64_t lr) {
     g_h19ay_last_lr.store(lr, std::memory_order_relaxed);
 
     const uint64_t callsite = lr - 4ULL;
-    const uint64_t start = callsite - 0x100ULL;
-    const uint64_t end   = callsite + 0x60ULL;
+    const uint64_t start = callsite - 0x800ULL;
+    const uint64_t end   = callsite + 0x80ULL;
 
     Logging.Log(
         "[NSC:H19AY] CALLER_DUMP_BEGIN lr=%p callsite=%p range=%p..%p",
@@ -3058,7 +3058,8 @@ bool InstallTraceHooks() {
 
     H19AXBInitArgTrace::InstallAtOffset(0x75897C);
     Logging.Log("[NSC:H19AXB] READY init_arg_trace=1 hook_exl=0x75897c runtime_rel=0x75c97c original=mov_w25_w2 retired_h19as_post=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    Logging.Log("[NSC:H19AY] READY live_caller_dump=1 hooks_added=0 source=H19AXB_LR callsite=LR-4 range=-0x100..+0x60 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AZ] READY w21_origin_extended_dump=1 hooks_added=0 source=H19AXB_LR callsite=LR-4 range=-0x800..+0x80 target=W21_to_W2 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AY] READY live_caller_dump=0 superseded=H19AZ hooks_added=0 source=H19AXB_LR callsite=LR-4 range=-0x100..+0x60 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
     // H19AXB retired proven H19AS factory POST hook to keep trampoline count flat.
     Logging.Log("[NSC:H19AS] READY node_factory_trace=1 post_hook=0 superseded_post=H19AXB factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");

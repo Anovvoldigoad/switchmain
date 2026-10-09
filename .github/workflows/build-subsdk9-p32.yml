@@ -1,4 +1,4 @@
-name: Build NSC H19AY live caller code dump
+name: Build NSC H19AZ W21 origin extended dump
 
 on:
   workflow_dispatch:
@@ -96,7 +96,7 @@ jobs:
       - name: Upload P32 subsdk9
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-H19AY-live-caller-code-dump-subsdk9
+          name: NSC-H19AZ-w21-origin-extended-dump-subsdk9
           path: artifact/
           if-no-files-found: error
           compression-level: 9
