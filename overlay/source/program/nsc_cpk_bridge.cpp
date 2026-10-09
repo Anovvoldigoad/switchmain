@@ -2129,12 +2129,156 @@ static void H19ASDumpFactoryCode(uint64_t lr_after_factory) {
     }
 }
 
+
+// R276H19AU: read-only static runtime scan for direct actor+0xE50/E54 refs.
+//
+// H19ATC hardware proved:
+//   custom: E50=0, aux=0, same vtable/vfunc48 as native
+//   native: E50=1, aux=1
+//
+// vfunc48:
+//   LDR W0,[X0,#0xE50]
+//   RET
+//
+// The unresolved boundary is now the native writer/populator of actor+0xE50.
+// H19AU does not add hooks. It scans mapped main text once from the existing
+// stable H19ASFactoryPre callback.
+static std::atomic<uint32_t> g_h19au_scanned{0};
+
+static void H19AUDumpContext(uint64_t main_base,
+                             uint64_t pc,
+                             const char* kind,
+                             uint32_t field) {
+    const uint64_t start = pc >= 0x20ULL ? pc - 0x20ULL : pc;
+    const uint64_t end = pc + 0x20ULL;
+
+    Logging.Log(
+        "[NSC:H19AU] CONTEXT_BEGIN kind=%s field=0x%x pc=%p rel=0x%llx",
+        kind,
+        field,
+        reinterpret_cast<void*>(pc),
+        static_cast<unsigned long long>(pc - main_base));
+
+    for (uint64_t q = start; q <= end; q += 4) {
+        const uint32_t w =
+            *reinterpret_cast<const volatile uint32_t*>(q);
+        Logging.Log(
+            "[NSC:H19AU] CODE pc=%p rel=0x%llx word=0x%08x delta=%lld",
+            reinterpret_cast<void*>(q),
+            static_cast<unsigned long long>(q - main_base),
+            w,
+            static_cast<long long>(
+                static_cast<int64_t>(q) - static_cast<int64_t>(pc)));
+    }
+
+    Logging.Log(
+        "[NSC:H19AU] CONTEXT_END kind=%s field=0x%x pc=%p",
+        kind,
+        field,
+        reinterpret_cast<void*>(pc));
+}
+
+static void H19AUScanE50Refs(uint64_t lr_after_vfunc) {
+    uint32_t expected = 0;
+    if (!g_h19au_scanned.compare_exchange_strong(
+            expected, 1, std::memory_order_relaxed)) {
+        return;
+    }
+
+    if (lr_after_vfunc < 0x80000000ULL ||
+        lr_after_vfunc > 0x90000000ULL) {
+        Logging.Log("[NSC:H19AU] SCAN_SKIP lr=%p reason=bad_lr",
+                    reinterpret_cast<void*>(lr_after_vfunc));
+        return;
+    }
+
+    // H19AR/H19AT proved this BLR returns to runtime main+0x798930.
+    const uint64_t main_base = lr_after_vfunc - 0x798930ULL;
+
+    // v1.70 main .text envelope from the existing main audit.
+    const uint64_t start = main_base + 0x4000ULL;
+    const uint64_t end   = main_base + 0x12F5FD0ULL;
+
+    constexpr uint32_t kE50W = 0xE50u / 4u;
+    constexpr uint32_t kE54W = 0xE54u / 4u;
+    constexpr uint32_t kE50X = 0xE50u / 8u;
+
+    uint32_t refs = 0;
+    uint32_t writes = 0;
+    uint32_t contexts = 0;
+
+    Logging.Log(
+        "[NSC:H19AU] SCAN_BEGIN main=%p range=%p..%p "
+        "fields=E50|E54 direct_unsigned_imm=1",
+        reinterpret_cast<void*>(main_base),
+        reinterpret_cast<void*>(start),
+        reinterpret_cast<void*>(end));
+
+    for (uint64_t pc = start; pc + 4 <= end; pc += 4) {
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+        const uint32_t op = word & 0xFFC00000u;
+        const uint32_t imm12 = (word >> 10) & 0xFFFu;
+        const uint32_t rn = (word >> 5) & 0x1Fu;
+        const uint32_t rt = word & 0x1Fu;
+
+        const char* kind = nullptr;
+        uint32_t field = 0;
+        bool is_write = false;
+
+        if (op == 0xB9000000u && (imm12 == kE50W || imm12 == kE54W)) {
+            kind = "STRW";
+            field = imm12 * 4u;
+            is_write = true;
+        } else if (op == 0xB9400000u &&
+                   (imm12 == kE50W || imm12 == kE54W)) {
+            kind = "LDRW";
+            field = imm12 * 4u;
+        } else if (op == 0xF9000000u && imm12 == kE50X) {
+            kind = "STRX";
+            field = 0xE50u;
+            is_write = true;
+        } else if (op == 0xF9400000u && imm12 == kE50X) {
+            kind = "LDRX";
+            field = 0xE50u;
+        }
+
+        if (!kind) continue;
+
+        ++refs;
+        if (is_write) ++writes;
+
+        Logging.Log(
+            "[NSC:H19AU] REF n=%u kind=%s field=0x%x pc=%p rel=0x%llx "
+            "word=0x%08x rn=x%u rt=%u",
+            refs - 1,
+            kind,
+            field,
+            reinterpret_cast<void*>(pc),
+            static_cast<unsigned long long>(pc - main_base),
+            word,
+            rn,
+            rt);
+
+        if (is_write && contexts < 32) {
+            H19AUDumpContext(main_base, pc, kind, field);
+            ++contexts;
+        }
+    }
+
+    Logging.Log(
+        "[NSC:H19AU] SCAN_END refs=%u writes=%u contexts=%u",
+        refs, writes, contexts);
+}
+
 HOOK_DEFINE_INLINE(H19ASFactoryPre) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
 
         // Original instruction: MOV W3,W19
         ctx->X[3] = static_cast<uint32_t>(ctx->X[19]);
+
+        H19AUScanE50Refs(ctx->X[30]);
 
         const uint32_t idx = static_cast<uint32_t>(ctx->X[19]);
         const uint64_t slot = ctx->X[22];
@@ -2598,6 +2742,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AR] READY resolver_code_dump=1 resolver_runtime_rel=0x7988e8 range=-0x40..+0x200 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19ASB] READY trampoline_cleanup=1 disabled=H19Z|H19AA|H19AM_A|H19AM_B freed_hooks=4 keep=H19AN|H19AQ|H19AS mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19ATC] READY factory_side_aux_trace=1 vfunc_site_hooks=0 field_e50_trace=1 vfunc48_pointer_trace=1 h19as_factory_trace=1 trampoline_delta_from_h19atb=-1 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AU] READY e50_writer_scan=1 hooks_added=0 scan_fields=E50|E54 scan_ops=STRW|LDRW|STRX|LDRX context_writers=1 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
     H19ASFactoryPost::InstallAtOffset(0x794944);
     Logging.Log("[NSC:H19AS] READY node_factory_trace=1 factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
