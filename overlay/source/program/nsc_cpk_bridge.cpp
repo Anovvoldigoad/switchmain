@@ -1943,11 +1943,75 @@ HOOK_DEFINE_INLINE(H19ANRealCallerLRHook) {
 static std::atomic<uint32_t> g_h19aq_q0_logs{0};
 static std::atomic<uint32_t> g_h19aq_q8_logs{0};
 
+
+// R276H19AR: dump the implementation of the native resolver that produced
+// the H19AQ node.
+//
+// H19AQ proved:
+//   custom node != NULL, but [node+0] == 0 and [node+8] == 0
+//   native node != NULL, [node+0] != 0 and [node+8] == 0x3F1
+//
+// At H19AQ Q0 site, X30 is the return address immediately after:
+//   runtime main+0x75F04C BL runtime main+0x7988E8
+// Therefore:
+//   main_base = X30 - 0x75F050
+//   resolver  = main_base + 0x7988E8
+//
+// Dump once, read-only, from resolver-0x40 through resolver+0x200.
+static std::atomic<uint32_t> g_h19ar_dumped{0};
+
+static void H19ARDumpResolverCode(uint64_t lr_after_resolver) {
+    uint32_t expected = 0;
+    if (!g_h19ar_dumped.compare_exchange_strong(
+            expected, 1, std::memory_order_relaxed)) {
+        return;
+    }
+
+    if (lr_after_resolver < 0x80000000ULL ||
+        lr_after_resolver > 0x90000000ULL) {
+        Logging.Log("[NSC:H19AR] LR_REJECT lr=%p",
+                    reinterpret_cast<void*>(lr_after_resolver));
+        return;
+    }
+
+    const uint64_t main_base = lr_after_resolver - 0x75F050ULL;
+    const uint64_t resolver  = main_base + 0x7988E8ULL;
+    const uint64_t start     = resolver - 0x40ULL;
+    const uint64_t end       = resolver + 0x200ULL;
+
+    Logging.Log(
+        "[NSC:H19AR] RESOLVER_BASE main=%p resolver=%p range=%p..%p",
+        reinterpret_cast<void*>(main_base),
+        reinterpret_cast<void*>(resolver),
+        reinterpret_cast<void*>(start),
+        reinterpret_cast<void*>(end));
+
+    for (uint64_t pc = start; pc <= end; pc += 4) {
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+
+        const int64_t rel =
+            static_cast<int64_t>(pc) - static_cast<int64_t>(main_base);
+
+        Logging.Log(
+            "[NSC:H19AR] CODE pc=%p rel=0x%llx word=0x%08x delta=%lld",
+            reinterpret_cast<void*>(pc),
+            static_cast<unsigned long long>(rel),
+            word,
+            static_cast<long long>(
+                static_cast<int64_t>(pc) -
+                static_cast<int64_t>(resolver)));
+    }
+}
+
 HOOK_DEFINE_INLINE(H19AQResolverNodeQ0) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
 
         const uint64_t node = ctx->X[0];
+
+        H19ARDumpResolverCode(ctx->X[30]);
+
         const volatile uint64_t* q =
             reinterpret_cast<const volatile uint64_t*>(node);
 
@@ -2197,6 +2261,7 @@ bool InstallTraceHooks() {
     H19AQResolverNodeQ0::InstallAtOffset(0x75B050);
     H19AQResolverNodeQ8::InstallAtOffset(0x75B068);
     Logging.Log("[NSC:H19AQ] READY resolver_node_trace=1 resolver_exl=0x7948e8 q0_site_exl=0x75b050 q8_site_exl=0x75b068 runtime_bias=0x4000 mutation=original_loads_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AR] READY resolver_code_dump=1 resolver_runtime_rel=0x7988e8 range=-0x40..+0x200 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
