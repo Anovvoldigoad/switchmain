@@ -2067,6 +2067,143 @@ HOOK_DEFINE_INLINE(H19AQResolverNodeQ8) {
     }
 };
 
+
+// R276H19AS: trace the node-factory boundary used by the H19AR resolver.
+//
+// H19AR decoded:
+//   runtime main+0x79893C  MOV W3,W19
+//   runtime main+0x798940  BL  main+0x81D4E4
+//   runtime main+0x798944  MOV X8,X0
+//   runtime main+0x798948  STR X0,[X22]
+//
+// Exlaunch offsets = runtime/module-relative - 0x4000:
+//   PRE  = 0x79493C
+//   POST = 0x794944
+//
+// PRE re-emulates MOV W3,W19.
+// POST re-emulates MOV X8,X0.
+static std::atomic<uint32_t> g_h19as_pre_logs{0};
+static std::atomic<uint32_t> g_h19as_post_logs{0};
+static std::atomic<uint32_t> g_h19as_dumped{0};
+
+static void H19ASDumpFactoryCode(uint64_t lr_after_factory) {
+    uint32_t expected = 0;
+    if (!g_h19as_dumped.compare_exchange_strong(
+            expected, 1, std::memory_order_relaxed)) {
+        return;
+    }
+
+    if (lr_after_factory < 0x80000000ULL ||
+        lr_after_factory > 0x90000000ULL) {
+        Logging.Log("[NSC:H19AS] FACTORY_LR_REJECT lr=%p",
+                    reinterpret_cast<void*>(lr_after_factory));
+        return;
+    }
+
+    const uint64_t main_base = lr_after_factory - 0x798944ULL;
+    const uint64_t factory   = main_base + 0x81D4E4ULL;
+    const uint64_t start     = factory - 0x20ULL;
+    const uint64_t end       = factory + 0x280ULL;
+
+    Logging.Log(
+        "[NSC:H19AS] FACTORY_BASE main=%p factory=%p range=%p..%p",
+        reinterpret_cast<void*>(main_base),
+        reinterpret_cast<void*>(factory),
+        reinterpret_cast<void*>(start),
+        reinterpret_cast<void*>(end));
+
+    for (uint64_t pc = start; pc <= end; pc += 4) {
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+        const int64_t rel =
+            static_cast<int64_t>(pc) - static_cast<int64_t>(main_base);
+
+        Logging.Log(
+            "[NSC:H19AS] CODE pc=%p rel=0x%llx word=0x%08x delta=%lld",
+            reinterpret_cast<void*>(pc),
+            static_cast<unsigned long long>(rel),
+            word,
+            static_cast<long long>(
+                static_cast<int64_t>(pc) -
+                static_cast<int64_t>(factory)));
+    }
+}
+
+HOOK_DEFINE_INLINE(H19ASFactoryPre) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        // Original instruction: MOV W3,W19
+        ctx->X[3] = static_cast<uint32_t>(ctx->X[19]);
+
+        const uint32_t idx = static_cast<uint32_t>(ctx->X[19]);
+        const uint64_t slot = ctx->X[22];
+        const uint64_t actor =
+            slot - 0x11660ULL - static_cast<uint64_t>(idx) * 8ULL;
+
+        const uint32_t n =
+            g_h19as_pre_logs.fetch_add(1, std::memory_order_relaxed);
+
+        Logging.Log(
+            "[NSC:H19AS] FACTORY_PRE n=%u actor=%p slot=%p "
+            "manager=%p id=%u aux=%u index=%u "
+            "x20=%p x21=%u x22=%p",
+            n,
+            reinterpret_cast<void*>(actor),
+            reinterpret_cast<void*>(slot),
+            reinterpret_cast<void*>(ctx->X[0]),
+            static_cast<unsigned>(ctx->X[1] & 0xffffffffu),
+            static_cast<unsigned>(ctx->X[2] & 0xffffffffu),
+            idx,
+            reinterpret_cast<void*>(ctx->X[20]),
+            static_cast<unsigned>(ctx->X[21] & 0xffffffffu),
+            reinterpret_cast<void*>(ctx->X[22]));
+    }
+};
+
+HOOK_DEFINE_INLINE(H19ASFactoryPost) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint64_t node = ctx->X[0];
+
+        // Original instruction: MOV X8,X0
+        ctx->X[8] = node;
+
+        uint64_t q0 = 0;
+        uint64_t q8 = 0;
+        if (node >= 0x100000000ULL) {
+            const volatile uint64_t* q =
+                reinterpret_cast<const volatile uint64_t*>(node);
+            q0 = q[0];
+            q8 = q[1];
+        }
+
+        const uint32_t idx = static_cast<uint32_t>(ctx->X[19]);
+        const uint64_t slot = ctx->X[22];
+        const uint64_t actor =
+            slot - 0x11660ULL - static_cast<uint64_t>(idx) * 8ULL;
+
+        const uint32_t n =
+            g_h19as_post_logs.fetch_add(1, std::memory_order_relaxed);
+
+        Logging.Log(
+            "[NSC:H19AS] FACTORY_POST n=%u actor=%p slot=%p "
+            "node=%p q0=%p q8=0x%llx id_saved=%u index=%u lr=%p",
+            n,
+            reinterpret_cast<void*>(actor),
+            reinterpret_cast<void*>(slot),
+            reinterpret_cast<void*>(node),
+            reinterpret_cast<void*>(q0),
+            static_cast<unsigned long long>(q8),
+            static_cast<unsigned>(ctx->X[21] & 0xffffffffu),
+            idx,
+            reinterpret_cast<void*>(ctx->X[30]));
+
+        H19ASDumpFactoryCode(ctx->X[30]);
+    }
+};
+
 bool InstallTraceHooks() {
     static constexpr uint32_t kCharExpected[] = {
         0xF000EA68, 0xF9424508, 0xF9760908, 0x2A0003E1, 0xF9409500, 0x1410AC93,
@@ -2153,6 +2290,13 @@ bool InstallTraceHooks() {
         0xB940081B,
     };
 
+    static constexpr uint32_t kH19ASPreExpected[] = {
+        0x2A1303E3,
+    };
+    static constexpr uint32_t kH19ASPostExpected[] = {
+        0xAA0003E8,
+    };
+
     bool ok = true;
     if (!MatchWords(kCharacodeGetterOffset, kCharExpected)) {
         LogFingerprintFail("CHAR", kCharacodeGetterOffset); ok = false;
@@ -2214,6 +2358,12 @@ bool InstallTraceHooks() {
     if (!MatchWords(0x75B068, kH19AQNodeQ8Expected)) {
         LogFingerprintFail("H19AQ_NODE_Q8", 0x75B068); ok = false;
     }
+    if (!MatchWords(0x79493C, kH19ASPreExpected)) {
+        LogFingerprintFail("H19AS_FACTORY_PRE", 0x79493C); ok = false;
+    }
+    if (!MatchWords(0x794944, kH19ASPostExpected)) {
+        LogFingerprintFail("H19AS_FACTORY_POST", 0x794944); ok = false;
+    }
     if (!ok) return false;
 
     CharacodeGetterHook::InstallAtOffset(kCharacodeGetterOffset);
@@ -2262,6 +2412,9 @@ bool InstallTraceHooks() {
     H19AQResolverNodeQ8::InstallAtOffset(0x75B068);
     Logging.Log("[NSC:H19AQ] READY resolver_node_trace=1 resolver_exl=0x7948e8 q0_site_exl=0x75b050 q8_site_exl=0x75b068 runtime_bias=0x4000 mutation=original_loads_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AR] READY resolver_code_dump=1 resolver_runtime_rel=0x7988e8 range=-0x40..+0x200 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    H19ASFactoryPre::InstallAtOffset(0x79493C);
+    H19ASFactoryPost::InstallAtOffset(0x794944);
+    Logging.Log("[NSC:H19AS] READY node_factory_trace=1 factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
