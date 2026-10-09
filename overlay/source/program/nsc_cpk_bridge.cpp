@@ -1779,6 +1779,61 @@ HOOK_DEFINE_INLINE(H19AMCallsiteB) {
 // No pointer fabrication, donor alias, or character-specific mutation.
 static std::atomic<uint32_t> g_h19an_logs{0};
 
+
+// R276H19AO: compact upstream structure scan on the proven caller path.
+// Diagnostic only: no donor, no fabricated pointer, no ID/code special case.
+static void H19AOScanStruct(const char* regname,
+                            uint64_t base,
+                            uint64_t live_x21,
+                            uint64_t live_x27) {
+    if (base < 0x100000000ULL) {
+        Logging.Log("[NSC:H19AO] SCAN_SKIP reg=%s base=%p",
+                    regname, reinterpret_cast<void*>(base));
+        return;
+    }
+
+    const volatile uint64_t* q =
+        reinterpret_cast<const volatile uint64_t*>(base);
+
+    for (uint32_t i = 0; i < 16; i += 4) {
+        const uint64_t v0 = q[i + 0];
+        const uint64_t v1 = q[i + 1];
+        const uint64_t v2 = q[i + 2];
+        const uint64_t v3 = q[i + 3];
+
+        Logging.Log(
+            "[NSC:H19AO] SCAN reg=%s base=%p off=0x%02x q0=%p q1=%p q2=%p q3=%p",
+            regname,
+            reinterpret_cast<void*>(base),
+            i * 8,
+            reinterpret_cast<void*>(v0),
+            reinterpret_cast<void*>(v1),
+            reinterpret_cast<void*>(v2),
+            reinterpret_cast<void*>(v3));
+
+        const uint64_t vals[4] = {v0, v1, v2, v3};
+        for (uint32_t j = 0; j < 4; ++j) {
+            const uint32_t off = (i + j) * 8;
+            if (live_x21 != 0 && vals[j] == live_x21) {
+                Logging.Log(
+                    "[NSC:H19AO] MATCH_X21 reg=%s base=%p off=0x%02x value=%p",
+                    regname,
+                    reinterpret_cast<void*>(base),
+                    off,
+                    reinterpret_cast<void*>(vals[j]));
+            }
+            if (live_x27 != 0 && vals[j] == live_x27) {
+                Logging.Log(
+                    "[NSC:H19AO] MATCH_X27 reg=%s base=%p off=0x%02x value=0x%llx",
+                    regname,
+                    reinterpret_cast<void*>(base),
+                    off,
+                    static_cast<unsigned long long>(vals[j]));
+            }
+        }
+    }
+}
+
 HOOK_DEFINE_INLINE(H19ANRealCallerLRHook) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -1812,6 +1867,10 @@ HOOK_DEFINE_INLINE(H19ANRealCallerLRHook) {
             reinterpret_cast<void*>(ctx->X[26]),
             reinterpret_cast<void*>(ctx->X[27]),
             reinterpret_cast<void*>(ctx->X[28]));
+
+        H19AOScanStruct("x19", ctx->X[19], ctx->X[21], ctx->X[27]);
+        H19AOScanStruct("x24", ctx->X[24], ctx->X[21], ctx->X[27]);
+        H19AOScanStruct("x28", ctx->X[28], ctx->X[21], ctx->X[27]);
     }
 };
 
@@ -1990,6 +2049,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AM] READY x3_producer_trace=1 callsites=0x7e7ebc|0x7ebe48 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ANRealCallerLRHook::InstallAtOffset(0x436034);
     Logging.Log("[NSC:H19AN] READY real_caller_lr=1 hook=0x436034 original=mov_w8_31c8 h19x_entry_trampoline=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AO] READY x21_source_scan=1 regs=x19|x24|x28 range=0x00-0x78 hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
