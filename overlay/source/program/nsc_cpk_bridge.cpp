@@ -2354,7 +2354,7 @@ static std::atomic<uint32_t> g_h19av_dumped{0};
 // It adds no hooks and mutates no game state.
 static std::atomic<uint32_t> g_h19aw_scanned{0};
 
-static int64_t H19AWSignExtend28(uint32_t word) {
+[[maybe_unused]] static int64_t H19AWSignExtend28(uint32_t word) {
     int64_t off = static_cast<int64_t>((word & 0x03FFFFFFu) << 2);
     if (off & (1LL << 27)) {
         off -= (1LL << 28);
@@ -2362,7 +2362,7 @@ static int64_t H19AWSignExtend28(uint32_t word) {
     return off;
 }
 
-static void H19AWDumpCallsiteContext(uint64_t main_base,
+[[maybe_unused]] static void H19AWDumpCallsiteContext(uint64_t main_base,
                                      uint64_t pc,
                                      const char* kind) {
     const uint64_t start = pc >= 0x60ULL ? pc - 0x60ULL : pc;
@@ -2394,7 +2394,7 @@ static void H19AWDumpCallsiteContext(uint64_t main_base,
         static_cast<unsigned long long>(pc - main_base));
 }
 
-static void H19AWScanInitializerCallsites(uint64_t lr_after_vfunc) {
+[[maybe_unused]] static void H19AWScanInitializerCallsites(uint64_t lr_after_vfunc) {
     uint32_t expected = 0;
     if (!g_h19aw_scanned.compare_exchange_strong(
             expected, 1, std::memory_order_relaxed)) {
@@ -2466,6 +2466,60 @@ static void H19AWScanInitializerCallsites(uint64_t lr_after_vfunc) {
                 static_cast<unsigned long long>(target_rel));
 }
 
+
+// R276H19AXB: runtime trace of actor initializer arguments.
+//
+// H19AV proved main+0x75C944 maps:
+//   actor+0xE54 <- W1
+//   actor+0xE50 <- W2
+//   actor+0xE60 <- W3
+//   actor+0xE58 <- W4
+//
+// H19AW found six direct transfer sites. Several wrappers preserve W2 and
+// forward it unchanged. This hook identifies the live caller and W2 value.
+//
+// Hook point:
+//   runtime main+0x75C97C : MOV W25,W2
+//   exlaunch offset       : 0x75897C
+//
+// At this point X19 already equals actor, W1-W4 are still input arguments,
+// and LR is the exact live caller return address.
+static std::atomic<uint32_t> g_h19axb_logs{0};
+
+HOOK_DEFINE_INLINE(H19AXBInitArgTrace) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint32_t id_arg  = static_cast<uint32_t>(ctx->X[1]);
+        const uint32_t e50_arg = static_cast<uint32_t>(ctx->X[2]);
+        const uint32_t e60_arg = static_cast<uint32_t>(ctx->X[3]);
+        const uint32_t e58_arg = static_cast<uint32_t>(ctx->X[4]);
+        const uint64_t actor   = ctx->X[19];
+        const uint64_t x5      = ctx->X[5];
+        const uint64_t lr      = ctx->X[30];
+
+        // Faithfully re-emulate original instruction: MOV W25,W2.
+        ctx->X[25] = static_cast<uint64_t>(e50_arg);
+
+        const uint32_t n =
+            g_h19axb_logs.fetch_add(1, std::memory_order_relaxed);
+
+        if (n < 512) {
+            Logging.Log(
+                "[NSC:H19AXB] INIT_ARG n=%u actor=%p id_arg=%u e50_arg=%u "
+                "e60_arg=%u e58_arg=%u x5=%p lr=%p",
+                n,
+                reinterpret_cast<void*>(actor),
+                static_cast<unsigned>(id_arg),
+                static_cast<unsigned>(e50_arg),
+                static_cast<unsigned>(e60_arg),
+                static_cast<unsigned>(e58_arg),
+                reinterpret_cast<void*>(x5),
+                reinterpret_cast<void*>(lr));
+        }
+    }
+};
+
 HOOK_DEFINE_INLINE(H19ASFactoryPre) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -2477,7 +2531,7 @@ HOOK_DEFINE_INLINE(H19ASFactoryPre) {
 
         // H19AW: H19AV focused dump retired after hardware decode.
 
-        H19AWScanInitializerCallsites(ctx->X[30]);
+        // H19AXB: H19AW static callsite scan retired after hardware result.
 
         const uint32_t idx = static_cast<uint32_t>(ctx->X[19]);
         const uint64_t slot = ctx->X[22];
@@ -2941,13 +2995,23 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AR] READY resolver_code_dump=1 resolver_runtime_rel=0x7988e8 range=-0x40..+0x200 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19ASB] READY trampoline_cleanup=1 disabled=H19Z|H19AA|H19AM_A|H19AM_B freed_hooks=4 keep=H19AN|H19AQ|H19AS mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19ATC] READY factory_side_aux_trace=1 vfunc_site_hooks=0 field_e50_trace=1 vfunc48_pointer_trace=1 h19as_factory_trace=1 trampoline_delta_from_h19atb=-1 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    Logging.Log("[NSC:H19AW] READY init_callsite_scan=1 hooks_added=0 target_rel=0x75c944 kinds=BL|B context=0x60_before|0x30_after mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AW] READY init_callsite_scan=0 superseded=H19AXB hooks_added=0 target_rel=0x75c944 kinds=BL|B context=0x60_before|0x30_after mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AV] READY e50_init_cluster_dump=0 superseded=H19AW hooks_added=0 broad_scan=0 ranges=0x759f80-0x75a0a0|0x75c880-0x75cab0 target_pair=0x75c994|0x75c9c0 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AVB] READY build_fix_unused_h19au=1 runtime_delta=0 h19au_scan_retained=1 h19au_scan_called=0 mutation=none diagnostic_only=1");
     Logging.Log("[NSC:H19AU] READY e50_writer_scan=0 superseded=H19AV hooks_added=0 scan_fields=E50|E54 scan_ops=STRW|LDRW|STRX|LDRX context_writers=1 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    static constexpr uint32_t kH19AXBInitArgExpected[] = {
+        0x2A0203F9, // MOV W25,W2 at runtime main+0x75C97C
+    };
+    if (!MatchWords(0x75897C, kH19AXBInitArgExpected)) {
+        LogFingerprintFail("H19AXB_INIT_ARG", 0x75897C);
+        return false;
+    }
+
+    H19AXBInitArgTrace::InstallAtOffset(0x75897C);
+    Logging.Log("[NSC:H19AXB] READY init_arg_trace=1 hook_exl=0x75897c runtime_rel=0x75c97c original=mov_w25_w2 retired_h19as_post=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
-    H19ASFactoryPost::InstallAtOffset(0x794944);
-    Logging.Log("[NSC:H19AS] READY node_factory_trace=1 factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    // H19AXB retired proven H19AS factory POST hook to keep trampoline count flat.
+    Logging.Log("[NSC:H19AS] READY node_factory_trace=1 post_hook=0 superseded_post=H19AXB factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19ATB] READY safe_vfunc48_trace=0 superseded=H19ATC pre_exl=0x794928 post_hook=0 field_e50_trace=1 h19as_factory_trace=1 trampoline_delta_from_h19at=-1 mutation=original_pre_instruction_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     // H19ATC disabled unsafe vfunc-site PRE hook at 0x794928.
     // H19ATB disabled unsafe return-site POST hook at 0x794930.
