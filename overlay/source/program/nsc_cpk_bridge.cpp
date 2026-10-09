@@ -2141,6 +2141,29 @@ HOOK_DEFINE_INLINE(H19ASFactoryPre) {
         const uint64_t actor =
             slot - 0x11660ULL - static_cast<uint64_t>(idx) * 8ULL;
 
+        const uint32_t field_e50 =
+            *reinterpret_cast<const volatile uint32_t*>(actor + 0xE50ULL);
+        const uint64_t vtable =
+            *reinterpret_cast<const volatile uint64_t*>(actor);
+        uint64_t vfunc48 = 0;
+        if (vtable >= 0x80000000ULL && vtable <= 0x90000000ULL) {
+            vfunc48 =
+                *reinterpret_cast<const volatile uint64_t*>(vtable + 0x48ULL);
+        }
+
+        Logging.Log(
+            "[NSC:H19ATC] FACTORY_AUX n=%u actor=%p field_e50=%u "
+            "id_arg=%u aux_arg=%u index=%u vtable=%p vfunc48=%p slot=%p",
+            g_h19as_pre_logs.load(std::memory_order_relaxed),
+            reinterpret_cast<void*>(actor),
+            static_cast<unsigned>(field_e50),
+            static_cast<unsigned>(ctx->X[1] & 0xffffffffu),
+            static_cast<unsigned>(ctx->X[2] & 0xffffffffu),
+            static_cast<unsigned>(ctx->X[19] & 0xffffffffu),
+            reinterpret_cast<void*>(vtable),
+            reinterpret_cast<void*>(vfunc48),
+            reinterpret_cast<void*>(slot));
+
         const uint32_t n =
             g_h19as_pre_logs.fetch_add(1, std::memory_order_relaxed);
 
@@ -2574,13 +2597,14 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AQ] READY resolver_node_trace=0 superseded=H19AT resolver_exl=0x7948e8 q0_site_exl=0x75b050 q8_site_exl=0x75b068 runtime_bias=0x4000 mutation=original_loads_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AR] READY resolver_code_dump=1 resolver_runtime_rel=0x7988e8 range=-0x40..+0x200 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19ASB] READY trampoline_cleanup=1 disabled=H19Z|H19AA|H19AM_A|H19AM_B freed_hooks=4 keep=H19AN|H19AQ|H19AS mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19ATC] READY factory_side_aux_trace=1 vfunc_site_hooks=0 field_e50_trace=1 vfunc48_pointer_trace=1 h19as_factory_trace=1 trampoline_delta_from_h19atb=-1 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
     H19ASFactoryPost::InstallAtOffset(0x794944);
     Logging.Log("[NSC:H19AS] READY node_factory_trace=1 factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    Logging.Log("[NSC:H19ATB] READY safe_vfunc48_trace=1 pre_exl=0x794928 post_hook=0 field_e50_trace=1 h19as_factory_trace=1 trampoline_delta_from_h19at=-1 mutation=original_pre_instruction_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    H19ATVFunc48Pre::InstallAtOffset(0x794928);
+    Logging.Log("[NSC:H19ATB] READY safe_vfunc48_trace=0 superseded=H19ATC pre_exl=0x794928 post_hook=0 field_e50_trace=1 h19as_factory_trace=1 trampoline_delta_from_h19at=-1 mutation=original_pre_instruction_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    // H19ATC disabled unsafe vfunc-site PRE hook at 0x794928.
     // H19ATB disabled unsafe return-site POST hook at 0x794930.
-    Logging.Log("[NSC:H19AT] READY vfunc48_trace=1 pre_exl=0x794928 post_exl=0x794930 retired_h19aq_hooks=2 trampoline_net_delta=0 mutation=original_instructions_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AT] READY vfunc48_trace=0 superseded=H19ATC pre_exl=0x794928 post_exl=0x794930 retired_h19aq_hooks=2 trampoline_net_delta=0 mutation=original_instructions_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
