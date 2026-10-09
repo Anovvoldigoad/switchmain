@@ -1843,7 +1843,13 @@ static void H19AOScanStruct(const char* regname,
 static std::atomic<uint32_t> g_h19ap_dumped{0};
 
 static void H19APDumpCallerCode(uint64_t lr) {
-    if (lr < 0x100000000ULL) return;
+    // H19APB: valid Switch main text is in the 0x80xxxxxx range.
+    // The old 4 GiB guard wrongly rejected the proven LR 0x8075F0C8.
+    if (lr < 0x80000000ULL || lr > 0x90000000ULL) {
+        Logging.Log("[NSC:H19APB] LR_REJECT lr=%p",
+                    reinterpret_cast<void*>(lr));
+        return;
+    }
 
     uint32_t expected = 0;
     if (!g_h19ap_dumped.compare_exchange_strong(
@@ -2091,6 +2097,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AN] READY real_caller_lr=1 hook=0x436034 original=mov_w8_31c8 h19x_entry_trampoline=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AO] READY x21_source_scan=1 regs=x19|x24|x28 range=0x00-0x78 hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AP] READY caller_code_dump=1 proven_bl=0x75f0c4 range=lr-0x100..lr+0x20 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19APB] READY caller_code_dump_guard_fix=1 valid_lr=0x80000000-0x90000000 proven_lr=0x8075f0c8 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
