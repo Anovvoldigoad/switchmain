@@ -2486,6 +2486,53 @@ static std::atomic<uint32_t> g_h19aw_scanned{0};
 // and LR is the exact live caller return address.
 static std::atomic<uint32_t> g_h19axb_logs{0};
 
+
+// R276H19AY: one-time read-only dump around the exact live initializer caller.
+//
+// H19AXB hardware proved custom and native both reach main+0x75C944 from the
+// same LR 0x80726F6C, while W2 differs (custom 0, native 1).
+// Therefore the causal boundary is upstream W2 production in that same caller.
+//
+// H19AY adds no hook. It reuses H19AXB and, once per unique LR, dumps raw code
+// around callsite = LR - 4. This also identifies whether the live transfer is
+// BL, BLR, or another control-flow form without guessing from static scans.
+static std::atomic<uint64_t> g_h19ay_last_lr{0};
+
+static void H19AYDumpLiveCaller(uint64_t lr) {
+    if (lr < 4) return;
+
+    uint64_t expected = g_h19ay_last_lr.load(std::memory_order_relaxed);
+    if (expected == lr) return;
+    g_h19ay_last_lr.store(lr, std::memory_order_relaxed);
+
+    const uint64_t callsite = lr - 4ULL;
+    const uint64_t start = callsite - 0x100ULL;
+    const uint64_t end   = callsite + 0x60ULL;
+
+    Logging.Log(
+        "[NSC:H19AY] CALLER_DUMP_BEGIN lr=%p callsite=%p range=%p..%p",
+        reinterpret_cast<void*>(lr),
+        reinterpret_cast<void*>(callsite),
+        reinterpret_cast<void*>(start),
+        reinterpret_cast<void*>(end));
+
+    for (uint64_t pc = start; pc <= end; pc += 4) {
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+        Logging.Log(
+            "[NSC:H19AY] CODE pc=%p word=0x%08x delta=%lld",
+            reinterpret_cast<void*>(pc),
+            word,
+            static_cast<long long>(
+                static_cast<int64_t>(pc) - static_cast<int64_t>(callsite)));
+    }
+
+    Logging.Log(
+        "[NSC:H19AY] CALLER_DUMP_END lr=%p callsite=%p",
+        reinterpret_cast<void*>(lr),
+        reinterpret_cast<void*>(callsite));
+}
+
 HOOK_DEFINE_INLINE(H19AXBInitArgTrace) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -2497,6 +2544,8 @@ HOOK_DEFINE_INLINE(H19AXBInitArgTrace) {
         const uint64_t actor   = ctx->X[19];
         const uint64_t x5      = ctx->X[5];
         const uint64_t lr      = ctx->X[30];
+
+        H19AYDumpLiveCaller(lr);
 
         // Faithfully re-emulate original instruction: MOV W25,W2.
         ctx->X[25] = static_cast<uint64_t>(e50_arg);
@@ -3009,6 +3058,7 @@ bool InstallTraceHooks() {
 
     H19AXBInitArgTrace::InstallAtOffset(0x75897C);
     Logging.Log("[NSC:H19AXB] READY init_arg_trace=1 hook_exl=0x75897c runtime_rel=0x75c97c original=mov_w25_w2 retired_h19as_post=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AY] READY live_caller_dump=1 hooks_added=0 source=H19AXB_LR callsite=LR-4 range=-0x100..+0x60 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
     // H19AXB retired proven H19AS factory POST hook to keep trampoline count flat.
     Logging.Log("[NSC:H19AS] READY node_factory_trace=1 post_hook=0 superseded_post=H19AXB factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
