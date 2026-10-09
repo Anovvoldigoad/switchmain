@@ -1920,6 +1920,89 @@ HOOK_DEFINE_INLINE(H19ANRealCallerLRHook) {
     }
 };
 
+
+// R276H19AQ: trace the exact node returned by the native resolver.
+//
+// H19APB decoded the proven caller block (runtime/module-relative addresses):
+//   0x75F040  MOV X0,X19
+//   0x75F044  MOV W1,W27
+//   0x75F04C  BL  0x7988E8
+//   0x75F050  LDR X21,[X0]
+//   0x75F054  MOV X0,X19
+//   0x75F058  MOV W1,W27
+//   0x75F05C  BL  0x7988E8
+//   0x75F068  LDR W27,[X0,#8]
+//
+// Exlaunch InstallAtOffset() is text-relative and therefore 0x4000 lower:
+//   runtime 0x75F050 -> exlaunch 0x75B050
+//   runtime 0x75F068 -> exlaunch 0x75B068
+//   runtime resolver 0x7988E8 -> exlaunch 0x7948E8
+//
+// These inline hooks only log the resolver node and faithfully re-emulate
+// the replaced native loads. No pointer is fabricated or borrowed.
+static std::atomic<uint32_t> g_h19aq_q0_logs{0};
+static std::atomic<uint32_t> g_h19aq_q8_logs{0};
+
+HOOK_DEFINE_INLINE(H19AQResolverNodeQ0) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint64_t node = ctx->X[0];
+        const volatile uint64_t* q =
+            reinterpret_cast<const volatile uint64_t*>(node);
+
+        // Original instruction: LDR X21,[X0]
+        const uint64_t q0 = q[0];
+        const uint64_t q8 = q[1];
+        ctx->X[21] = q0;
+
+        const uint32_t n =
+            g_h19aq_q0_logs.fetch_add(1, std::memory_order_relaxed);
+
+        Logging.Log(
+            "[NSC:H19AQ] NODE_Q0 n=%u node=%p q0=%p q8=0x%llx "
+            "x19=%p w27_in=0x%x x22=0x%llx x26=%p",
+            n,
+            reinterpret_cast<void*>(node),
+            reinterpret_cast<void*>(q0),
+            static_cast<unsigned long long>(q8),
+            reinterpret_cast<void*>(ctx->X[19]),
+            static_cast<unsigned>(ctx->X[27] & 0xffffffffu),
+            static_cast<unsigned long long>(ctx->X[22]),
+            reinterpret_cast<void*>(ctx->X[26]));
+    }
+};
+
+HOOK_DEFINE_INLINE(H19AQResolverNodeQ8) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint64_t node = ctx->X[0];
+        const volatile uint64_t* q =
+            reinterpret_cast<const volatile uint64_t*>(node);
+
+        const uint64_t q0 = q[0];
+        const uint32_t q8w = *reinterpret_cast<const volatile uint32_t*>(node + 8);
+
+        // Original instruction: LDR W27,[X0,#8]
+        ctx->X[27] = static_cast<uint64_t>(q8w);
+
+        const uint32_t n =
+            g_h19aq_q8_logs.fetch_add(1, std::memory_order_relaxed);
+
+        Logging.Log(
+            "[NSC:H19AQ] NODE_Q8 n=%u node=%p q0=%p q8w=0x%x "
+            "x19=%p x22=0x%llx x26=%p",
+            n,
+            reinterpret_cast<void*>(node),
+            reinterpret_cast<void*>(q0),
+            static_cast<unsigned>(q8w),
+            reinterpret_cast<void*>(ctx->X[19]),
+            static_cast<unsigned long long>(ctx->X[22]),
+            reinterpret_cast<void*>(ctx->X[26]));
+    }
+};
+
 bool InstallTraceHooks() {
     static constexpr uint32_t kCharExpected[] = {
         0xF000EA68, 0xF9424508, 0xF9760908, 0x2A0003E1, 0xF9409500, 0x1410AC93,
@@ -1999,6 +2082,13 @@ bool InstallTraceHooks() {
         0x52863908,
     };
 
+    static constexpr uint32_t kH19AQNodeQ0Expected[] = {
+        0xF9400015,
+    };
+    static constexpr uint32_t kH19AQNodeQ8Expected[] = {
+        0xB940081B,
+    };
+
     bool ok = true;
     if (!MatchWords(kCharacodeGetterOffset, kCharExpected)) {
         LogFingerprintFail("CHAR", kCharacodeGetterOffset); ok = false;
@@ -2054,6 +2144,12 @@ bool InstallTraceHooks() {
     if (!MatchWords(0x436034, kH19ANExpected)) {
         LogFingerprintFail("H19AN_CALLER_LR", 0x436034); ok = false;
     }
+    if (!MatchWords(0x75B050, kH19AQNodeQ0Expected)) {
+        LogFingerprintFail("H19AQ_NODE_Q0", 0x75B050); ok = false;
+    }
+    if (!MatchWords(0x75B068, kH19AQNodeQ8Expected)) {
+        LogFingerprintFail("H19AQ_NODE_Q8", 0x75B068); ok = false;
+    }
     if (!ok) return false;
 
     CharacodeGetterHook::InstallAtOffset(kCharacodeGetterOffset);
@@ -2098,6 +2194,9 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AO] READY x21_source_scan=1 regs=x19|x24|x28 range=0x00-0x78 hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AP] READY caller_code_dump=1 proven_bl=0x75f0c4 range=lr-0x100..lr+0x20 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19APB] READY caller_code_dump_guard_fix=1 valid_lr=0x80000000-0x90000000 proven_lr=0x8075f0c8 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    H19AQResolverNodeQ0::InstallAtOffset(0x75B050);
+    H19AQResolverNodeQ8::InstallAtOffset(0x75B068);
+    Logging.Log("[NSC:H19AQ] READY resolver_node_trace=1 resolver_exl=0x7948e8 q0_site_exl=0x75b050 q8_site_exl=0x75b068 runtime_bias=0x4000 mutation=original_loads_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
