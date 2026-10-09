@@ -2288,7 +2288,7 @@ static void H19AUDumpContext(uint64_t main_base,
 //   region B: main+0x75C880..0x75CAB0 (paired E54/E50 initializer cluster)
 static std::atomic<uint32_t> g_h19av_dumped{0};
 
-static void H19AVDumpRange(uint64_t main_base,
+[[maybe_unused]] static void H19AVDumpRange(uint64_t main_base,
                            uint64_t start_rel,
                            uint64_t end_rel,
                            const char* name) {
@@ -2313,7 +2313,7 @@ static void H19AVDumpRange(uint64_t main_base,
     Logging.Log("[NSC:H19AV] RANGE_END name=%s", name);
 }
 
-static void H19AVDumpInitClusters(uint64_t lr_after_vfunc) {
+[[maybe_unused]] static void H19AVDumpInitClusters(uint64_t lr_after_vfunc) {
     uint32_t expected = 0;
     if (!g_h19av_dumped.compare_exchange_strong(
             expected, 1, std::memory_order_relaxed)) {
@@ -2340,6 +2340,132 @@ static void H19AVDumpInitClusters(uint64_t lr_after_vfunc) {
     Logging.Log("[NSC:H19AV] DUMP_END");
 }
 
+
+// R276H19AW: read-only direct callsite scan for actor initializer main+0x75C944.
+//
+// H19AV decode proved the initializer argument mapping:
+//   W1 -> actor+0xE54
+//   W2 -> actor+0xE50
+//   W3 -> actor+0xE60
+//   W4 -> actor+0xE58
+//
+// Therefore the current causal frontier is the caller-side producer of W2.
+// H19AW scans main .text once for direct BL/B targets to main+0x75C944.
+// It adds no hooks and mutates no game state.
+static std::atomic<uint32_t> g_h19aw_scanned{0};
+
+static int64_t H19AWSignExtend28(uint32_t word) {
+    int64_t off = static_cast<int64_t>((word & 0x03FFFFFFu) << 2);
+    if (off & (1LL << 27)) {
+        off -= (1LL << 28);
+    }
+    return off;
+}
+
+static void H19AWDumpCallsiteContext(uint64_t main_base,
+                                     uint64_t pc,
+                                     const char* kind) {
+    const uint64_t start = pc >= 0x60ULL ? pc - 0x60ULL : pc;
+    const uint64_t end = pc + 0x30ULL;
+
+    Logging.Log(
+        "[NSC:H19AW] CONTEXT_BEGIN kind=%s pc=%p rel=0x%llx",
+        kind,
+        reinterpret_cast<void*>(pc),
+        static_cast<unsigned long long>(pc - main_base));
+
+    for (uint64_t q = start; q <= end; q += 4) {
+        const uint32_t w =
+            *reinterpret_cast<const volatile uint32_t*>(q);
+        Logging.Log(
+            "[NSC:H19AW] CODE kind=%s pc=%p rel=0x%llx word=0x%08x delta=%lld",
+            kind,
+            reinterpret_cast<void*>(q),
+            static_cast<unsigned long long>(q - main_base),
+            w,
+            static_cast<long long>(
+                static_cast<int64_t>(q) - static_cast<int64_t>(pc)));
+    }
+
+    Logging.Log(
+        "[NSC:H19AW] CONTEXT_END kind=%s pc=%p rel=0x%llx",
+        kind,
+        reinterpret_cast<void*>(pc),
+        static_cast<unsigned long long>(pc - main_base));
+}
+
+static void H19AWScanInitializerCallsites(uint64_t lr_after_vfunc) {
+    uint32_t expected = 0;
+    if (!g_h19aw_scanned.compare_exchange_strong(
+            expected, 1, std::memory_order_relaxed)) {
+        return;
+    }
+
+    if (lr_after_vfunc < 0x80000000ULL ||
+        lr_after_vfunc > 0x90000000ULL) {
+        Logging.Log("[NSC:H19AW] SCAN_SKIP lr=%p reason=bad_lr",
+                    reinterpret_cast<void*>(lr_after_vfunc));
+        return;
+    }
+
+    const uint64_t main_base = lr_after_vfunc - 0x798930ULL;
+    const uint64_t start_rel = 0x4000ULL;
+    const uint64_t end_rel   = 0x12F5FD0ULL;
+    const uint64_t target_rel = 0x75C944ULL;
+
+    uint32_t hits = 0;
+
+    Logging.Log(
+        "[NSC:H19AW] SCAN_BEGIN main=%p target_rel=0x%llx "
+        "range=0x%llx..0x%llx kinds=BL|B",
+        reinterpret_cast<void*>(main_base),
+        static_cast<unsigned long long>(target_rel),
+        static_cast<unsigned long long>(start_rel),
+        static_cast<unsigned long long>(end_rel));
+
+    for (uint64_t rel = start_rel; rel + 4 <= end_rel; rel += 4) {
+        const uint64_t pc = main_base + rel;
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+
+        const uint32_t op = word & 0xFC000000u;
+        const char* kind = nullptr;
+
+        if (op == 0x94000000u) {
+            kind = "BL";
+        } else if (op == 0x14000000u) {
+            kind = "B";
+        } else {
+            continue;
+        }
+
+        const int64_t off = H19AWSignExtend28(word);
+        const uint64_t target =
+            static_cast<uint64_t>(static_cast<int64_t>(rel) + off);
+
+        if (target != target_rel) continue;
+
+        Logging.Log(
+            "[NSC:H19AW] HIT n=%u kind=%s pc=%p rel=0x%llx "
+            "word=0x%08x target_rel=0x%llx",
+            hits,
+            kind,
+            reinterpret_cast<void*>(pc),
+            static_cast<unsigned long long>(rel),
+            word,
+            static_cast<unsigned long long>(target));
+
+        if (hits < 32) {
+            H19AWDumpCallsiteContext(main_base, pc, kind);
+        }
+        ++hits;
+    }
+
+    Logging.Log("[NSC:H19AW] SCAN_END hits=%u target_rel=0x%llx",
+                hits,
+                static_cast<unsigned long long>(target_rel));
+}
+
 HOOK_DEFINE_INLINE(H19ASFactoryPre) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -2349,7 +2475,9 @@ HOOK_DEFINE_INLINE(H19ASFactoryPre) {
 
         // H19AV: broad H19AU scan retired after hardware candidate discovery.
 
-        H19AVDumpInitClusters(ctx->X[30]);
+        // H19AW: H19AV focused dump retired after hardware decode.
+
+        H19AWScanInitializerCallsites(ctx->X[30]);
 
         const uint32_t idx = static_cast<uint32_t>(ctx->X[19]);
         const uint64_t slot = ctx->X[22];
@@ -2813,7 +2941,8 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19AR] READY resolver_code_dump=1 resolver_runtime_rel=0x7988e8 range=-0x40..+0x200 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19ASB] READY trampoline_cleanup=1 disabled=H19Z|H19AA|H19AM_A|H19AM_B freed_hooks=4 keep=H19AN|H19AQ|H19AS mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19ATC] READY factory_side_aux_trace=1 vfunc_site_hooks=0 field_e50_trace=1 vfunc48_pointer_trace=1 h19as_factory_trace=1 trampoline_delta_from_h19atb=-1 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    Logging.Log("[NSC:H19AV] READY e50_init_cluster_dump=1 hooks_added=0 broad_scan=0 ranges=0x759f80-0x75a0a0|0x75c880-0x75cab0 target_pair=0x75c994|0x75c9c0 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AW] READY init_callsite_scan=1 hooks_added=0 target_rel=0x75c944 kinds=BL|B context=0x60_before|0x30_after mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AV] READY e50_init_cluster_dump=0 superseded=H19AW hooks_added=0 broad_scan=0 ranges=0x759f80-0x75a0a0|0x75c880-0x75cab0 target_pair=0x75c994|0x75c9c0 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AVB] READY build_fix_unused_h19au=1 runtime_delta=0 h19au_scan_retained=1 h19au_scan_called=0 mutation=none diagnostic_only=1");
     Logging.Log("[NSC:H19AU] READY e50_writer_scan=0 superseded=H19AV hooks_added=0 scan_fields=E50|E54 scan_ops=STRW|LDRW|STRX|LDRX context_writers=1 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
