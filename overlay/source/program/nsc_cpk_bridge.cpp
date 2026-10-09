@@ -1834,6 +1834,44 @@ static void H19AOScanStruct(const char* regname,
     }
 }
 
+
+// R276H19AP: dump the real caller code around the proven BL site.
+//
+// H19AN proved LR == main+0x75F0C8, so the BL itself is main+0x75F0C4.
+// We dump raw AArch64 words from -0x100 through +0x20 relative to LR.
+// This is read-only and executes only once.
+static std::atomic<uint32_t> g_h19ap_dumped{0};
+
+static void H19APDumpCallerCode(uint64_t lr) {
+    if (lr < 0x100000000ULL) return;
+
+    uint32_t expected = 0;
+    if (!g_h19ap_dumped.compare_exchange_strong(
+            expected, 1, std::memory_order_relaxed)) {
+        return;
+    }
+
+    const uint64_t start = lr - 0x100;
+    const uint64_t end   = lr + 0x20;
+
+    for (uint64_t pc = start; pc <= end; pc += 4) {
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+
+        const int64_t delta =
+            static_cast<int64_t>(pc) - static_cast<int64_t>(lr);
+        const uint64_t rel =
+            static_cast<uint64_t>(static_cast<int64_t>(0x75F0C8) + delta);
+
+        Logging.Log(
+            "[NSC:H19AP] CODE pc=%p rel=0x%llx word=0x%08x delta=%lld",
+            reinterpret_cast<void*>(pc),
+            static_cast<unsigned long long>(rel),
+            word,
+            static_cast<long long>(delta));
+    }
+}
+
 HOOK_DEFINE_INLINE(H19ANRealCallerLRHook) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -1842,6 +1880,8 @@ HOOK_DEFINE_INLINE(H19ANRealCallerLRHook) {
 
         const uint32_t n =
             g_h19an_logs.fetch_add(1, std::memory_order_relaxed);
+
+        H19APDumpCallerCode(ctx->X[30]);
 
         Logging.Log(
             "[NSC:H19AN] CALL n=%u "
@@ -2050,6 +2090,7 @@ bool InstallTraceHooks() {
     H19ANRealCallerLRHook::InstallAtOffset(0x436034);
     Logging.Log("[NSC:H19AN] READY real_caller_lr=1 hook=0x436034 original=mov_w8_31c8 h19x_entry_trampoline=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AO] READY x21_source_scan=1 regs=x19|x24|x28 range=0x00-0x78 hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19AP] READY caller_code_dump=1 proven_bl=0x75f0c4 range=lr-0x100..lr+0x20 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     return true;
 }
 
