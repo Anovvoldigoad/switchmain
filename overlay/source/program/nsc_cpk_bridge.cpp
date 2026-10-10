@@ -2830,10 +2830,47 @@ HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
         // Original: MOV W19,W1
         ctx->X[19] = static_cast<uint64_t>(id);
 
+        const uint64_t table = ctx->X[24];
+        uint64_t bucket_entry = 0;
+        uint64_t bucket_ptr = 0;
+        int32_t bucket_count = -2147483647;
+        bool table_plausible =
+            table >= 0x100000000ULL && table < 0x8000000000ULL;
+
+        if (table_plausible) {
+            const int64_t signed_id =
+                static_cast<int64_t>(static_cast<int32_t>(id));
+            bucket_entry =
+                static_cast<uint64_t>(
+                    static_cast<int64_t>(table) + signed_id * 0x10LL);
+
+            if (bucket_entry >= 0x100000000ULL &&
+                bucket_entry < 0x8000000000ULL) {
+                bucket_ptr =
+                    *reinterpret_cast<const volatile uint64_t*>(
+                        bucket_entry + 0x00);
+                bucket_count =
+                    *reinterpret_cast<const volatile int32_t*>(
+                        bucket_entry + 0x08);
+            }
+        }
+
         const uint32_t n =
             g_h19bg_entry_logs.fetch_add(1, std::memory_order_relaxed);
 
         if (n < 256) {
+            Logging.Log(
+                "[NSC:H19BH] ID_BUCKET n=%u id=%u table=%p entry=%p "
+                "bucket_ptr=%p count=%d table_ok=%u x2=%p lr=%p",
+                n,
+                static_cast<unsigned>(id),
+                reinterpret_cast<void*>(table),
+                reinterpret_cast<void*>(bucket_entry),
+                reinterpret_cast<void*>(bucket_ptr),
+                static_cast<int>(bucket_count),
+                table_plausible ? 1U : 0U,
+                reinterpret_cast<void*>(x2),
+                reinterpret_cast<void*>(lr));
             Logging.Log(
                 "[NSC:H19BG] LOOKUP_ENTRY n=%u id=%u x0=%p x2=%p lr=%p",
                 n,
@@ -3565,6 +3602,7 @@ bool InstallTraceHooks() {
 
     Logging.Log("[NSC:H19BG] READY internal_id_lookup_entry_return=1 entry_exl=0x8100f8 return_exl=0x8102e0 runtime_entry_rel=0x8140f8 runtime_return_rel=0x8142e0 original_entry=mov_w19_w1 original_return=mov_x0_x19 retired_h19be=1 retired_h19as=1 trampoline_net_delta=0 mutation=original_moves_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BGB] READY anchor_fix=1 base=H19BF removed_dependency=H19ATC install_anchor=H19BE retired_h19as=1 runtime_intent=H19BG mutation=none diagnostic_only=1");
+    Logging.Log("[NSC:H19BH] READY id_bucket_trace=1 hooks_added=0 hooks_removed=0 source=H19BG_ENTRY table_from=x24 entry_stride=0x10 bucket_ptr_off=0 count_off=8 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=0 superseded=H19BG hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BF] READY internal_id_lookup_code_dump=0 superseded=H19BG hooks_added=0 target_rel=0x8140c8 range=-0x40..+0x600 trigger=H19BE_POST_HELPER mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     // H19BGB: H19AS lookup-pre hook retired; boundary already proven.
