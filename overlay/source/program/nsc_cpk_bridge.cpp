@@ -2641,6 +2641,47 @@ static void H19BBDumpNodeRegistrationPredecessor(uint64_t h19axb_lr) {
     Logging.Log("[NSC:H19BB] DUMP_END lookup_rel=0x81d4e4");
 }
 
+
+// R276H19BC: runtime trace of registration builder main+0x81D198.
+//
+// H19BB proved main+0x81D198 captures (W1,W2) as key (ID,aux),
+// populates 9 pointer slots, allocates a 0x68-byte entry, and inserts it.
+//
+// Hook point:
+//   runtime main+0x81D1A4 : MOV W21,W1
+//   exlaunch offset       : 0x8191A4
+static std::atomic<uint32_t> g_h19bc_logs{0};
+
+HOOK_DEFINE_INLINE(H19BCRegistrationEntryTrace) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint64_t manager = ctx->X[0];
+        const uint32_t id      = static_cast<uint32_t>(ctx->X[1]);
+        const uint32_t aux     = static_cast<uint32_t>(ctx->X[2]);
+        const uint64_t source  = ctx->X[3];
+        const uint64_t lr      = ctx->X[30];
+
+        // Original instruction: MOV W21,W1.
+        ctx->X[21] = static_cast<uint64_t>(id);
+
+        const uint32_t n =
+            g_h19bc_logs.fetch_add(1, std::memory_order_relaxed);
+
+        if (n < 4096) {
+            Logging.Log(
+                "[NSC:H19BC] REG_ENTRY n=%u manager=%p id=%u aux=%u "
+                "source_x3=%p lr=%p",
+                n,
+                reinterpret_cast<void*>(manager),
+                static_cast<unsigned>(id),
+                static_cast<unsigned>(aux),
+                reinterpret_cast<void*>(source),
+                reinterpret_cast<void*>(lr));
+        }
+    }
+};
+
 HOOK_DEFINE_INLINE(H19AXBInitArgTrace) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -2653,7 +2694,7 @@ HOOK_DEFINE_INLINE(H19AXBInitArgTrace) {
         const uint64_t x5      = ctx->X[5];
         const uint64_t lr      = ctx->X[30];
 
-        H19BBDumpNodeRegistrationPredecessor(lr);
+        // H19BC: H19BB predecessor dump retired after hardware decode.
 
         // H19BB: H19BA lookup dump retired after hardware decode.
 
@@ -3168,12 +3209,22 @@ bool InstallTraceHooks() {
         return false;
     }
 
-    H19AXBInitArgTrace::InstallAtOffset(0x75897C);
-    Logging.Log("[NSC:H19AXB] READY init_arg_trace=1 hook_exl=0x75897c runtime_rel=0x75c97c original=mov_w25_w2 retired_h19as_post=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    Logging.Log("[NSC:H19BB] READY node_registration_predecessor_dump=1 hooks_added=0 lookup_rel=0x81d4e4 range=-0x800..+0x40 source=H19AXB_LR mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    // H19BC retired H19AXB init-arg hook; evidence already proven.
+    Logging.Log("[NSC:H19AXB] READY init_arg_trace=0 superseded=H19BC hook_exl=0x75897c runtime_rel=0x75c97c original=mov_w25_w2 retired_h19as_post=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BB] READY node_registration_predecessor_dump=0 superseded=H19BC hooks_added=0 lookup_rel=0x81d4e4 range=-0x800..+0x40 source=H19AXB_LR mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BA] READY node_lookup_code_dump=0 superseded=H19BB hooks_added=0 target_rel=0x81d4e4 range=-0x40..+0x500 source=H19AXB_LR mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AZ] READY w21_origin_extended_dump=0 superseded=H19BA hooks_added=0 source=H19AXB_LR callsite=LR-4 range=-0x800..+0x80 target=W21_to_W2 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AY] READY live_caller_dump=0 superseded=H19AZ hooks_added=0 source=H19AXB_LR callsite=LR-4 range=-0x100..+0x60 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    static constexpr uint32_t kH19BCRegistrationExpected[] = {
+        0x2A0103F5, // MOV W21,W1 at runtime main+0x81D1A4
+    };
+    if (!MatchWords(0x8191A4, kH19BCRegistrationExpected)) {
+        LogFingerprintFail("H19BC_REG_ENTRY", 0x8191A4);
+        return false;
+    }
+
+    H19BCRegistrationEntryTrace::InstallAtOffset(0x8191A4);
+    Logging.Log("[NSC:H19BC] READY registration_entry_trace=1 hook_exl=0x8191a4 runtime_rel=0x81d1a4 original=mov_w21_w1 retired_h19axb=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
     // H19AXB retired proven H19AS factory POST hook to keep trampoline count flat.
     Logging.Log("[NSC:H19AS] READY node_factory_trace=1 post_hook=0 superseded_post=H19AXB factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
