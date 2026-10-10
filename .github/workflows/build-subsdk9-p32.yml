@@ -1,4 +1,4 @@
-name: Build NSC H19BH ID bucket trace
+name: Build NSC H19BI table writer callsite scan
 
 on:
   workflow_dispatch:
@@ -96,7 +96,7 @@ jobs:
       - name: Upload P32 subsdk9
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-H19BH-id-bucket-trace-subsdk9
+          name: NSC-H19BI-table-writer-callsite-scan-subsdk9
           path: artifact/
           if-no-files-found: error
           compression-level: 9

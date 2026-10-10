@@ -2818,6 +2818,204 @@ static inline bool H19BEReasonablePtr(uint64_t p) {
 static std::atomic<uint32_t> g_h19bg_entry_logs{0};
 static std::atomic<uint32_t> g_h19bg_return_logs{0};
 
+
+static std::atomic<uint32_t> g_h19bi_scanned{0};
+static std::atomic<int32_t> g_h19bi_last_neighborhood_id{-2147483647};
+
+static int64_t H19BISignExtend28(uint32_t word) {
+    int64_t off = static_cast<int64_t>((word & 0x03FFFFFFu) << 2);
+    if (off & (1LL << 27)) {
+        off -= (1LL << 28);
+    }
+    return off;
+}
+
+static uint64_t H19BIDeriveMainBase(uint64_t lr) {
+    static constexpr uint64_t kCallerReturnRels[] = {
+        0x81D970ULL,
+        0x81EBD4ULL,
+        0x81F7C8ULL,
+        0x8204ACULL,
+    };
+
+    for (const uint64_t rel : kCallerReturnRels) {
+        if (lr <= rel) continue;
+        const uint64_t base = lr - rel;
+        if ((base & 0xFFFULL) == 0 &&
+            base >= 0x7F000000ULL &&
+            base <= 0x81000000ULL) {
+            return base;
+        }
+    }
+    return 0;
+}
+
+static void H19BIDumpContext(uint64_t main_base,
+                             uint64_t pc,
+                             const char* target_name) {
+    const uint64_t start = pc >= 0x90ULL ? pc - 0x90ULL : pc;
+    const uint64_t end = pc + 0x60ULL;
+
+    Logging.Log(
+        "[NSC:H19BI] CONTEXT_BEGIN target=%s pc=%p rel=0x%llx",
+        target_name,
+        reinterpret_cast<void*>(pc),
+        static_cast<unsigned long long>(pc - main_base));
+
+    for (uint64_t q = start; q <= end; q += 4) {
+        const uint32_t w =
+            *reinterpret_cast<const volatile uint32_t*>(q);
+        Logging.Log(
+            "[NSC:H19BI] CODE target=%s pc=%p rel=0x%llx "
+            "word=0x%08x delta=%lld",
+            target_name,
+            reinterpret_cast<void*>(q),
+            static_cast<unsigned long long>(q - main_base),
+            w,
+            static_cast<long long>(
+                static_cast<int64_t>(q) -
+                static_cast<int64_t>(pc)));
+    }
+
+    Logging.Log(
+        "[NSC:H19BI] CONTEXT_END target=%s pc=%p rel=0x%llx",
+        target_name,
+        reinterpret_cast<void*>(pc),
+        static_cast<unsigned long long>(pc - main_base));
+}
+
+static void H19BIScanTableCallsites(uint64_t lr) {
+    uint32_t expected = 0;
+    if (!g_h19bi_scanned.compare_exchange_strong(
+            expected, 1, std::memory_order_relaxed)) {
+        return;
+    }
+
+    const uint64_t main_base = H19BIDeriveMainBase(lr);
+    if (main_base == 0) {
+        Logging.Log(
+            "[NSC:H19BI] SCAN_SKIP lr=%p reason=main_base_unresolved",
+            reinterpret_cast<void*>(lr));
+        return;
+    }
+
+    static constexpr uint64_t kStartRel = 0x4000ULL;
+    static constexpr uint64_t kEndRel   = 0x12F5FD0ULL;
+
+    struct Target {
+        uint64_t rel;
+        const char* name;
+    };
+
+    static constexpr Target kTargets[] = {
+        {0x8140BCULL, "ENTRY_ACCESSOR"},
+        {0x8140C8ULL, "KEYED_LOOKUP"},
+    };
+
+    uint32_t total_hits = 0;
+
+    Logging.Log(
+        "[NSC:H19BI] SCAN_BEGIN main=%p range=0x%llx..0x%llx "
+        "targets=0x8140bc|0x8140c8 kinds=BL|B",
+        reinterpret_cast<void*>(main_base),
+        static_cast<unsigned long long>(kStartRel),
+        static_cast<unsigned long long>(kEndRel));
+
+    for (uint64_t rel = kStartRel; rel + 4 <= kEndRel; rel += 4) {
+        const uint64_t pc = main_base + rel;
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+
+        const uint32_t op = word & 0xFC000000u;
+        const char* kind = nullptr;
+
+        if (op == 0x94000000u) {
+            kind = "BL";
+        } else if (op == 0x14000000u) {
+            kind = "B";
+        } else {
+            continue;
+        }
+
+        const int64_t off = H19BISignExtend28(word);
+        const uint64_t target_rel =
+            static_cast<uint64_t>(
+                static_cast<int64_t>(rel) + off);
+
+        for (const Target& target : kTargets) {
+            if (target_rel != target.rel) continue;
+
+            Logging.Log(
+                "[NSC:H19BI] HIT n=%u target=%s kind=%s "
+                "pc=%p rel=0x%llx word=0x%08x target_rel=0x%llx",
+                total_hits,
+                target.name,
+                kind,
+                reinterpret_cast<void*>(pc),
+                static_cast<unsigned long long>(rel),
+                word,
+                static_cast<unsigned long long>(target_rel));
+
+            if (total_hits < 64) {
+                H19BIDumpContext(main_base, pc, target.name);
+            }
+            ++total_hits;
+        }
+    }
+
+    Logging.Log("[NSC:H19BI] SCAN_END total_hits=%u", total_hits);
+}
+
+static void H19BIDumpIdNeighborhood(uint64_t table, int32_t id) {
+    const int32_t previous =
+        g_h19bi_last_neighborhood_id.exchange(
+            id, std::memory_order_relaxed);
+
+    if (previous == id) return;
+
+    if (table < 0x100000000ULL ||
+        table >= 0x8000000000ULL) {
+        Logging.Log(
+            "[NSC:H19BI] NEIGHBOR_SKIP id=%d table=%p reason=bad_table",
+            static_cast<int>(id),
+            reinterpret_cast<void*>(table));
+        return;
+    }
+
+    Logging.Log(
+        "[NSC:H19BI] NEIGHBOR_BEGIN id=%d table=%p radius=4",
+        static_cast<int>(id),
+        reinterpret_cast<void*>(table));
+
+    for (int32_t delta = -4; delta <= 4; ++delta) {
+        const int32_t probe_id = id + delta;
+        if (probe_id < 0) continue;
+
+        const uint64_t entry =
+            table +
+            static_cast<uint64_t>(static_cast<uint32_t>(probe_id)) *
+                0x10ULL;
+
+        const uint64_t ptr =
+            *reinterpret_cast<const volatile uint64_t*>(entry + 0x00);
+        const int32_t count =
+            *reinterpret_cast<const volatile int32_t*>(entry + 0x08);
+
+        Logging.Log(
+            "[NSC:H19BI] NEIGHBOR id=%d delta=%d entry=%p "
+            "bucket_ptr=%p count=%d",
+            static_cast<int>(probe_id),
+            static_cast<int>(delta),
+            reinterpret_cast<void*>(entry),
+            reinterpret_cast<void*>(ptr),
+            static_cast<int>(count));
+    }
+
+    Logging.Log(
+        "[NSC:H19BI] NEIGHBOR_END id=%d",
+        static_cast<int>(id));
+}
+
 HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -2826,6 +3024,11 @@ HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
         const uint32_t id = static_cast<uint32_t>(ctx->X[1]);
         const uint64_t x2 = ctx->X[2];
         const uint64_t lr = ctx->X[30];
+
+        H19BIScanTableCallsites(lr);
+        H19BIDumpIdNeighborhood(
+            ctx->X[24],
+            static_cast<int32_t>(id));
 
         // Original: MOV W19,W1
         ctx->X[19] = static_cast<uint64_t>(id);
@@ -3603,6 +3806,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19BG] READY internal_id_lookup_entry_return=1 entry_exl=0x8100f8 return_exl=0x8102e0 runtime_entry_rel=0x8140f8 runtime_return_rel=0x8142e0 original_entry=mov_w19_w1 original_return=mov_x0_x19 retired_h19be=1 retired_h19as=1 trampoline_net_delta=0 mutation=original_moves_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BGB] READY anchor_fix=1 base=H19BF removed_dependency=H19ATC install_anchor=H19BE retired_h19as=1 runtime_intent=H19BG mutation=none diagnostic_only=1");
     Logging.Log("[NSC:H19BH] READY id_bucket_trace=1 hooks_added=0 hooks_removed=0 source=H19BG_ENTRY table_from=x24 entry_stride=0x10 bucket_ptr_off=0 count_off=8 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BI] READY table_writer_callsite_scan=1 hooks_added=0 hooks_removed=0 targets=0x8140bc|0x8140c8 scan_kinds=BL|B context=0x90_before|0x60_after neighborhood_radius=4 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=0 superseded=H19BG hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BF] READY internal_id_lookup_code_dump=0 superseded=H19BG hooks_added=0 target_rel=0x8140c8 range=-0x40..+0x600 trigger=H19BE_POST_HELPER mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     // H19BGB: H19AS lookup-pre hook retired; boundary already proven.
