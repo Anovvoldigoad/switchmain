@@ -2726,6 +2726,82 @@ static void H19BDDumpRegistrationSource(
 // No slot/object/source mutation.
 static std::atomic<uint32_t> g_h19be_logs{0};
 
+
+// R276H19BF: one-time read-only dump of the first ID-dependent internal lookup
+// called by helper main+0x81D53C.
+//
+// Static decode of helper prefix:
+//   helper+0x40C  LDR W1,[SP,#0x1C8]  ; character ID
+//   helper+0x420  LDR X0,[X8,#0x118]
+//   helper+0x42C  CSEL X2,...
+//   helper+0x430  BL main+0x8140C8
+//   helper+0x434  CBZ X0, helper+0x7CC
+//
+// H19BE proves custom slot0 is allocated but remains zero-filled immediately
+// after helper index0 returns, while native slot0 is initialized.
+//
+// H19BF adds NO hook. It reuses the existing H19BE callback as a safe trigger.
+// At the H19BE post-helper boundary, X30 is expected to contain the return
+// address of the just-completed helper call: main+0x81D1C8.
+//
+// We only dump if the derived main base is page-aligned and plausible.
+static std::atomic<uint32_t> g_h19bf_dumped{0};
+
+static void H19BFDumpInternalIdLookup(uint64_t lr) {
+    uint32_t expected = 0;
+    if (!g_h19bf_dumped.compare_exchange_strong(
+            expected, 1, std::memory_order_relaxed)) {
+        return;
+    }
+
+    if (lr < 0x80000000ULL || lr > 0x90000000ULL) {
+        Logging.Log("[NSC:H19BF] DUMP_SKIP lr=%p reason=bad_lr",
+                    reinterpret_cast<void*>(lr));
+        return;
+    }
+
+    const uint64_t main_base = lr - 0x81D1C8ULL;
+
+    if ((main_base & 0xFFFULL) != 0 ||
+        main_base < 0x7F000000ULL ||
+        main_base > 0x81000000ULL) {
+        Logging.Log(
+            "[NSC:H19BF] DUMP_SKIP lr=%p main=%p reason=implausible_main_base",
+            reinterpret_cast<void*>(lr),
+            reinterpret_cast<void*>(main_base));
+        return;
+    }
+
+    const uint64_t target = main_base + 0x8140C8ULL;
+    const uint64_t start  = target - 0x40ULL;
+    const uint64_t end    = target + 0x600ULL;
+
+    Logging.Log(
+        "[NSC:H19BF] DUMP_BEGIN lr=%p main=%p target=%p "
+        "target_rel=0x8140c8 range=%p..%p",
+        reinterpret_cast<void*>(lr),
+        reinterpret_cast<void*>(main_base),
+        reinterpret_cast<void*>(target),
+        reinterpret_cast<void*>(start),
+        reinterpret_cast<void*>(end));
+
+    for (uint64_t pc = start; pc <= end; pc += 4) {
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+
+        Logging.Log(
+            "[NSC:H19BF] CODE pc=%p rel=0x%llx word=0x%08x delta=%lld",
+            reinterpret_cast<void*>(pc),
+            static_cast<unsigned long long>(pc - main_base),
+            word,
+            static_cast<long long>(
+                static_cast<int64_t>(pc) - static_cast<int64_t>(target)));
+    }
+
+    Logging.Log("[NSC:H19BF] DUMP_END target_rel=0x8140c8");
+}
+
+
 static inline bool H19BEReasonablePtr(uint64_t p) {
     return p >= 0x100000000ULL && p < 0x8000000000ULL;
 }
@@ -2733,6 +2809,8 @@ static inline bool H19BEReasonablePtr(uint64_t p) {
 HOOK_DEFINE_INLINE(H19BESlot0PostHelperTrace) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
+
+        H19BFDumpInternalIdLookup(ctx->X[30]);
 
         const uint64_t temp    = ctx->X[1];
         const uint64_t manager = ctx->X[19];
@@ -3402,6 +3480,7 @@ bool InstallTraceHooks() {
 
     H19BESlot0PostHelperTrace::InstallAtOffset(0x8191CC);
     Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=1 hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BF] READY internal_id_lookup_code_dump=1 hooks_added=0 target_rel=0x8140c8 range=-0x40..+0x600 trigger=H19BE_POST_HELPER mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
     // H19AXB retired proven H19AS factory POST hook to keep trampoline count flat.
     Logging.Log("[NSC:H19AS] READY node_factory_trace=1 post_hook=0 superseded_post=H19AXB factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
