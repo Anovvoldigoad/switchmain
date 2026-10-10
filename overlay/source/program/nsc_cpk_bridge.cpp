@@ -2547,7 +2547,7 @@ static std::atomic<uint64_t> g_h19ay_last_lr{0};
 // (runtime main+0x726F6C) and dumps raw code around main+0x81D4E4.
 static std::atomic<uint32_t> g_h19ba_dumped{0};
 
-static void H19BADumpNodeLookup(uint64_t h19axb_lr) {
+[[maybe_unused]] static void H19BADumpNodeLookup(uint64_t h19axb_lr) {
     uint32_t expected = 0;
     if (!g_h19ba_dumped.compare_exchange_strong(
             expected, 1, std::memory_order_relaxed)) {
@@ -2588,6 +2588,59 @@ static void H19BADumpNodeLookup(uint64_t h19axb_lr) {
     Logging.Log("[NSC:H19BA] DUMP_END target_rel=0x81d4e4");
 }
 
+
+// R276H19BB: read-only predecessor dump before pure lookup main+0x81D4E4.
+//
+// H19BA proved main+0x81D4E4 is a pure lookup:
+//   key ID  = entry+0x10
+//   key aux = entry+0x14
+//   value[index] = entry+0x18 + index*8
+//
+// It does not create/register entries. Current frontier is the manager
+// registration/insertion path that populates these entries.
+static std::atomic<uint32_t> g_h19bb_dumped{0};
+
+static void H19BBDumpNodeRegistrationPredecessor(uint64_t h19axb_lr) {
+    uint32_t expected = 0;
+    if (!g_h19bb_dumped.compare_exchange_strong(
+            expected, 1, std::memory_order_relaxed)) {
+        return;
+    }
+
+    if (h19axb_lr < 0x80000000ULL ||
+        h19axb_lr > 0x90000000ULL) {
+        Logging.Log("[NSC:H19BB] DUMP_SKIP lr=%p reason=bad_lr",
+                    reinterpret_cast<void*>(h19axb_lr));
+        return;
+    }
+
+    const uint64_t main_base = h19axb_lr - 0x726F6CULL;
+    const uint64_t lookup    = main_base + 0x81D4E4ULL;
+    const uint64_t start     = lookup - 0x800ULL;
+    const uint64_t end       = lookup + 0x40ULL;
+
+    Logging.Log(
+        "[NSC:H19BB] DUMP_BEGIN main=%p lookup=%p lookup_rel=0x81d4e4 range=%p..%p",
+        reinterpret_cast<void*>(main_base),
+        reinterpret_cast<void*>(lookup),
+        reinterpret_cast<void*>(start),
+        reinterpret_cast<void*>(end));
+
+    for (uint64_t pc = start; pc <= end; pc += 4) {
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+        Logging.Log(
+            "[NSC:H19BB] CODE pc=%p rel=0x%llx word=0x%08x delta=%lld",
+            reinterpret_cast<void*>(pc),
+            static_cast<unsigned long long>(pc - main_base),
+            word,
+            static_cast<long long>(
+                static_cast<int64_t>(pc) - static_cast<int64_t>(lookup)));
+    }
+
+    Logging.Log("[NSC:H19BB] DUMP_END lookup_rel=0x81d4e4");
+}
+
 HOOK_DEFINE_INLINE(H19AXBInitArgTrace) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -2600,7 +2653,9 @@ HOOK_DEFINE_INLINE(H19AXBInitArgTrace) {
         const uint64_t x5      = ctx->X[5];
         const uint64_t lr      = ctx->X[30];
 
-        H19BADumpNodeLookup(lr);
+        H19BBDumpNodeRegistrationPredecessor(lr);
+
+        // H19BB: H19BA lookup dump retired after hardware decode.
 
         // H19BA: H19AZ caller dump retired after side-slot control.
 
@@ -3115,7 +3170,8 @@ bool InstallTraceHooks() {
 
     H19AXBInitArgTrace::InstallAtOffset(0x75897C);
     Logging.Log("[NSC:H19AXB] READY init_arg_trace=1 hook_exl=0x75897c runtime_rel=0x75c97c original=mov_w25_w2 retired_h19as_post=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    Logging.Log("[NSC:H19BA] READY node_lookup_code_dump=1 hooks_added=0 target_rel=0x81d4e4 range=-0x40..+0x500 source=H19AXB_LR mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BB] READY node_registration_predecessor_dump=1 hooks_added=0 lookup_rel=0x81d4e4 range=-0x800..+0x40 source=H19AXB_LR mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BA] READY node_lookup_code_dump=0 superseded=H19BB hooks_added=0 target_rel=0x81d4e4 range=-0x40..+0x500 source=H19AXB_LR mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AZ] READY w21_origin_extended_dump=0 superseded=H19BA hooks_added=0 source=H19AXB_LR callsite=LR-4 range=-0x800..+0x80 target=W21_to_W2 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19AY] READY live_caller_dump=0 superseded=H19AZ hooks_added=0 source=H19AXB_LR callsite=LR-4 range=-0x100..+0x60 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
