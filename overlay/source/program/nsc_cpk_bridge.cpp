@@ -2806,6 +2806,70 @@ static inline bool H19BEReasonablePtr(uint64_t p) {
     return p >= 0x100000000ULL && p < 0x8000000000ULL;
 }
 
+
+// R276H19BG: dynamic entry/return trace for main+0x8140C8.
+//
+// H19BF dumped this function and identified:
+//   entry-safe site  : main+0x8140F8  MOV W19,W1
+//   common return    : main+0x8142E0  MOV X0,X19
+//   RET              : main+0x814300
+//
+// H19BG compares the internal lookup dynamically without forcing results.
+static std::atomic<uint32_t> g_h19bg_entry_logs{0};
+static std::atomic<uint32_t> g_h19bg_return_logs{0};
+
+HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint64_t x0 = ctx->X[0];
+        const uint32_t id = static_cast<uint32_t>(ctx->X[1]);
+        const uint64_t x2 = ctx->X[2];
+        const uint64_t lr = ctx->X[30];
+
+        // Original: MOV W19,W1
+        ctx->X[19] = static_cast<uint64_t>(id);
+
+        const uint32_t n =
+            g_h19bg_entry_logs.fetch_add(1, std::memory_order_relaxed);
+
+        if (n < 256) {
+            Logging.Log(
+                "[NSC:H19BG] LOOKUP_ENTRY n=%u id=%u x0=%p x2=%p lr=%p",
+                n,
+                static_cast<unsigned>(id),
+                reinterpret_cast<void*>(x0),
+                reinterpret_cast<void*>(x2),
+                reinterpret_cast<void*>(lr));
+        }
+    }
+};
+
+HOOK_DEFINE_INLINE(H19BGInternalIdLookupReturnTrace) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint64_t result = ctx->X[19];
+        const uint64_t arg2   = ctx->X[20];
+        const uint64_t lr     = ctx->X[30];
+
+        // Original: MOV X0,X19
+        ctx->X[0] = result;
+
+        const uint32_t n =
+            g_h19bg_return_logs.fetch_add(1, std::memory_order_relaxed);
+
+        if (n < 256) {
+            Logging.Log(
+                "[NSC:H19BG] LOOKUP_RETURN n=%u result=%p preserved_x20=%p lr=%p",
+                n,
+                reinterpret_cast<void*>(result),
+                reinterpret_cast<void*>(arg2),
+                reinterpret_cast<void*>(lr));
+        }
+    }
+};
+
 HOOK_DEFINE_INLINE(H19BESlot0PostHelperTrace) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -3478,10 +3542,32 @@ bool InstallTraceHooks() {
         return false;
     }
 
-    H19BESlot0PostHelperTrace::InstallAtOffset(0x8191CC);
-    Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=1 hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    Logging.Log("[NSC:H19BF] READY internal_id_lookup_code_dump=1 hooks_added=0 target_rel=0x8140c8 range=-0x40..+0x600 trigger=H19BE_POST_HELPER mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    H19ASFactoryPre::InstallAtOffset(0x79493C);
+    // H19BGB: retire H19BE slot0 hook after hardware proof and
+    // reuse this proven install line as the H19BG insertion anchor.
+    static constexpr uint32_t kH19BGEntryExpected[] = {
+        0x2A0103F3, // MOV W19,W1 at runtime main+0x8140F8
+    };
+    if (!MatchWords(0x8100F8, kH19BGEntryExpected)) {
+        LogFingerprintFail("H19BG_LOOKUP_ENTRY", 0x8100F8);
+        return false;
+    }
+
+    static constexpr uint32_t kH19BGReturnExpected[] = {
+        0xAA1303E0, // MOV X0,X19 at runtime main+0x8142E0
+    };
+    if (!MatchWords(0x8102E0, kH19BGReturnExpected)) {
+        LogFingerprintFail("H19BG_LOOKUP_RETURN", 0x8102E0);
+        return false;
+    }
+
+    H19BGInternalIdLookupEntryTrace::InstallAtOffset(0x8100F8);
+    H19BGInternalIdLookupReturnTrace::InstallAtOffset(0x8102E0);
+
+    Logging.Log("[NSC:H19BG] READY internal_id_lookup_entry_return=1 entry_exl=0x8100f8 return_exl=0x8102e0 runtime_entry_rel=0x8140f8 runtime_return_rel=0x8142e0 original_entry=mov_w19_w1 original_return=mov_x0_x19 retired_h19be=1 retired_h19as=1 trampoline_net_delta=0 mutation=original_moves_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BGB] READY anchor_fix=1 base=H19BF removed_dependency=H19ATC install_anchor=H19BE retired_h19as=1 runtime_intent=H19BG mutation=none diagnostic_only=1");
+    Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=0 superseded=H19BG hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BF] READY internal_id_lookup_code_dump=0 superseded=H19BG hooks_added=0 target_rel=0x8140c8 range=-0x40..+0x600 trigger=H19BE_POST_HELPER mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    // H19BGB: H19AS lookup-pre hook retired; boundary already proven.
     // H19AXB retired proven H19AS factory POST hook to keep trampoline count flat.
     Logging.Log("[NSC:H19AS] READY node_factory_trace=1 post_hook=0 superseded_post=H19AXB factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19ATB] READY safe_vfunc48_trace=0 superseded=H19ATC pre_exl=0x794928 post_hook=0 field_e50_trace=1 h19as_factory_trace=1 trampoline_delta_from_h19at=-1 mutation=original_pre_instruction_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");

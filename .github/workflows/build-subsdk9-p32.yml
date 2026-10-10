@@ -1,4 +1,4 @@
-name: Build NSC H19BF internal ID lookup code dump
+name: Build NSC H19BGB internal ID lookup anchor fix
 
 on:
   workflow_dispatch:
@@ -96,7 +96,7 @@ jobs:
       - name: Upload P32 subsdk9
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-H19BF-internal-id-lookup-code-dump-subsdk9
+          name: NSC-H19BGB-internal-id-lookup-anchor-fix-subsdk9
           path: artifact/
           if-no-files-found: error
           compression-level: 9
