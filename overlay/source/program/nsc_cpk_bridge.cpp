@@ -2700,6 +2700,121 @@ static void H19BDDumpRegistrationSource(
 }
 
 
+
+// R276H19BE: trace the slot-0 object immediately after helper index 0 returns.
+//
+// H19BD corrected source_x3 semantics:
+// source_x3 is not a 0x100-byte descriptor. It is an 8-byte-per-character
+// code-table slot. Both native ID129 and custom ID281 resolve against the same
+// table base, and ID281's own slot correctly contains "mtob".
+//
+// Builder main+0x81D198 calls helper main+0x81D53C for index 0 first.
+// Immediately after that BL:
+//   main+0x81D1C8  ADD X1,SP,#8
+//   main+0x81D1CC  MOV X0,X19
+//
+// At main+0x81D1CC:
+//   X1 = &temporary key at SP+8
+//   [X1+0] u32 = ID
+//   [X1+4] u32 = aux
+//   [X1+8] u64 = slot0 pointer populated by helper index0
+//   X19 = manager
+//   X20 = character-code table slot/source.
+//
+// Hook logs slot0 state before helper index1 starts.
+// Original MOV X0,X19 is faithfully re-emulated.
+// No slot/object/source mutation.
+static std::atomic<uint32_t> g_h19be_logs{0};
+
+static inline bool H19BEReasonablePtr(uint64_t p) {
+    return p >= 0x100000000ULL && p < 0x8000000000ULL;
+}
+
+HOOK_DEFINE_INLINE(H19BESlot0PostHelperTrace) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint64_t temp    = ctx->X[1];
+        const uint64_t manager = ctx->X[19];
+        const uint64_t source  = ctx->X[20];
+
+        // Faithfully re-emulate original instruction: MOV X0,X19.
+        ctx->X[0] = manager;
+
+        uint32_t id = 0;
+        uint32_t aux = 0;
+        uint64_t slot0 = 0;
+
+        if (H19BEReasonablePtr(temp)) {
+            id = *reinterpret_cast<const volatile uint32_t*>(temp + 0x0);
+            aux = *reinterpret_cast<const volatile uint32_t*>(temp + 0x4);
+            slot0 = *reinterpret_cast<const volatile uint64_t*>(temp + 0x8);
+        }
+
+        uint64_t q00 = 0, q08 = 0, q10 = 0, q18 = 0;
+        uint64_t q20 = 0, q28 = 0, q30 = 0, q38 = 0;
+        uint64_t q40 = 0, q48 = 0, q50 = 0, q58 = 0;
+        uint64_t q60 = 0, q68 = 0, q70 = 0, q78 = 0, q80 = 0;
+
+        if (H19BEReasonablePtr(slot0)) {
+            q00 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x00);
+            q08 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x08);
+            q10 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x10);
+            q18 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x18);
+            q20 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x20);
+            q28 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x28);
+            q30 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x30);
+            q38 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x38);
+            q40 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x40);
+            q48 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x48);
+            q50 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x50);
+            q58 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x58);
+            q60 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x60);
+            q68 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x68);
+            q70 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x70);
+            q78 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x78);
+            q80 = *reinterpret_cast<const volatile uint64_t*>(slot0 + 0x80);
+        }
+
+        const uint32_t n =
+            g_h19be_logs.fetch_add(1, std::memory_order_relaxed);
+
+        if (n < 64) {
+            Logging.Log(
+                "[NSC:H19BE] SLOT0_POST n=%u id=%u aux=%u manager=%p "
+                "source=%p temp=%p slot0=%p q00=0x%llx q08=0x%llx "
+                "q10=0x%llx q18=0x%llx q20=0x%llx q28=0x%llx "
+                "q30=0x%llx q38=0x%llx q40=0x%llx q48=0x%llx "
+                "q50=0x%llx q58=0x%llx q60=0x%llx q68=0x%llx "
+                "q70=0x%llx q78=0x%llx q80=0x%llx",
+                n,
+                static_cast<unsigned>(id),
+                static_cast<unsigned>(aux),
+                reinterpret_cast<void*>(manager),
+                reinterpret_cast<void*>(source),
+                reinterpret_cast<void*>(temp),
+                reinterpret_cast<void*>(slot0),
+                static_cast<unsigned long long>(q00),
+                static_cast<unsigned long long>(q08),
+                static_cast<unsigned long long>(q10),
+                static_cast<unsigned long long>(q18),
+                static_cast<unsigned long long>(q20),
+                static_cast<unsigned long long>(q28),
+                static_cast<unsigned long long>(q30),
+                static_cast<unsigned long long>(q38),
+                static_cast<unsigned long long>(q40),
+                static_cast<unsigned long long>(q48),
+                static_cast<unsigned long long>(q50),
+                static_cast<unsigned long long>(q58),
+                static_cast<unsigned long long>(q60),
+                static_cast<unsigned long long>(q68),
+                static_cast<unsigned long long>(q70),
+                static_cast<unsigned long long>(q78),
+                static_cast<unsigned long long>(q80));
+        }
+    }
+};
+
 HOOK_DEFINE_INLINE(H19BCRegistrationEntryTrace) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -3273,10 +3388,20 @@ bool InstallTraceHooks() {
         return false;
     }
 
-    H19BCRegistrationEntryTrace::InstallAtOffset(0x8191A4);
-    Logging.Log("[NSC:H19BC] READY registration_entry_trace=1 hook_exl=0x8191a4 runtime_rel=0x81d1a4 original=mov_w21_w1 retired_h19axb=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    // H19BE: H19BC registration-entry hook retired after hardware proof.
+    Logging.Log("[NSC:H19BC] READY registration_entry_trace=0 superseded=H19BE hook_exl=0x8191a4 runtime_rel=0x81d1a4 original=mov_w21_w1 retired_h19axb=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BCB] READY build_fix_unused_h19bb=1 runtime_delta=0 h19bb_dump_retained=1 h19bb_dump_called=0 mutation=none diagnostic_only=1");
-    Logging.Log("[NSC:H19BD] READY registration_source_diff=1 hooks_added=0 source_bytes=0x100 max_sources=4 source=H19BC_REG_ENTRY mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BD] READY registration_source_diff=0 superseded=H19BE hooks_added=0 source_bytes=0x100 max_sources=4 source=H19BC_REG_ENTRY mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    static constexpr uint32_t kH19BESlot0PostExpected[] = {
+        0xAA1303E0, // MOV X0,X19 at runtime main+0x81D1CC
+    };
+    if (!MatchWords(0x8191CC, kH19BESlot0PostExpected)) {
+        LogFingerprintFail("H19BE_SLOT0_POST", 0x8191CC);
+        return false;
+    }
+
+    H19BESlot0PostHelperTrace::InstallAtOffset(0x8191CC);
+    Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=1 hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
     // H19AXB retired proven H19AS factory POST hook to keep trampoline count flat.
     Logging.Log("[NSC:H19AS] READY node_factory_trace=1 post_hook=0 superseded_post=H19AXB factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
