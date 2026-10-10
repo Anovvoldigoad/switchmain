@@ -2600,7 +2600,7 @@ static std::atomic<uint32_t> g_h19ba_dumped{0};
 // registration/insertion path that populates these entries.
 static std::atomic<uint32_t> g_h19bb_dumped{0};
 
-static void H19BBDumpNodeRegistrationPredecessor(uint64_t h19axb_lr) {
+[[maybe_unused]] static void H19BBDumpNodeRegistrationPredecessor(uint64_t h19axb_lr) {
     uint32_t expected = 0;
     if (!g_h19bb_dumped.compare_exchange_strong(
             expected, 1, std::memory_order_relaxed)) {
@@ -3225,6 +3225,7 @@ bool InstallTraceHooks() {
 
     H19BCRegistrationEntryTrace::InstallAtOffset(0x8191A4);
     Logging.Log("[NSC:H19BC] READY registration_entry_trace=1 hook_exl=0x8191a4 runtime_rel=0x81d1a4 original=mov_w21_w1 retired_h19axb=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BCB] READY build_fix_unused_h19bb=1 runtime_delta=0 h19bb_dump_retained=1 h19bb_dump_called=0 mutation=none diagnostic_only=1");
     H19ASFactoryPre::InstallAtOffset(0x79493C);
     // H19AXB retired proven H19AS factory POST hook to keep trampoline count flat.
     Logging.Log("[NSC:H19AS] READY node_factory_trace=1 post_hook=0 superseded_post=H19AXB factory_runtime_rel=0x81d4e4 pre_exl=0x79493c post_exl=0x794944 cache_base=0x11660 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
