@@ -4297,8 +4297,25 @@ bool InstallTraceHooks() {
     }
 
     H19BNCapacityPlusOne::InstallAtOffset(0x80FB78);
-    H19BNLoopAdvancePlusOne::InstallAtOffset(0x80FBE0);
-    H19BNLoopBodyNormalize::InstallAtOffset(0x80FBEC);
+
+    // H19BNA: replace native loop bound CMP X21,#281 with CMP X21,#282.
+    // Original at exlaunch offset 0x80FBE4:
+    //   0xF10466BF = CMP X21,#0x119
+    // Patched:
+    //   0xF1046ABF = CMP X21,#0x11A
+    static constexpr uint32_t kH19BNACompareExpected[] = {
+        0xF10466BF,
+    };
+    if (!MatchWords(0x80FBE4, kH19BNACompareExpected)) {
+        LogFingerprintFail("H19BNA_CMP_BOUND", 0x80FBE4);
+        return false;
+    }
+
+    {
+        exl::patch::RandomAccessPatcher patcher;
+        patcher.Write<uint32_t>(0x80FBE4, 0xF1046ABF);
+        patcher.Flush();
+    }
 
     Logging.Log("[NSC:H19BG] READY internal_id_lookup_entry_return=1 entry_exl=0x8100f8 return_exl=0x8102e0 runtime_entry_rel=0x8140f8 runtime_return_rel=0x8142e0 original_entry=mov_w19_w1 original_return=mov_x0_x19 retired_h19be=1 retired_h19as=1 trampoline_net_delta=0 mutation=original_moves_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BGB] READY anchor_fix=1 base=H19BF removed_dependency=H19ATC install_anchor=H19BE retired_h19as=1 runtime_intent=H19BG mutation=none diagnostic_only=1");
@@ -4308,7 +4325,8 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19BK] READY bound_cluster_code_dump=1 hooks_added=0 hooks_removed=0 range=0x813980..0x813d80 cluster=0x813b64|0x813b78|0x813be4 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BL] READY table_constructor_store_trace=0 superseded=H19BN hook_exl=0x80fb94 runtime_rel=0x813b94 original=str_x0_x19 retired_h19bg_return=1 trampoline_net_delta=0 mutation=original_store_only expected_count=runtime_read hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BM] READY constructor_tail_code_dump=1 hooks_added=0 hooks_removed=0 range=0x813d80..0x8140c8 trigger=H19BG_ENTRY mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    Logging.Log("[NSC:H19BN] READY native_plus_one_capacity_control=1 hooks_added=3 retired_h19bl=1 trampoline_net_delta=2 capacity_count=282 capacity_bytes=0x11a0 native_cmp_281_untouched=1 extra_body_id=281 mutation=diagnostic_capacity_and_loop_only production_hardcoding=0 test_specific_boundary=281 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BNA] READY direct_native_bound_control=1 capacity_hook=1 cmp_patch_exl=0x80fbe4 cmp_old=281 cmp_new=282 sentinel_hooks=0 allocation_bytes=0x11a0 owner_count=282 mutation=diagnostic_capacity_and_bound_only test_specific_boundary=281 production_hardcoding=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BN] READY native_plus_one_capacity_control=0 superseded=H19BNA hooks_added=3 retired_h19bl=1 trampoline_net_delta=2 capacity_count=282 capacity_bytes=0x11a0 native_cmp_281_untouched=1 extra_body_id=281 mutation=diagnostic_capacity_and_loop_only production_hardcoding=0 test_specific_boundary=281 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=0 superseded=H19BG hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BF] READY internal_id_lookup_code_dump=0 superseded=H19BG hooks_added=0 target_rel=0x8140c8 range=-0x40..+0x600 trigger=H19BE_POST_HELPER mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     // H19BGB: H19AS lookup-pre hook retired; boundary already proven.
