@@ -3292,6 +3292,41 @@ static void H19BKDumpBoundCluster(uint64_t lr) {
         "[NSC:H19BK] DUMP_END range_rel=0x813980..0x813d80");
 }
 
+
+// R276H19BL: runtime link between the statically-proven 281-slot constructor
+// at main+0x813B48 and the runtime table used by main+0x8140C8.
+static std::atomic<uint32_t> g_h19bl_logs{0};
+
+HOOK_DEFINE_INLINE(H19BLTableConstructorStoreTrace) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint64_t owner = ctx->X[19];
+        const uint64_t table = ctx->X[0];
+        const uint32_t count =
+            *reinterpret_cast<const volatile uint32_t*>(owner + 0x8);
+
+        // Original instruction: STR X0,[X19]
+        *reinterpret_cast<volatile uint64_t*>(owner) = table;
+
+        const uint32_t n =
+            g_h19bl_logs.fetch_add(1, std::memory_order_relaxed);
+
+        if (n < 64) {
+            Logging.Log(
+                "[NSC:H19BL] CTOR_STORE n=%u owner=%p table=%p "
+                "count=%u bytes=0x%llx lr=%p",
+                n,
+                reinterpret_cast<void*>(owner),
+                reinterpret_cast<void*>(table),
+                static_cast<unsigned>(count),
+                static_cast<unsigned long long>(
+                    static_cast<uint64_t>(count) * 0x10ULL),
+                reinterpret_cast<void*>(ctx->X[30]));
+        }
+    }
+};
+
 HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -4080,7 +4115,17 @@ bool InstallTraceHooks() {
     }
 
     H19BGInternalIdLookupEntryTrace::InstallAtOffset(0x8100F8);
-    H19BGInternalIdLookupReturnTrace::InstallAtOffset(0x8102E0);
+
+    // H19BL: retire already-proven H19BG return hook and reuse its trampoline.
+    static constexpr uint32_t kH19BLCtorStoreExpected[] = {
+        0xF9000260, // STR X0,[X19] at runtime main+0x813B94
+    };
+    if (!MatchWords(0x80FB94, kH19BLCtorStoreExpected)) {
+        LogFingerprintFail("H19BL_CTOR_STORE", 0x80FB94);
+        return false;
+    }
+
+    H19BLTableConstructorStoreTrace::InstallAtOffset(0x80FB94);
 
     Logging.Log("[NSC:H19BG] READY internal_id_lookup_entry_return=1 entry_exl=0x8100f8 return_exl=0x8102e0 runtime_entry_rel=0x8140f8 runtime_return_rel=0x8142e0 original_entry=mov_w19_w1 original_return=mov_x0_x19 retired_h19be=1 retired_h19as=1 trampoline_net_delta=0 mutation=original_moves_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BGB] READY anchor_fix=1 base=H19BF removed_dependency=H19ATC install_anchor=H19BE retired_h19as=1 runtime_intent=H19BG mutation=none diagnostic_only=1");
@@ -4088,6 +4133,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19BI] READY table_writer_callsite_scan=1 hooks_added=0 hooks_removed=0 targets=0x8140bc|0x8140c8 scan_kinds=BL|B context=0x90_before|0x60_after neighborhood_radius=4 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BJ] READY table_bound_inline_writer_scan=1 hooks_added=0 hooks_removed=0 bound_literals=0x118|0x119|0x1180|0x1190 writer_pattern=id_stride16_store0_store8 mutation=none production_hardcoding=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BK] READY bound_cluster_code_dump=1 hooks_added=0 hooks_removed=0 range=0x813980..0x813d80 cluster=0x813b64|0x813b78|0x813be4 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BL] READY table_constructor_store_trace=1 hook_exl=0x80fb94 runtime_rel=0x813b94 original=str_x0_x19 retired_h19bg_return=1 trampoline_net_delta=0 mutation=original_store_only expected_count=runtime_read hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=0 superseded=H19BG hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BF] READY internal_id_lookup_code_dump=0 superseded=H19BG hooks_added=0 target_rel=0x8140c8 range=-0x40..+0x600 trigger=H19BE_POST_HELPER mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     // H19BGB: H19AS lookup-pre hook retired; boundary already proven.
