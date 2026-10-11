@@ -3327,6 +3327,59 @@ HOOK_DEFINE_INLINE(H19BLTableConstructorStoreTrace) {
     }
 };
 
+
+// R276H19BM: focused read-only dump of the remaining constructor/populator
+// body from main+0x813D80 through main+0x8140C8.
+//
+// H19BL hardware proved the table allocated by the 281-slot constructor is
+// exactly the backing table later used by the ID281 lookup.
+//
+// H19BM adds ZERO hooks. It reuses the existing H19BG entry callback as a
+// one-time trigger and dumps the remainder of the constructor loop so we can
+// identify the per-ID data source/population mechanism before designing any
+// generic extension.
+
+static std::atomic<uint32_t> g_h19bm_dumped{0};
+
+static void H19BMDumpConstructorTail(uint64_t lr) {
+    uint32_t expected = 0;
+    if (!g_h19bm_dumped.compare_exchange_strong(
+            expected, 1, std::memory_order_relaxed)) {
+        return;
+    }
+
+    const uint64_t main_base = H19BIDeriveMainBase(lr);
+    if (main_base == 0) {
+        Logging.Log(
+            "[NSC:H19BM] DUMP_SKIP lr=%p reason=main_base_unresolved",
+            reinterpret_cast<void*>(lr));
+        return;
+    }
+
+    static constexpr uint64_t kStartRel = 0x813D80ULL;
+    static constexpr uint64_t kEndRel   = 0x8140C8ULL;
+
+    Logging.Log(
+        "[NSC:H19BM] DUMP_BEGIN main=%p range_rel=0x813d80..0x8140c8 "
+        "purpose=constructor_populator_tail",
+        reinterpret_cast<void*>(main_base));
+
+    for (uint64_t rel = kStartRel; rel <= kEndRel; rel += 4) {
+        const uint64_t pc = main_base + rel;
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+
+        Logging.Log(
+            "[NSC:H19BM] CODE pc=%p rel=0x%llx word=0x%08x",
+            reinterpret_cast<void*>(pc),
+            static_cast<unsigned long long>(rel),
+            word);
+    }
+
+    Logging.Log(
+        "[NSC:H19BM] DUMP_END range_rel=0x813d80..0x8140c8");
+}
+
 HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -3343,6 +3396,7 @@ HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
 
         H19BJScanBoundsAndInlineWriters(lr);
         H19BKDumpBoundCluster(lr);
+        H19BMDumpConstructorTail(lr);
 
         // Original: MOV W19,W1
         ctx->X[19] = static_cast<uint64_t>(id);
@@ -4134,6 +4188,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19BJ] READY table_bound_inline_writer_scan=1 hooks_added=0 hooks_removed=0 bound_literals=0x118|0x119|0x1180|0x1190 writer_pattern=id_stride16_store0_store8 mutation=none production_hardcoding=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BK] READY bound_cluster_code_dump=1 hooks_added=0 hooks_removed=0 range=0x813980..0x813d80 cluster=0x813b64|0x813b78|0x813be4 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BL] READY table_constructor_store_trace=1 hook_exl=0x80fb94 runtime_rel=0x813b94 original=str_x0_x19 retired_h19bg_return=1 trampoline_net_delta=0 mutation=original_store_only expected_count=runtime_read hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BM] READY constructor_tail_code_dump=1 hooks_added=0 hooks_removed=0 range=0x813d80..0x8140c8 trigger=H19BG_ENTRY mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=0 superseded=H19BG hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BF] READY internal_id_lookup_code_dump=0 superseded=H19BG hooks_added=0 target_rel=0x8140c8 range=-0x40..+0x600 trigger=H19BE_POST_HELPER mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     // H19BGB: H19AS lookup-pre hook retired; boundary already proven.
