@@ -3564,6 +3564,38 @@ HOOK_DEFINE_INLINE(H19BOChunkResolveSuccessTrace) {
     }
 };
 
+
+static std::atomic<uint32_t> g_h19boc_resource_logs{0};
+
+HOOK_DEFINE_INLINE(H19BOCResourceStageSafeTrace) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint64_t id = ctx->X[21];
+        const uint64_t outer = ctx->X[25];
+        const uint64_t selected = ctx->X[27];
+
+        // Original instruction at main+0x813EB8: MOV X0,X27
+        ctx->X[0] = selected;
+
+        if (id == 281u) {
+            const uint32_t n =
+                g_h19boc_resource_logs.fetch_add(
+                    1, std::memory_order_relaxed);
+
+            if (n < 16) {
+                Logging.Log(
+                    "[NSC:H19BOC] RESOURCE_STAGE n=%u id=%llu "
+                    "outer=%p selected=%p",
+                    n,
+                    static_cast<unsigned long long>(id),
+                    reinterpret_cast<void*>(outer),
+                    reinterpret_cast<void*>(selected));
+            }
+        }
+    }
+};
+
 HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -4408,7 +4440,26 @@ bool InstallTraceHooks() {
     }
 
     H19BOBodyEnterTrace::InstallAtOffset(0x80FBEC);
-    H19BOOuterResolveSuccessTrace::InstallAtOffset(0x80FEA0);
+
+    // H19BOC flags-safe resource-stage trace.
+    //
+    // Do NOT hook main+0x813EA0: it lies between
+    //   main+0x813E94 TST W8,#1
+    // and
+    //   main+0x813EB0 CSEL X27,X8,X9,EQ
+    // where NZCV is live.
+    //
+    // main+0x813EB8 is after the CSEL and CBZ X27, so tracing here cannot
+    // perturb that flag-dependent selection.
+    static constexpr uint32_t kH19BOCResourceExpected[] = {
+        0xAA1B03E0, // MOV X0,X27 at main+0x813EB8
+    };
+    if (!MatchWords(0x80FEB8, kH19BOCResourceExpected)) {
+        LogFingerprintFail("H19BOC_RESOURCE_STAGE", 0x80FEB8);
+        return false;
+    }
+
+    H19BOCResourceStageSafeTrace::InstallAtOffset(0x80FEB8);
     H19BOChunkResolveSuccessTrace::InstallAtOffset(0x80FEE8);
 
     // H19BNA: replace native loop bound CMP X21,#281 with CMP X21,#282.
@@ -4439,7 +4490,8 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19BL] READY table_constructor_store_trace=0 superseded=H19BN hook_exl=0x80fb94 runtime_rel=0x813b94 original=str_x0_x19 retired_h19bg_return=1 trampoline_net_delta=0 mutation=original_store_only expected_count=runtime_read hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BM] READY constructor_tail_code_dump=1 hooks_added=0 hooks_removed=0 range=0x813d80..0x8140c8 trigger=H19BG_ENTRY mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BNA] READY direct_native_bound_control=1 capacity_hook=1 cmp_patch_exl=0x80fbe4 cmp_old=281 cmp_new=282 sentinel_hooks=0 allocation_bytes=0x11a0 owner_count=282 mutation=diagnostic_capacity_and_bound_only test_specific_boundary=281 production_hardcoding=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
-    Logging.Log("[NSC:H19BO] READY constructor_source_stage_trace=1 hooks_added=3 body_exl=0x80fbec outer_ok_exl=0x80fea0 chunk_ok_exl=0x80fee8 retired_heavy_runtime_scans=H19BI|H19BJ|H19BK|H19BM capacity_control=H19BNA mutation=original_instructions_only test_id=281 production_hardcoding=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BO] READY constructor_source_stage_trace=0 superseded=H19BOC hooks_added=3 body_exl=0x80fbec outer_ok_exl=0x80fea0 chunk_ok_exl=0x80fee8 retired_heavy_runtime_scans=H19BI|H19BJ|H19BK|H19BM capacity_control=H19BNA mutation=original_instructions_only test_id=281 production_hardcoding=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BOC] READY flags_safe_resource_stage_trace=1 unsafe_outer_hook_retired=1 unsafe_outer_rel=0x813ea0 safe_resource_rel=0x813eb8 safe_resource_exl=0x80feb8 body_trace=1 chunk_trace=1 h19bna_capacity_control=1 mutation=original_instructions_only test_id=281 native_control_required=129 production_hardcoding=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BN] READY native_plus_one_capacity_control=0 superseded=H19BNA hooks_added=3 retired_h19bl=1 trampoline_net_delta=2 capacity_count=282 capacity_bytes=0x11a0 native_cmp_281_untouched=1 extra_body_id=281 mutation=diagnostic_capacity_and_loop_only production_hardcoding=0 test_specific_boundary=281 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=0 superseded=H19BG hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BF] READY internal_id_lookup_code_dump=0 superseded=H19BG hooks_added=0 target_rel=0x8140c8 range=-0x40..+0x600 trigger=H19BE_POST_HELPER mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
