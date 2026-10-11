@@ -3016,6 +3016,224 @@ static void H19BIDumpIdNeighborhood(uint64_t table, int32_t id) {
         static_cast<int>(id));
 }
 
+
+static std::atomic<uint32_t> g_h19bj_scanned{0};
+
+static bool H19BJDecodeStoreToBase(uint32_t word,
+                                   uint32_t base_reg,
+                                   uint32_t* out_off,
+                                   uint32_t* out_width) {
+    const uint32_t rn = (word >> 5) & 31u;
+    if (rn != base_reg) return false;
+
+    if ((word & 0xFFC00000u) == 0xF9000000u) {
+        const uint32_t imm12 = (word >> 10) & 0xFFFu;
+        *out_off = imm12 * 8u;
+        *out_width = 64u;
+        return true;
+    }
+
+    if ((word & 0xFFC00000u) == 0xB9000000u) {
+        const uint32_t imm12 = (word >> 10) & 0xFFFu;
+        *out_off = imm12 * 4u;
+        *out_width = 32u;
+        return true;
+    }
+
+    return false;
+}
+
+static void H19BJDumpContext(uint64_t main_base,
+                             uint64_t pc,
+                             const char* kind) {
+    const uint64_t start = pc >= 0x60ULL ? pc - 0x60ULL : pc;
+    const uint64_t end = pc + 0x80ULL;
+
+    Logging.Log(
+        "[NSC:H19BJ] CONTEXT_BEGIN kind=%s pc=%p rel=0x%llx",
+        kind,
+        reinterpret_cast<void*>(pc),
+        static_cast<unsigned long long>(pc - main_base));
+
+    for (uint64_t q = start; q <= end; q += 4) {
+        const uint32_t w =
+            *reinterpret_cast<const volatile uint32_t*>(q);
+
+        Logging.Log(
+            "[NSC:H19BJ] CODE kind=%s pc=%p rel=0x%llx "
+            "word=0x%08x delta=%lld",
+            kind,
+            reinterpret_cast<void*>(q),
+            static_cast<unsigned long long>(q - main_base),
+            w,
+            static_cast<long long>(
+                static_cast<int64_t>(q) -
+                static_cast<int64_t>(pc)));
+    }
+
+    Logging.Log(
+        "[NSC:H19BJ] CONTEXT_END kind=%s pc=%p rel=0x%llx",
+        kind,
+        reinterpret_cast<void*>(pc),
+        static_cast<unsigned long long>(pc - main_base));
+}
+
+static void H19BJScanBoundsAndInlineWriters(uint64_t lr) {
+    uint32_t expected = 0;
+    if (!g_h19bj_scanned.compare_exchange_strong(
+            expected, 1, std::memory_order_relaxed)) {
+        return;
+    }
+
+    const uint64_t main_base = H19BIDeriveMainBase(lr);
+    if (main_base == 0) {
+        Logging.Log(
+            "[NSC:H19BJ] SCAN_SKIP lr=%p reason=main_base_unresolved",
+            reinterpret_cast<void*>(lr));
+        return;
+    }
+
+    static constexpr uint64_t kStartRel = 0x4000ULL;
+    static constexpr uint64_t kEndRel   = 0x12F5FD0ULL;
+
+    uint32_t bound_hits = 0;
+    uint32_t writer_hits = 0;
+
+    Logging.Log(
+        "[NSC:H19BJ] SCAN_BEGIN main=%p range=0x%llx..0x%llx "
+        "bound_literals=0x118|0x119|0x1180|0x1190 "
+        "writer_pattern=add_ext_shift4_then_store0_store8",
+        reinterpret_cast<void*>(main_base),
+        static_cast<unsigned long long>(kStartRel),
+        static_cast<unsigned long long>(kEndRel));
+
+    for (uint64_t rel = kStartRel; rel + 4 <= kEndRel; rel += 4) {
+        const uint64_t pc = main_base + rel;
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+
+        if ((word & 0x7F800000u) == 0x52800000u) {
+            const uint32_t hw = (word >> 21) & 3u;
+            const uint32_t imm16 = (word >> 5) & 0xFFFFu;
+
+            if (hw == 0 &&
+                (imm16 == 0x118u ||
+                 imm16 == 0x119u ||
+                 imm16 == 0x1180u ||
+                 imm16 == 0x1190u)) {
+                Logging.Log(
+                    "[NSC:H19BJ] BOUND_HIT n=%u kind=MOVZ "
+                    "pc=%p rel=0x%llx word=0x%08x imm=0x%x",
+                    bound_hits,
+                    reinterpret_cast<void*>(pc),
+                    static_cast<unsigned long long>(rel),
+                    word,
+                    imm16);
+
+                if (bound_hits < 32) {
+                    H19BJDumpContext(main_base, pc, "BOUND_MOVZ");
+                }
+                ++bound_hits;
+            }
+        }
+
+        if ((word & 0x7F80001Fu) == 0x7100001Fu) {
+            const uint32_t shift = (word >> 22) & 1u;
+            const uint32_t imm12 = (word >> 10) & 0xFFFu;
+
+            if (shift == 0 &&
+                (imm12 == 0x118u || imm12 == 0x119u)) {
+                Logging.Log(
+                    "[NSC:H19BJ] BOUND_HIT n=%u kind=CMP "
+                    "pc=%p rel=0x%llx word=0x%08x imm=0x%x",
+                    bound_hits,
+                    reinterpret_cast<void*>(pc),
+                    static_cast<unsigned long long>(rel),
+                    word,
+                    imm12);
+
+                if (bound_hits < 32) {
+                    H19BJDumpContext(main_base, pc, "BOUND_CMP");
+                }
+                ++bound_hits;
+            }
+        }
+
+        if ((word & 0xFFE00000u) != 0x8B200000u) {
+            continue;
+        }
+
+        const uint32_t option = (word >> 13) & 7u;
+        const uint32_t imm3   = (word >> 10) & 7u;
+        if (imm3 != 4u || (option != 2u && option != 6u)) {
+            continue;
+        }
+
+        const uint32_t rd = word & 31u;
+
+        bool saw_store0 = false;
+        bool saw_store8 = false;
+        uint64_t store0_pc = 0;
+        uint64_t store8_pc = 0;
+        uint32_t store0_width = 0;
+        uint32_t store8_width = 0;
+
+        for (uint32_t i = 1; i <= 24; ++i) {
+            const uint64_t q = pc + static_cast<uint64_t>(i) * 4ULL;
+            if (q >= main_base + kEndRel) break;
+
+            const uint32_t w =
+                *reinterpret_cast<const volatile uint32_t*>(q);
+
+            uint32_t off = 0;
+            uint32_t width = 0;
+            if (!H19BJDecodeStoreToBase(w, rd, &off, &width)) {
+                continue;
+            }
+
+            if (off == 0u && !saw_store0) {
+                saw_store0 = true;
+                store0_pc = q;
+                store0_width = width;
+            } else if (off == 8u && !saw_store8) {
+                saw_store8 = true;
+                store8_pc = q;
+                store8_width = width;
+            }
+        }
+
+        if (!saw_store0 || !saw_store8) {
+            continue;
+        }
+
+        Logging.Log(
+            "[NSC:H19BJ] WRITER_CAND n=%u add_pc=%p rel=0x%llx "
+            "word=0x%08x rd=%u option=%u "
+            "store0_rel=0x%llx store0_width=%u "
+            "store8_rel=0x%llx store8_width=%u",
+            writer_hits,
+            reinterpret_cast<void*>(pc),
+            static_cast<unsigned long long>(rel),
+            word,
+            rd,
+            option,
+            static_cast<unsigned long long>(store0_pc - main_base),
+            store0_width,
+            static_cast<unsigned long long>(store8_pc - main_base),
+            store8_width);
+
+        if (writer_hits < 48) {
+            H19BJDumpContext(main_base, pc, "INLINE_WRITER");
+        }
+        ++writer_hits;
+    }
+
+    Logging.Log(
+        "[NSC:H19BJ] SCAN_END bound_hits=%u writer_candidates=%u",
+        bound_hits,
+        writer_hits);
+}
+
 HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -3029,6 +3247,8 @@ HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
         H19BIDumpIdNeighborhood(
             ctx->X[24],
             static_cast<int32_t>(id));
+
+        H19BJScanBoundsAndInlineWriters(lr);
 
         // Original: MOV W19,W1
         ctx->X[19] = static_cast<uint64_t>(id);
@@ -3807,6 +4027,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19BGB] READY anchor_fix=1 base=H19BF removed_dependency=H19ATC install_anchor=H19BE retired_h19as=1 runtime_intent=H19BG mutation=none diagnostic_only=1");
     Logging.Log("[NSC:H19BH] READY id_bucket_trace=1 hooks_added=0 hooks_removed=0 source=H19BG_ENTRY table_from=x24 entry_stride=0x10 bucket_ptr_off=0 count_off=8 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BI] READY table_writer_callsite_scan=1 hooks_added=0 hooks_removed=0 targets=0x8140bc|0x8140c8 scan_kinds=BL|B context=0x90_before|0x60_after neighborhood_radius=4 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BJ] READY table_bound_inline_writer_scan=1 hooks_added=0 hooks_removed=0 bound_literals=0x118|0x119|0x1180|0x1190 writer_pattern=id_stride16_store0_store8 mutation=none production_hardcoding=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=0 superseded=H19BG hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BF] READY internal_id_lookup_code_dump=0 superseded=H19BG hooks_added=0 target_rel=0x8140c8 range=-0x40..+0x600 trigger=H19BE_POST_HELPER mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     // H19BGB: H19AS lookup-pre hook retired; boundary already proven.
