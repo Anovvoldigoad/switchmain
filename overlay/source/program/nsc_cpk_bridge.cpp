@@ -3234,6 +3234,64 @@ static void H19BJScanBoundsAndInlineWriters(uint64_t lr) {
         writer_hits);
 }
 
+
+// R276H19BK: focused read-only dump around the H19BJ bound cluster.
+//
+// H19BJ found a uniquely relevant cluster near the proven lookup subsystem:
+//   main+0x813B64  MOVZ ..., #0x119
+//   main+0x813B78  MOVZ ..., #0x1190
+//   main+0x813BE4  CMP  ..., #0x119
+//
+// Proven table stride from H19BH is 0x10 bytes per character ID.
+// Therefore:
+//   0x119  = 281 entries
+//   0x1190 = 281 * 0x10 bytes
+//
+// This is still only a strong candidate until the surrounding function is
+// decoded. H19BK adds ZERO hooks and dumps the exact neighborhood once using
+// the existing H19BG entry callback as a safe trigger.
+
+static std::atomic<uint32_t> g_h19bk_dumped{0};
+
+static void H19BKDumpBoundCluster(uint64_t lr) {
+    uint32_t expected = 0;
+    if (!g_h19bk_dumped.compare_exchange_strong(
+            expected, 1, std::memory_order_relaxed)) {
+        return;
+    }
+
+    const uint64_t main_base = H19BIDeriveMainBase(lr);
+    if (main_base == 0) {
+        Logging.Log(
+            "[NSC:H19BK] DUMP_SKIP lr=%p reason=main_base_unresolved",
+            reinterpret_cast<void*>(lr));
+        return;
+    }
+
+    static constexpr uint64_t kStartRel = 0x813980ULL;
+    static constexpr uint64_t kEndRel   = 0x813D80ULL;
+
+    Logging.Log(
+        "[NSC:H19BK] DUMP_BEGIN main=%p range_rel=0x813980..0x813d80 "
+        "cluster=0x813b64|0x813b78|0x813be4",
+        reinterpret_cast<void*>(main_base));
+
+    for (uint64_t rel = kStartRel; rel <= kEndRel; rel += 4) {
+        const uint64_t pc = main_base + rel;
+        const uint32_t word =
+            *reinterpret_cast<const volatile uint32_t*>(pc);
+
+        Logging.Log(
+            "[NSC:H19BK] CODE pc=%p rel=0x%llx word=0x%08x",
+            reinterpret_cast<void*>(pc),
+            static_cast<unsigned long long>(rel),
+            word);
+    }
+
+    Logging.Log(
+        "[NSC:H19BK] DUMP_END range_rel=0x813980..0x813d80");
+}
+
 HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -3249,6 +3307,7 @@ HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
             static_cast<int32_t>(id));
 
         H19BJScanBoundsAndInlineWriters(lr);
+        H19BKDumpBoundCluster(lr);
 
         // Original: MOV W19,W1
         ctx->X[19] = static_cast<uint64_t>(id);
@@ -4028,6 +4087,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19BH] READY id_bucket_trace=1 hooks_added=0 hooks_removed=0 source=H19BG_ENTRY table_from=x24 entry_stride=0x10 bucket_ptr_off=0 count_off=8 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BI] READY table_writer_callsite_scan=1 hooks_added=0 hooks_removed=0 targets=0x8140bc|0x8140c8 scan_kinds=BL|B context=0x90_before|0x60_after neighborhood_radius=4 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BJ] READY table_bound_inline_writer_scan=1 hooks_added=0 hooks_removed=0 bound_literals=0x118|0x119|0x1180|0x1190 writer_pattern=id_stride16_store0_store8 mutation=none production_hardcoding=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BK] READY bound_cluster_code_dump=1 hooks_added=0 hooks_removed=0 range=0x813980..0x813d80 cluster=0x813b64|0x813b78|0x813be4 mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=0 superseded=H19BG hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BF] READY internal_id_lookup_code_dump=0 superseded=H19BG hooks_added=0 target_rel=0x8140c8 range=-0x40..+0x600 trigger=H19BE_POST_HELPER mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     // H19BGB: H19AS lookup-pre hook retired; boundary already proven.
