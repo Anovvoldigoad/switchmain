@@ -3472,6 +3472,97 @@ HOOK_DEFINE_INLINE(H19BNLoopBodyNormalize) {
     }
 };
 
+
+static std::atomic<uint32_t> g_h19bo_body_logs{0};
+static std::atomic<uint32_t> g_h19bo_outer_logs{0};
+static std::atomic<uint32_t> g_h19bo_chunk_logs{0};
+
+HOOK_DEFINE_INLINE(H19BOBodyEnterTrace) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint64_t id = ctx->X[21];
+
+        // Original instruction at main+0x813BEC: MOV W0,W21
+        ctx->X[0] = static_cast<uint32_t>(id);
+
+        if (id == 281u) {
+            const uint32_t n =
+                g_h19bo_body_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < 16) {
+                Logging.Log(
+                    "[NSC:H19BO] BODY_ENTER n=%u id=%llu",
+                    n,
+                    static_cast<unsigned long long>(id));
+            }
+        }
+    }
+};
+
+HOOK_DEFINE_INLINE(H19BOOuterResolveSuccessTrace) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint64_t id = ctx->X[21];
+        const uint64_t outer = ctx->X[0];
+
+        // Original instruction at main+0x813EA0: MOV X25,X0
+        ctx->X[25] = outer;
+
+        if (id == 281u) {
+            const uint32_t n =
+                g_h19bo_outer_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < 16) {
+                Logging.Log(
+                    "[NSC:H19BO] OUTER_OK n=%u id=%llu outer=%p",
+                    n,
+                    static_cast<unsigned long long>(id),
+                    reinterpret_cast<void*>(outer));
+            }
+        }
+    }
+};
+
+HOOK_DEFINE_INLINE(H19BOChunkResolveSuccessTrace) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!ctx) return;
+
+        const uint64_t id = ctx->X[21];
+        const uint64_t chunk = ctx->X[0];
+
+        uint64_t payload = 0;
+        int32_t count = -2147483647;
+
+        if (chunk >= 0x100000000ULL && chunk < 0x8000000000ULL) {
+            payload =
+                *reinterpret_cast<const volatile uint64_t*>(chunk + 0x10);
+
+            if (payload >= 0x100000000ULL && payload < 0x8000000000ULL) {
+                count =
+                    *reinterpret_cast<const volatile int32_t*>(payload);
+            }
+        }
+
+        // Original instruction at main+0x813EE8: LDR X28,[X0,#0x10]
+        ctx->X[28] = payload;
+
+        if (id == 281u) {
+            const uint32_t n =
+                g_h19bo_chunk_logs.fetch_add(1, std::memory_order_relaxed);
+            if (n < 16) {
+                Logging.Log(
+                    "[NSC:H19BO] CHUNK_OK n=%u id=%llu chunk=%p "
+                    "payload=%p count=%d",
+                    n,
+                    static_cast<unsigned long long>(id),
+                    reinterpret_cast<void*>(chunk),
+                    reinterpret_cast<void*>(payload),
+                    static_cast<int>(count));
+            }
+        }
+    }
+};
+
 HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (!ctx) return;
@@ -3481,14 +3572,7 @@ HOOK_DEFINE_INLINE(H19BGInternalIdLookupEntryTrace) {
         const uint64_t x2 = ctx->X[2];
         const uint64_t lr = ctx->X[30];
 
-        H19BIScanTableCallsites(lr);
-        H19BIDumpIdNeighborhood(
-            ctx->X[24],
-            static_cast<int32_t>(id));
 
-        H19BJScanBoundsAndInlineWriters(lr);
-        H19BKDumpBoundCluster(lr);
-        H19BMDumpConstructorTail(lr);
 
         // Original: MOV W19,W1
         ctx->X[19] = static_cast<uint64_t>(id);
@@ -4298,6 +4382,34 @@ bool InstallTraceHooks() {
 
     H19BNCapacityPlusOne::InstallAtOffset(0x80FB78);
 
+    static constexpr uint32_t kH19BOBodyExpected[] = {
+        0x2A1503E0, // MOV W0,W21 at main+0x813BEC
+    };
+    if (!MatchWords(0x80FBEC, kH19BOBodyExpected)) {
+        LogFingerprintFail("H19BO_BODY", 0x80FBEC);
+        return false;
+    }
+
+    static constexpr uint32_t kH19BOOuterExpected[] = {
+        0xAA0003F9, // MOV X25,X0 at main+0x813EA0
+    };
+    if (!MatchWords(0x80FEA0, kH19BOOuterExpected)) {
+        LogFingerprintFail("H19BO_OUTER_OK", 0x80FEA0);
+        return false;
+    }
+
+    static constexpr uint32_t kH19BOChunkExpected[] = {
+        0xF940081C, // LDR X28,[X0,#0x10] at main+0x813EE8
+    };
+    if (!MatchWords(0x80FEE8, kH19BOChunkExpected)) {
+        LogFingerprintFail("H19BO_CHUNK_OK", 0x80FEE8);
+        return false;
+    }
+
+    H19BOBodyEnterTrace::InstallAtOffset(0x80FBEC);
+    H19BOOuterResolveSuccessTrace::InstallAtOffset(0x80FEA0);
+    H19BOChunkResolveSuccessTrace::InstallAtOffset(0x80FEE8);
+
     // H19BNA: replace native loop bound CMP X21,#281 with CMP X21,#282.
     // Original at exlaunch offset 0x80FBE4:
     //   0xF10466BF = CMP X21,#0x119
@@ -4326,6 +4438,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19BL] READY table_constructor_store_trace=0 superseded=H19BN hook_exl=0x80fb94 runtime_rel=0x813b94 original=str_x0_x19 retired_h19bg_return=1 trampoline_net_delta=0 mutation=original_store_only expected_count=runtime_read hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BM] READY constructor_tail_code_dump=1 hooks_added=0 hooks_removed=0 range=0x813d80..0x8140c8 trigger=H19BG_ENTRY mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BNA] READY direct_native_bound_control=1 capacity_hook=1 cmp_patch_exl=0x80fbe4 cmp_old=281 cmp_new=282 sentinel_hooks=0 allocation_bytes=0x11a0 owner_count=282 mutation=diagnostic_capacity_and_bound_only test_specific_boundary=281 production_hardcoding=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BO] READY constructor_source_stage_trace=1 hooks_added=3 body_exl=0x80fbec outer_ok_exl=0x80fea0 chunk_ok_exl=0x80fee8 retired_heavy_runtime_scans=H19BI|H19BJ|H19BK|H19BM capacity_control=H19BNA mutation=original_instructions_only test_id=281 production_hardcoding=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BN] READY native_plus_one_capacity_control=0 superseded=H19BNA hooks_added=3 retired_h19bl=1 trampoline_net_delta=2 capacity_count=282 capacity_bytes=0x11a0 native_cmp_281_untouched=1 extra_body_id=281 mutation=diagnostic_capacity_and_loop_only production_hardcoding=0 test_specific_boundary=281 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=0 superseded=H19BG hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BF] READY internal_id_lookup_code_dump=0 superseded=H19BG hooks_added=0 target_rel=0x8140c8 range=-0x40..+0x600 trigger=H19BE_POST_HELPER mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
