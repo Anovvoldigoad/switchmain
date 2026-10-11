@@ -2884,7 +2884,8 @@ static void H19BIDumpContext(uint64_t main_base,
         static_cast<unsigned long long>(pc - main_base));
 }
 
-static void H19BIScanTableCallsites(uint64_t lr) {
+// [NSC:H19BOB] SOURCE_ONLY_UNUSED_HELPER_BUILD_FIX runtime_delta=0 helpers=H19BI_SCAN|H19BI_NEIGHBOR|H19BJ|H19BK|H19BM
+[[maybe_unused]] static void H19BIScanTableCallsites(uint64_t lr) {
     uint32_t expected = 0;
     if (!g_h19bi_scanned.compare_exchange_strong(
             expected, 1, std::memory_order_relaxed)) {
@@ -2966,7 +2967,7 @@ static void H19BIScanTableCallsites(uint64_t lr) {
     Logging.Log("[NSC:H19BI] SCAN_END total_hits=%u", total_hits);
 }
 
-static void H19BIDumpIdNeighborhood(uint64_t table, int32_t id) {
+[[maybe_unused]] static void H19BIDumpIdNeighborhood(uint64_t table, int32_t id) {
     const int32_t previous =
         g_h19bi_last_neighborhood_id.exchange(
             id, std::memory_order_relaxed);
@@ -3078,7 +3079,7 @@ static void H19BJDumpContext(uint64_t main_base,
         static_cast<unsigned long long>(pc - main_base));
 }
 
-static void H19BJScanBoundsAndInlineWriters(uint64_t lr) {
+[[maybe_unused]] static void H19BJScanBoundsAndInlineWriters(uint64_t lr) {
     uint32_t expected = 0;
     if (!g_h19bj_scanned.compare_exchange_strong(
             expected, 1, std::memory_order_relaxed)) {
@@ -3253,7 +3254,7 @@ static void H19BJScanBoundsAndInlineWriters(uint64_t lr) {
 
 static std::atomic<uint32_t> g_h19bk_dumped{0};
 
-static void H19BKDumpBoundCluster(uint64_t lr) {
+[[maybe_unused]] static void H19BKDumpBoundCluster(uint64_t lr) {
     uint32_t expected = 0;
     if (!g_h19bk_dumped.compare_exchange_strong(
             expected, 1, std::memory_order_relaxed)) {
@@ -3341,7 +3342,7 @@ HOOK_DEFINE_INLINE(H19BLTableConstructorStoreTrace) {
 
 static std::atomic<uint32_t> g_h19bm_dumped{0};
 
-static void H19BMDumpConstructorTail(uint64_t lr) {
+[[maybe_unused]] static void H19BMDumpConstructorTail(uint64_t lr) {
     uint32_t expected = 0;
     if (!g_h19bm_dumped.compare_exchange_strong(
             expected, 1, std::memory_order_relaxed)) {
