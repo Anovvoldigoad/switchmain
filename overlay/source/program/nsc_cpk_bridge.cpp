@@ -822,6 +822,26 @@ static void H19AJBFinishAttempt(const char* stem, bool accepted) {
     H19AGUnlock(g_h19ajb_lock);
 }
 
+
+// ===========================================================================
+// R276H19BP - early custom prm_load availability causal control.
+//
+// Diagnostic-only fixture control.
+// Arm after the custom CPK bind succeeds. Then, on the first normal native
+// FileLoadRequestHook callback after that bind, reuse the REAL manager/options
+// passed by the game and submit mtobprm_load through FileLoadRequestHook::Orig.
+//
+// No fabricated manager/options pointers.
+// No donor bucket.
+// No manual table population.
+// No lookup forcing.
+//
+// Final production architecture must discover custom stems/IDs dynamically.
+// ===========================================================================
+static std::atomic<uint32_t> g_h19bp_early_state{0};
+static constexpr char kH19BPEarlyPrmLoadPath[] =
+    "data/spcload/mtobprm_load.bin.xfbin";
+
 HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
     static uint32_t Callback(CpkPathArg* desc, uint32_t* out_bind_id, int priority) {
         const uint32_t original_result = Orig(desc, out_bind_id, priority);
@@ -837,6 +857,20 @@ HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
         const uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
         Logging.Log("[NSC:P32] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
                     kModCpkPath, kModCpkPriority, extra_result, extra_bind_id);
+
+        if (extra_result != 0) {
+            g_h19bp_early_state.store(1u, std::memory_order_release);
+            Logging.Log(
+                "[NSC:H19BP] ARM bind_result=%u bind_id=%u target=%s",
+                extra_result,
+                extra_bind_id,
+                kH19BPEarlyPrmLoadPath);
+        } else {
+            Logging.Log(
+                "[NSC:H19BP] ARM_FAIL bind_result=%u bind_id=%u",
+                extra_result,
+                extra_bind_id);
+        }
         return original_result;
     }
 };
@@ -867,6 +901,34 @@ HOOK_DEFINE_TRAMPOLINE(FileLoadRequestHook) {
 
     static void* Callback(void* manager, const char* path, const void* options) {
         void* result = Orig(manager, path, options);
+
+        uint32_t h19bp_expected = 1u;
+        if (g_h19bp_early_state.compare_exchange_strong(
+                h19bp_expected,
+                2u,
+                std::memory_order_acq_rel,
+                std::memory_order_acquire)) {
+
+            Logging.Log(
+                "[NSC:H19BP] EARLY_REQ_BEGIN manager=%p options=%p trigger=%s target=%s",
+                manager,
+                options,
+                path ? path : "<null>",
+                kH19BPEarlyPrmLoadPath);
+
+            void* h19bp_req =
+                H19AJBNativeRequest(
+                    manager,
+                    kH19BPEarlyPrmLoadPath,
+                    options);
+
+            Logging.Log(
+                "[NSC:H19BP] EARLY_REQ_RET manager=%p options=%p target=%s result=%p",
+                manager,
+                options,
+                kH19BPEarlyPrmLoadPath,
+                h19bp_req);
+        }
 
         char h19ajb_stem[kH19AJBStemLen]{};
         unsigned h19ajb_attempt = 0;
@@ -4553,6 +4615,7 @@ bool InstallTraceHooks() {
     Logging.Log("[NSC:H19BO] READY constructor_source_stage_trace=0 superseded=H19BOC hooks_added=3 body_exl=0x80fbec outer_ok_exl=0x80fea0 chunk_ok_exl=0x80fee8 retired_heavy_runtime_scans=H19BI|H19BJ|H19BK|H19BM capacity_control=H19BNA mutation=original_instructions_only test_id=281 production_hardcoding=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BOC] READY flags_safe_resource_stage_trace=1 unsafe_outer_hook_retired=1 unsafe_outer_rel=0x813ea0 safe_resource_rel=0x813eb8 safe_resource_exl=0x80feb8 body_trace=1 chunk_trace=1 h19bna_capacity_control=1 mutation=original_instructions_only test_id=281 native_control_required=129 production_hardcoding=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BOD] READY outer_lookup_postcall_trace=1 hook_rel=0x813e90 hook_exl=0x80fe90 proves_outer_nonnull_by_reach=1 next_tst_recreates_nzcv=1 resource_stage_trace=1 chunk_trace=1 native_control_required=129 mutation=none test_id=281 production_hardcoding=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
+    Logging.Log("[NSC:H19BP] READY early_prmload_prefetch_control=1 arm=cpk_bind trigger=first_native_file_request manager_options=native_callback nested=Orig_direct capacity=H19BNA outer_trace=H19BOD manual_bucket=0 donor_alias=0 fabricated_ptr=0 fixture_stem=mtob diagnostic_only=1");
     Logging.Log("[NSC:H19BN] READY native_plus_one_capacity_control=0 superseded=H19BNA hooks_added=3 retired_h19bl=1 trampoline_net_delta=2 capacity_count=282 capacity_bytes=0x11a0 native_cmp_281_untouched=1 extra_body_id=281 mutation=diagnostic_capacity_and_loop_only production_hardcoding=0 test_specific_boundary=281 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BE] READY slot0_post_helper_trace=0 superseded=H19BG hook_exl=0x8191cc runtime_rel=0x81d1cc helper_rel=0x81d53c index=0 original=mov_x0_x19 retired_h19bc=1 trampoline_net_delta=0 mutation=original_mov_only hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
     Logging.Log("[NSC:H19BF] READY internal_id_lookup_code_dump=0 superseded=H19BG hooks_added=0 target_rel=0x8140c8 range=-0x40..+0x600 trigger=H19BE_POST_HELPER mutation=none hardcoded_id=0 hardcoded_code=0 donor_alias=0 fabricated_ptr=0 diagnostic_only=1");
