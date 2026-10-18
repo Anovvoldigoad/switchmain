@@ -3,7 +3,7 @@ name: Build NSC R181 Full D-Pad Eligibility Rollback
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, fix/r181-process-offset ]
 
 jobs:
   build:
