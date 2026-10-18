@@ -21,7 +21,7 @@ constexpr ptrdiff_t kFileLoadRequestOffset   = 0x1206B4C; // nuccFileLoadList re
 constexpr ptrdiff_t kFileLoadCreateOffset    = 0x1206C9C; // create new nuccFileLoad object
 constexpr ptrdiff_t kFileLoadStatusOffset    = 0x1207EFC; // lookup path -> status, 4 if absent from list
 constexpr ptrdiff_t kChunkBinaryOffset        = 0x3EAE70;  // ccGetChunkBinary(full_path, key)
-constexpr ptrdiff_t kLoadRequestProcessOffset = 0x106F404; // nuccLoadRequest process/open/read path
+constexpr ptrdiff_t kLoadRequestProcessOffset = 0x116F404; // nuccLoadRequest process/open/read path
 constexpr ptrdiff_t kFileOpenOffset           = 0x1170FB0; // low-level file open request; returns 1/0
 constexpr ptrdiff_t kEvent236Offset           = 0x816300;  // native ME_ENEMY_DISP_OFF callback
 // R165: UltimateStormAPI/ModdingAPI repurposes serialized Event150 (0x96)
