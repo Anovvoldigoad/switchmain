@@ -126,5 +126,18 @@ class P35Tests(unittest.TestCase):
             self.assertEqual(sha_entry(p,{"offset":3,"packed_size":3}),
                              __import__("hashlib").sha256(b"ABC").hexdigest())
 
+
+    def test_zero_length_file_is_a_valid_toc_entry(self):
+        rows=parse_listing(listing((0,0,"data/empty.bin")),0)
+        self.assertEqual(rows["data/empty.bin"]["packed_size"],0)
+
+    def test_explicit_inventory_count_mismatch_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            f=Path(d)/"bad_inventory.json"
+            f.write_text(json.dumps({"resource_count":72,
+                "all_72_resources":[{"path":"data/only-one.xfbin"}]}))
+            with self.assertRaisesRegex(ValueError,"inconsistent count"):
+                read_inventory(f)
+
 if __name__=="__main__":
     unittest.main()
