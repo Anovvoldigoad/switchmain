@@ -143,11 +143,12 @@ def build(args: argparse.Namespace) -> dict:
     # A new output folder is never an installed mod. Creating it is the only
     # persistent mutation until the fully verified candidate is copied here.
     out.mkdir(exist_ok=False)
-    candidate = out / "Tobi_Switch_P36_STOCK_BATTLE_GLOBALS_UNTESTED.cpk"
+    verified_candidate = out / "Tobi_Switch_P36_STOCK_BATTLE_GLOBALS_UNTESTED.cpk"
     report_path = out / "P36_BUILD_REPORT.json"
 
     with tempfile.TemporaryDirectory(prefix="p36_", dir=out) as scratch:
         work = Path(scratch)
+        candidate = work / "candidate_unverified.cpk"
         decoded_stock = work / "stock"
         decoded_carrier = work / "carrier"
         staged = work / "staging"
@@ -193,6 +194,14 @@ def build(args: argparse.Namespace) -> dict:
             {k: v["id"] for k, v in built_idx.items()},
             original_hashes, built_hashes, stock_hashes
         )
+        # Never expose a failed/unverified CPK as a final candidate.
+        candidate_digest = sha256(candidate)
+        if sha256(stock) != original_stock_sha or sha256(carrier) != original_carrier_sha:
+            raise ValueError("Source input hash changed during operation: investigate filesystem")
+        os.replace(candidate, verified_candidate)
+        if sha256(verified_candidate) != candidate_digest:
+            verified_candidate.unlink(missing_ok=True)
+            raise ValueError("Verified CPK changed while moving to the output directory")
     # Check both inputs still match the initial SHA256 after all operations.
     if sha256(stock) != original_stock_sha or sha256(carrier) != original_carrier_sha:
         raise ValueError("Source input hash changed during operation: investigate filesystem")
@@ -201,8 +210,8 @@ def build(args: argparse.Namespace) -> dict:
         "stock_source_sha256": original_stock_sha,
         "stock_pin_override": bool(args.skip_stock_pin),
         "carrier_source_sha256": original_carrier_sha,
-        "candidate_sha256": sha256(candidate),
-        "candidate_path": str(candidate),
+        "candidate_sha256": sha256(verified_candidate),
+        "candidate_path": str(verified_candidate),
         "carrier_entry_count": len(carrier_idx),
         "stock_entry_count": len(stock_idx),
         "changed_decoded_globals": integrity["modified_entries"],
