@@ -1,0 +1,28 @@
+name: P35 offline CPK carrier audit tests
+on:
+  push:
+    paths:
+      - "audit_p35_carrier.py"
+      - "test_audit_p35.py"
+      - "README_P35.md"
+      - ".github/workflows/test-p35-carrier.yml"
+  pull_request:
+    paths:
+      - "audit_p35_carrier.py"
+      - "test_audit_p35.py"
+      - "README_P35.md"
+      - ".github/workflows/test-p35-carrier.yml"
+permissions:
+  contents: read
+jobs:
+  audit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test offline CPK parser and override classifier
+        run: python -m unittest -v test_audit_p35.py
+      - name: Check Python syntax
+        run: python -m py_compile audit_p35_carrier.py
