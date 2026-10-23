@@ -12,10 +12,10 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-PATH = re.compile(r"\\bpath=(.*?) (?=(?:slot=|owner=|first=))")
-OPEN = re.compile(r"\\bslot=(\\d+) result=(\\d+)")
-PROC = re.compile(r"\\bstatus=(\\d+) readerr=(\\d+)")
-STATUS = re.compile(r"\\bstatus=(\\d+)(?:\\s|$)")
+PATH = re.compile(r"\bpath=(.*?) (?=(?:slot=|owner=|first=))")
+OPEN = re.compile(r"\bslot=(\d+) result=(\d+)")
+PROC = re.compile(r"\bstatus=(\d+) readerr=(\d+)")
+STATUS = re.compile(r"\bstatus=(\d+)(?:\s|$)")
 def parse(lines):
     events=[]
     for number,line in enumerate(lines,1):
