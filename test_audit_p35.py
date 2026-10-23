@@ -6,6 +6,7 @@ from pathlib import Path
 
 from audit_p35_carrier import (
     parse_listing, compare, classify_path, read_inventory, sha_entry,
+    read_expected_resources, verify_decoded_resources,
 )
 
 def listing(*entries):
@@ -126,6 +127,74 @@ class P35Tests(unittest.TestCase):
             self.assertEqual(sha_entry(p,{"offset":3,"packed_size":3}),
                              __import__("hashlib").sha256(b"ABC").hexdigest())
 
+
+    def write_manifest(self, folder, resources):
+        import hashlib
+        rows=[{"path": name, "bytes":len(data),
+               "sha256":hashlib.sha256(data).hexdigest()}
+              for name,data in resources.items()]
+        path=folder/"V4.json"
+        path.write_text(json.dumps({"resource_count":len(rows),
+                                    "all_72_resources":rows}))
+        return path
+
+    def test_v4_full_manifest_integrity_pass(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            resources={"data/spc/mtobbod1.xfbin":b"NUCCABCD",
+                       "data/spc/mtobeff1.xfbin":b"NUCCEFGH"}
+            manifest=self.write_manifest(root,resources)
+            for name,data in resources.items():
+                target=root/"unpacked"/name
+                target.parent.mkdir(parents=True,exist_ok=True)
+                target.write_bytes(data)
+            expected=read_expected_resources(manifest)
+            result=verify_decoded_resources(root/"unpacked",expected)
+            self.assertEqual(result["status"],"PASS_ALL_SOURCE_RESOURCES_IDENTICAL")
+            self.assertEqual(result["counts"]["MATCH"],2)
+
+    def test_detect_corrupt_decoded_payload(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); (root/"unpacked"/"data").mkdir(parents=True)
+            path=self.write_manifest(root,{"data/mtob.xfbin":b"NUCC"})
+            (root/"unpacked"/"data"/"mtob.xfbin").write_bytes(b"BAD!")
+            result=verify_decoded_resources(root/"unpacked",read_expected_resources(path))
+            self.assertEqual(result["counts"]["MISMATCH"],1)
+            self.assertEqual(result["status"],"FAIL_SOURCE_RESOURCE_CHECK")
+
+    def test_missing_decoded_payload_not_marked_corrupt(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); (root/"unpacked").mkdir()
+            path=self.write_manifest(root,{"data/mtob.xfbin":b"NUCC"})
+            result=verify_decoded_resources(root/"unpacked",read_expected_resources(path))
+            self.assertEqual(result["counts"]["MISSING"],1)
+            self.assertEqual(result["counts"]["MISMATCH"],0)
+
+    def test_reject_traversal_in_manifest(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            path=self.write_manifest(root,{"../outside.xfbin":b"NUCC"})
+            with self.assertRaisesRegex(ValueError,"unsafe"):
+                read_expected_resources(path)
+
+    def test_reject_missing_hash_in_source_manifest(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);manifest=self.write_manifest(root,{"data/a.xfbin":b"NUCC"})
+            x=json.loads(manifest.read_text())
+            del x["all_72_resources"][0]["sha256"]
+            manifest.write_text(json.dumps(x))
+            with self.assertRaisesRegex(ValueError,"SHA256"):
+                read_expected_resources(manifest)
+
+    def test_reject_manifest_duplicate_resource_paths(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);manifest=self.write_manifest(root,{"data/a.xfbin":b"NUCC"})
+            x=json.loads(manifest.read_text())
+            x["all_72_resources"].append(x["all_72_resources"][0])
+            x["resource_count"]=2
+            manifest.write_text(json.dumps(x))
+            with self.assertRaisesRegex(ValueError,"duplicate"):
+                read_expected_resources(manifest)
 
     def test_zero_length_file_is_a_valid_toc_entry(self):
         rows=parse_listing(listing((0,0,"data/empty.bin")),0)
