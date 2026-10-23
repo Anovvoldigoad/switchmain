@@ -15,7 +15,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from audit_p35_carrier import list_archive
+from audit_p35_carrier import HEAD, list_archive
 
 EXPECTED_STOCK_SHA256 = "a4fb86d7d18b7e85e59e4422808e0e581585da70605228d2cd23da317c1dff27"
 BATTLE_GLOBALS = (
@@ -37,6 +37,25 @@ def sha256(path: Path) -> str:
 
 def run_checked(argv: list[str]) -> None:
     subprocess.run(argv, check=True, timeout=1800)
+
+
+def parse_template_alignment(list_output: str) -> int:
+    """Read the carrier CPK alignment from FastCPK, not pack's 0x800 default."""
+    match = HEAD.search(list_output)
+    if match is None:
+        raise ValueError("Carrier CPK alignment missing from listing")
+    alignment = int(match.group(3), 0)
+    if not (0 < alignment <= 65535):
+        raise ValueError("Invalid CPK template alignment")
+    return alignment
+
+
+def read_template_alignment(carrier: Path, fastcpk: Path) -> int:
+    listing = subprocess.run(
+        [str(fastcpk), "--list", str(carrier)],
+        capture_output=True, text=True, timeout=180, check=True
+    )
+    return parse_template_alignment(listing.stdout)
 
 
 def inside(path: Path, directory: Path) -> bool:
@@ -140,6 +159,7 @@ def build(args: argparse.Namespace) -> dict:
     stock_idx, carrier_idx, original_stock_sha, original_carrier_sha = preflight(
         stock, carrier, out, fastcpk, rebuilder, args.skip_stock_pin
     )
+    template_alignment = read_template_alignment(carrier, fastcpk)
     # A new output folder is never an installed mod. Creating it is the only
     # persistent mutation until the fully verified candidate is copied here.
     out.mkdir(exist_ok=False)
@@ -184,7 +204,7 @@ def build(args: argparse.Namespace) -> dict:
         run_checked([
             str(rebuilder), "pack", str(staged / "data"),
             "--output", str(candidate), "--template", str(carrier),
-            "--crilayla", "--encrypt-storm", "--threads", "2"
+            "--crilayla", "--encrypt-storm", "--threads", "2", "--align", str(template_alignment)
         ])
         built_idx = list_archive(candidate, fastcpk)
         run_checked([str(fastcpk), "--game", "cc2-storm", "-o", str(decoded_built), str(candidate)])
@@ -213,6 +233,7 @@ def build(args: argparse.Namespace) -> dict:
         "candidate_sha256": sha256(verified_candidate),
         "candidate_path": str(verified_candidate),
         "carrier_entry_count": len(carrier_idx),
+        "carrier_template_alignment": template_alignment,
         "stock_entry_count": len(stock_idx),
         "changed_decoded_globals": integrity["modified_entries"],
         "unchanged_decoded_entries": integrity["unchanged_entries"],
