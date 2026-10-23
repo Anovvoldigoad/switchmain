@@ -45,9 +45,11 @@ This version fixes two high-risk problems in the first P35 draft:
 - Uses the same tested \`fastcpk --list\` interface as the previous V3/V4
   investigation, including its absolute per-entry offsets. It no longer
   guesses how CRI @UTF/Cpk FileOffset is based.
-- The V4 routing JSON is a **partial** resource list despite
-  \`resource_count=72\`; it cannot prove 72/72 paths without a full path
-  inventory. Reports now state \`partial_v4_inventory\` explicitly.
+- The historical V4 routing JSON supplied in the user's library DOES include
+  \`all_72_resources\`, with decoded source sizes and SHA-256 hashes.
+  Older V4-like inventory outputs without the full array remain
+  \`partial_v4_inventory\`. The original blanket claim that V4 was partial
+  was incorrect.
 
 Run with Termux (existing FastCPK executable):
 
@@ -82,6 +84,45 @@ SHA-256 was:
 The audit does **not yet** independently verify that the selected stock
 archives match the historical source hashes. Do not claim definitive stock
 provenance from the tool alone.
+
+
+## Verify all 72 decoded Tobi resource payloads (P35 v3)
+
+The original V4 inventory **has** `all_72_resources`, with the 72
+decoded source SHA-256 values and sizes; this was confirmed against
+`TOBI_MTOB_V4_RESOURCE_ROUTING.json` from the old session.
+
+Stored/compressed CPK hashes can legitimately differ due to compression or
+encryption. To rule out a bad carrier build, compare the **decoded files**
+against the actual original 72 decrypted resources:
+
+```sh
+FASTCPK="$HOME/.cache/naruto-fastcpk/target/release/fastcpk"
+CARRIER="/storage/emulated/0/Download/romfs/data/moddingapi/Tobi_Switch.cpk"
+DECODED="/storage/emulated/0/Download/P35_TOBI_CARRIER_DECODED"
+"$FASTCPK" --game cc2-storm -o "$DECODED" "$CARRIER"
+python3 audit_p35_carrier.py \
+  --stock /storage/emulated/0/Download/SWITCH/EXTRACTED_GAME/READY_TO_MOD/romfs/data/patch/170/common.cpk \
+  --carrier "$CARRIER" \
+  --resource-inventory /storage/emulated/0/Download/TOBI_MTOB_V4_RESOURCE_ROUTING.json \
+  --decoded-root "$DECODED" \
+  --output /storage/emulated/0/Download/P35_DECODED_REPORT.json
+```
+
+Use a **fresh** extraction directory to avoid stale files and verify the
+FastCPK output tree starts with `data/`; do not mix with extracted stock
+archives. The decoder's `cc2-storm` mode has to match the actual encryption
+profile of the carrier. Do not install or replace any game files.
+
+The report field `decoded_source_integrity` has:
+- `PASS_ALL_SOURCE_RESOURCES_IDENTICAL`: all 72 decoded payloads match
+  the PC source bytes, ruling out corruption in those payloads in this archive;
+- `FAIL_SOURCE_RESOURCE_CHECK`: at least one is absent or has a
+  different decoded hash/size. Inspect `resources` for the exact path.
+
+This check does **not** establish that PC-origin model, skeleton,
+textures, shaders, materials, or animation data are compatible with
+the Switch engine. It is an input-integrity check, not gameplay certification.
 
 ## Interpretation
 
