@@ -38,26 +38,50 @@ The historical V14 build excluded PC condition/damage/private-camera table
 merges as incompatible/unverified. This is **grounds for caution**, not
 proof that the eight carrier payloads are corrupted or the cause of invisible enemies.
 
-## Auditor
+## Auditor v2 (FastCPK-authoritative, read-only)
 
-```sh
+This version fixes two high-risk problems in the first P35 draft:
+
+- Uses the same tested \`fastcpk --list\` interface as the previous V3/V4
+  investigation, including its absolute per-entry offsets. It no longer
+  guesses how CRI @UTF/Cpk FileOffset is based.
+- The V4 routing JSON is a **partial** resource list despite
+  \`resource_count=72\`; it cannot prove 72/72 paths without a full path
+  inventory. Reports now state \`partial_v4_inventory\` explicitly.
+
+Run with Termux (existing FastCPK executable):
+
+\`\`\`sh
 python3 audit_p35_carrier.py \
-  --stock /storage/emulated/0/Download/SWITCH/EXTRACTED_GAME/READY_TO_MOD/romfs/data/patch/170/common.cpk \
+  --stock-romfs /storage/emulated/0/Download/SWITCH/EXTRACTED_GAME/READY_TO_MOD/romfs \
   --carrier /storage/emulated/0/Download/romfs/data/moddingapi/Tobi_Switch.cpk \
   --resource-inventory /storage/emulated/0/Download/TOBI_MTOB_V4_RESOURCE_ROUTING.json \
-  --output /storage/emulated/0/Download/P35_CARRIER_AUDIT.json
-```
+  --output /storage/emulated/0/Download/P35_CARRIER_AUDIT_V2.json
+\`\`\`
 
-The `--resource-inventory` option is optional. Use the actual local path to the
-unzipped carrier; the example is not an instruction to install it. Output uses
-exclusive creation and refuses to overwrite an existing report.
-All original archives are read-only. There are **no runtime hooks or
-gameplay modifications** in P35.
+The location of the carrier is an example based on the uploaded romfs.zip;
+use the actual extracted file location. The stock RomFS option scans all
+stock CPK files and detects collisions in \`data/sim/data2.cpk\` as well
+as patch/170. A partial check (only patch 170) is possible via:
 
-The report compares stored bytes, sizes and SHA-256 for every path common to
-the provided stock `common.cpk` and carrier. This is NOT the entire stock
-RomFS: for other CPK collisions (including historical
-`data/bossNrt/08/b01cmneff1.xfbin`) retain the 28-CPK V4 routing audit.
+\`\`\`sh
+python3 audit_p35_carrier.py \
+  --stock /storage/emulated/0/Download/SWITCH/EXTRACTED_GAME/READY_TO_MOD/romfs/data/patch/170/common.cpk \
+  --carrier /storage/emulated/0/Download/romfs/data/moddingapi/Tobi_Switch.cpk
+\`\`\`
+
+The tool refuses duplicate CPK names/IDs, out-of-bounds entry offsets,
+truncated listings, missing FastCPK, or an incomplete stock listing. It
+does not extract, unpack, decrypt, edit, mount, or install any CPK. Packed
+payload SHA-256 is not the same as decoded resource SHA-256. The JSON
+report is created exclusively (no overwrite).
+
+For reproducibility, the earlier stock patch/170/common.cpk reference
+SHA-256 was:
+\`a4fb86d7d18b7e85e59e4422808e0e581585da70605228d2cd23da317c1dff27\`.
+The audit does **not yet** independently verify that the selected stock
+archives match the historical source hashes. Do not claim definitive stock
+provenance from the tool alone.
 
 ## Interpretation
 
