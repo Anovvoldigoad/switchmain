@@ -1,69 +1,130 @@
 #!/usr/bin/env python3
-"""P35 regressions: no real mod files or Switch hardware required."""
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from audit_p35_carrier import compare, parse_utf
+from audit_p35_carrier import (
+    parse_listing, compare, classify_path, read_inventory, sha_entry,
+)
 
-
-def make_utf():
-    strings = b"Name\x00Number\x00hello\x00"
-    # Two per-row fields: UTF string reference + uint32.
-    columns = bytes([0x5A]) + (0).to_bytes(4, "big") + bytes([0x54]) + (5).to_bytes(4, "big")
-    row_offset = 32 + len(columns)
-    data = ((12).to_bytes(4, "big") + (7).to_bytes(4, "big"))
-    str_offset = row_offset + len(data)
-    data_offset = str_offset + len(strings)
-    header = (b"@UTF" + (data_offset - 8).to_bytes(4, "big")
-              + (row_offset - 8).to_bytes(4, "big")
-              + (str_offset - 8).to_bytes(4, "big")
-              + (data_offset - 8).to_bytes(4, "big")
-              + b"\x00" * 4
-              + (2).to_bytes(2, "big")
-              + (8).to_bytes(2, "big")
-              + (1).to_bytes(4, "big"))
-    return header + columns + data + strings
-
+def listing(*entries):
+    header = (f"Files: {len(entries)} ContentOffset: 0x800 "
+              "Align: 0x200 TOC: 0x200 ITOC: 0x0")
+    rows = [f"{index} 0x{offset:x} {length} {length} {path}"
+            for index,(offset,length,path) in enumerate(entries)]
+    return "\n".join([header]+rows)
 
 class P35Tests(unittest.TestCase):
-    def test_utf_parser(self):
-        self.assertEqual(parse_utf(make_utf()), [{"Name": "hello", "Number": 7}])
+    def test_parse_fastcpk_absolute_offsets(self):
+        parsed=parse_listing(listing((0,4,"data/spc/mtobbod1.xfbin")),4)
+        self.assertEqual(parsed["data/spc/mtobbod1.xfbin"]["offset"],0)
 
-    def case(self, source_bytes=b"A", carrier_bytes=b"B",
-             path="data/spc/conditionprm.bin.xfbin", expected=None):
-        with tempfile.TemporaryDirectory() as d:
-            original, carrier = Path(d) / "stock", Path(d) / "carrier"
-            original.write_bytes(source_bytes)
-            carrier.write_bytes(carrier_bytes)
-            base = {path: {"offset": 0, "size": len(source_bytes)}}
-            override = {path: {"offset": 0, "size": len(carrier_bytes)}}
-            return compare(original, carrier, base, override, expected)
+    def test_count_mismatch_fails_closed(self):
+        with self.assertRaisesRegex(ValueError,"count mismatch"):
+            parse_listing("Files: 2 ContentOffset: 0x0 Align: 0x200 TOC: 1 ITOC: 0\n"
+                          "0 0x0 1 1 data/a.xfbin",3)
 
-    def test_changed_global_is_flagged(self):
-        r = self.case()
-        self.assertEqual(len(r["changed_overrides"]), 1)
-        self.assertEqual(r["changed_overrides"][0]["kind"], "unverified_global")
+    def test_out_of_range_fails_closed(self):
+        with self.assertRaisesRegex(ValueError,"out of file range"):
+            parse_listing(listing((2,8,"data/a.xfbin")),9)
+
+    def test_duplicate_id_fails_closed(self):
+        txt=listing((0,1,"data/a.xfbin"),(1,1,"data/b.xfbin")).replace(
+            "1 0x1 1 1","0 0x1 1 1")
+        with self.assertRaisesRegex(ValueError,"duplicate"):
+            parse_listing(txt,2)
+
+    def test_duplicate_path_fails_closed(self):
+        with self.assertRaisesRegex(ValueError,"duplicate"):
+            parse_listing(listing((0,1,"data/a.xfbin"),(1,1,"data/a.xfbin")),2)
+
+    def test_missing_parser_header_fails_closed(self):
+        with self.assertRaisesRegex(ValueError,"header"):
+            parse_listing("garbage",8)
+
+    def setup_stock(self, stock_bytes=b"ABC", carrier_bytes=b"XYZ",
+                    path="data/spc/conditionprm.bin.xfbin"):
+        folder=tempfile.TemporaryDirectory()
+        root=Path(folder.name)
+        stock=root/"stock.cpk"
+        carrier=root/"Tobi_Switch.cpk"
+        stock.write_bytes(stock_bytes)
+        carrier.write_bytes(carrier_bytes)
+        stock_records=parse_listing(listing((0,len(stock_bytes),path)),len(stock_bytes))
+        carrier_records=parse_listing(listing((0,len(carrier_bytes),path)),len(carrier_bytes))
+        result=compare(carrier,carrier_records,[(stock,stock_records)])
+        return folder,result,stock,carrier,stock_records,carrier_records
+
+    def test_changed_global_is_highlighted(self):
+        folder,r,*_=self.setup_stock()
+        with folder:
+            self.assertEqual(len(r["different_packed_payloads"]),1)
+            self.assertEqual(r["stock_path_collisions"][0]["category"],"unverified_global")
+            self.assertTrue(r["stock_path_collisions"][0]["stock_sources"][0]["different_packed_bytes"])
 
     def test_identical_bytes_not_changed(self):
-        r = self.case(b"ABC", b"ABC")
-        self.assertEqual(len(r["changed_overrides"]), 0)
-        self.assertEqual(len(r["overrides_relative_to_this_stock_cpk"]), 1)
+        folder,r,*_=self.setup_stock(b"ABC",b"ABC")
+        with folder:
+            self.assertEqual(r["different_packed_payloads"],[])
+            self.assertEqual(len(r["stock_path_collisions"]),1)
 
-    def test_v14_table_is_distinct_from_unverified_global(self):
-        r = self.case(path="data/spc/appearanceAnm.xfbin")
-        self.assertEqual(r["changed_overrides"][0]["kind"], "v14_table")
+    def test_v14_table_classification(self):
+        self.assertEqual(classify_path("data/spc/appearanceAnm.xfbin"),"v14_parameter_table")
 
-    def test_stock_collision_resource(self):
-        r = self.case(path="data/bossNrt/08/b01cmneff1.xfbin")
-        self.assertEqual(r["changed_overrides"][0]["kind"], "other_stock_collision")
+    def test_cross_archive_collision(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            a,b,c=[root/n for n in ("launch.cpk","patch.cpk","mod.cpk")]
+            a.write_bytes(b"ABC");b.write_bytes(b"XYZ");c.write_bytes(b"ABC")
+            key="data/spc/mtob.xfbin"
+            stock=[(a,parse_listing(listing((0,3,key)),3)),
+                   (b,parse_listing(listing((0,3,key)),3))]
+            carrier=parse_listing(listing((0,3,key)),3)
+            report=compare(c,carrier,stock)
+            sources=report["stock_path_collisions"][0]["stock_sources"]
+            self.assertEqual(len(sources),2)
+            self.assertEqual([x["different_packed_bytes"] for x in sources],[False,True])
 
-    def test_missing_expected_resource_and_skl3_unproven(self):
-        p = "data/spc/mtobbod1.xfbin"
-        r = self.case(path=p, expected={p, "data/spc/mtobskl3.xfbin"})
-        self.assertEqual(r["missing_known_resource_paths"], ["data/spc/mtobskl3.xfbin"])
-        self.assertFalse(r["mtobskl3_present_in_carrier"])
+    def test_case_variants_not_silently_identical(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            a=root/"a.cpk"; b=root/"b.cpk"
+            a.write_bytes(b"X");b.write_bytes(b"Y")
+            stocks=parse_listing(listing((0,1,"Data/Spc/MTob.xfbin")),1)
+            carrier=parse_listing(listing((0,1,"data/spc/mtob.xfbin")),1)
+            report=compare(b,carrier,[(a,stocks)])
+            self.assertEqual(len(report["case_variant_paths"]),1)
+            self.assertEqual(report["stock_path_collisions"],[])
 
+    def test_partial_v4_inventory_not_mislabeled_complete(self):
+        with tempfile.TemporaryDirectory() as d:
+            f=Path(d)/"V4.json"
+            f.write_text(json.dumps({"resource_count":72,
+                "resource_collisions_across_all_cpks":[{"path":"data/a.xfbin"}],
+                "ui_assets":[{"path":"data/b.xfbin"}]}))
+            known,coverage=read_inventory(f)
+            self.assertEqual(coverage,"partial_v4_inventory")
+            self.assertEqual(known,{"data/a.xfbin","data/b.xfbin"})
 
-if __name__ == "__main__":
+    def test_complete_inventory_if_explicitly_present(self):
+        with tempfile.TemporaryDirectory() as d:
+            f=Path(d)/"inventory.json"
+            f.write_text(json.dumps({"all_72_resources":[{"path":"data/a.xfbin"}]}))
+            known,coverage=read_inventory(f)
+            self.assertEqual((known,coverage),({"data/a.xfbin"},"complete_resource_list"))
+
+    def test_absent_resource_not_automatically_failure(self):
+        folder,r,*_=self.setup_stock()
+        with folder:
+            self.assertFalse(r["mtobskl3_present_in_carrier"])
+            self.assertTrue(any("does not prove" in msg for msg in r["warnings"]))
+
+    def test_hash_exact_stored_entry(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/"archive.cpk";p.write_bytes(b"PADABCEND")
+            self.assertEqual(sha_entry(p,{"offset":3,"packed_size":3}),
+                             __import__("hashlib").sha256(b"ABC").hexdigest())
+
+if __name__=="__main__":
     unittest.main()
