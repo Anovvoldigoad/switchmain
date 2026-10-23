@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
-"""P35 read-only audit of an already-mounted Tobi carrier CPK vs stock common.cpk.
+"""P35 v2: read-only comparison of Tobi carrier with stock CPKs.
 
-Does not build, patch, mount or change any game files.
-CPK TOC parsing uses the same CRI @UTF layout as the V14 offline builder.
-Stored-byte comparison is evidence of an override, NOT proof of XFBIN validity.
+Uses the already verified FastCPK --list output to obtain absolute offsets.
+Compares packed/stored bytes only. No extraction, patching, or game mutation.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+import os
+import re
+import subprocess
+from collections import defaultdict
 from pathlib import Path
 
-SIZES = {0: 1, 1: 1, 2: 2, 3: 2, 4: 4, 5: 4, 6: 8, 7: 8, 8: 4, 9: 8, 10: 4, 11: 8}
-EXTRA_GLOBALS = {
+HEAD = re.compile(r"^Files:\s*(\d+)\s+ContentOffset:\s*(\S+)\s+Align:\s*(\S+)\s+TOC:\s*(\S+)\s+ITOC:\s*(\S+)", re.M)
+ROW = re.compile(r"^\s*(\d+)\s+0x([0-9a-fA-F]+)\s+(\d+)\s+(\d+)\s+(.+?)\s*$")
+FASTCPK = Path.home()/".cache/naruto-fastcpk/target/release/fastcpk"
+
+UNVERIFIED_GLOBALS = {
     "data/message/SWITCH/eng/messageInfo.bin.xfbin",
     "data/message/SWITCH/idid/messageInfo.bin.xfbin",
     "data/message/SWITCH/thth/messageInfo.bin.xfbin",
@@ -39,169 +45,170 @@ V14_TABLES = {
     "data/ui/max/select/characterSelectParam.xfbin",
 }
 
+def classify_path(path: str) -> str:
+    if path in UNVERIFIED_GLOBALS:
+        return "unverified_global"
+    if path in V14_TABLES:
+        return "v14_parameter_table"
+    if path.lower().endswith(".xfbin"):
+        return "other_xfbin"
+    return "other"
 
-def be32(buf: bytes, off: int) -> int:
-    return int.from_bytes(buf[off:off + 4], "big")
+def parse_listing(text: str, archive_bytes: int) -> dict[str, dict]:
+    header = HEAD.search(text)
+    if not header:
+        raise ValueError("FastCPK --list header missing/unsupported")
+    expected = int(header[1])
+    if expected < 1 or expected > 1000000:
+        raise ValueError("unreasonable CPK Files count")
+    records = {}
+    used_ids = set()
+    for line in text.splitlines():
+        match = ROW.match(line)
+        if not match:
+            continue
+        ident, hex_offset, packed, extracted, path = match.groups()
+        ident = int(ident)
+        offset, size = int(hex_offset,16), int(packed)
+        path = path.strip().replace("\\", "/")
+        if (not path or path.startswith("/") or ".." in Path(path).parts
+                or path in records or ident in used_ids):
+            raise ValueError("invalid/duplicate CPK path or ID: " + path)
+        if offset < 0 or size <= 0 or offset + size > archive_bytes:
+            raise ValueError("CPK entry out of file range: " + path)
+        records[path] = {
+            "id":ident, "offset":offset, "packed_size":size,
+            "extracted_size":int(extracted)
+        }
+        used_ids.add(ident)
+    if len(records) != expected:
+        raise ValueError(f"FastCPK file count mismatch: expected={expected} actual={len(records)}")
+    return records
 
+def list_archive(archive: Path, fastcpk: Path) -> dict[str, dict]:
+    if not archive.is_file():
+        raise FileNotFoundError(archive)
+    if not fastcpk.is_file() or not os.access(fastcpk, os.X_OK):
+        raise FileNotFoundError("FastCPK executable unavailable: " + str(fastcpk))
+    cmd = [str(fastcpk), "--list", str(archive)]
+    cp = subprocess.run(cmd, capture_output=True, text=True,
+                        timeout=180, check=True)
+    return parse_listing(cp.stdout, archive.stat().st_size)
 
-def parse_utf(data: bytes) -> list[dict]:
-    if data[:4] != b"@UTF":
-        raise ValueError("not a CRI @UTF table")
-    size = be32(data, 4) + 8
-    if size > len(data) or size < 32:
-        raise ValueError("truncated @UTF")
-    row_off, str_off, data_off = (be32(data, n) + 8 for n in (8, 12, 16))
-    cols = int.from_bytes(data[24:26], "big")
-    stride = int.from_bytes(data[26:28], "big")
-    count = be32(data, 28)
-    if not 0 < cols < 100 or count > 100000 or row_off + stride * count > str_off or str_off > data_off or data_off > size:
-        raise ValueError("unexpected @UTF dimensions")
-
-    def string(offset: int) -> str:
-        start = str_off + offset
-        end = data.find(b"\x00", start, data_off)
-        if start < str_off or start >= data_off or end < 0:
-            raise ValueError("invalid @UTF string offset")
-        return data[start:end].decode("utf-8")
-
-    fields = []
-    pos = 32
-    for _ in range(cols):
-        storage, kind = data[pos] & 0xF0, data[pos] & 0x0F
-        if storage not in (0x10, 0x30, 0x50) or kind not in SIZES:
-            raise ValueError("unsupported @UTF column")
-        key = string(be32(data, pos + 1))
-        pos += 5
-        const = None
-        if storage == 0x30:
-            const = int.from_bytes(data[pos:pos + SIZES[kind]], "big")
-            pos += SIZES[kind]
-        fields.append((key, storage, kind, const))
-    if pos != row_off:
-        raise ValueError("unexpected @UTF column layout")
-    rows = []
-    for n in range(count):
-        pos = row_off + n * stride
-        row = {}
-        for key, storage, kind, const in fields:
-            val = const
-            if storage == 0x50:
-                val = int.from_bytes(data[pos:pos + SIZES[kind]], "big")
-                pos += SIZES[kind]
-            row[key] = string(val) if kind == 10 and val is not None else val
-        if pos != row_off + (n + 1) * stride:
-            raise ValueError("unexpected @UTF row stride")
-        rows.append(row)
-    return rows
-
-
-def read_cpk(path: Path) -> tuple[dict, dict[str, dict]]:
-    with path.open("rb") as f:
-        f.seek(0, 2)
-        archive_size = f.tell()
-        f.seek(0)
-        header = f.read(2048)
-        if header[:4] != b"CPK ":
-            raise ValueError(f"not a CPK: {path}")
-        hsize = int.from_bytes(header[8:16], "little")
-        if hsize > len(header) - 16:
-            raise ValueError("unsupported large CPK header")
-        meta = parse_utf(header[16:16 + hsize])[0]
-        f.seek(meta["TocOffset"])
-        tag = f.read(16)
-        if tag[:4] != b"TOC ":
-            raise ValueError("CPK has no normal TOC")
-        tsize = int.from_bytes(tag[8:16], "little")
-        if tsize > 16 * 1024 * 1024:
-            raise ValueError("TOC too large")
-        rows = parse_utf(f.read(tsize))
-    if meta["Files"] != len(rows):
-        raise ValueError("CPK entry count mismatch")
-    result = {}
-    for row in rows:
-        name = (row["DirName"] + "/" if row["DirName"] else "") + row["FileName"]
-        start = meta["TocOffset"] + row["FileOffset"]
-        size = row["FileSize"]
-        if name in result or start < 0 or size < 0 or start + size > archive_size:
-            raise ValueError("duplicate or invalid CPK entry: " + name)
-        result[name] = {"offset": start, "size": size, "extract_size": row["ExtractSize"], "id": row["ID"]}
-    return meta, result
-
-
-def sha_entry(path: Path, row: dict) -> str:
-    result = hashlib.sha256()
-    with path.open("rb") as stream:
-        stream.seek(row["offset"])
-        left = row["size"]
+def sha_entry(archive: Path, item: dict) -> str:
+    h = hashlib.sha256()
+    left = item["packed_size"]
+    with archive.open("rb") as f:
+        f.seek(item["offset"])
         while left:
-            chunk = stream.read(min(left, 1024 * 1024))
+            chunk = f.read(min(left, 1024 * 1024))
             if not chunk:
-                raise ValueError("truncated entry")
-            result.update(chunk)
+                raise ValueError("truncated packed entry in " + str(archive))
+            h.update(chunk)
             left -= len(chunk)
-    return result.hexdigest()
+    return h.hexdigest()
 
+def read_inventory(manifest_path: Path | None):
+    if manifest_path is None:
+        return set(), "not_provided"
+    src = json.loads(manifest_path.read_text("utf-8"))
+    full = src.get("all_72_resources")
+    if isinstance(full, list) and all(isinstance(x,dict) and "path" in x for x in full):
+        return {x["path"] for x in full}, "complete_resource_list"
+    # V4_RESOURCE_ROUTING.json contains resource_count=72, but not a
+    # full all_72_resources array. It lists only collision and UI rows.
+    partial = (src.get("resource_collisions_across_all_cpks") or [])
+    partial += (src.get("ui_assets") or [])
+    paths = {x["path"] for x in partial if isinstance(x, dict) and "path" in x}
+    return paths, "partial_v4_inventory"
 
-def compare(stock_path: Path, carrier_path: Path, stock: dict, carrier: dict,
-            known_resources: set[str] | None = None) -> dict:
-    common = []
-    for name in sorted(set(stock) & set(carrier)):
-        left, right = stock[name], carrier[name]
-        left_hash = sha_entry(stock_path, left)
-        right_hash = sha_entry(carrier_path, right)
-        common.append({
-            "path": name,
-            "kind": ("unverified_global" if name in EXTRA_GLOBALS else
-                     "v14_table" if name in V14_TABLES else "other_stock_collision"),
-            "different_packed_bytes": left_hash != right_hash,
-            "stock_sha256": left_hash,
-            "carrier_sha256": right_hash,
-            "stock_size": left["size"],
-            "carrier_size": right["size"],
+def compare(carrier_path: Path, carrier: dict,
+            stock_archives: list[tuple[Path, dict]],
+            inventory_paths: set[str] | None = None,
+            coverage: str = "not_provided") -> dict:
+    indexed = defaultdict(list)
+    folded = defaultdict(set)
+    for archive, listing in stock_archives:
+        for name, row in listing.items():
+            indexed[name].append((archive, row))
+            folded[name.casefold()].add(name)
+    collisions, new_paths, casing = [], [], []
+    for name, row in sorted(carrier.items()):
+        if name not in indexed:
+            new_paths.append(name)
+            other = sorted(x for x in folded.get(name.casefold(), ()) if x != name)
+            if other:
+                casing.append({"carrier_path":name,"stock_case_variants":other})
+            continue
+        carrier_hash = sha_entry(carrier_path, row)
+        sources = []
+        for stock_path, stock_row in indexed[name]:
+            stock_hash = sha_entry(stock_path, stock_row)
+            sources.append({
+                "archive":str(stock_path),
+                "id":stock_row["id"],
+                "packed_size":stock_row["packed_size"],
+                "sha256_stored":stock_hash,
+                "different_packed_bytes":stock_hash != carrier_hash,
+            })
+        collisions.append({
+            "path":name, "category":classify_path(name),
+            "carrier_id":row["id"], "carrier_size":row["packed_size"],
+            "carrier_sha256_stored":carrier_hash,
+            "stock_sources":sources
         })
-    new_paths = sorted(set(carrier) - set(stock))
-    missing_known = sorted(known_resources - set(carrier)) if known_resources is not None else None
+    missing = (sorted(inventory_paths - carrier.keys())
+               if inventory_paths is not None else None)
     return {
-        "stock_entries": len(stock),
-        "carrier_entries": len(carrier),
-        "overrides_relative_to_this_stock_cpk": common,
-        "changed_overrides": [x for x in common if x["different_packed_bytes"]],
-        "new_relative_to_this_stock_cpk": new_paths,
-        "missing_known_resource_paths": missing_known,
-        "mtobskl3_present_in_carrier": any("mtobskl3" in s.lower() for s in carrier),
-        "warnings": [
-            "An identical packed payload does not prove identical runtime resolution priority.",
-            "Other stock CPKs may also contain paths not present in common.cpk.",
-            "No asset compatibility, actor rendering or gameplay success is claimed.",
-            "The separate CPK in romfs is mounted by the P32/P34 subsdk9 hook in the supplied log; ROMFS-only autonomous loading is unproven.",
+        "carrier_entry_count":len(carrier),
+        "stock_cpk_count":len(stock_archives),
+        "stock_path_collisions":collisions,
+        "different_packed_payloads": [
+            entry for entry in collisions
+            if any(x["different_packed_bytes"] for x in entry["stock_sources"])
+        ],
+        "carrier_paths_not_found_in_stock":new_paths,
+        "case_variant_paths":casing,
+        "resource_inventory_coverage":coverage,
+        "missing_checked_inventory_paths":missing,
+        "mtobskl3_present_in_carrier": any("mtobskl3" in name.casefold() for name in carrier),
+        "warnings":[
+            "Compares STORED/PACKED bytes, not decoded/decrypted XFBIN structures.",
+            "Same bytes do not establish same CPK mount priority or runtime routing.",
+            "Cross-archive path collisions are not necessarily harmful.",
+            "No path in carrier does not prove that a runtime request exists.",
+            "Runtime status=2 or chunk pointer does not prove battle actor/render readiness.",
+            "CPK bind in prior P34 used subsdk9; ROMFS-only mounting is unproven."
         ],
     }
 
-
 def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--stock", type=Path, required=True, help="original patch/170/common.cpk")
-    p.add_argument("--carrier", type=Path, required=True, help="romfs/data/moddingapi/Tobi_Switch.cpk")
-    p.add_argument("--resource-inventory", type=Path, help="optional V4_RESOURCE_ROUTING.json")
-    p.add_argument("--output", type=Path, help="optional JSON report; never replaces existing file")
-    args = p.parse_args()
-    stock_meta, stock = read_cpk(args.stock)
-    carrier_meta, carrier = read_cpk(args.carrier)
-    known = None
-    if args.resource_inventory:
-        manifest = json.loads(args.resource_inventory.read_text("utf-8"))
-        known = {r["path"] for r in manifest["all_72_resources"]}
-    report = compare(args.stock, args.carrier, stock, carrier, known)
-    report["stock_header"] = {k: stock_meta[k] for k in ("Files", "Sorted", "Align")}
-    report["carrier_header"] = {k: carrier_meta[k] for k in ("Files", "Sorted", "Align")}
-    data = json.dumps(report, indent=2, ensure_ascii=False) + "\n"
+    p=argparse.ArgumentParser()
+    group=p.add_mutually_exclusive_group(required=True)
+    group.add_argument("--stock",type=Path,help="one stock common.cpk (partial check)")
+    group.add_argument("--stock-romfs",type=Path,help="scan all stock CPKs, including data/sim/data2.cpk")
+    p.add_argument("--carrier",type=Path,required=True)
+    p.add_argument("--fastcpk",type=Path,default=FASTCPK)
+    p.add_argument("--resource-inventory",type=Path,help="V4 routing JSON (partial inventory)")
+    p.add_argument("--output",type=Path,help="JSON; refuses overwrite")
+    args=p.parse_args()
+    cpks=([args.stock] if args.stock else sorted(args.stock_romfs.rglob("*.cpk")))
+    if not cpks:
+        p.error("No stock CPK files found")
+    # Fail closed: if ANY stock CPK cannot list, no incomplete result is reported.
+    stock=[(path, list_archive(path,args.fastcpk)) for path in cpks]
+    carrier=list_archive(args.carrier,args.fastcpk)
+    known, coverage=read_inventory(args.resource_inventory)
+    report=compare(args.carrier,carrier,stock,
+                   known if args.resource_inventory else None,coverage)
+    report["stock_archives"]=[str(path) for path in cpks]
+    blob=json.dumps(report,indent=2,ensure_ascii=False)+"\n"
     if args.output:
-        with args.output.open("x", encoding="utf-8") as f:
-            f.write(data)
-        print(f"Report: {args.output}")
+        with args.output.open("x",encoding="utf-8") as out:
+            out.write(blob)
+        print("Report: "+str(args.output))
     else:
-        print(data)
+        print(blob)
 
-
-if __name__ == "__main__":
+if __name__=="__main__":
     main()
