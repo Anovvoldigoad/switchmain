@@ -8,6 +8,7 @@ from unittest.mock import patch
 from build_p36_stock_battle_globals import (
     BATTLE_GLOBALS, EXPECTED_CARRIER_COUNT, EXPECTED_STOCK_COUNT,
     inside, preflight, select_stock_global_replacements, validate_repack,
+    parse_template_alignment, read_template_alignment,
 )
 
 
@@ -82,6 +83,25 @@ class P36Tests(unittest.TestCase):
         stock.pop(BATTLE_GLOBALS[0])
         with self.assertRaisesRegex(ValueError, "missing"):
             select_stock_global_replacements(original, stock)
+
+    def test_read_carrier_alignment_0x200(self):
+        report = ("Files: 93 ContentOffset: 0x1000 Align: 0x200 "
+                  "TOC: 0x800 ITOC: 0x0")
+        self.assertEqual(parse_template_alignment(report), 512)
+
+    def test_carrier_alignment_parser_rejects_missing_header(self):
+        with self.assertRaisesRegex(ValueError, "alignment missing"):
+            parse_template_alignment("garbage")
+
+    def test_read_alignment_from_fastcpk_command(self):
+        from subprocess import CompletedProcess
+        report = ("Files: 93 ContentOffset: 0x1000 Align: 0x200 "
+                  "TOC: 0x800 ITOC: 0x0")
+        with patch("build_p36_stock_battle_globals.subprocess.run",
+                   return_value=CompletedProcess([], 0, stdout=report)) as runner:
+            self.assertEqual(
+                read_template_alignment(Path("/x/Tobi_Switch.cpk"),Path("/x/fastcpk")),512)
+            self.assertIn("--list", runner.call_args.args[0])
 
     def test_inside_directory_guard(self):
         with tempfile.TemporaryDirectory() as d:
