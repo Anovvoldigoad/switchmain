@@ -74,7 +74,7 @@ def parse_listing(text: str, archive_bytes: int) -> dict[str, dict]:
         if (not path or path.startswith("/") or ".." in Path(path).parts
                 or path in records or ident in used_ids):
             raise ValueError("invalid/duplicate CPK path or ID: " + path)
-        if offset < 0 or size <= 0 or offset + size > archive_bytes:
+        if offset < 0 or size < 0 or offset + size > archive_bytes:
             raise ValueError("CPK entry out of file range: " + path)
         records[path] = {
             "id":ident, "offset":offset, "packed_size":size,
@@ -114,7 +114,13 @@ def read_inventory(manifest_path: Path | None):
     src = json.loads(manifest_path.read_text("utf-8"))
     full = src.get("all_72_resources")
     if isinstance(full, list) and all(isinstance(x,dict) and "path" in x for x in full):
-        return {x["path"] for x in full}, "complete_resource_list"
+        paths = {x["path"] for x in full}
+        if len(paths) != len(full) or (
+            src.get("resource_count") is not None
+            and len(full) != src["resource_count"]
+        ):
+            raise ValueError("explicit inventory has duplicates or inconsistent count")
+        return paths, "complete_resource_list"
     # V4_RESOURCE_ROUTING.json contains resource_count=72, but not a
     # full all_72_resources array. It lists only collision and UI rows.
     partial = (src.get("resource_collisions_across_all_cpks") or [])
@@ -192,7 +198,25 @@ def main():
     p.add_argument("--resource-inventory",type=Path,help="V4 routing JSON (partial inventory)")
     p.add_argument("--output",type=Path,help="JSON; refuses overwrite")
     args=p.parse_args()
-    cpks=([args.stock] if args.stock else sorted(args.stock_romfs.rglob("*.cpk")))
+    if args.stock:
+        cpks = [args.stock]
+    else:
+        root = args.stock_romfs.resolve()
+        if not root.is_dir():
+            p.error("Stock RomFS directory unavailable")
+        # Restrict to known retail CPK namespaces from the V4 inventory.
+        # Exclude moddingapi/custom carriers even if placed under this RomFS.
+        allowed = {"disc", "launch", "patch", "sim"}
+        cpks = sorted(
+            candidate for candidate in root.rglob("*.cpk")
+            if candidate.is_file()
+            and not candidate.is_symlink()
+            and (relative := candidate.relative_to(root)).parts[:1] == ("data",)
+            and len(relative.parts) >= 3
+            and relative.parts[1] in allowed
+        )
+    if any(path.resolve() == args.carrier.resolve() for path in cpks):
+        p.error("The carrier cannot also be a stock CPK")
     if not cpks:
         p.error("No stock CPK files found")
     # Fail closed: if ANY stock CPK cannot list, no incomplete result is reported.
@@ -202,6 +226,10 @@ def main():
     report=compare(args.carrier,carrier,stock,
                    known if args.resource_inventory else None,coverage)
     report["stock_archives"]=[str(path) for path in cpks]
+    if args.stock_romfs and len(cpks) != 28:
+        report["warnings"].append(
+            f"Expected 28 original CPKs from V4; found {len(cpks)}. Verify stock completeness/provenance."
+        )
     blob=json.dumps(report,indent=2,ensure_ascii=False)+"\n"
     if args.output:
         with args.output.open("x",encoding="utf-8") as out:
