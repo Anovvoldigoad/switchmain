@@ -121,12 +121,81 @@ def read_inventory(manifest_path: Path | None):
         ):
             raise ValueError("explicit inventory has duplicates or inconsistent count")
         return paths, "complete_resource_list"
-    # V4_RESOURCE_ROUTING.json contains resource_count=72, but not a
-    # full all_72_resources array. It lists only collision and UI rows.
+    # Some older scan outputs only list collisions/UI; treat those as partial.
     partial = (src.get("resource_collisions_across_all_cpks") or [])
     partial += (src.get("ui_assets") or [])
     paths = {x["path"] for x in partial if isinstance(x, dict) and "path" in x}
     return paths, "partial_v4_inventory"
+
+def read_expected_resources(manifest_path: Path) -> dict[str, dict]:
+    """Require an explicit complete source manifest with known decoded hashes."""
+    document = json.loads(manifest_path.read_text("utf-8"))
+    rows = document.get("all_72_resources")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("decoded verification requires all_72_resources")
+    expected = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("invalid source resource manifest row")
+        name, size, digest = row.get("path"), row.get("bytes"), row.get("sha256")
+        if (not isinstance(name, str) or not name
+                or "\\" in name or name.startswith("/")
+                or any(part in ("", ".", "..") for part in name.split("/"))
+                or ":" in name):
+            raise ValueError("unsafe or invalid decoded resource path: " + repr(name))
+        if (type(size) is not int or size < 0
+                or not isinstance(digest, str)
+                or re.fullmatch(r"[0-9a-fA-F]{64}", digest) is None):
+            raise ValueError("missing/invalid source size or SHA256 for " + name)
+        if name in expected:
+            raise ValueError("duplicate path in source resource manifest: " + name)
+        expected[name] = {"size": size, "sha256": digest.lower()}
+    if document.get("resource_count") not in (None, len(expected)):
+        raise ValueError("resource_count does not match explicit source inventory")
+    return expected
+
+
+def verify_decoded_resources(root: Path, expected: dict[str, dict]) -> dict:
+    """Check decoded NUCC payloads; originals remain unchanged."""
+    root = root.expanduser().resolve()
+    if not root.is_dir():
+        raise ValueError("decoded root directory does not exist: " + str(root))
+    entries = []
+    for name, specification in sorted(expected.items()):
+        candidate = root.joinpath(*name.split("/"))
+        # Refuse paths that follow a symlink or escape the requested root.
+        if candidate.is_symlink() or not candidate.resolve().is_relative_to(root):
+            raise ValueError("unsafe extracted resource path: " + name)
+        if not candidate.is_file():
+            entries.append({"path": name, "result": "MISSING"})
+            continue
+        actual_size = candidate.stat().st_size
+        actual_digest = hashlib.sha256()
+        with candidate.open("rb") as file:
+            for chunk in iter(lambda: file.read(1024 * 1024), b""):
+                actual_digest.update(chunk)
+        actual_digest = actual_digest.hexdigest()
+        result = ("MATCH" if actual_size == specification["size"] and
+                  actual_digest == specification["sha256"] else "MISMATCH")
+        entries.append({
+            "path": name, "result": result,
+            "expected_bytes": specification["size"], "actual_bytes": actual_size,
+            "expected_sha256": specification["sha256"],
+            "actual_sha256": actual_digest,
+        })
+    counts = {name: sum(row["result"] == name for row in entries)
+              for name in ("MATCH", "MISMATCH", "MISSING")}
+    return {
+        "status": ("PASS_ALL_SOURCE_RESOURCES_IDENTICAL" if
+                   counts["MATCH"] == len(expected) else "FAIL_SOURCE_RESOURCE_CHECK"),
+        "expected_count": len(expected), "counts": counts, "resources": entries,
+        "limitation": (
+            "This only verifies byte identity of decoded XFBIN against source PC payloads; "
+            "it does not prove compatibility with the Switch engine, skeleton, materials "
+            "or actor rendering."
+        )
+    }
+
 
 def compare(carrier_path: Path, carrier: dict,
             stock_archives: list[tuple[Path, dict]],
@@ -195,7 +264,8 @@ def main():
     group.add_argument("--stock-romfs",type=Path,help="scan all stock CPKs, including data/sim/data2.cpk")
     p.add_argument("--carrier",type=Path,required=True)
     p.add_argument("--fastcpk",type=Path,default=FASTCPK)
-    p.add_argument("--resource-inventory",type=Path,help="V4 routing JSON (partial inventory)")
+    p.add_argument("--resource-inventory",type=Path,help="V4 routing JSON with original 72 hashes")
+    p.add_argument("--decoded-root", type=Path, help="already-extracted decoded carrier root (no extraction performed)")
     p.add_argument("--output",type=Path,help="JSON; refuses overwrite")
     args=p.parse_args()
     if args.stock:
@@ -226,6 +296,11 @@ def main():
     report=compare(args.carrier,carrier,stock,
                    known if args.resource_inventory else None,coverage)
     report["stock_archives"]=[str(path) for path in cpks]
+    if args.decoded_root:
+        if not args.resource_inventory:
+            p.error("--decoded-root requires --resource-inventory with hashes")
+        expected=read_expected_resources(args.resource_inventory)
+        report["decoded_source_integrity"]=verify_decoded_resources(args.decoded_root,expected)
     if args.stock_romfs and len(cpks) != 28:
         report["warnings"].append(
             f"Expected 28 original CPKs from V4; found {len(cpks)}. Verify stock completeness/provenance."
