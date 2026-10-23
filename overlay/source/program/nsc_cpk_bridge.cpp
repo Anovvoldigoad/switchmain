@@ -48,6 +48,7 @@ std::atomic<uint32_t> g_status_transition_logs{0};
 std::atomic<uint32_t> g_chunk_logs{0};
 std::atomic<uint32_t> g_process_logs{0};
 std::atomic<uint32_t> g_file_open_logs{0};
+std::atomic<uint64_t> g_process_attempt_sequence{0};
 std::atomic<uint32_t> g_status_overflow_once{0};
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
@@ -72,6 +73,15 @@ public:
     StatusLock() { while (g_status_lock.test_and_set(std::memory_order_acquire)) {} }
     ~StatusLock() { g_status_lock.clear(std::memory_order_release); }
 };
+
+// Thread IDs provide reliable process-scope correlation across overlapping
+// loads from different threads. Current-thread SVC is read-only; 0 marks an
+// unavailable ID and must NOT be used by the P34 parser for definite pairing.
+uint64_t CurrentThreadId() {
+    u64 tid = 0;
+    const Result result = svcGetThreadId(&tid, CUR_THREAD_HANDLE);
+    return result == 0 ? static_cast<uint64_t>(tid) : 0;
+}
 
 bool StartsWith(const char* s, const char* prefix) {
     if (!s || !prefix) return false;
@@ -317,8 +327,12 @@ HOOK_DEFINE_TRAMPOLINE(FileOpenHook) {
         const uint32_t result = Orig(request, path, slot);
         if (IsInterestingPath(path) &&
             g_file_open_logs.fetch_add(1, std::memory_order_relaxed) < 512) {
+            const uint64_t tid = CurrentThreadId();
             Logging.Log("[NSC:P32] FILE_OPEN request=%p path=%s slot=%u result=%u",
                         request, path ? path : "<null>", slot, result);
+            Logging.Log("[NSC:P34] FILE_OPEN tid=%llu path=%s request=%p slot=%u result=%u",
+                        static_cast<unsigned long long>(tid),
+                        path ? path : "<null>", request, slot, result);
         }
         return result;
     }
@@ -336,12 +350,24 @@ HOOK_DEFINE_TRAMPOLINE(FileOpenHook) {
 // read-context error field checked natively at +0x1D8.
 HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
     static void Callback(void* owner, void* read_context, void* load_object, const char* path) {
+        // Log process boundaries before/after Orig. FILE_OPEN is called from
+        // this routine on the same native thread; a per-thread scope catches
+        // retries and concurrent attempts without matching unrelated paths.
+        const bool trace = IsInterestingPath(path) &&
+            g_process_logs.fetch_add(1, std::memory_order_relaxed) < 512;
+        const uint64_t attempt = trace ?
+            g_process_attempt_sequence.fetch_add(1, std::memory_order_relaxed) + 1 : 0;
+        const uint64_t tid = trace ? CurrentThreadId() : 0;
+        if (trace) {
+            Logging.Log("[NSC:P34] PROCESS_BEGIN tid=%llu attempt=%llu path=%s owner=%p readctx=%p load=%p",
+                        static_cast<unsigned long long>(tid),
+                        static_cast<unsigned long long>(attempt),
+                        path ? path : "<null>", owner, read_context, load_object);
+        }
+
         Orig(owner, read_context, load_object, path);
 
-        if (!IsInterestingPath(path) ||
-            g_process_logs.fetch_add(1, std::memory_order_relaxed) >= 512) {
-            return;
-        }
+        if (!trace) return;
 
         uint32_t load_status = 0xFFFFFFFFu;
         uint32_t read_error = 0xFFFFFFFFu;
@@ -359,6 +385,10 @@ HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
         Logging.Log("[NSC:P32] PROCESS path=%s owner=%p readctx=%p load=%p status=%u readerr=%u",
                     path ? path : "<null>", owner, read_context, load_object,
                     load_status, read_error);
+        Logging.Log("[NSC:P34] PROCESS_END tid=%llu attempt=%llu path=%s status=%u readerr=%u",
+                    static_cast<unsigned long long>(tid),
+                    static_cast<unsigned long long>(attempt),
+                    path ? path : "<null>", load_status, read_error);
     }
 };
 
