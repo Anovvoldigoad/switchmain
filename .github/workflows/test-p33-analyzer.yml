@@ -1,0 +1,22 @@
+name: Test P33 loader log analyzer
+on:
+  push:
+    paths:
+      - "analyze_p33_log.py"
+      - "test_analyze_p33.py"
+      - ".github/workflows/test-p33-analyzer.yml"
+  pull_request:
+    paths:
+      - "analyze_p33_log.py"
+      - "test_analyze_p33.py"
+      - ".github/workflows/test-p33-analyzer.yml"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run five P33 classifier regression tests
+        run: python -m unittest -v test_analyze_p33.py
