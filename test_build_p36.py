@@ -99,7 +99,7 @@ class P36Tests(unittest.TestCase):
             exe.write_text("#!/bin/sh\nexit 0\n")
             exe.chmod(0o755)
             with self.assertRaisesRegex(ValueError, "SHA256"):
-                preflight(a, b, root / "newfolder", exe, exe, False)
+                preflight(a, b, root.parent / ("p36_output_" + root.name), exe, exe, False)
 
     def test_preflight_expected_counts_guard(self):
         with tempfile.TemporaryDirectory() as d:
@@ -115,7 +115,7 @@ class P36Tests(unittest.TestCase):
                 {name: {"id":i} for i,name in enumerate(BATTLE_GLOBALS)},
             ]):
                 with self.assertRaisesRegex(ValueError, "Unexpected CPK entry counts"):
-                    preflight(a, b, root / "newfolder", exe, exe, True)
+                    preflight(a, b, root.parent / ("p36_output_" + root.name), exe, exe, True)
 
     def test_expected_counts_are_pinned(self):
         self.assertEqual((EXPECTED_STOCK_COUNT, EXPECTED_CARRIER_COUNT), (728, 93))
