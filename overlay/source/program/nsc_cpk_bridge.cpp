@@ -8,7 +8,6 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <switch/kernel/svc.h>
 
 namespace nsc {
 namespace {
