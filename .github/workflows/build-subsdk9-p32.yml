@@ -1,4 +1,4 @@
-name: Build NSC P34 thread-scoped loader trace
+name: Build NSC P38 Tobi actor-render registration trace
 
 on:
   workflow_dispatch:
@@ -10,6 +10,8 @@ on:
       - "analyze_p34_log.py"
       - "test_analyze_p34.py"
       - "README_P34.md"
+      - "README_P38.md"
+      - "test_p38_source.py"
 
 jobs:
   build:
@@ -62,7 +64,7 @@ jobs:
           echo "exlaunch commit=$ACTUAL"
           test "$ACTUAL" = "229bbd6"
 
-      - name: Apply P34 overlay
+      - name: Apply P38 overlay
         shell: bash
         run: |
           set -euxo pipefail
@@ -70,11 +72,11 @@ jobs:
           bash ./prepare_exlaunch.sh "$GITHUB_WORKSPACE/exlaunch"
           find "$GITHUB_WORKSPACE/exlaunch/source/program" -maxdepth 1 -type f -printf '%f\n' | sort
 
-      - name: Validate P34 analyzer
+      - name: Validate P38 source invariants and P34 analyzer
         shell: bash
         run: |
           set -euxo pipefail
-          python3 -m unittest -v test_analyze_p34.py
+          python3 -m unittest -v test_analyze_p34.py test_p38_source.py
 
       - name: Build subsdk9
         shell: bash
@@ -100,14 +102,15 @@ jobs:
           (cd artifact && sha256sum atmosphere/contents/0100FA10190A0000/exefs/subsdk9 | tee SHA256SUMS.txt)
           cp README_P32.txt artifact/README_P32.txt
           cp README_P34.md artifact/README_P34.md
+          cp README_P38.md artifact/README_P38.md
           cp analyze_p34_log.py artifact/analyze_p34_log.py
           cp analyze_p32_log.py artifact/analyze_p32_log.py
           cp P30_MANIFEST_ROW_AUDIT.json artifact/P30_MANIFEST_ROW_AUDIT.json
 
-      - name: Upload P34 subsdk9
+      - name: Upload P38 subsdk9
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P34-thread-scoped-xfbin-trace-subsdk9
+          name: NSC-P38-Tobi-render-registration-trace-subsdk9
           path: artifact/
           if-no-files-found: error
           compression-level: 9
