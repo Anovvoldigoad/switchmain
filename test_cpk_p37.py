@@ -7,6 +7,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from build_p37_preserve_carrier import (
+    EXPECTED_ORIGINAL_CARRIER_SHA256, require_original_carrier_source,
+)
 from cpk_p37_compat import (
     _transform_utf, get_cpk_sorted, set_cpk_sorted, locate_sorted,
     read_stored_entry, staged_raw_storage, assert_original_stored_unchanged,
@@ -48,6 +51,16 @@ def fake_cpk(path: Path, sorted_flag: int, obfuscated: bool = False):
 
 
 class P37Tests(unittest.TestCase):
+    def test_known_original_carrier_hash(self):
+        require_original_carrier_source(EXPECTED_ORIGINAL_CARRIER_SHA256)
+
+    def test_reject_accidental_p36_carrier_as_source(self):
+        with self.assertRaisesRegex(ValueError, "NOT the known original"):
+            require_original_carrier_source(
+                "c6a0d8c88ff36b13bd18372b4f6faac17fc5907c01ab52881d4a1d9fc9dd0bc0"
+            )
+
+
     def test_parse_unsorted_header(self):
         offset, flag = locate_sorted(bytearray(mini_header(0)))
         self.assertEqual(flag, 0)
