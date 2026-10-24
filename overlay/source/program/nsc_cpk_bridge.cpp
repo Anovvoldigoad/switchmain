@@ -594,7 +594,7 @@ bool InstallTraceHooks() {
 void InstallP32Trace() {
     const bool cpk = InstallCpkBridge();
     const bool trace = InstallTraceHooks();
-    const bool render_probe = InstallP38RenderRegistrationProbe();
+    const bool render_probe = cpk && trace && InstallP38RenderRegistrationProbe();
     Logging.Log("[NSC:P38] STATUS cpk=%u xfbin_trace=%u render_probe=%u",
                 cpk ? 1u : 0u, trace ? 1u : 0u, render_probe ? 1u : 0u);
     Logging.Log("[NSC:P32] READY cpk=%d trace=%d req=0x%lx create=0x%lx status=0x%lx chunk=0x%lx process=0x%lx open=0x%lx",
