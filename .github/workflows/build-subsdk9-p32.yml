@@ -1,4 +1,4 @@
-name: Build NSC P38 Tobi actor-render registration trace
+name: Build NSC P39 Tobi draw/submit trace
 
 on:
   workflow_dispatch:
@@ -12,6 +12,8 @@ on:
       - "README_P34.md"
       - "README_P38.md"
       - "test_p38_source.py"
+      - "README_P39.md"
+      - "test_p39_source.py"
 
 jobs:
   build:
@@ -72,11 +74,11 @@ jobs:
           bash ./prepare_exlaunch.sh "$GITHUB_WORKSPACE/exlaunch"
           find "$GITHUB_WORKSPACE/exlaunch/source/program" -maxdepth 1 -type f -printf '%f\n' | sort
 
-      - name: Validate P38 source invariants and P34 analyzer
+      - name: Validate P38 P39 source invariants and P34 analyzer
         shell: bash
         run: |
           set -euxo pipefail
-          python3 -m unittest -v test_analyze_p34.py test_p38_source.py
+          python3 -m unittest -v test_analyze_p34.py test_p38_source.py test_p39_source.py
 
       - name: Build subsdk9
         shell: bash
@@ -103,14 +105,15 @@ jobs:
           cp README_P32.txt artifact/README_P32.txt
           cp README_P34.md artifact/README_P34.md
           cp README_P38.md artifact/README_P38.md
+          cp README_P39.md artifact/README_P39.md
           cp analyze_p34_log.py artifact/analyze_p34_log.py
           cp analyze_p32_log.py artifact/analyze_p32_log.py
           cp P30_MANIFEST_ROW_AUDIT.json artifact/P30_MANIFEST_ROW_AUDIT.json
 
-      - name: Upload P38 subsdk9
+      - name: Upload P39 subsdk9
         uses: actions/upload-artifact@v4
         with:
-          name: NSC-P38-Tobi-render-registration-trace-subsdk9
+          name: NSC-P39-Tobi-upstream-draw-submit-probe-subSDK9
           path: artifact/
           if-no-files-found: error
           compression-level: 9

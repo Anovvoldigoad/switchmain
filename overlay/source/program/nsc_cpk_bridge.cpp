@@ -28,6 +28,11 @@ constexpr ptrdiff_t kP38ModelChildCreateOffset = 0x6ECEE8;
 constexpr ptrdiff_t kP38RegBridgeOffset        = 0x6ED110;
 constexpr ptrdiff_t kP38RenderProducerOffset   = 0x594D8;
 
+// P39: upstream drawing/dispatch hooks from historical R264/R265,
+// to distinguish "no model registration" from "probe was never reached".
+constexpr ptrdiff_t kP39DrawOffset             = 0x54ADA0;
+constexpr ptrdiff_t kP39DrawSubmitOffset       = 0x5B3AC;
+
 
 constexpr uint32_t kVanillaMaxCharId = 280;
 constexpr uint32_t kFirstCustomCharId = 281;
@@ -62,6 +67,9 @@ std::atomic<uint32_t> g_p38_armed{0};
 std::atomic<uint32_t> g_p38_child_count{0};
 std::atomic<uint32_t> g_p38_bridge_count{0};
 std::atomic<uint32_t> g_p38_producer_count{0};
+std::atomic<uint32_t> g_p39_draw_count{0};
+std::atomic<uint32_t> g_p39_submit_count{0};
+
 
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
@@ -513,6 +521,79 @@ bool InstallP38RenderRegistrationProbe() {
     return true;
 }
 
+// P39 upstream read-only hooks. Historical native signatures and ABI are
+// taken from R264DrawHook and R265DrawSubmitHook (source commit 688563f).
+// A missing P38 CHILD/BRIDGE/PRODUCER marker alone is non-diagnostic;
+// these additional checkpoints test whether native draw dispatch is reached.
+HOOK_DEFINE_TRAMPOLINE(P39DrawHook) {
+    static void Callback(void* self) {
+        const bool armed = g_p38_armed.load(std::memory_order_relaxed) != 0u;
+        if (armed) {
+            const uint32_t seq = g_p39_draw_count.fetch_add(1u, std::memory_order_relaxed);
+            if (seq < 192u) {
+                void* model = self
+                    ? *reinterpret_cast<void* volatile*>(reinterpret_cast<uint8_t*>(self) + 0xB0u)
+                    : nullptr;
+                uint32_t identity = 0xFFFFFFFFu;
+                uintptr_t base90 = 0u, secondary98 = 0u;
+                if (model) {
+                    const auto* b = reinterpret_cast<const volatile uint8_t*>(model);
+                    identity = *reinterpret_cast<const volatile uint32_t*>(b + 0x38u);
+                    base90 = *reinterpret_cast<const volatile uintptr_t*>(b + 0x90u);
+                    secondary98 = *reinterpret_cast<const volatile uintptr_t*>(b + 0x98u);
+                }
+                Logging.Log("[NSC:P39] DRAW seq=%u self=%p model=%p identity38=%u base90=%p secondary98=%p p38_child=%u p38_bridge=%u p38_producer=%u",
+                    seq, self, model, identity, reinterpret_cast<void*>(base90),
+                    reinterpret_cast<void*>(secondary98),
+                    g_p38_child_count.load(std::memory_order_relaxed),
+                    g_p38_bridge_count.load(std::memory_order_relaxed),
+                    g_p38_producer_count.load(std::memory_order_relaxed));
+            }
+        }
+        Orig(self);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(P39DrawSubmitHook) {
+    static void Callback(void* draw_ctx, uint32_t slot, uint32_t identity) {
+        if (g_p38_armed.load(std::memory_order_relaxed) != 0u) {
+            const uint32_t seq = g_p39_submit_count.fetch_add(1u, std::memory_order_relaxed);
+            if (seq < 192u) {
+                Logging.Log("[NSC:P39] SUBMIT seq=%u ctx=%p slot=%u identity=%u draws_seen=%u p38_child=%u p38_bridge=%u p38_producer=%u",
+                    seq, draw_ctx, slot, identity,
+                    g_p39_draw_count.load(std::memory_order_relaxed),
+                    g_p38_child_count.load(std::memory_order_relaxed),
+                    g_p38_bridge_count.load(std::memory_order_relaxed),
+                    g_p38_producer_count.load(std::memory_order_relaxed));
+            }
+        }
+        Orig(draw_ctx, slot, identity);
+    }
+};
+
+bool InstallP39DrawDispatchProbe() {
+    static constexpr uint32_t kDrawExpected[] = {
+        0xA9BF4FFE,0xAA0003F3,0x97FFFF87,0xF9405A60,
+        0xB4000180,0x94068783,0x34000140,0xB000DFC8,
+    };
+    static constexpr uint32_t kSubmitExpected[] = {
+        0xD10103FF,0xA90257F6,0xA9034FF4,0x91008013,
+        0xF000D674,0x91284294,0x290007E2,0x910013F5,
+    };
+    const bool draw = MatchWords(kP39DrawOffset, kDrawExpected);
+    const bool submit = MatchWords(kP39DrawSubmitOffset, kSubmitExpected);
+    if (!draw) LogFingerprintFail("P39_DRAW", kP39DrawOffset);
+    if (!submit) LogFingerprintFail("P39_SUBMIT", kP39DrawSubmitOffset);
+    if (!draw || !submit) {
+        Logging.Log("[NSC:P39] READY installed=0 reason=fingerprint_mismatch hooks=0");
+        return false;
+    }
+    P39DrawHook::InstallAtOffset(kP39DrawOffset);
+    P39DrawSubmitHook::InstallAtOffset(kP39DrawSubmitOffset);
+    Logging.Log("[NSC:P39] READY installed=1 readonly=1 hooks=2 cpk_unchanged=1 main_patch=0 post_mtob_arm=1");
+    return true;
+}
+
 bool InstallCpkBridge() {
     static constexpr uint32_t kExpected[] = {
         0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0xD000E6A8,
@@ -595,6 +676,10 @@ void InstallP32Trace() {
     const bool cpk = InstallCpkBridge();
     const bool trace = InstallTraceHooks();
     const bool render_probe = cpk && trace && InstallP38RenderRegistrationProbe();
+    const bool draw_probe = cpk && trace && InstallP39DrawDispatchProbe();
+    Logging.Log("[NSC:P39] STATUS cpk=%u xfbin_trace=%u p38_render_probe=%u draw_probe=%u",
+                cpk ? 1u : 0u, trace ? 1u : 0u,
+                render_probe ? 1u : 0u, draw_probe ? 1u : 0u);
     Logging.Log("[NSC:P38] STATUS cpk=%u xfbin_trace=%u render_probe=%u",
                 cpk ? 1u : 0u, trace ? 1u : 0u, render_probe ? 1u : 0u);
     Logging.Log("[NSC:P32] READY cpk=%d trace=%d req=0x%lx create=0x%lx status=0x%lx chunk=0x%lx process=0x%lx open=0x%lx",
