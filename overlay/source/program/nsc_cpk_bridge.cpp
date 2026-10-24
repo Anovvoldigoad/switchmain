@@ -22,6 +22,13 @@ constexpr ptrdiff_t kChunkBinaryOffset        = 0x3EAE70;  // ccGetChunkBinary(f
 constexpr ptrdiff_t kLoadRequestProcessOffset = 0x116F404; // nuccLoadRequest process/open/read path
 constexpr ptrdiff_t kFileOpenOffset           = 0x1170FB0; // low-level file open request; returns 1/0
 
+// P38: R266 read-only model registration stages, independently fingerprinted.
+// These IDs belong to the MAIN function addresses, not a model characode.
+constexpr ptrdiff_t kP38ModelChildCreateOffset = 0x6ECEE8;
+constexpr ptrdiff_t kP38RegBridgeOffset        = 0x6ED110;
+constexpr ptrdiff_t kP38RenderProducerOffset   = 0x594D8;
+
+
 constexpr uint32_t kVanillaMaxCharId = 280;
 constexpr uint32_t kFirstCustomCharId = 281;
 constexpr int kModCpkPriority = 32;
@@ -50,6 +57,12 @@ std::atomic<uint32_t> g_process_logs{0};
 std::atomic<uint32_t> g_file_open_logs{0};
 std::atomic<uint64_t> g_process_attempt_sequence{0};
 std::atomic<uint32_t> g_status_overflow_once{0};
+// Only log model/producer events after the custom mtob code is actually observed.
+std::atomic<uint32_t> g_p38_armed{0};
+std::atomic<uint32_t> g_p38_child_count{0};
+std::atomic<uint32_t> g_p38_bridge_count{0};
+std::atomic<uint32_t> g_p38_producer_count{0};
+
 std::atomic_flag g_track_lock = ATOMIC_FLAG_INIT;
 std::atomic_flag g_status_lock = ATOMIC_FLAG_INIT;
 TrackedCode g_tracked[32]{};
@@ -133,6 +146,10 @@ bool BoundedContains(const char* haystack, const char* needle, size_t hay_max = 
 
 void TrackCustomCode(uint32_t id, const char* code) {
     if (id <= kVanillaMaxCharId || !code || !*code) return;
+    if (id == kFirstCustomCharId && BoundedEqual(code, "mtob")) {
+        if (g_p38_armed.exchange(1u, std::memory_order_relaxed) == 0u)
+            Logging.Log("[NSC:P38] ARM char=281 code=mtob trace_scope=post_custom_resolution");
+    }
     TrackLock lock;
     for (uint32_t i = 0; i < g_tracked_count; ++i) {
         if (g_tracked[i].id == id || BoundedEqual(g_tracked[i].code, code)) return;
@@ -392,6 +409,110 @@ HOOK_DEFINE_TRAMPOLINE(LoadRequestProcessHook) {
     }
 };
 
+// P38: take only the read-only ABI/signature evidence from R266, not its
+// hardcoded model identity38==46 (the R266 experiment was NOT a mtob proof).
+// Observe all model identities after char281->mtob has been seen. There are
+// deliberately no writes, resource substitutions, or gameplay return overrides.
+struct P38ModelSnapshot {
+    uint32_t identity38;
+    uint32_t child_count;
+    uint32_t flag2b68;
+    uint32_t mode2b6c;
+    uintptr_t begin2b38;
+    uintptr_t end2b40;
+};
+
+P38ModelSnapshot P38ReadModel(void* model) {
+    P38ModelSnapshot snap{0xFFFFFFFFu, 0xFFFFFFFFu, 0u, 0u, 0u, 0u};
+    if (!model) return snap;
+    const auto* b = reinterpret_cast<const volatile uint8_t*>(model);
+    snap.identity38 = *reinterpret_cast<const volatile uint32_t*>(b + 0x38u);
+    snap.begin2b38 = *reinterpret_cast<const volatile uintptr_t*>(b + 0x2B38u);
+    snap.end2b40 = *reinterpret_cast<const volatile uintptr_t*>(b + 0x2B40u);
+    snap.flag2b68 = *reinterpret_cast<const volatile uint32_t*>(b + 0x2B68u);
+    snap.mode2b6c = *reinterpret_cast<const volatile uint32_t*>(b + 0x2B6Cu);
+    if (snap.end2b40 >= snap.begin2b38) {
+        const uintptr_t diff = snap.end2b40 - snap.begin2b38;
+        if ((diff & (sizeof(uintptr_t) - 1)) == 0u && diff <= 4096u * sizeof(uintptr_t))
+            snap.child_count = static_cast<uint32_t>(diff / sizeof(uintptr_t));
+    }
+    return snap;
+}
+
+HOOK_DEFINE_TRAMPOLINE(P38ModelChildCreateHook) {
+    static void Callback(void* model, uint32_t selector, void* source_obj, uint32_t mode) {
+        Orig(model, selector, source_obj, mode);
+        if (g_p38_armed.load(std::memory_order_relaxed) == 0u || !model) return;
+        const uint32_t seq = g_p38_child_count.fetch_add(1u, std::memory_order_relaxed);
+        if (seq >= 512u) return;
+        const auto snap = P38ReadModel(model);
+        Logging.Log("[NSC:P38] CHILD seq=%u model=%p identity38=%u selector=%u mode=%u source=%p child_count=%u flag=%u reg_mode=%u",
+                    seq, model, snap.identity38, selector, mode, source_obj,
+                    snap.child_count, snap.flag2b68, snap.mode2b6c);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(P38RegBridgeHook) {
+    static void Callback(void* model, void* source_name_obj, uint32_t mode) {
+        // Preserve native register/bridge behavior in all cases.
+        if (g_p38_armed.load(std::memory_order_relaxed) != 0u && model) {
+            const uint32_t seq = g_p38_bridge_count.fetch_add(1u, std::memory_order_relaxed);
+            if (seq < 512u) {
+                const auto snap = P38ReadModel(model);
+                Logging.Log("[NSC:P38] BRIDGE seq=%u model=%p identity38=%u mode=%u source=%p child_count=%u flag=%u reg_mode=%u",
+                            seq, model, snap.identity38, mode, source_name_obj,
+                            snap.child_count, snap.flag2b68, snap.mode2b6c);
+            }
+        }
+        Orig(model, source_name_obj, mode);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(P38RenderProducerHook) {
+    static void Callback(void* manager, void* resource, void* base90, void* name_a, void* name_b,
+                         uint32_t mode, uint32_t slot, uint32_t identity) {
+        if (g_p38_armed.load(std::memory_order_relaxed) != 0u) {
+            const uint32_t seq = g_p38_producer_count.fetch_add(1u, std::memory_order_relaxed);
+            if (seq < 512u) {
+                Logging.Log("[NSC:P38] PRODUCER seq=%u manager=%p resource=%p base90=%p name_a=%p name_b=%p mode=%u slot=%u identity=%u",
+                            seq, manager, resource, base90, name_a, name_b, mode, slot, identity);
+            }
+        }
+        Orig(manager, resource, base90, name_a, name_b, mode, slot, identity);
+    }
+};
+
+bool InstallP38RenderRegistrationProbe() {
+    // P38 probes are optional: if main 1.70 fingerprints differ, do not hook.
+    static constexpr uint32_t kChildExpected[] = {
+        0xD10203FF,0xA9036FFE,0xA90467FA,0xA9055FF8,
+        0xA90657F6,0xA9074FF4,0xF000D2A8,0xF9424508,
+    };
+    static constexpr uint32_t kBridgeExpected[] = {
+        0xD10303FF,0xF9003BFE,0xA90867FA,0xA9095FF8,
+        0xA90A57F6,0xA90B4FF4,0xD000D2B7,0xF94246F7,
+    };
+    static constexpr uint32_t kProducerExpected[] = {
+        0xD107C3FF,0xFD00C3E8,0xA9197BFD,0xA91A6FFC,
+        0xA91B67FA,0xA91C5FF8,0xA91D57F6,0xA91E4FF4,
+    };
+    const bool child = MatchWords(kP38ModelChildCreateOffset, kChildExpected);
+    const bool bridge = MatchWords(kP38RegBridgeOffset, kBridgeExpected);
+    const bool producer = MatchWords(kP38RenderProducerOffset, kProducerExpected);
+    if (!child) LogFingerprintFail("P38_CHILD", kP38ModelChildCreateOffset);
+    if (!bridge) LogFingerprintFail("P38_BRIDGE", kP38RegBridgeOffset);
+    if (!producer) LogFingerprintFail("P38_PRODUCER", kP38RenderProducerOffset);
+    if (!child || !bridge || !producer) {
+        Logging.Log("[NSC:P38] READY installed=0 reason=fingerprint_mismatch hooks=0");
+        return false;
+    }
+    P38ModelChildCreateHook::InstallAtOffset(kP38ModelChildCreateOffset);
+    P38RegBridgeHook::InstallAtOffset(kP38RegBridgeOffset);
+    P38RenderProducerHook::InstallAtOffset(kP38RenderProducerOffset);
+    Logging.Log("[NSC:P38] READY installed=1 readonly=1 hooks=3 binder_unchanged=1 main_patch=0 original_model_id_46_filter_removed=1");
+    return true;
+}
+
 bool InstallCpkBridge() {
     static constexpr uint32_t kExpected[] = {
         0xF81D0FFE, 0xA90157F6, 0xA9024FF4, 0xD000E6A8,
@@ -473,6 +594,9 @@ bool InstallTraceHooks() {
 void InstallP32Trace() {
     const bool cpk = InstallCpkBridge();
     const bool trace = InstallTraceHooks();
+    const bool render_probe = InstallP38RenderRegistrationProbe();
+    Logging.Log("[NSC:P38] STATUS cpk=%u xfbin_trace=%u render_probe=%u",
+                cpk ? 1u : 0u, trace ? 1u : 0u, render_probe ? 1u : 0u);
     Logging.Log("[NSC:P32] READY cpk=%d trace=%d req=0x%lx create=0x%lx status=0x%lx chunk=0x%lx process=0x%lx open=0x%lx",
                 cpk ? 1 : 0, trace ? 1 : 0,
                 static_cast<unsigned long>(kFileLoadRequestOffset),
