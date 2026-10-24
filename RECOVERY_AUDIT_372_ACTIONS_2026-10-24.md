@@ -37,6 +37,25 @@ Compare commit `460b7ff` → `e57afa5`: the native `nsc_cpk_bridge.cpp` loses **
 
 The R182 source architectural migration was genuinely regressive: source file `MODDINGAPI_R183_COMPAT_HOTFIX_REPORT.md` reports a new/custom character stuck at VS and Isshiki regression. It identifies a mandatory R181 initialization gate signature resolution failure as possible, plus ModPack-primary-vs-Tobi_CPK fallback binding. R183 restores the fixed R181 gate check, R172 setter check, and single Tobi_CPK path. It is **not proven by the report alone that R183 corrected every runtime issue**.
 
+## Important correction: old **on-disk patched main** is NOT the R172/R181 artifact
+
+User specifically recalls a working bundle in which `exefs/main` was actually patched. Historical workflows prove two distinct generations:
+
+| Run/commit | On-disk main | Native runtime | Recorded gameplay |
+|---|---|---|---|
+| [P81A 35774213693](https://github.com/Anovvoldigoad/switchmain/actions/runs/35774213693), `f881cf0` | `deploy/.../exefs/main` patched and a separate `restore/.../main` | `subsdk9` P81 OugiAwakening policy | `README_P81A.txt` describes UJ policy, but [R80.2 historical checkpoint](https://github.com/Anovvoldigoad/switchmain/blob/f881cf0b3bccadc50ea9bf454f6b735f6b11aaa7/NSC2Switch_MASTER_CHECKPOINT_2026-09-23_R80.2.md) states **Awakening still unavailable** and **Tobi UJ still no cinematic handoff** |
+| [P128A 36240507170](https://github.com/Anovvoldigoad/switchmain/actions/runs/36240507170), `6cf1d42` | **patched** main, SHA-256 `904a0405d04360ff3969909cdd7197c9e8c2aba2467151a7eaad4c821fcebbff` | `subsdk9` P128A + restore main original | P128 [R144 checkpoint](https://github.com/Anovvoldigoad/switchmain/blob/6cf1d4292ccdf5cf35593f3b606e14963eb23f0d/NSC2Switch_MASTER_CHECKPOINT_2026-09-26_R144.md) states Naruto UJ/victim safety but **Tobi own UJ still stuck / no cinematic** prior to P128 test; P128 build success does not demonstrate remediation |
+| [R172 36528701882](https://github.com/Anovvoldigoad/switchmain/actions/runs/36528701882), `e7b2c59` | **original** main, SHA-256 `2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9` | `subsdk9` performs **30 in-memory patch words** (five condition count, one P67, 24 P128), then R172 UJ fix | Hardware PASS recorded in R181/R172 checkpoint: Tobi UJ works without loop |
+| [R181 36617484538](https://github.com/Anovvoldigoad/switchmain/actions/runs/36617484538), `df65ebe` | **original** main + in-memory patch | full R181 | R164 StageInfo PASS + R172 UJ PASS retained, D-pad not fully solved |
+| [R183 37040185240](https://github.com/Anovvoldigoad/switchmain/actions/runs/37040185240), `460b7ff` | original main is not packaged, patched in memory by `subsdk9` | full R181-compatible runtime | CI success, but no clear R183 gameplay hardware PASS |
+
+These historical GitHub Actions artifacts were directly obtained via connected GitHub for **P128A**, **R172**, **R181**, not inferred from run names. The source workflows establish each package contract.
+
+**Consequence:** the user's remembered **patched-main + fully playable + True Awakening + UJ** combination is **not established by the inspected public checkpoints**. In particular, it must **not** be relabeled as P128A, P81A or R181 simply because GitHub Actions passed. It might be an untracked combination or a later build with original main patched in RAM; more definitive runtime evidence is required.
+
+**Recovery priority correction:** for true patched-main provenance use P128A as *artifact reference*, but for UJ success use R172 as *runtime gameplay reference*. Do not install P128A patched main alongside R172/R181 `subsdk9` indiscriminately: their V2D `InstallOriginalMainRuntimePatches()` requires all **30 prepatch words to match original** and fails closed if they were already modified. A viable merged implementation requires explicit recognition/verification of P128 patched status and otherwise the exact same guarded runtime order; not a filename swap.
+
+
 ## True Awakening evidence boundary
 The user reports their old installation supported True Awakening and UJ. This testimony is an important observation to preserve. However the R181 full checkpoint explicitly labels broad awakening parity **not yet complete** in an older section; its frozen hardware PASS is for R164 StageInfo and R172 UJ. Do not conflate an Action success state, R172 UJ success or generic P81 Ougi/Awakening hook with separately proven full True Awakening. Identify the specific former artifact and its matching CPK setup to reconcile the discrepancy.
 
