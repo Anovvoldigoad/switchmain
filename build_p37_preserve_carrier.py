@@ -31,6 +31,18 @@ EXPECTED_STOCK_COUNT = 728
 EXPECTED_CARRIER_COUNT = 93
 
 
+EXPECTED_ORIGINAL_CARRIER_SHA256 = "e61bdb5faf60be186828769a1d064c98f0682ed02f39c6b9929eaab8e7ef69b7"
+
+
+def require_original_carrier_source(actual: str) -> None:
+    if actual.lower() != EXPECTED_ORIGINAL_CARRIER_SHA256:
+        raise ValueError(
+            "The carrier is NOT the known original pre-P36 archive. "
+            "Restore the original Tobi_Switch.cpk from a backup/romfs.zip. "
+            "Actual SHA256: " + actual
+        )
+
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -163,6 +175,7 @@ def build(args: argparse.Namespace) -> dict:
     stock_idx, carrier_idx, original_stock_sha, original_carrier_sha = preflight(
         stock, carrier, out, fastcpk, rebuilder, args.skip_stock_pin
     )
+    require_original_carrier_source(original_carrier_sha)
     template_alignment = read_template_alignment(carrier, fastcpk)
     template_sorted = get_cpk_sorted(carrier)
     # A new output folder is never an installed mod. Creating it is the only
