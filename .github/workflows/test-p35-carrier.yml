@@ -6,6 +6,10 @@ on:
       - "test_audit_p35.py"
       - "README_P35.md"
       - ".github/workflows/test-p35-carrier.yml"
+      - "build_p37_preserve_carrier.py"
+      - "cpk_p37_compat.py"
+      - "test_cpk_p37.py"
+      - "README_P37.md"
   pull_request:
     paths:
       - "audit_p35_carrier.py"
@@ -24,5 +28,7 @@ jobs:
           python-version: "3.12"
       - name: Test offline CPK parser and override classifier
         run: python -m unittest -v test_audit_p35.py
+      - name: P37 source-archive preserving candidate tests
+        run: python -m unittest -v test_cpk_p37.py test_build_p36.py
       - name: Check Python syntax
-        run: python -m py_compile audit_p35_carrier.py
+        run: python -m py_compile audit_p35_carrier.py build_p37_preserve_carrier.py cpk_p37_compat.py
