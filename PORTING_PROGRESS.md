@@ -331,3 +331,36 @@ Provenance reader PC: [ConditionPrmManager.cpp](https://github.com/TheLeonX/Ulti
 Git blob `3e7aacadca117b56e43f1a5c1d04cdd02aed7b1f`; template NSC ModManager
 Git blob `0e7133223f10eb2dbbb39d2166fdca9352e84c3e`. Metadata blob dikonfirmasi
 melalui GitHub pada commit pinned, bukan menggunakan nama file sebagai bukti versi.
+
+
+## Companion raw176: validasi identitas ordinal
+
+Compiler kini menerima opsi berpasangan `--raw-condition FILE --expected-raw-sha256 HASH`.
+Sebelum membuat folder output, tool memeriksa SHA256, struktur NUCC, tepat satu binary
+chunk bernama conditionprm, panjang 8+count*176, jumlah yang sama dengan manager,
+dan nama raw64-byte pada setiap ordinal dibandingkan nama manager48-byte.
+Raw disalin byte-identik sebagai `conditionprm.COMPANION_NOT_GAMEPLAY_RELEASE.xfbin`.
+Tanpa opsi ini, mode descriptor-only sebelumnya tetap tersedia dan tidak mengklaim
+raw sudah dipaketkan. Tidak ada perubahan runtime native atau patch main di tahap ini.
+
+Dasar source NSC-ModManager pinned: ConditionPrmViewModel.cs blob
+`f31476f325bdb7e5f5a3d7aa7ebf0383c7977b74` menulis nama pada awal record0xB0;
+TitleViewModel.cs blob `f7ca7602d12cf9689a08fd6b7e55abc4dc8fd4ca` menggabungkan
+raw dan manager secara terpisah dengan nama sebagai key. Kedua file lokal cocok
+exact Git blob pada commit manager yang dicatat. Karena urutan dua daftar tidak
+dijamin oleh jumlahnya, validator membandingkan nama per indeks, bukan count saja.
+
+Tes baru lulus pada jumlah512/513/517/1024; 11 input invalid (termasuk reorder
+stock/tambahan, duplicate, count mismatch, nama tanpa terminator dan truncation)
+serta 4 hash invalid ditolak. CLI menolak pasangan salah sebelum output muncul,
+mempertahankan input dan output lama, serta menyalin companion byte-identik.
+Input nyata raw512 Tobi cocok dengan nama baseline PC512; raw517 romfs ditolak
+ketika dipasangkan dengan baseline512. Original merged PC manager517 belum
+tersedia dalam input pemeriksaan ini, sehingga tidak ada klaim pasangan Tobi517
+sudah verified. Nama extras dicatat dalam condition_companion_real.json.
+
+Batas bukti: kesamaan nama ordinal tidak membuktikan nilai stat/effect raw cocok
+Switch. Native raw prefix values, effect dependencies, CPK precedence dan full
+lifecycle masih pending. Seluruh raw bytes termasuk unknown fields dipertahankan.
+Tidak ada paket instalasi gameplay. Selanjutnya buktikan baseline raw Switch dan
+pasangan manager tambahan asli, lalu integrasikan dengan CPK/profile packaging.

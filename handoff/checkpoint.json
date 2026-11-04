@@ -5,7 +5,7 @@
   "repository": "https://github.com/Anovvoldigoad/switchmain",
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
-  "documentation_commit": "Resolve the commit containing this checkpoint; runtime code is unchanged from verified_runtime_commit.",
+  "documentation_commit": "Resolve commit containing this checkpoint; Python companion validation added after verified_runtime_commit; native runtime unchanged.",
   "prior_storm_checkpoint_id": "c7ca5be9-1c45-47c1-84d2-312b33f0bf4f",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
@@ -32,7 +32,8 @@
       "Python-only CPK NSO profile packaging composes with factory profile edits without changing text/rodata",
       "append-only PC conditionprmManager compiler preserves native 512-row descriptor prefix, including Switch-specific Sakura aura value",
       "configurable 0..512 additional descriptors; four native loop bounds use the validated startup count; no hardcoded Tobi descriptor table",
-      "compiled descriptor getter and native name/hash/reaction/state/icon/status/aura consumers tested; 21 installer fingerprint failures reject before hooks"
+      "compiled descriptor getter and native name/hash/reaction/state/icon/status/aura consumers tested; 21 installer fingerprint failures reject before hooks",
+      "optional hash-pinned raw176 companion validation: every descriptor/raw ordinal name must match; malformed, reordered or count-mismatched companions rejected before output; review copy preserves all input bytes"
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -57,7 +58,9 @@
       "reports/port_foundation/cpk_profile.json",
       "reports/port_foundation/native_cpk.json",
       "reports/port_foundation/condition_profile.json",
-      "reports/port_foundation/native_conditions.json"
+      "reports/port_foundation/native_conditions.json",
+      "reports/port_foundation/condition_companion.json",
+      "reports/port_foundation/condition_companion_real.json"
     ],
     "parameter_family_coverage": {
       "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -114,7 +117,7 @@
   ],
   "next_mvp": {
     "name": "Verified condition descriptor/raw companion integration",
-    "status": "NOT_IMPLEMENTED",
+    "status": "PARTIAL: ordinal-name/hash/count validator implemented; raw Switch values and full packaging/lifecycle pending",
     "spec": "NSC_FULL_API_CONTINUE_CHAT.md#prompt-eksplisit--salin-seluruh-blok-ini",
     "acceptance": [
       "Prove ordinal mapping from actual PC/Switch readers and input bytes; equal counts alone are insufficient.",

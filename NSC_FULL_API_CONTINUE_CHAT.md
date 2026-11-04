@@ -1,6 +1,8 @@
 # NSC Full ModdingAPI Switch — checkpoint dan prompt lanjutan
 
-Checkpoint kode yang sudah diuji: **a51dd1494d0c0d793a76fd5f43ce7ae991744cf5**.
+Update lanjutan: validasi opsional companion raw176 (hash, ukuran, jumlah, dan nama setiap indeks) sudah diimplementasikan di `tools/portlib/condition_companion.py`. Lihat bagian terbaru `PORTING_PROGRESS.md`. Packaging runtime/CPK dan semantik nilai raw masih pending. Prompt MVP di bawah adalah scope keseluruhan; jangan mengulang validator yang sudah ada.
+
+Checkpoint runtime native yang sudah diuji: **a51dd1494d0c0d793a76fd5f43ce7ae991744cf5**.
 Status: **IMPLEMENTATION_INCOMPLETE — belum full API, belum siap uji gameplay**.
 Dokumen ini memindahkan konteks pekerjaan; tidak mengubah model, alat, atau kuota akun.
 

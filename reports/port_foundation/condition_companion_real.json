@@ -1,0 +1,30 @@
+{
+  "baseline_512_pair": {
+    "manager_sha256": "fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5",
+    "raw_xfbin_sha256": "ee8bea3caab274333b466d3e44fcf5129249dbb649c1dd0ddeecb983e948d123",
+    "records": 512,
+    "record_bytes": 176,
+    "ordinal_names_verified": 512,
+    "appended_names": [],
+    "raw_bytes_modified": false,
+    "raw_native_prefix_values_verified": false,
+    "effect_semantics_verified": false,
+    "cpk_load_precedence_verified": false,
+    "gameplay_verified": false,
+    "full_moddingapi": false
+  },
+  "real_517_pair_verified": false,
+  "real_517_with_baseline_512_rejected": "Descriptor/raw condition count or record length mismatch",
+  "real_517_raw": {
+    "sha256": "b92c71cb791dd6b2b25f18e2822da97c723a4e8a75b4222dff4f0bd546c710ce",
+    "count": 517,
+    "appended_names": [
+      "SW_MTOB_XH",
+      "SW_MTOB_ST",
+      "YXNQ_MTOB",
+      "SW_MTOB_BREAK",
+      "WC_MTOB_BREAK"
+    ]
+  },
+  "limitation": "No original merged 517-row PC manager supplied here. Names observed; values/effects and native raw baseline equality not verified."
+}

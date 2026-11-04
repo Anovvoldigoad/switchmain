@@ -23,7 +23,8 @@
     "Python-only CPK NSO profile packaging composes with factory profile edits without changing text/rodata",
     "append-only PC conditionprmManager compiler preserves native 512-row descriptor prefix, including Switch-specific Sakura aura value",
     "configurable 0..512 additional descriptors; four native loop bounds use the validated startup count; no hardcoded Tobi descriptor table",
-    "compiled descriptor getter and native name/hash/reaction/state/icon/status/aura consumers tested; 21 installer fingerprint failures reject before hooks"
+    "compiled descriptor getter and native name/hash/reaction/state/icon/status/aura consumers tested; 21 installer fingerprint failures reject before hooks",
+    "optional hash-pinned raw176 companion validation: every descriptor/raw ordinal name must match; malformed, reordered or count-mismatched companions rejected before output; review copy preserves all input bytes"
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -48,7 +49,9 @@
     "reports/port_foundation/cpk_profile.json",
     "reports/port_foundation/native_cpk.json",
     "reports/port_foundation/condition_profile.json",
-    "reports/port_foundation/native_conditions.json"
+    "reports/port_foundation/native_conditions.json",
+    "reports/port_foundation/condition_companion.json",
+    "reports/port_foundation/condition_companion_real.json"
   ],
   "parameter_family_coverage": {
     "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
