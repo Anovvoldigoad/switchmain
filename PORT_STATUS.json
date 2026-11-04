@@ -1,0 +1,27 @@
+{
+  "stage": "IMPLEMENTATION_INCOMPLETE",
+  "full_moddingapi": false,
+  "ready_for_gameplay_test": false,
+  "emulator_tested": false,
+  "source_base": "78ad05e26e1aee0e0d3219e14b619bdff2d27f5d",
+  "pc_mod_manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+  "pc_api_source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+  "implemented_this_change": [
+    "SHA256 gate for exact stock/R180 text before game writes",
+    "33-word RAM patch with consistent 1024 PRM/spcload loop bounds",
+    "raw condition lookup bounded by observed native allocation count",
+    "condition storage retirement on native reload and both destructor free paths"
+  ],
+  "blocking_gaps": [
+    "Event236 ownership still uses the legacy character-ID threshold",
+    "MovesetPlus operations still shadowed or narrowed in inherited runtime",
+    "generic multi-mod CPK discovery and 11 parameter families not integrated",
+    "generic native factory mapping and complete actor/resource lifecycle not integrated",
+    "gameplay and emulator compatibility not verified"
+  ],
+  "proofs": [
+    "reports/port_foundation/bootstrap.json",
+    "reports/port_foundation/native_storage.json",
+    "reports/port_foundation/binary.json"
+  ]
+}

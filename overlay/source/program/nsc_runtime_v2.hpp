@@ -28,8 +28,8 @@ const char* AnchorName(Anchor anchor);
 // native corridor shape. Returns the instruction immediately after the BL.
 bool GetDerivedUjSessionPostOffset(std::ptrdiff_t& out_offset);
 
-// Apply the exact 30-word functional main delta (5 condition count + 1 P67
-// prerequisite + 24 P128 UJ corridor words) to runtime memory only. Fail closed.
+// Apply 33 words: four R180 baseline prerequisites, four descriptor count,
+// one P67 prerequisite, 24 P128 UJ corridor words. Runtime memory only.
 bool InstallOriginalMainRuntimePatches();
 bool RuntimeMainPatchesReady();
 bool GetDerivedUjGateLoadOffset(std::ptrdiff_t& out_offset);

@@ -1,0 +1,34 @@
+{
+  "status": "PASS",
+  "nso_sha256": "08a0c2ee6c3a4b7929df09b491545e8f6545f5d4da487547bb3cbed44fa1aad2",
+  "elf_sha256": "109a507d0a08f3f43d96977f8995daa737a9e32f5a5f2f662c30c6c17f9442de",
+  "build_id": "00abb190aac70d525eb252fd7a9f22ae05efda3e000000000000000000000000",
+  "segments": [
+    {
+      "segment": "text",
+      "memory_offset": "0x0",
+      "bytes": 134928,
+      "sha256": "67fd102c32f187371feaa3a607688fa39420a5c085c6796bad8dfccf0f5652aa"
+    },
+    {
+      "segment": "rodata",
+      "memory_offset": "0x21000",
+      "bytes": 50168,
+      "sha256": "2fa7d1747b2d348f00e663bc1fc72c72d1da6aa3eb9cea56d7b89e8d3f4c3720"
+    },
+    {
+      "segment": "data",
+      "memory_offset": "0x2e000",
+      "bytes": 14856,
+      "sha256": "cf6790ebd3b95874d594ba018b86c80a843daae13e3eb72113ee960779da75ff"
+    }
+  ],
+  "bss_bytes": 26104,
+  "imports": [
+    "_ZN2nn2ro6detail15g_pAutoLoadListE",
+    "_ZN2nn2ro6detail35g_LookupGlobalManualFunctionPointerE"
+  ],
+  "writable_executable_segments": false,
+  "elf_nso_segment_identity": true,
+  "emulator_gameplay_tested": false
+}

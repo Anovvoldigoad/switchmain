@@ -13,7 +13,8 @@ namespace {
 // V2D extends the hardware-PASS V2C resolver and removes the patched-main
 // deployment dependency. The on-disk main stays original; after every required
 // site resolves uniquely and every original fingerprint validates, V2D recreates
-// the exact 30 instruction-word changes of the proven P128 paired main in memory.
+// the 29 safe P128 words AND four independently audited R180 baseline words.
+// Raw condition bounds are supplied by the allocation-capture hook separately.
 // No write occurs until the entire patch plan has validated (fail closed).
 constexpr std::size_t kScanSpan = 0x12F5FD0;
 
@@ -138,6 +139,8 @@ struct WordPatch {
     std::ptrdiff_t off;
     std::uint32_t before;
     std::uint32_t after;
+    bool allow_existing_after = false;
+    std::uint32_t legacy = 0;
 };
 
 bool ReadWord(std::uintptr_t base, std::ptrdiff_t off, std::uint32_t& out) {
@@ -238,6 +241,8 @@ void InstallResolverHookMigrationProbe() {
     const std::uintptr_t base = exl::util::modules::GetTargetStart();
     for (auto& off : g_resolved_offsets) off = -1;
     g_uj_session_post_offset = -1;
+    g_runtime_main_patches_ready = false;
+    g_uj_gate_load_offset = -1;
     g_uj_gate_load_offset = -1;
     g_runtime_main_patches_ready = false;
     g_resolver_ready = false;
@@ -271,7 +276,7 @@ void InstallResolverHookMigrationProbe() {
                 g_uj_session_post_offset == 0x77C5EC ? 1u : 0u);
 
     // Publish only after every slot and derived continuation are finalized.
-    g_resolver_ready = true;
+    g_resolver_ready = ok == ARRAY_COUNT(kPatterns) && g_uj_session_post_offset >= 0;
     Logging.Log("[NSC:V2D] RESOLVER_READY resolved=%u total=%u fail_closed=1 migrated_hook_entries=6 no_offset_fallback=1 original_main=1 uj_post_derived=%u",
                 ok, static_cast<unsigned>(ARRAY_COUNT(kPatterns)),
                 g_uj_session_post_offset >= 0 ? 1u : 0u);
@@ -355,13 +360,23 @@ bool InstallOriginalMainRuntimePatches() {
         0x54000041u,0x14000002u,0x1400003Du,0x17FFFFE1u};
 
     static_assert(kTotalConditionCount <= 0xFFFu, "condition count immediate overflow");
-    const std::uint32_t cond_raw = 0x52800000u | (kTotalConditionCount << 5) | 9u;
     const std::uint32_t cond_w24 = 0x7100001Fu | (kTotalConditionCount << 10) | (24u << 5);
     const std::uint32_t cond_w19 = 0x7100001Fu | (kTotalConditionCount << 10) | (19u << 5);
 
-    WordPatch plan[30]{};
+    WordPatch plan[33]{};
     std::size_t n = 0;
-    plan[n++] = {sites[0],0x52804009u,cond_raw};
+    // R180 had these on disk, outside the historical 30-word RAM delta.
+    // Preserve its capacity behavior on clean main; accept the exact R180
+    // values too. Full-text SHA verification precedes this function.
+    // The fourth word is the data/spcload/<char>prm_load.bin.xfbin loop.
+    // Native char-code lookup bounds-checks its dynamic count and this loop
+    // skips null results. Match the PRM capacity instead of stopping at 281.
+    plan[n++] = {0x80FB64, 0x52802328u, 0x52808008u, true};
+    plan[n++] = {0x80FB78, 0x52823200u, 0x52880000u, true};
+    plan[n++] = {0x80FBE4, 0xF10466BFu, 0xF11002BFu, true};
+    plan[n++] = {0x876188, 0x7104669Fu, 0x7110029Fu, false, 0x71046A9Fu};
+    // sites[0] is the 176-byte raw-table getter, NOT the descriptor table.
+    // Keep its stock 512 fallback; the separate capture hook knows actual size.
     plan[n++] = {sites[1],0x7108031Fu,cond_w24};
     plan[n++] = {sites[2],0x7108027Fu,cond_w19};
     plan[n++] = {sites[3],0x7108027Fu,cond_w19};
@@ -385,7 +400,10 @@ bool InstallOriginalMainRuntimePatches() {
     // Validate ALL original words before the first write.
     for (std::size_t i = 0; i < n; ++i) {
         std::uint32_t got = 0;
-        if (!ReadWord(base, plan[i].off, got) || got != plan[i].before) {
+        if (!ReadWord(base, plan[i].off, got) ||
+            (got != plan[i].before &&
+             !(plan[i].allow_existing_after && got == plan[i].after) &&
+             !(plan[i].legacy && got == plan[i].legacy))) {
             Logging.Log("[NSC:V2D] PATCH_FAIL reason=fingerprint i=%u off=0x%lx got=%08x expected=%08x",
                         static_cast<unsigned>(i), static_cast<unsigned long>(plan[i].off),
                         got, plan[i].before);
@@ -413,7 +431,7 @@ bool InstallOriginalMainRuntimePatches() {
 
     g_uj_gate_load_offset = gate;
     g_runtime_main_patches_ready = true;
-    Logging.Log("[NSC:V2D] RUNTIME_PATCH_READY words=%u condition_words=5 p67_words=1 p128_words=24 original_main=1 paired_main_file=0 gate_off=0x%lx post_off=0x%lx",
+    Logging.Log("[NSC:PORT] RUNTIME_PATCH_READY words=%u baseline_words=4 condition_words=4 p67_words=1 p128_words=24 paired_main_file=0 gate_off=0x%lx post_off=0x%lx",
                 static_cast<unsigned>(n), static_cast<unsigned long>(gate),
                 static_cast<unsigned long>(g_uj_session_post_offset));
     return true;

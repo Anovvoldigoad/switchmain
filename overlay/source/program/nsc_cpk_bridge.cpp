@@ -6623,7 +6623,7 @@ bool InstallConditionCompat() {
                   kTotalConditionCount <= 0xFFFu,
                   "generated condition count must fit the paired-main immediates");
     static constexpr uint32_t kRawCountWord =
-        0x52800000u | (kTotalConditionCount << 5) | 9u; // mov w9,#count
+        0x52804009u; // stock raw-storage fallback; actual count captured separately
     static constexpr uint32_t kLoopW24Word =
         0x7100001Fu | (kTotalConditionCount << 10) | (24u << 5); // cmp w24,#count
     static constexpr uint32_t kLoopW19Word =

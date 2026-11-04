@@ -1,0 +1,183 @@
+{
+  "status": "PASS",
+  "sha256_cases": 14,
+  "supported_profiles": 2,
+  "rejected_mutated_images": 36,
+  "direct_patch_rejections": 5,
+  "stock_changed_words": 33,
+  "r180_changed_words": 30,
+  "outputs_identical": true,
+  "patched_text_sha256": "7ddef5dcde94d3cf1def46dbaf1dbdbdb06fc39640b0dfe327abaf1fce6de71c",
+  "words": [
+    {
+      "offset": "0x7774dc",
+      "before": "0x7108031f",
+      "after": "0x7108171f"
+    },
+    {
+      "offset": "0x777770",
+      "before": "0x7108027f",
+      "after": "0x7108167f"
+    },
+    {
+      "offset": "0x777938",
+      "before": "0x7108027f",
+      "after": "0x7108167f"
+    },
+    {
+      "offset": "0x777a6c",
+      "before": "0x7108027f",
+      "after": "0x7108167f"
+    },
+    {
+      "offset": "0x77c480",
+      "before": "0x54000b81",
+      "after": "0x1400000e"
+    },
+    {
+      "offset": "0x77c494",
+      "before": "0x34000ac0",
+      "after": "0xd503201f"
+    },
+    {
+      "offset": "0x77c4a8",
+      "before": "0x34000a20",
+      "after": "0xd503201f"
+    },
+    {
+      "offset": "0x77c4b4",
+      "before": "0x34000300",
+      "after": "0x14000018"
+    },
+    {
+      "offset": "0x77c4b8",
+      "before": "0xf0009619",
+      "after": "0x7100291f"
+    },
+    {
+      "offset": "0x77c4bc",
+      "before": "0x913c2339",
+      "after": "0x54000220"
+    },
+    {
+      "offset": "0x77c4c0",
+      "before": "0xaa1903e0",
+      "after": "0x71002d1f"
+    },
+    {
+      "offset": "0x77c4c4",
+      "before": "0x942a6437",
+      "after": "0x540001e0"
+    },
+    {
+      "offset": "0x77c4c8",
+      "before": "0xf9400268",
+      "after": "0x71003d1f"
+    },
+    {
+      "offset": "0x77c4cc",
+      "before": "0xaa1303e0",
+      "after": "0x54000181"
+    },
+    {
+      "offset": "0x77c4d0",
+      "before": "0xf9402508",
+      "after": "0xb94e56ea"
+    },
+    {
+      "offset": "0x77c4d4",
+      "before": "0xd63f0100",
+      "after": "0x7104615f"
+    },
+    {
+      "offset": "0x77c4d8",
+      "before": "0x11000401",
+      "after": "0x54000129"
+    },
+    {
+      "offset": "0x77c4dc",
+      "before": "0xb0009680",
+      "after": "0x7140055f"
+    },
+    {
+      "offset": "0x77c4e0",
+      "before": "0x91292c00",
+      "after": "0x540000e2"
+    },
+    {
+      "offset": "0x77c4e4",
+      "before": "0x942a642f",
+      "after": "0xf9410eea"
+    },
+    {
+      "offset": "0x77c4e8",
+      "before": "0xf94002e8",
+      "after": "0xb40000aa"
+    },
+    {
+      "offset": "0x77c4ec",
+      "before": "0xaa1703e0",
+      "after": "0xb9402d4a"
+    },
+    {
+      "offset": "0x77c4f0",
+      "before": "0xf9402508",
+      "after": "0x710b0d5f"
+    },
+    {
+      "offset": "0x77c4f4",
+      "before": "0xd63f0100",
+      "after": "0x54000041"
+    },
+    {
+      "offset": "0x77c4f8",
+      "before": "0x11000401",
+      "after": "0x14000002"
+    },
+    {
+      "offset": "0x77c4fc",
+      "before": "0xb0009940",
+      "after": "0x1400003d"
+    },
+    {
+      "offset": "0x77c500",
+      "before": "0x91086800",
+      "after": "0x17ffffe1"
+    },
+    {
+      "offset": "0x77c520",
+      "before": "0xb40003e0",
+      "after": "0x1400001f"
+    },
+    {
+      "offset": "0x7f2a9c",
+      "before": "0xbd001fe0",
+      "after": "0xd503201f"
+    },
+    {
+      "offset": "0x80fb64",
+      "before": "0x52802328",
+      "after": "0x52808008"
+    },
+    {
+      "offset": "0x80fb78",
+      "before": "0x52823200",
+      "after": "0x52880000"
+    },
+    {
+      "offset": "0x80fbe4",
+      "before": "0xf10466bf",
+      "after": "0xf11002bf"
+    },
+    {
+      "offset": "0x876188",
+      "before": "0x7104669f",
+      "after": "0x7110029f"
+    }
+  ],
+  "modeled": [
+    "platform patch write/cache flush",
+    "downstream hook installers"
+  ],
+  "emulator_gameplay_tested": false
+}

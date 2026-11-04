@@ -1,3 +1,7 @@
+# Current implementation checkpoint — 2026-11-04
+
+See PORTING_PROGRESS.md and PORT_STATUS.json. Current work is incomplete and not a gameplay release. Historical R183 text below is retained as history, not as certification of the current branch.
+
 # NSC2Switch MASTER CHECKPOINT — 2026-10-02 R183 FULL
 ## CURRENT FRONTIER — MODDINGAPI COMPATIBILITY HOTFIX AFTER R182 HARDWARE REGRESSION
 

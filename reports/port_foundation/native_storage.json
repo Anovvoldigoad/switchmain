@@ -1,0 +1,91 @@
+{
+  "status": "PASS",
+  "condition_cases": [
+    {
+      "native_records": 0,
+      "allocated_bytes": 0,
+      "boundary_cases": 10
+    },
+    {
+      "native_records": 1,
+      "allocated_bytes": 176,
+      "boundary_cases": 10
+    },
+    {
+      "native_records": 511,
+      "allocated_bytes": 89936,
+      "boundary_cases": 10
+    },
+    {
+      "native_records": 512,
+      "allocated_bytes": 90112,
+      "boundary_cases": 10
+    },
+    {
+      "native_records": 517,
+      "allocated_bytes": 90992,
+      "boundary_cases": 10
+    },
+    {
+      "native_records": 1024,
+      "allocated_bytes": 180224,
+      "boundary_cases": 10
+    }
+  ],
+  "raw_unknown_rejections": 4,
+  "manager_lifecycle_cycles": 40,
+  "installer_rejections": 12,
+  "inline_register_cases": 20,
+  "prm_slots": 1024,
+  "prm_allocation_bytes": 16384,
+  "prm_loop_cases": 1024,
+  "spcload_loop_cases": 1024,
+  "charcode_loader_counts": [
+    281,
+    282,
+    286,
+    400,
+    1024
+  ],
+  "charcode_getter_cases": 50,
+  "combined_hook_sites": [
+    "0x473190",
+    "0x3f4150",
+    "0x816300",
+    "0x766b8c",
+    "0x754a80",
+    "0x8134f8",
+    "0x766320",
+    "0x7b468c",
+    "0x7abe9c",
+    "0x7eac34",
+    "0x7e24ec",
+    "0x77c474",
+    "0x77c5ec",
+    "0x7eb27c",
+    "0x7477b0",
+    "0x747658",
+    "0x7476ac",
+    "0x747708",
+    "0x747870"
+  ],
+  "module_sha256": "109a507d0a08f3f43d96977f8995daa737a9e32f5a5f2f662c30c6c17f9442de",
+  "actual_arm64_executed": true,
+  "emulator_gameplay_tested": false,
+  "modeled": [
+    "heap allocation",
+    "memset",
+    "diagnostic formatting/log output",
+    "inline register save/restore in loader orchestration (separately executed in 20 real assembly cases)",
+    "hook publication",
+    "RTLD relocation; unused imports zeroed"
+  ],
+  "not_proven": [
+    "whole game startup",
+    "actual JIT entry/trampoline construction and executable memory publication",
+    "resource availability",
+    "actor construction/lifetime",
+    "full roster capacity",
+    "API completeness"
+  ]
+}

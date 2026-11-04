@@ -1,0 +1,1 @@
+nsc_sha256.c and nsc_sha256.h are from switchbrew/switch-tools commit 22756068dd0ed6ff9734c59cb4f99ebd3f62555b, src/sha256.c and src/sha256.h, with an NSC symbol/include prefix. Original Brad Conte attribution is retained. See switch-tools.txt.
