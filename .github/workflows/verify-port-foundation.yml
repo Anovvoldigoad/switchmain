@@ -29,6 +29,10 @@ jobs:
         run: python tests/test_bootstrap.py --stock-text proof-work/stock.text --r180-text proof-work/r180.text --output proof-work
       - name: Execute compiled ARM64 callbacks and native engine slices
         run: python tests/test_native_storage.py --text proof-work/patched.text --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Validate generic factory profile and Android packaging
+        run: python tests/test_factory_profile.py --module exlaunch/deploy/subsdk9 --output proof-work
+      - name: Execute native factory dispatch and roster identity slices
+        run: python tests/test_native_factory.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
       - name: Verify generated module
         run: python tools/verify_binary.py --nso exlaunch/deploy/subsdk9 --elf exlaunch/runtime_r183.elf --output proof-work/binary.json
       - uses: actions/upload-artifact@v4

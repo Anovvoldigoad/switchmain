@@ -8,6 +8,7 @@ extern "C" {
 std::uintptr_t test_base;
 std::size_t test_size, test_writes;
 static unsigned hook_calls;
+namespace nsc::factory { bool InstallFactoryHook() { ++hook_calls; return true; } }
 namespace nsc::conditions { bool InstallRawStorageHooks() { ++hook_calls; return true; } }
 namespace nsc {
 void InstallP128AStaticPreciseGateCaveProof() { ++hook_calls; }

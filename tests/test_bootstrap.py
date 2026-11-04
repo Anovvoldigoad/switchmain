@@ -12,7 +12,7 @@ def run(stock,r180,output):
         subprocess.run(['gcc','-O2','-fPIC','-c',str(src/'nsc_sha256.c'),'-o',str(td/'sha.o')],check=True)
         subprocess.run(['g++','-std=c++20','-O2','-shared','-fPIC','-Werror','-Wall','-Wextra',
             '-I'+str(R/'tests/host'),'-I'+str(src),str(R/'tests/host/harness.cpp'),
-            str(src/'nsc_runtime_core.cpp'),str(src/'nsc_runtime_v2.cpp'),str(src/'nsc_image_guard.cpp'),
+            str(src/'nsc_runtime_core.cpp'),str(src/'nsc_factory.cpp'),str(src/'nsc_factory_profile.cpp'),str(src/'nsc_runtime_v2.cpp'),str(src/'nsc_image_guard.cpp'),
             str(td/'sha.o'),'-o',str(td/'core.so')],check=True)
         lib=ctypes.CDLL(str(td/'core.so'))
         for name in ['run_init','run_patch','profile']:
@@ -25,13 +25,20 @@ def run(stock,r180,output):
             lib.digest(data,n,d); assert d.raw==hashlib.sha256(data).digest()
         a=stock.read_bytes(); b=r180.read_bytes(); assert len(a)==len(b)==0x12f5fd0
         assert lib.profile(None,len(a))==0
+        # Invalid embedded factory data must reject the entire startup before
+        # even the existing RAM patch plan or legacy hooks are touched.
+        embedded=(ctypes.c_ubyte*4160).in_dll(lib,'nsc_factory_profile')
+        embedded[0]^=1
+        buf=ctypes.create_string_buffer(a,len(a))
+        assert lib.run_init(buf,len(a))==0 and lib.writes()==0 and lib.hooks()==0
+        embedded[0]^=1
         final=[]
         for data,p,changed in [(a,1,33),(b,2,30)]:
             buf=ctypes.create_string_buffer(data,len(data))
             assert lib.profile(buf,len(data))==p
             assert lib.profile(buf,len(data)-1)==0
             assert lib.run_init(buf,len(data))==1
-            assert lib.writes()==33 and lib.hooks()==8
+            assert lib.writes()==33 and lib.hooks()==9
             result=buf.raw
             sites=[i for i in range(0,len(a),4) if result[i:i+4]!=data[i:i+4]]
             assert len(sites)==changed,(p,len(sites))
@@ -55,7 +62,7 @@ def run(stock,r180,output):
         output.mkdir(parents=True,exist_ok=True)
         (output/'patched.text').write_bytes(final[0])
         report={'status':'PASS','sha256_cases':14,'supported_profiles':2,
-          'rejected_mutated_images':len(sites)+3,'direct_patch_rejections':5,
+          'rejected_mutated_images':len(sites)+3,'direct_patch_rejections':5,'invalid_profile_before_writes':True,
           'stock_changed_words':33,'r180_changed_words':30,'outputs_identical':True,
           'patched_text_sha256':hashlib.sha256(final[0]).hexdigest(),
           'words':[{'offset':hex(i),'before':hex(struct.unpack_from('<I',a,i)[0]),

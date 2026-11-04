@@ -47,8 +47,9 @@ Switch asli. Tidak ada laporan gameplay PASS.
 - Masing-masing 1,024 kasus batas loop PRM dan spcload; alokasi PRM 16,384 byte.
 - Loader char-code native dengan 281, 282, 286, 400 dan 1,024 entri; 50 kasus
   getter, salinan byte identik, penjaga alokasi utuh.
-- Rantai installer compiled mengajukan 19 lokasi hook berbeda. Getter raw
-  memakai replacement, sehingga diperlukan 18 trampoline dari kapasitas 20.
+- Rantai installer compiled dengan profil factory aktif mengajukan 20 lokasi hook
+  berbeda. Getter raw memakai replacement, sehingga diperlukan 19 trampoline
+  dari kapasitas 20. Profil factory kosong tidak memasang hook factory.
   Publikasi hook dan pemetaan executable oleh OS dimodelkan dalam tes ini.
 - Tiga segmen NSO identik dengan ELF, checksum cocok, segment permissions RX/R/RW,
   tanpa DT_NEEDED; dua import `nn::ro` sesuai bootstrap yang digunakan.
@@ -64,7 +65,9 @@ Dispatcher masih menyaring berdasarkan ID karakter; operasi 12/13/18 dan banyak
 operasi lainnya masih tanpa efek, kontrol 14/15 terbatas selector 1, opcode 23
 terbatas koridor UJ tertentu, voice belum setara, projectile 27–29 belum dipetakan.
 CPK masih satu path Tobi; descriptor kondisi dan membership ougi masih generated
-untuk data lama. Factory generik, seluruh parameter API, kepemilikan event,
+untuk data lama. Factory berbasis profil sekarang terintegrasi untuk 228 selector yang namanya
+cocok, tetapi 53 nama placeholder, reset global saat factory PC, parameter API
+lainnya, kepemilikan event,
 lifecycle timer/actor, kamera, audio, serta multi-mod belum selesai diintegrasikan.
 
 Tidak ada dasar untuk menyebut binary ini “full API” atau meminta pengguna
@@ -72,7 +75,10 @@ memasang ini sebagai hasil selesai. `PORT_STATUS.json` mempertahankan status fal
 
 ## Mengulangi pemeriksaan
 
-Workflow `verify-port-foundation.yml` menyediakan build/toolchain yang dipin.
+Workflow `verify-port-foundation.yml` memakai image resmi devkitpro/devkita64
+amd64 pada digest `sha256:82575ea78651b530b2e232bb3799cfd1fe331514e053d5f724bb4b28191fb79d`.
+Unduhan langsung package toolchain ditolak HTTP 403 pada runner; image tersebut
+sudah berhasil menjalankan build dan tes fondasi di GitHub Actions.
 Jalankan workflow baru ini untuk branch implementasi; verifikasi R181/R183 lama
 menguji layout 30-word historis dan tidak menjadi acceptance test perubahan ini.
 Workflow hanya mengunggah JSON bukti, bukan main, ELF, atau paket gameplay.
@@ -85,3 +91,35 @@ Acuan PC: TheLeonX/NSC-ModManager commit
 `276116ebf5ba398a867793cb02ee6c33c0927645`, runtime source UltimateStormAPI
 `a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc`. Perbandingan source ini tidak dianggap
 sebagai bukti otomatis bahwa seluruh perilaku DLL distribusi sudah dipindahkan.
+
+## Factory berdasarkan parameter PC
+
+`specialCondParam` raw 32 byte dibaca berurutan; nama dinormalisasi ke uppercase
+`COND_`, owner diambil dari uint16 little-endian pada offset 24. Entri owner yang
+sama mengikuti aturan PC: entri terakhir menang. Perubahan ID PC ke slot Switch
+harus diberikan eksplisit, tidak ditebak dari nama karakter. File NUCC yang masih
+berbungkus, record terpotong, nama tak dikenal, dan selector placeholder belum
+terbukti ditolak dengan pesan kesalahan.
+
+228 nama dari 281 nama PC cocok dengan characode Switch pada ordinal yang sama.
+Profil serialized diperiksa ukuran, magic, versi, SHA256, urutan owner, kapasitas,
+selector, reserved bytes, dan padding sebelum rencana patch main berjalan.
+Default module memakai profil kosong: tidak otomatis mengaktifkan factory Tobi.
+
+`tools/compile_factory_profile.py` dapat menyisipkan profil ke data NSO dengan
+Python standar, tanpa compiler C++ di Android. NSO input harus cocok dengan SHA256
+input yang disebutkan. Semua hash segmen diperiksa; text, rodata, virtual layout,
+dan build ID modul dipertahankan; hanya isi profil data dan header penyimpanannya
+berubah. Nama output sengaja menunjukkan ini komponen yang belum menjadi paket
+uji gameplay. Tool ini belum mengubah aset PC, CPK, seluruh parameter, atau PRM.
+
+Tes tambahan: 4,170 penolakan profil C++ rusak, 684 variasi nama record PC,
+53 nama placeholder ditolak, pemetaan maksimal 1,024 owner, round-trip konfigurasi
+NSO, serta pembandingan decoder LZ4 dengan liblz4. Native factory diuji melalui
+12,240 kasus rute dengan 17 skenario flag native. Konstruksi mendalam dimodelkan,
+bukan dinyatakan berhasil dimainkan. Dalam 18 kasus caller/initialization nyata,
+selector kelas 58 mempertahankan ID roster 145, 281, atau 457, mode dan sisi.
+
+Callback native menyeleksi kelas, bukan mengganti ID di actor. Lifetime,
+resource loading, reset global ModdingAPI PC, dan subclass behavior penuh masih
+belum terbukti. Rincian batas model ada di `native_factory.json`.

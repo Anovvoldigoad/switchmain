@@ -4,6 +4,7 @@
   "supported_profiles": 2,
   "rejected_mutated_images": 36,
   "direct_patch_rejections": 5,
+  "invalid_profile_before_writes": true,
   "stock_changed_words": 33,
   "r180_changed_words": 30,
   "outputs_identical": true,

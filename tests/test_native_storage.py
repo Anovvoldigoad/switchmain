@@ -1,9 +1,11 @@
 """Real ARM64 module callbacks + native Switch allocation/copy/getter slices.
 Requires user-supplied decoded main; this test never launches the full game.
 """
-import argparse, json, struct, hashlib
+import argparse, json, struct, hashlib, sys
 from pathlib import Path
 from elftools.elf.elffile import ELFFile
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
+from portlib.factory_profile import encode
 from unicorn import Uc, UC_ARCH_ARM64, UC_MODE_ARM, UC_HOOK_CODE
 import unicorn.arm64_const as ar
 M=0x7100000000; D=0x7200000000; H=0x7300000000; S=0x7400000000
@@ -18,7 +20,7 @@ def call(u,at,args):
     for i,v in enumerate(preserved):u.reg_write(G[19+i],v)
     for i,v in enumerate(args):u.reg_write(G[i],v)
     u.reg_write(ar.UC_ARM64_REG_SP,S+0xfff0);u.reg_write(ar.UC_ARM64_REG_LR,STOP)
-    u.emu_start(at,STOP,count=100000)
+    u.emu_start(at,STOP,count=2000000)
     assert u.reg_read(ar.UC_ARM64_REG_PC)==STOP
     assert u.reg_read(ar.UC_ARM64_REG_SP)==S+0xfff0
     assert [u.reg_read(G[19+i]) for i in range(11)]==preserved
@@ -155,11 +157,14 @@ def run(text_path,elf_path,out):
     legacy=D+next(v for k,v in symbols.items() if 'InstallP128AStaticPreciseGateCaveProofEv' in k)
     call(u,legacy,[])
     assert call(u,installer,[])==1
+    u.mem_write(D+symbols['nsc_factory_profile'],encode({281:58}))
+    assert call(u,D+symbols['_ZN3nsc7factory19LoadEmbeddedProfileEv'],[])==1
+    assert call(u,D+symbols['_ZN3nsc7factory18InstallFactoryHookEv'],[])==1
     hook_offsets=[row[0] for row in installed]
     assert len(hook_offsets)==len(set(hook_offsets)),hook_offsets
     # Inline hooks allocate one trampoline; replacement getter allocates none.
-    assert sum(1 for row in installed if row[0]!=0x747870)==18
-    assert len(hook_offsets)==19 and installed[-1][2]==0 and 18<=4096//200
+    assert sum(1 for row in installed if row[0]!=0x747870)==19
+    assert len(hook_offsets)==20 and installed[-2][2]==0 and 19<=4096//200
     print('Combined installation hook sites:',[hex(x) for x in hook_offsets])
     # PRM manager: run actual patched allocation and prove loop ends at 1024.
     mode='condition';native_count=1024

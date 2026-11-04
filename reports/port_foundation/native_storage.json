@@ -67,9 +67,10 @@
     "0x747658",
     "0x7476ac",
     "0x747708",
-    "0x747870"
+    "0x747870",
+    "0x7cab00"
   ],
-  "module_sha256": "109a507d0a08f3f43d96977f8995daa737a9e32f5a5f2f662c30c6c17f9442de",
+  "module_sha256": "12d62bf117f45727b8429b7f34a959e8e3b859a51a8994fe2119ef5eeb7f2778",
   "actual_arm64_executed": true,
   "emulator_gameplay_tested": false,
   "modeled": [

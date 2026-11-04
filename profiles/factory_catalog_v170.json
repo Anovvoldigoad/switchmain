@@ -1,0 +1,1694 @@
+{
+  "pc_source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+  "pc_source_sha256": "72cd7f8e14246f043fca7c75f685633f0b52805ea40a03702e835a2c84cc6a1c",
+  "switch_charcode_file_sha256": "375cbdabbb7bfde24b3604c68ba9379fbb920c04b6883adf89d98b14622ce898",
+  "evidence": "Ordinal matches exact Switch characode string; native routing tested separately. Placeholder mismatches are unsupported, not guessed.",
+  "entries": [
+    {
+      "name": "COND_1CMN",
+      "selector": 0,
+      "switch_charcode": "1cmn",
+      "supported": true
+    },
+    {
+      "name": "COND_2NRT",
+      "selector": 1,
+      "switch_charcode": "2nrt",
+      "supported": true
+    },
+    {
+      "name": "COND_2NRX",
+      "selector": 2,
+      "switch_charcode": "2nrx",
+      "supported": true
+    },
+    {
+      "name": "COND_2SSK",
+      "selector": 3,
+      "switch_charcode": "2ssk",
+      "supported": true
+    },
+    {
+      "name": "COND_2SSY",
+      "selector": 4,
+      "switch_charcode": "2ssy",
+      "supported": true
+    },
+    {
+      "name": "COND_2SKR",
+      "selector": 5,
+      "switch_charcode": "2skr",
+      "supported": true
+    },
+    {
+      "name": "COND_2ROC",
+      "selector": 6,
+      "switch_charcode": "2roc",
+      "supported": true
+    },
+    {
+      "name": "COND_2NEJ",
+      "selector": 7,
+      "switch_charcode": "2nej",
+      "supported": true
+    },
+    {
+      "name": "COND_2TEN",
+      "selector": 8,
+      "switch_charcode": "2ten",
+      "supported": true
+    },
+    {
+      "name": "COND_2INO",
+      "selector": 9,
+      "switch_charcode": "2ino",
+      "supported": true
+    },
+    {
+      "name": "COND_2SIK",
+      "selector": 10,
+      "switch_charcode": "2sik",
+      "supported": true
+    },
+    {
+      "name": "COND_2TYO",
+      "selector": 11,
+      "switch_charcode": "x001",
+      "supported": false
+    },
+    {
+      "name": "COND_2KIB",
+      "selector": 12,
+      "switch_charcode": "2kib",
+      "supported": true
+    },
+    {
+      "name": "COND_2SIN",
+      "selector": 13,
+      "switch_charcode": "2sin",
+      "supported": true
+    },
+    {
+      "name": "COND_2HNT",
+      "selector": 14,
+      "switch_charcode": "2hnt",
+      "supported": true
+    },
+    {
+      "name": "COND_2GAR",
+      "selector": 15,
+      "switch_charcode": "2gar",
+      "supported": true
+    },
+    {
+      "name": "COND_2KNK",
+      "selector": 16,
+      "switch_charcode": "2knk",
+      "supported": true
+    },
+    {
+      "name": "COND_2TMR",
+      "selector": 17,
+      "switch_charcode": "2tmr",
+      "supported": true
+    },
+    {
+      "name": "COND_2KKS",
+      "selector": 18,
+      "switch_charcode": "2kks",
+      "supported": true
+    },
+    {
+      "name": "COND_2GUY",
+      "selector": 19,
+      "switch_charcode": "2guy",
+      "supported": true
+    },
+    {
+      "name": "COND_2ASM",
+      "selector": 20,
+      "switch_charcode": "2asm",
+      "supported": true
+    },
+    {
+      "name": "COND_2JRY",
+      "selector": 21,
+      "switch_charcode": "2jry",
+      "supported": true
+    },
+    {
+      "name": "COND_2TND",
+      "selector": 22,
+      "switch_charcode": "2tnd",
+      "supported": true
+    },
+    {
+      "name": "COND_2ORC",
+      "selector": 23,
+      "switch_charcode": "2orc",
+      "supported": true
+    },
+    {
+      "name": "COND_2KBT",
+      "selector": 24,
+      "switch_charcode": "2kbt",
+      "supported": true
+    },
+    {
+      "name": "COND_2ITC",
+      "selector": 25,
+      "switch_charcode": "2itc",
+      "supported": true
+    },
+    {
+      "name": "COND_2KSM",
+      "selector": 26,
+      "switch_charcode": "2ksm",
+      "supported": true
+    },
+    {
+      "name": "COND_2CYB",
+      "selector": 27,
+      "switch_charcode": "2cyb",
+      "supported": true
+    },
+    {
+      "name": "COND_2SAI",
+      "selector": 28,
+      "switch_charcode": "2sai",
+      "supported": true
+    },
+    {
+      "name": "COND_2YMT",
+      "selector": 29,
+      "switch_charcode": "2ymt",
+      "supported": true
+    },
+    {
+      "name": "COND_2SCO",
+      "selector": 30,
+      "switch_charcode": "2sco",
+      "supported": true
+    },
+    {
+      "name": "COND_2DDR",
+      "selector": 31,
+      "switch_charcode": "2ddr",
+      "supported": true
+    },
+    {
+      "name": "COND_2HDN",
+      "selector": 32,
+      "switch_charcode": "2hdn",
+      "supported": true
+    },
+    {
+      "name": "COND_2KZU",
+      "selector": 33,
+      "switch_charcode": "2kzu",
+      "supported": true
+    },
+    {
+      "name": "COND_2SGT",
+      "selector": 34,
+      "switch_charcode": "2sgt",
+      "supported": true
+    },
+    {
+      "name": "COND_2JUG",
+      "selector": 35,
+      "switch_charcode": "2jug",
+      "supported": true
+    },
+    {
+      "name": "COND_2KAR",
+      "selector": 36,
+      "switch_charcode": "2kar",
+      "supported": true
+    },
+    {
+      "name": "COND_2TOB",
+      "selector": 37,
+      "switch_charcode": "2tob",
+      "supported": true
+    },
+    {
+      "name": "COND_2KNN",
+      "selector": 38,
+      "switch_charcode": "2knn",
+      "supported": true
+    },
+    {
+      "name": "COND_2PEA",
+      "selector": 39,
+      "switch_charcode": "2pea",
+      "supported": true
+    },
+    {
+      "name": "COND_2KLB",
+      "selector": 40,
+      "switch_charcode": "2klb",
+      "supported": true
+    },
+    {
+      "name": "COND_2AKM",
+      "selector": 41,
+      "switch_charcode": "2akm",
+      "supported": true
+    },
+    {
+      "name": "COND_2KRS",
+      "selector": 42,
+      "switch_charcode": "2krs",
+      "supported": true
+    },
+    {
+      "name": "COND_2PAR",
+      "selector": 43,
+      "switch_charcode": "2par",
+      "supported": true
+    },
+    {
+      "name": "COND_2KKG",
+      "selector": 44,
+      "switch_charcode": "2kkg",
+      "supported": true
+    },
+    {
+      "name": "COND_2FOU",
+      "selector": 45,
+      "switch_charcode": "2fou",
+      "supported": true
+    },
+    {
+      "name": "COND_1NRT",
+      "selector": 46,
+      "switch_charcode": "1nrt",
+      "supported": true
+    },
+    {
+      "name": "COND_1SSK",
+      "selector": 47,
+      "switch_charcode": "1ssk",
+      "supported": true
+    },
+    {
+      "name": "COND_1SKR",
+      "selector": 48,
+      "switch_charcode": "1skr",
+      "supported": true
+    },
+    {
+      "name": "COND_1ROC",
+      "selector": 49,
+      "switch_charcode": "1roc",
+      "supported": true
+    },
+    {
+      "name": "COND_1NEJ",
+      "selector": 50,
+      "switch_charcode": "1nej",
+      "supported": true
+    },
+    {
+      "name": "COND_1HNT",
+      "selector": 51,
+      "switch_charcode": "1hnt",
+      "supported": true
+    },
+    {
+      "name": "COND_1GAR",
+      "selector": 52,
+      "switch_charcode": "1gar",
+      "supported": true
+    },
+    {
+      "name": "COND_1HKG",
+      "selector": 53,
+      "switch_charcode": "1hkg",
+      "supported": true
+    },
+    {
+      "name": "COND_1KMM",
+      "selector": 54,
+      "switch_charcode": "1kmm",
+      "supported": true
+    },
+    {
+      "name": "COND_2NRG",
+      "selector": 55,
+      "switch_charcode": "2nrg",
+      "supported": true
+    },
+    {
+      "name": "COND_2SSZ",
+      "selector": 56,
+      "switch_charcode": "2ssz",
+      "supported": true
+    },
+    {
+      "name": "COND_2MDR",
+      "selector": 57,
+      "switch_charcode": "2mdr",
+      "supported": true
+    },
+    {
+      "name": "COND_2DNZ",
+      "selector": 58,
+      "switch_charcode": "2dnz",
+      "supported": true
+    },
+    {
+      "name": "COND_2RKG",
+      "selector": 59,
+      "switch_charcode": "2rkg",
+      "supported": true
+    },
+    {
+      "name": "COND_2TKG",
+      "selector": 60,
+      "switch_charcode": "2tkg",
+      "supported": true
+    },
+    {
+      "name": "COND_2MKG",
+      "selector": 61,
+      "switch_charcode": "2mkg",
+      "supported": true
+    },
+    {
+      "name": "COND_1ZBZ",
+      "selector": 62,
+      "switch_charcode": "1zbz",
+      "supported": true
+    },
+    {
+      "name": "COND_1HAK",
+      "selector": 63,
+      "switch_charcode": "1hak",
+      "supported": true
+    },
+    {
+      "name": "COND_1FIR",
+      "selector": 64,
+      "switch_charcode": "1fir",
+      "supported": true
+    },
+    {
+      "name": "COND_1SEC",
+      "selector": 65,
+      "switch_charcode": "1sec",
+      "supported": true
+    },
+    {
+      "name": "COND_2KKX",
+      "selector": 66,
+      "switch_charcode": "2kkx",
+      "supported": true
+    },
+    {
+      "name": "COND_2OBT",
+      "selector": 67,
+      "switch_charcode": "2obt",
+      "supported": true
+    },
+    {
+      "name": "COND_2KBX",
+      "selector": 68,
+      "switch_charcode": "2kbx",
+      "supported": true
+    },
+    {
+      "name": "COND_2SCX",
+      "selector": 69,
+      "switch_charcode": "2scx",
+      "supported": true
+    },
+    {
+      "name": "COND_3MDR",
+      "selector": 70,
+      "switch_charcode": "3mdr",
+      "supported": true
+    },
+    {
+      "name": "COND_3DRI",
+      "selector": 71,
+      "switch_charcode": "3dri",
+      "supported": true
+    },
+    {
+      "name": "COND_3RUS",
+      "selector": 72,
+      "switch_charcode": "3rus",
+      "supported": true
+    },
+    {
+      "name": "COND_3TOB",
+      "selector": 73,
+      "switch_charcode": "3tob",
+      "supported": true
+    },
+    {
+      "name": "COND_3YGR",
+      "selector": 74,
+      "switch_charcode": "3ygr",
+      "supported": true
+    },
+    {
+      "name": "COND_3UTK",
+      "selector": 75,
+      "switch_charcode": "3utk",
+      "supported": true
+    },
+    {
+      "name": "COND_3MFN",
+      "selector": 76,
+      "switch_charcode": "3mfn",
+      "supported": true
+    },
+    {
+      "name": "COND_3HAN",
+      "selector": 77,
+      "switch_charcode": "3han",
+      "supported": true
+    },
+    {
+      "name": "COND_3NYG",
+      "selector": 78,
+      "switch_charcode": "3nyg",
+      "supported": true
+    },
+    {
+      "name": "COND_3WHO",
+      "selector": 79,
+      "switch_charcode": "3who",
+      "supported": true
+    },
+    {
+      "name": "COND_3KLB",
+      "selector": 80,
+      "switch_charcode": "3klb",
+      "supported": true
+    },
+    {
+      "name": "COND_3HNZ",
+      "selector": 81,
+      "switch_charcode": "3hnz",
+      "supported": true
+    },
+    {
+      "name": "COND_3NGT",
+      "selector": 82,
+      "switch_charcode": "3ngt",
+      "supported": true
+    },
+    {
+      "name": "COND_3TYO",
+      "selector": 83,
+      "switch_charcode": "3tyo",
+      "supported": true
+    },
+    {
+      "name": "COND_3NRT",
+      "selector": 84,
+      "switch_charcode": "3nrt",
+      "supported": true
+    },
+    {
+      "name": "COND_3SSK",
+      "selector": 85,
+      "switch_charcode": "3ssk",
+      "supported": true
+    },
+    {
+      "name": "COND_3GAR",
+      "selector": 86,
+      "switch_charcode": "3gar",
+      "supported": true
+    },
+    {
+      "name": "COND_4MKG",
+      "selector": 87,
+      "switch_charcode": "4mkg",
+      "supported": true
+    },
+    {
+      "name": "COND_4MUU",
+      "selector": 88,
+      "switch_charcode": "4muu",
+      "supported": true
+    },
+    {
+      "name": "COND_4RKG",
+      "selector": 89,
+      "switch_charcode": "4rkg",
+      "supported": true
+    },
+    {
+      "name": "COND_4KKG",
+      "selector": 90,
+      "switch_charcode": "4kkg",
+      "supported": true
+    },
+    {
+      "name": "COND_3KKS",
+      "selector": 91,
+      "switch_charcode": "3kks",
+      "supported": true
+    },
+    {
+      "name": "COND_3KHM",
+      "selector": 92,
+      "switch_charcode": "3khm",
+      "supported": true
+    },
+    {
+      "name": "COND_3IRK",
+      "selector": 93,
+      "switch_charcode": "3irk",
+      "supported": true
+    },
+    {
+      "name": "COND_3KBT",
+      "selector": 94,
+      "switch_charcode": "3kbt",
+      "supported": true
+    },
+    {
+      "name": "COND_3OBT",
+      "selector": 95,
+      "switch_charcode": "3obt",
+      "supported": true
+    },
+    {
+      "name": "COND_4SSI",
+      "selector": 96,
+      "switch_charcode": "4ssi",
+      "supported": true
+    },
+    {
+      "name": "COND_1TEN",
+      "selector": 97,
+      "switch_charcode": "1ten",
+      "supported": true
+    },
+    {
+      "name": "COND_1INO",
+      "selector": 98,
+      "switch_charcode": "1ino",
+      "supported": true
+    },
+    {
+      "name": "COND_1SIK",
+      "selector": 99,
+      "switch_charcode": "1sik",
+      "supported": true
+    },
+    {
+      "name": "COND_1TYO",
+      "selector": 100,
+      "switch_charcode": "1tyo",
+      "supported": true
+    },
+    {
+      "name": "COND_1KIB",
+      "selector": 101,
+      "switch_charcode": "1kib",
+      "supported": true
+    },
+    {
+      "name": "COND_1AKM",
+      "selector": 102,
+      "switch_charcode": "1akm",
+      "supported": true
+    },
+    {
+      "name": "COND_1SIN",
+      "selector": 103,
+      "switch_charcode": "1sin",
+      "supported": true
+    },
+    {
+      "name": "COND_1TMR",
+      "selector": 104,
+      "switch_charcode": "1tmr",
+      "supported": true
+    },
+    {
+      "name": "COND_1KNK",
+      "selector": 105,
+      "switch_charcode": "1knk",
+      "supported": true
+    },
+    {
+      "name": "COND_1KRS",
+      "selector": 106,
+      "switch_charcode": "1krs",
+      "supported": true
+    },
+    {
+      "name": "COND_4NRT",
+      "selector": 107,
+      "switch_charcode": "4nrt",
+      "supported": true
+    },
+    {
+      "name": "COND_3KSN",
+      "selector": 108,
+      "switch_charcode": "3ksn",
+      "supported": true
+    },
+    {
+      "name": "COND_3MNT",
+      "selector": 109,
+      "switch_charcode": "3mnt",
+      "supported": true
+    },
+    {
+      "name": "COND_3HSM",
+      "selector": 110,
+      "switch_charcode": "3hsm",
+      "supported": true
+    },
+    {
+      "name": "COND_3MDR_2",
+      "selector": 111,
+      "switch_charcode": "3mdr_2",
+      "supported": true
+    },
+    {
+      "name": "COND_2GAV",
+      "selector": 112,
+      "switch_charcode": "2gav",
+      "supported": true
+    },
+    {
+      "name": "COND_5OBT",
+      "selector": 113,
+      "switch_charcode": "5obt",
+      "supported": true
+    },
+    {
+      "name": "COND_5MDR",
+      "selector": 114,
+      "switch_charcode": "5mdr",
+      "supported": true
+    },
+    {
+      "name": "COND_5JRB",
+      "selector": 115,
+      "switch_charcode": "5jrb",
+      "supported": true
+    },
+    {
+      "name": "COND_5KDM",
+      "selector": 116,
+      "switch_charcode": "5kdm",
+      "supported": true
+    },
+    {
+      "name": "COND_5SKN",
+      "selector": 117,
+      "switch_charcode": "5skn",
+      "supported": true
+    },
+    {
+      "name": "COND_5TYY",
+      "selector": 118,
+      "switch_charcode": "5tyy",
+      "supported": true
+    },
+    {
+      "name": "COND_BHSM",
+      "selector": 119,
+      "switch_charcode": "bhsm",
+      "supported": true
+    },
+    {
+      "name": "COND_BMDR",
+      "selector": 120,
+      "switch_charcode": "bmdr",
+      "supported": true
+    },
+    {
+      "name": "COND_BMKJ",
+      "selector": 121,
+      "switch_charcode": "bmkj",
+      "supported": true
+    },
+    {
+      "name": "COND_4RIN",
+      "selector": 122,
+      "switch_charcode": "4rin",
+      "supported": true
+    },
+    {
+      "name": "COND_6NRT",
+      "selector": 123,
+      "switch_charcode": "6nrt",
+      "supported": true
+    },
+    {
+      "name": "COND_5KGY",
+      "selector": 124,
+      "switch_charcode": "5kgy",
+      "supported": true
+    },
+    {
+      "name": "COND_TYYP",
+      "selector": 125,
+      "switch_charcode": "tyyp",
+      "supported": true
+    },
+    {
+      "name": "COND_6SSK",
+      "selector": 126,
+      "switch_charcode": "6ssk",
+      "supported": true
+    },
+    {
+      "name": "COND_6HNT",
+      "selector": 127,
+      "switch_charcode": "6hnt",
+      "supported": true
+    },
+    {
+      "name": "COND_6SKR",
+      "selector": 128,
+      "switch_charcode": "6skr",
+      "supported": true
+    },
+    {
+      "name": "COND_5NRT",
+      "selector": 129,
+      "switch_charcode": "5nrt",
+      "supported": true
+    },
+    {
+      "name": "COND_5SSK",
+      "selector": 130,
+      "switch_charcode": "5ssk",
+      "supported": true
+    },
+    {
+      "name": "COND_6HNB",
+      "selector": 131,
+      "switch_charcode": "6hnb",
+      "supported": true
+    },
+    {
+      "name": "COND_2OBX",
+      "selector": 132,
+      "switch_charcode": "2obx",
+      "supported": true
+    },
+    {
+      "name": "COND_BJB1",
+      "selector": 133,
+      "switch_charcode": "x002",
+      "supported": false
+    },
+    {
+      "name": "COND_BJB2",
+      "selector": 134,
+      "switch_charcode": "x003",
+      "supported": false
+    },
+    {
+      "name": "COND_BJB3",
+      "selector": 135,
+      "switch_charcode": "x004",
+      "supported": false
+    },
+    {
+      "name": "COND_BJB4",
+      "selector": 136,
+      "switch_charcode": "x005",
+      "supported": false
+    },
+    {
+      "name": "COND_B4NR",
+      "selector": 137,
+      "switch_charcode": "x006",
+      "supported": false
+    },
+    {
+      "name": "COND_BKKX",
+      "selector": 138,
+      "switch_charcode": "x007",
+      "supported": false
+    },
+    {
+      "name": "COND_B5OB",
+      "selector": 139,
+      "switch_charcode": "x008",
+      "supported": false
+    },
+    {
+      "name": "COND_BKRL",
+      "selector": 140,
+      "switch_charcode": "bkrl",
+      "supported": true
+    },
+    {
+      "name": "COND_BSSN",
+      "selector": 141,
+      "switch_charcode": "bssn",
+      "supported": true
+    },
+    {
+      "name": "COND_BOBT",
+      "selector": 142,
+      "switch_charcode": "bobt",
+      "supported": true
+    },
+    {
+      "name": "COND_BGKT",
+      "selector": 143,
+      "switch_charcode": "x009",
+      "supported": false
+    },
+    {
+      "name": "COND_BAOD",
+      "selector": 144,
+      "switch_charcode": "x010",
+      "supported": false
+    },
+    {
+      "name": "COND_BKTY",
+      "selector": 145,
+      "switch_charcode": "x011",
+      "supported": false
+    },
+    {
+      "name": "COND_B2NR",
+      "selector": 146,
+      "switch_charcode": "x012",
+      "supported": false
+    },
+    {
+      "name": "COND_1JBR",
+      "selector": 147,
+      "switch_charcode": "x013",
+      "supported": false
+    },
+    {
+      "name": "COND_2JBR",
+      "selector": 148,
+      "switch_charcode": "x014",
+      "supported": false
+    },
+    {
+      "name": "COND_3JBR",
+      "selector": 149,
+      "switch_charcode": "x015",
+      "supported": false
+    },
+    {
+      "name": "COND_4JBR",
+      "selector": 150,
+      "switch_charcode": "x016",
+      "supported": false
+    },
+    {
+      "name": "COND_5JBR",
+      "selector": 151,
+      "switch_charcode": "x017",
+      "supported": false
+    },
+    {
+      "name": "COND_6JBR",
+      "selector": 152,
+      "switch_charcode": "x018",
+      "supported": false
+    },
+    {
+      "name": "COND_GFSA",
+      "selector": 153,
+      "switch_charcode": "x019",
+      "supported": false
+    },
+    {
+      "name": "COND_BJYD",
+      "selector": 154,
+      "switch_charcode": "x020",
+      "supported": false
+    },
+    {
+      "name": "COND_BKRS",
+      "selector": 155,
+      "switch_charcode": "bkrs",
+      "supported": true
+    },
+    {
+      "name": "COND_GMHR",
+      "selector": 156,
+      "switch_charcode": "x021",
+      "supported": false
+    },
+    {
+      "name": "COND_BTSK",
+      "selector": 157,
+      "switch_charcode": "x022",
+      "supported": false
+    },
+    {
+      "name": "COND_BKKU",
+      "selector": 158,
+      "switch_charcode": "x023",
+      "supported": false
+    },
+    {
+      "name": "COND_7BRT",
+      "selector": 159,
+      "switch_charcode": "7brt",
+      "supported": true
+    },
+    {
+      "name": "COND_7SLD",
+      "selector": 160,
+      "switch_charcode": "7sld",
+      "supported": true
+    },
+    {
+      "name": "COND_BGRG",
+      "selector": 161,
+      "switch_charcode": "x024",
+      "supported": false
+    },
+    {
+      "name": "COND_GZTU",
+      "selector": 162,
+      "switch_charcode": "x025",
+      "supported": false
+    },
+    {
+      "name": "COND_BOBR",
+      "selector": 163,
+      "switch_charcode": "x026",
+      "supported": false
+    },
+    {
+      "name": "COND_BOBS",
+      "selector": 164,
+      "switch_charcode": "x027",
+      "supported": false
+    },
+    {
+      "name": "COND_BMDJ",
+      "selector": 165,
+      "switch_charcode": "x028",
+      "supported": false
+    },
+    {
+      "name": "COND_BRMD",
+      "selector": 166,
+      "switch_charcode": "x029",
+      "supported": false
+    },
+    {
+      "name": "COND_BRSK",
+      "selector": 167,
+      "switch_charcode": "x030",
+      "supported": false
+    },
+    {
+      "name": "COND_BKMS",
+      "selector": 168,
+      "switch_charcode": "x031",
+      "supported": false
+    },
+    {
+      "name": "COND_BKSR",
+      "selector": 169,
+      "switch_charcode": "x032",
+      "supported": false
+    },
+    {
+      "name": "COND_BGYU",
+      "selector": 170,
+      "switch_charcode": "x033",
+      "supported": false
+    },
+    {
+      "name": "COND_BJYG",
+      "selector": 171,
+      "switch_charcode": "x034",
+      "supported": false
+    },
+    {
+      "name": "COND_BNRT",
+      "selector": 172,
+      "switch_charcode": "bnrt",
+      "supported": true
+    },
+    {
+      "name": "COND_BSSK",
+      "selector": 173,
+      "switch_charcode": "bssk",
+      "supported": true
+    },
+    {
+      "name": "COND_BKGY",
+      "selector": 174,
+      "switch_charcode": "x037",
+      "supported": false
+    },
+    {
+      "name": "COND_BOBZ",
+      "selector": 175,
+      "switch_charcode": "bobz",
+      "supported": true
+    },
+    {
+      "name": "COND_BKGV",
+      "selector": 176,
+      "switch_charcode": "x038",
+      "supported": false
+    },
+    {
+      "name": "COND_BKKK",
+      "selector": 177,
+      "switch_charcode": "x039",
+      "supported": false
+    },
+    {
+      "name": "COND_BNRX",
+      "selector": 178,
+      "switch_charcode": "bnrx",
+      "supported": true
+    },
+    {
+      "name": "COND_BSSX",
+      "selector": 179,
+      "switch_charcode": "bssx",
+      "supported": true
+    },
+    {
+      "name": "COND_BNRC",
+      "selector": 180,
+      "switch_charcode": "bnrc",
+      "supported": true
+    },
+    {
+      "name": "COND_BSSC",
+      "selector": 181,
+      "switch_charcode": "bssc",
+      "supported": true
+    },
+    {
+      "name": "COND_JKKS",
+      "selector": 182,
+      "switch_charcode": "x040",
+      "supported": false
+    },
+    {
+      "name": "COND_BOBK",
+      "selector": 183,
+      "switch_charcode": "x041",
+      "supported": false
+    },
+    {
+      "name": "COND_5KRS",
+      "selector": 184,
+      "switch_charcode": "5krs",
+      "supported": true
+    },
+    {
+      "name": "COND_B6BT",
+      "selector": 185,
+      "switch_charcode": "b6bt",
+      "supported": true
+    },
+    {
+      "name": "COND_BKKS",
+      "selector": 186,
+      "switch_charcode": "x042",
+      "supported": false
+    },
+    {
+      "name": "COND_BMDT",
+      "selector": 187,
+      "switch_charcode": "x043",
+      "supported": false
+    },
+    {
+      "name": "COND_BMDK",
+      "selector": 188,
+      "switch_charcode": "bmdk",
+      "supported": true
+    },
+    {
+      "name": "COND_BMHR",
+      "selector": 189,
+      "switch_charcode": "x045",
+      "supported": false
+    },
+    {
+      "name": "COND_7NRT",
+      "selector": 190,
+      "switch_charcode": "7nrt",
+      "supported": true
+    },
+    {
+      "name": "COND_7SSK",
+      "selector": 191,
+      "switch_charcode": "7ssk",
+      "supported": true
+    },
+    {
+      "name": "COND_BNRG",
+      "selector": 192,
+      "switch_charcode": "bnrg",
+      "supported": true
+    },
+    {
+      "name": "COND_BSSZ",
+      "selector": 193,
+      "switch_charcode": "bssz",
+      "supported": true
+    },
+    {
+      "name": "COND_B1NR",
+      "selector": 194,
+      "switch_charcode": "b1nr",
+      "supported": true
+    },
+    {
+      "name": "COND_B1SS",
+      "selector": 195,
+      "switch_charcode": "b1ss",
+      "supported": true
+    },
+    {
+      "name": "COND_3GUY",
+      "selector": 196,
+      "switch_charcode": "3guy",
+      "supported": true
+    },
+    {
+      "name": "COND_B3HS",
+      "selector": 197,
+      "switch_charcode": "x046",
+      "supported": false
+    },
+    {
+      "name": "COND_BGUY",
+      "selector": 198,
+      "switch_charcode": "x047",
+      "supported": false
+    },
+    {
+      "name": "COND_BGRN",
+      "selector": 199,
+      "switch_charcode": "x048",
+      "supported": false
+    },
+    {
+      "name": "COND_7NRN",
+      "selector": 200,
+      "switch_charcode": "7nrn",
+      "supported": true
+    },
+    {
+      "name": "COND_7SSX",
+      "selector": 201,
+      "switch_charcode": "7ssx",
+      "supported": true
+    },
+    {
+      "name": "COND_7SKR",
+      "selector": 202,
+      "switch_charcode": "7skr",
+      "supported": true
+    },
+    {
+      "name": "COND_7GAR",
+      "selector": 203,
+      "switch_charcode": "7gar",
+      "supported": true
+    },
+    {
+      "name": "COND_7KHM",
+      "selector": 204,
+      "switch_charcode": "7khm",
+      "supported": true
+    },
+    {
+      "name": "COND_7BRN",
+      "selector": 205,
+      "switch_charcode": "7brn",
+      "supported": true
+    },
+    {
+      "name": "COND_7BRX",
+      "selector": 206,
+      "switch_charcode": "7brx",
+      "supported": true
+    },
+    {
+      "name": "COND_7SLN",
+      "selector": 207,
+      "switch_charcode": "7sln",
+      "supported": true
+    },
+    {
+      "name": "COND_7SKD",
+      "selector": 208,
+      "switch_charcode": "7skd",
+      "supported": true
+    },
+    {
+      "name": "COND_7MMS",
+      "selector": 209,
+      "switch_charcode": "x050",
+      "supported": false
+    },
+    {
+      "name": "COND_7KIN",
+      "selector": 210,
+      "switch_charcode": "x051",
+      "supported": false
+    },
+    {
+      "name": "COND_7YRI",
+      "selector": 211,
+      "switch_charcode": "x052",
+      "supported": false
+    },
+    {
+      "name": "COND_4MNR",
+      "selector": 212,
+      "switch_charcode": "4mnr",
+      "supported": true
+    },
+    {
+      "name": "COND_BISS",
+      "selector": 213,
+      "switch_charcode": "x053",
+      "supported": false
+    },
+    {
+      "name": "COND_BMNK",
+      "selector": 214,
+      "switch_charcode": "x054",
+      "supported": false
+    },
+    {
+      "name": "COND_7MMV",
+      "selector": 215,
+      "switch_charcode": "x055",
+      "supported": false
+    },
+    {
+      "name": "COND_7MTK",
+      "selector": 216,
+      "switch_charcode": "x056",
+      "supported": false
+    },
+    {
+      "name": "COND_ABRT",
+      "selector": 217,
+      "switch_charcode": "x057",
+      "supported": false
+    },
+    {
+      "name": "COND_8MMS",
+      "selector": 218,
+      "switch_charcode": "8mms",
+      "supported": true
+    },
+    {
+      "name": "COND_8KIN",
+      "selector": 219,
+      "switch_charcode": "8kin",
+      "supported": true
+    },
+    {
+      "name": "COND_8INO",
+      "selector": 220,
+      "switch_charcode": "8ino",
+      "supported": true
+    },
+    {
+      "name": "COND_8SIK",
+      "selector": 221,
+      "switch_charcode": "8sik",
+      "supported": true
+    },
+    {
+      "name": "COND_8TYO",
+      "selector": 222,
+      "switch_charcode": "8tyo",
+      "supported": true
+    },
+    {
+      "name": "COND_8KIB",
+      "selector": 223,
+      "switch_charcode": "8kib",
+      "supported": true
+    },
+    {
+      "name": "COND_8SIN",
+      "selector": 224,
+      "switch_charcode": "8sin",
+      "supported": true
+    },
+    {
+      "name": "COND_8ROC",
+      "selector": 225,
+      "switch_charcode": "8roc",
+      "supported": true
+    },
+    {
+      "name": "COND_8TEN",
+      "selector": 226,
+      "switch_charcode": "8ten",
+      "supported": true
+    },
+    {
+      "name": "COND_8KNK",
+      "selector": 227,
+      "switch_charcode": "8knk",
+      "supported": true
+    },
+    {
+      "name": "COND_8TMR",
+      "selector": 228,
+      "switch_charcode": "8tmr",
+      "supported": true
+    },
+    {
+      "name": "COND_8SAI",
+      "selector": 229,
+      "switch_charcode": "8sai",
+      "supported": true
+    },
+    {
+      "name": "COND_8AEM",
+      "selector": 230,
+      "switch_charcode": "8aem",
+      "supported": true
+    },
+    {
+      "name": "COND_9IND",
+      "selector": 231,
+      "switch_charcode": "9ind",
+      "supported": true
+    },
+    {
+      "name": "COND_9ASR",
+      "selector": 232,
+      "switch_charcode": "9asr",
+      "supported": true
+    },
+    {
+      "name": "COND_9NRT",
+      "selector": 233,
+      "switch_charcode": "9nrt",
+      "supported": true
+    },
+    {
+      "name": "COND_8BRA",
+      "selector": 234,
+      "switch_charcode": "8bra",
+      "supported": true
+    },
+    {
+      "name": "COND_9KWK",
+      "selector": 235,
+      "switch_charcode": "9kwk",
+      "supported": true
+    },
+    {
+      "name": "COND_9JGN",
+      "selector": 236,
+      "switch_charcode": "9jgn",
+      "supported": true
+    },
+    {
+      "name": "COND_9KKJ",
+      "selector": 237,
+      "switch_charcode": "9kkj",
+      "supported": true
+    },
+    {
+      "name": "COND_9DLT",
+      "selector": 238,
+      "switch_charcode": "9dlt",
+      "supported": true
+    },
+    {
+      "name": "COND_9BOR",
+      "selector": 239,
+      "switch_charcode": "9bor",
+      "supported": true
+    },
+    {
+      "name": "COND_8MTA",
+      "selector": 240,
+      "switch_charcode": "8mta",
+      "supported": true
+    },
+    {
+      "name": "COND_8SSF",
+      "selector": 241,
+      "switch_charcode": "8ssf",
+      "supported": true
+    },
+    {
+      "name": "COND_BNNS",
+      "selector": 242,
+      "switch_charcode": "bnns",
+      "supported": true
+    },
+    {
+      "name": "COND_1SSV",
+      "selector": 243,
+      "switch_charcode": "1ssv",
+      "supported": true
+    },
+    {
+      "name": "COND_1NRV",
+      "selector": 244,
+      "switch_charcode": "1nrv",
+      "supported": true
+    },
+    {
+      "name": "COND_BMRA",
+      "selector": 245,
+      "switch_charcode": "bmra",
+      "supported": true
+    },
+    {
+      "name": "COND_BMRK",
+      "selector": 246,
+      "switch_charcode": "bmrk",
+      "supported": true
+    },
+    {
+      "name": "COND_BMRL",
+      "selector": 247,
+      "switch_charcode": "bmrl",
+      "supported": true
+    },
+    {
+      "name": "COND_BBRB",
+      "selector": 248,
+      "switch_charcode": "bbrb",
+      "supported": true
+    },
+    {
+      "name": "COND_BNSP",
+      "selector": 249,
+      "switch_charcode": "bnsp",
+      "supported": true
+    },
+    {
+      "name": "COND_BSSP",
+      "selector": 250,
+      "switch_charcode": "bssp",
+      "supported": true
+    },
+    {
+      "name": "COND_BSKK",
+      "selector": 251,
+      "switch_charcode": "bskk",
+      "supported": true
+    },
+    {
+      "name": "COND_BNRY",
+      "selector": 252,
+      "switch_charcode": "bnry",
+      "supported": true
+    },
+    {
+      "name": "COND_BPEI",
+      "selector": 253,
+      "switch_charcode": "bpei",
+      "supported": true
+    },
+    {
+      "name": "COND_B3NX",
+      "selector": 254,
+      "switch_charcode": "b3nx",
+      "supported": true
+    },
+    {
+      "name": "COND_B8KB",
+      "selector": 255,
+      "switch_charcode": "b8kb",
+      "supported": true
+    },
+    {
+      "name": "COND_B8IT",
+      "selector": 256,
+      "switch_charcode": "b8it",
+      "supported": true
+    },
+    {
+      "name": "COND_8NNA",
+      "selector": 257,
+      "switch_charcode": "8nna",
+      "supported": true
+    },
+    {
+      "name": "COND_8TGS",
+      "selector": 258,
+      "switch_charcode": "8tgs",
+      "supported": true
+    },
+    {
+      "name": "COND_8NRE",
+      "selector": 259,
+      "switch_charcode": "8nre",
+      "supported": true
+    },
+    {
+      "name": "COND_8HMW",
+      "selector": 260,
+      "switch_charcode": "8hmw",
+      "supported": true
+    },
+    {
+      "name": "COND_BNRK",
+      "selector": 261,
+      "switch_charcode": "bnrk",
+      "supported": true
+    },
+    {
+      "name": "COND_BNRM",
+      "selector": 262,
+      "switch_charcode": "bnrm",
+      "supported": true
+    },
+    {
+      "name": "COND_7DRI",
+      "selector": 263,
+      "switch_charcode": "7dri",
+      "supported": true
+    },
+    {
+      "name": "COND_BUCA",
+      "selector": 264,
+      "switch_charcode": "buca",
+      "supported": true
+    },
+    {
+      "name": "COND_BUCB",
+      "selector": 265,
+      "switch_charcode": "bucb",
+      "supported": true
+    },
+    {
+      "name": "COND_BUCC",
+      "selector": 266,
+      "switch_charcode": "bucc",
+      "supported": true
+    },
+    {
+      "name": "COND_B2KK",
+      "selector": 267,
+      "switch_charcode": "b2kk",
+      "supported": true
+    },
+    {
+      "name": "COND_8KLB",
+      "selector": 268,
+      "switch_charcode": "8klb",
+      "supported": true
+    },
+    {
+      "name": "COND_8NNC",
+      "selector": 269,
+      "switch_charcode": "8nnc",
+      "supported": true
+    },
+    {
+      "name": "COND_BITC",
+      "selector": 270,
+      "switch_charcode": "bitc",
+      "supported": true
+    },
+    {
+      "name": "COND_8NRK",
+      "selector": 271,
+      "switch_charcode": "8nrk",
+      "supported": true
+    },
+    {
+      "name": "COND_8KKL",
+      "selector": 272,
+      "switch_charcode": "8kkl",
+      "supported": true
+    },
+    {
+      "name": "COND_8KTS",
+      "selector": 273,
+      "switch_charcode": "8kts",
+      "supported": true
+    },
+    {
+      "name": "COND_8INJ",
+      "selector": 274,
+      "switch_charcode": "8inj",
+      "supported": true
+    },
+    {
+      "name": "COND_9HGR",
+      "selector": 275,
+      "switch_charcode": "9hgr",
+      "supported": true
+    },
+    {
+      "name": "COND_9ISH",
+      "selector": 276,
+      "switch_charcode": "9ish",
+      "supported": true
+    },
+    {
+      "name": "COND_9KRN",
+      "selector": 277,
+      "switch_charcode": "9krn",
+      "supported": true
+    },
+    {
+      "name": "COND_9KWM",
+      "selector": 278,
+      "switch_charcode": "9kwm",
+      "supported": true
+    },
+    {
+      "name": "COND_9BRM",
+      "selector": 279,
+      "switch_charcode": "9brm",
+      "supported": true
+    },
+    {
+      "name": "COND_9NNS",
+      "selector": 280,
+      "switch_charcode": "9nns",
+      "supported": true
+    }
+  ]
+}

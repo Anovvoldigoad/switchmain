@@ -3,6 +3,7 @@
 #include "nsc_runtime_v2.hpp"
 #include "nsc_image_guard.hpp"
 #include "nsc_condition_storage.hpp"
+#include "nsc_factory.hpp"
 #include "lib.hpp"
 
 namespace nsc::runtime {
@@ -16,6 +17,10 @@ bool Initialize() {
         return false;
     }
     Logging.Log("[NSC:PORT] IMAGE_VERIFIED profile=%u", static_cast<unsigned>(profile));
+    if (!nsc::factory::LoadEmbeddedProfile()) {
+        Logging.Log("[NSC:PORT] INIT_REJECT reason=invalid_factory_profile game_writes=0");
+        return false;
+    }
     // Keep the proven R181 install order unchanged. This file intentionally
     // contains no exlaunch entrypoint so another bootstrap can call the same
     // runtime ABI later without moving gameplay/core initialization again.
@@ -33,6 +38,7 @@ bool Initialize() {
     // Install after the legacy descriptor setup has checked the untouched
     // raw-getter fingerprint. All installations occur before game startup.
     if (!nsc::conditions::InstallRawStorageHooks()) return false;
+    if (!nsc::factory::InstallFactoryHook()) return false;
     return true;
 }
 

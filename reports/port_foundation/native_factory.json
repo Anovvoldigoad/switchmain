@@ -1,0 +1,688 @@
+{
+  "status": "PASS",
+  "routing_cases": 12240,
+  "native_state_scenarios": 17,
+  "supported_selectors": 228,
+  "mapping_count": 232,
+  "native_routes_observed": [
+    [
+      "allocate",
+      74848,
+      38
+    ],
+    [
+      "allocate",
+      74864,
+      38
+    ],
+    [
+      "allocate",
+      74896,
+      38
+    ],
+    [
+      "allocate",
+      74928,
+      38
+    ],
+    [
+      "allocate",
+      74944,
+      38
+    ],
+    [
+      "allocate",
+      74960,
+      38
+    ],
+    [
+      "allocate",
+      74976,
+      38
+    ],
+    [
+      "allocate",
+      74992,
+      38
+    ],
+    [
+      "allocate",
+      75024,
+      38
+    ],
+    [
+      "allocate",
+      75072,
+      38
+    ],
+    [
+      "allocate",
+      75248,
+      38
+    ],
+    [
+      "allocate",
+      75264,
+      38
+    ],
+    [
+      "allocate",
+      75280,
+      38
+    ],
+    [
+      "allocate",
+      75296,
+      38
+    ],
+    [
+      "allocate",
+      75328,
+      38
+    ],
+    [
+      "allocate",
+      88112,
+      38
+    ],
+    [
+      "constructor",
+      297464
+    ],
+    [
+      "constructor",
+      444496
+    ],
+    [
+      "constructor",
+      461316
+    ],
+    [
+      "constructor",
+      484036
+    ],
+    [
+      "constructor",
+      493488
+    ],
+    [
+      "constructor",
+      497452
+    ],
+    [
+      "constructor",
+      498708
+    ],
+    [
+      "constructor",
+      505004
+    ],
+    [
+      "constructor",
+      506144
+    ],
+    [
+      "constructor",
+      842616
+    ],
+    [
+      "constructor",
+      849108
+    ],
+    [
+      "constructor",
+      863900
+    ],
+    [
+      "constructor",
+      904792
+    ],
+    [
+      "constructor",
+      1670236
+    ],
+    [
+      "constructor",
+      1672244
+    ],
+    [
+      "constructor",
+      1675560
+    ],
+    [
+      "constructor",
+      1880660
+    ],
+    [
+      "constructor",
+      1884960
+    ],
+    [
+      "constructor",
+      1915512
+    ],
+    [
+      "constructor",
+      1924396
+    ],
+    [
+      "constructor",
+      2112868
+    ],
+    [
+      "constructor",
+      2713644
+    ],
+    [
+      "constructor",
+      2760716
+    ],
+    [
+      "constructor",
+      3379020
+    ],
+    [
+      "constructor",
+      3390432
+    ],
+    [
+      "constructor",
+      3461964
+    ],
+    [
+      "constructor",
+      4830300
+    ],
+    [
+      "constructor",
+      4879196
+    ],
+    [
+      "constructor",
+      4879864
+    ],
+    [
+      "flag",
+      162
+    ],
+    [
+      "flag",
+      165
+    ],
+    [
+      "flag",
+      175
+    ],
+    [
+      "flag",
+      197
+    ],
+    [
+      "flag",
+      230
+    ],
+    [
+      "flag",
+      277
+    ],
+    [
+      "flag",
+      280
+    ],
+    [
+      "flag",
+      282
+    ],
+    [
+      "flag",
+      284
+    ],
+    [
+      "flag",
+      286
+    ],
+    [
+      "flag",
+      288
+    ],
+    [
+      "flag",
+      289
+    ],
+    [
+      "flag",
+      291
+    ],
+    [
+      "flag",
+      293
+    ],
+    [
+      "flag",
+      295
+    ],
+    [
+      "table",
+      8174720
+    ],
+    [
+      "table",
+      8174896
+    ],
+    [
+      "table",
+      8175072
+    ],
+    [
+      "table",
+      8175248
+    ],
+    [
+      "table",
+      8175424
+    ],
+    [
+      "table",
+      8175600
+    ],
+    [
+      "table",
+      8175776
+    ],
+    [
+      "table",
+      8175952
+    ],
+    [
+      "table",
+      8176128
+    ],
+    [
+      "table",
+      8176304
+    ],
+    [
+      "table",
+      8176480
+    ],
+    [
+      "table",
+      8176656
+    ],
+    [
+      "table",
+      8176832
+    ],
+    [
+      "table",
+      8177008
+    ],
+    [
+      "table",
+      8177184
+    ],
+    [
+      "table",
+      8177360
+    ],
+    [
+      "table",
+      8177536
+    ],
+    [
+      "table",
+      8177712
+    ],
+    [
+      "table",
+      8177888
+    ],
+    [
+      "table",
+      8178064
+    ],
+    [
+      "table",
+      8178240
+    ],
+    [
+      "table",
+      8178416
+    ],
+    [
+      "table",
+      8178592
+    ],
+    [
+      "table",
+      8178768
+    ],
+    [
+      "table",
+      8178944
+    ],
+    [
+      "table",
+      8179120
+    ],
+    [
+      "table",
+      8179296
+    ],
+    [
+      "table",
+      8179472
+    ],
+    [
+      "table",
+      8179648
+    ],
+    [
+      "table",
+      8179824
+    ],
+    [
+      "table",
+      8180000
+    ],
+    [
+      "table",
+      8180176
+    ],
+    [
+      "table",
+      8180352
+    ],
+    [
+      "table",
+      8180528
+    ],
+    [
+      "table",
+      8180704
+    ],
+    [
+      "table",
+      8180880
+    ],
+    [
+      "table",
+      8181056
+    ],
+    [
+      "table",
+      8181232
+    ],
+    [
+      "table",
+      8181408
+    ],
+    [
+      "table",
+      8181584
+    ],
+    [
+      "table",
+      8181760
+    ],
+    [
+      "table",
+      8181936
+    ],
+    [
+      "table",
+      8182112
+    ],
+    [
+      "table",
+      8182464
+    ],
+    [
+      "table",
+      8182640
+    ],
+    [
+      "table",
+      8183344
+    ],
+    [
+      "table",
+      8183520
+    ],
+    [
+      "table",
+      8183696
+    ],
+    [
+      "table",
+      8183872
+    ],
+    [
+      "table",
+      8184048
+    ],
+    [
+      "table",
+      8184224
+    ],
+    [
+      "table",
+      8184400
+    ],
+    [
+      "table",
+      8184624
+    ],
+    [
+      "table",
+      8184832
+    ],
+    [
+      "table",
+      8185008
+    ],
+    [
+      "table",
+      8185200
+    ],
+    [
+      "table",
+      8185376
+    ],
+    [
+      "table",
+      8185552
+    ],
+    [
+      "table",
+      8185728
+    ],
+    [
+      "table",
+      8185904
+    ],
+    [
+      "table",
+      8186080
+    ],
+    [
+      "table",
+      8186256
+    ],
+    [
+      "table",
+      8186432
+    ],
+    [
+      "table",
+      8186608
+    ],
+    [
+      "table",
+      8186784
+    ],
+    [
+      "table",
+      8186960
+    ],
+    [
+      "table",
+      8187136
+    ],
+    [
+      "table",
+      8187312
+    ],
+    [
+      "table",
+      8187488
+    ],
+    [
+      "table",
+      8187664
+    ],
+    [
+      "table",
+      8187840
+    ],
+    [
+      "table",
+      8188016
+    ],
+    [
+      "table",
+      8188192
+    ],
+    [
+      "table",
+      8188368
+    ],
+    [
+      "table",
+      8188544
+    ],
+    [
+      "table",
+      8188720
+    ]
+  ],
+  "identity_cases": [
+    {
+      "owner": 145,
+      "mode": 0,
+      "side": 0
+    },
+    {
+      "owner": 145,
+      "mode": 0,
+      "side": 1
+    },
+    {
+      "owner": 145,
+      "mode": 1,
+      "side": 0
+    },
+    {
+      "owner": 145,
+      "mode": 1,
+      "side": 1
+    },
+    {
+      "owner": 145,
+      "mode": 4294967295,
+      "side": 0
+    },
+    {
+      "owner": 145,
+      "mode": 4294967295,
+      "side": 1
+    },
+    {
+      "owner": 281,
+      "mode": 0,
+      "side": 0
+    },
+    {
+      "owner": 281,
+      "mode": 0,
+      "side": 1
+    },
+    {
+      "owner": 281,
+      "mode": 1,
+      "side": 0
+    },
+    {
+      "owner": 281,
+      "mode": 1,
+      "side": 1
+    },
+    {
+      "owner": 281,
+      "mode": 4294967295,
+      "side": 0
+    },
+    {
+      "owner": 281,
+      "mode": 4294967295,
+      "side": 1
+    },
+    {
+      "owner": 457,
+      "mode": 0,
+      "side": 0
+    },
+    {
+      "owner": 457,
+      "mode": 0,
+      "side": 1
+    },
+    {
+      "owner": 457,
+      "mode": 1,
+      "side": 0
+    },
+    {
+      "owner": 457,
+      "mode": 1,
+      "side": 1
+    },
+    {
+      "owner": 457,
+      "mode": 4294967295,
+      "side": 0
+    },
+    {
+      "owner": 457,
+      "mode": 4294967295,
+      "side": 1
+    }
+  ],
+  "installer_fingerprint_rejections": 6,
+  "module_elf_sha256": "12d62bf117f45727b8429b7f34a959e8e3b859a51a8994fe2119ef5eeb7f2778",
+  "modeled": [
+    "OS/RTLD relocation",
+    "hook entry/trampoline publication (instructions execute)",
+    "game global flags/mode values",
+    "all concrete constructors in dispatch comparison",
+    "allocator, empty registration tree, locks, deep base constructor and selected reset helpers in identity test"
+  ],
+  "executed": [
+    "compiled registry/profile SHA256 checks",
+    "compiled factory installer and callback",
+    "full native factory dispatch",
+    "2dnz wrapper + two outer constructors for identity tests",
+    "native caller and initialization prefix through 0x75899c"
+  ],
+  "not_proven": [
+    "deep actor construction",
+    "nonempty registration tree",
+    "initialization after 0x75899c",
+    "new-slot resources",
+    "actor destruction",
+    "PC globals reset parity",
+    "gameplay or emulator compatibility"
+  ],
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}
