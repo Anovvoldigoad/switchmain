@@ -22,6 +22,8 @@ membership and several helpers remain Tobi-specific.
 The default CPK profile is empty; registration is not proof of completed loading.
 Old unmarked PRM assets must not be paired with this branch as a finished package.
 
+- [Continue in a new Chat / Project: checkpoint and explicit MVP prompt](NSC_FULL_API_CONTINUE_CHAT.md)
+- [Machine-readable checkpoint](handoff/checkpoint.json)
 - [Current status](PORT_STATUS.json)
 - [Implementation details and limits](PORTING_PROGRESS.md)
 - [Component proof reports](reports/port_foundation/)

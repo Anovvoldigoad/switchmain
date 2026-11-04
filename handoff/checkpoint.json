@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "project": "NSC_FULL_MODDINGAPI_SWITCH_170",
+  "goal": "Full NSC PC ModdingAPI port to Switch Connections 1.70; new character slots; Android emulator workflow.",
+  "repository": "https://github.com/Anovvoldigoad/switchmain",
+  "branch": "port/full-api-v170",
+  "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
+  "documentation_commit": "Resolve the commit containing this checkpoint; runtime code is unchanged from verified_runtime_commit.",
+  "prior_storm_checkpoint_id": "c7ca5be9-1c45-47c1-84d2-312b33f0bf4f",
+  "port_status": {
+    "stage": "IMPLEMENTATION_INCOMPLETE",
+    "full_moddingapi": false,
+    "ready_for_gameplay_test": false,
+    "emulator_tested": false,
+    "source_base": "78ad05e26e1aee0e0d3219e14b619bdff2d27f5d",
+    "pc_mod_manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+    "pc_api_source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+    "implemented_this_change": [
+      "SHA256 gate for exact stock/R180 text before game writes",
+      "33-word RAM patch with consistent 1024 PRM/spcload loop bounds",
+      "raw condition lookup bounded by observed native allocation count",
+      "condition storage retirement on native reload and both destructor free paths",
+      "bounded configurable factory selector registry; 228 charcode-matched selectors; unknown placeholders rejected",
+      "PC specialCondParam reader and Python-only Android NSO data-profile packer",
+      "native factory hook preserves caller roster identity in tested initialization slices",
+      "explicit converted-PRM ownership marker for Event236, independent of roster ID",
+      "native reader-verified PRM conversion; original enemy-hide preserved for unmarked events",
+      "native enable/disable writers for all 20 source control selectors; compiled callback and 20 native consumer slices tested",
+      "CPK ownership-marker conversion for explicitly selected uncompressed PRMs with exact preservation of other archive bytes",
+      "explicit SHA256-validated CPK profiles, capacity 32 with distinct priorities; default empty",
+      "native result plus bind-ID validation; failed-only retry and reentry/concurrent duplicate suppression",
+      "Python-only CPK NSO profile packaging composes with factory profile edits without changing text/rodata",
+      "append-only PC conditionprmManager compiler preserves native 512-row descriptor prefix, including Switch-specific Sakura aura value",
+      "configurable 0..512 additional descriptors; four native loop bounds use the validated startup count; no hardcoded Tobi descriptor table",
+      "compiled descriptor getter and native name/hash/reaction/state/icon/status/aura consumers tested; 21 installer fingerprint failures reject before hooks"
+    ],
+    "blocking_gaps": [
+      "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
+      "remaining MovesetPlus operations shadowed or narrowed; complete control semantics/subclass overrides and legacy UJ latch lifetime unverified",
+      "CPK directory discovery, async completion/unbind lifecycle and archive precedence unverified; parameter-family coverage remains partial",
+      "53 PC factory names remain unverified against Switch placeholders; PC create-time global resets and complete actor/resource lifecycle not ported",
+      "gameplay and emulator compatibility not verified",
+      "condition descriptor compiler requires unchanged pinned PC baseline; raw 176-byte conditionprm packaging/order and complete effect/application lifecycle remain unverified"
+    ],
+    "proofs": [
+      "reports/port_foundation/bootstrap.json",
+      "reports/port_foundation/native_storage.json",
+      "reports/port_foundation/binary.json",
+      "reports/port_foundation/factory_profile.json",
+      "reports/port_foundation/native_factory.json",
+      "reports/port_foundation/prm_marker.json",
+      "reports/port_foundation/native_events.json",
+      "reports/port_foundation/native_events_real_prm.json",
+      "reports/port_foundation/native_controls.json",
+      "reports/port_foundation/cpk_events.json",
+      "reports/port_foundation/cpk_events_real_tobi.json",
+      "reports/port_foundation/cpk_profile.json",
+      "reports/port_foundation/native_cpk.json",
+      "reports/port_foundation/condition_profile.json",
+      "reports/port_foundation/native_conditions.json"
+    ],
+    "parameter_family_coverage": {
+      "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
+      "specialCondParam.xfbin": "PARTIAL: 228 class selectors; 53 placeholders and full construction/resource lifecycle pending",
+      "pairSpSkillManagerParam.xfbin": "PENDING",
+      "bgmManagerParam.xfbin": "PENDING",
+      "susanooCondParam.xfbin": "PENDING",
+      "specialInteractionManager.xfbin": "PENDING",
+      "partnerSlotParam.xfbin": "PENDING",
+      "charRelationParam.xfbin": "PENDING",
+      "gudoBallParam.xfbin": "PENDING",
+      "ougiAwakeningParam.xfbin": "PENDING: legacy fixed membership is not a generic reader",
+      "guardEffectParam.xfbin": "PENDING"
+    }
+  },
+  "ci": {
+    "run_id": 41878269717,
+    "job_id": 126743663223,
+    "head_sha": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
+    "status": "completed",
+    "conclusion": "success",
+    "all_job_steps": "success",
+    "url": "https://github.com/Anovvoldigoad/switchmain/actions/runs/41878269717",
+    "updated_at": "2026-11-04T17:46:39Z",
+    "scope": "Component build and tests only; not gameplay"
+  },
+  "provenance": {
+    "manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+    "runtime_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+    "pc_condition_reader_blob": "3e7aacadca117b56e43f1a5c1d04cdd02aed7b1f",
+    "pc_condition_baseline_blob": "0e7133223f10eb2dbbb39d2166fdca9352e84c3e",
+    "pc_condition_baseline_sha256": "fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5",
+    "r180_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "stock_text_sha256": "f6ec83dad4537b0fa53cf707c10f48a438117905581e2ed3f42cf3cf29a731d7"
+  },
+  "local_build": {
+    "elf_sha256": "bba662ab22e0b4993ce5a3163d5a4504a8f8fff016ac434949cdb5632237c5aa",
+    "nso_sha256": "d9d2c43d3270d413e71a4472fabbc8403a634ab37c2ec30381b1ff40595778ef",
+    "not_an_installable_release": true
+  },
+  "condition_companions": [
+    {
+      "archive_observed": "Tobi.zip.cpk",
+      "entry": "data/spc/conditionprm.bin.xfbin",
+      "raw_records": 512,
+      "xfbin_sha256": "ee8bea3caab274333b466d3e44fcf5129249dbb649c1dd0ddeecb983e948d123"
+    },
+    {
+      "archive_observed": "romfs.zip.cpk",
+      "entry": "data/spc/conditionprm.bin.xfbin",
+      "raw_records": 517,
+      "xfbin_sha256": "b92c71cb791dd6b2b25f18e2822da97c723a4e8a75b4222dff4f0bd546c710ce"
+    }
+  ],
+  "next_mvp": {
+    "name": "Verified condition descriptor/raw companion integration",
+    "status": "NOT_IMPLEMENTED",
+    "spec": "NSC_FULL_API_CONTINUE_CHAT.md#prompt-eksplisit--salin-seluruh-blok-ini",
+    "acceptance": [
+      "Prove ordinal mapping from actual PC/Switch readers and input bytes; equal counts alone are insufficient.",
+      "Reject 517 descriptors with 512 raw rows; reject malformed or unproved-order pairs before emitting an apparent install package.",
+      "Preserve native prefix including Sakura aura107 and all untargeted bytes.",
+      "Compose with factory/CPK profiles and explicit Event236 conversion; test failures and native lifetime paths affected.",
+      "Save code, reports, hashes and actual CI results. Component success does not set gameplay-ready or full API true."
+    ]
+  },
+  "continuation": {
+    "read_first": [
+      "NSC_FULL_API_CONTINUE_CHAT.md",
+      "handoff/checkpoint.json",
+      "PORT_STATUS.json",
+      "PORTING_PROGRESS.md",
+      ".github/workflows/verify-port-foundation.yml"
+    ],
+    "source_and_tests_persisted_in": "GitHub branch",
+    "scratch_files_guaranteed_available": false,
+    "chat_project_created": false,
+    "conversation_moved": false,
+    "astra_or_work_equivalence_guaranteed": false,
+    "requirements": [
+      "Verify actual model/tool access in destination chat.",
+      "Use Actions or a real execution environment for build/test claims.",
+      "Do not overwrite newer commits; compare HEAD and use expected-SHA updates.",
+      "Continue authorized work without repeated permission prompts; preserve honest evidence labels."
+    ]
+  }
+}
