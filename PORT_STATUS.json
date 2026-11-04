@@ -20,14 +20,18 @@
     "CPK ownership-marker conversion for explicitly selected uncompressed PRMs with exact preservation of other archive bytes",
     "explicit SHA256-validated CPK profiles, capacity 32 with distinct priorities; default empty",
     "native result plus bind-ID validation; failed-only retry and reentry/concurrent duplicate suppression",
-    "Python-only CPK NSO profile packaging composes with factory profile edits without changing text/rodata"
+    "Python-only CPK NSO profile packaging composes with factory profile edits without changing text/rodata",
+    "append-only PC conditionprmManager compiler preserves native 512-row descriptor prefix, including Switch-specific Sakura aura value",
+    "configurable 0..512 additional descriptors; four native loop bounds use the validated startup count; no hardcoded Tobi descriptor table",
+    "compiled descriptor getter and native name/hash/reaction/state/icon/status/aura consumers tested; 21 installer fingerprint failures reject before hooks"
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
     "remaining MovesetPlus operations shadowed or narrowed; complete control semantics/subclass overrides and legacy UJ latch lifetime unverified",
-    "CPK directory discovery, async completion/unbind lifecycle and archive precedence unverified; 11 parameter families not integrated",
+    "CPK directory discovery, async completion/unbind lifecycle and archive precedence unverified; parameter-family coverage remains partial",
     "53 PC factory names remain unverified against Switch placeholders; PC create-time global resets and complete actor/resource lifecycle not ported",
-    "gameplay and emulator compatibility not verified"
+    "gameplay and emulator compatibility not verified",
+    "condition descriptor compiler requires unchanged pinned PC baseline; raw 176-byte conditionprm packaging/order and complete effect/application lifecycle remain unverified"
   ],
   "proofs": [
     "reports/port_foundation/bootstrap.json",
@@ -42,6 +46,21 @@
     "reports/port_foundation/cpk_events.json",
     "reports/port_foundation/cpk_events_real_tobi.json",
     "reports/port_foundation/cpk_profile.json",
-    "reports/port_foundation/native_cpk.json"
-  ]
+    "reports/port_foundation/native_cpk.json",
+    "reports/port_foundation/condition_profile.json",
+    "reports/port_foundation/native_conditions.json"
+  ],
+  "parameter_family_coverage": {
+    "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
+    "specialCondParam.xfbin": "PARTIAL: 228 class selectors; 53 placeholders and full construction/resource lifecycle pending",
+    "pairSpSkillManagerParam.xfbin": "PENDING",
+    "bgmManagerParam.xfbin": "PENDING",
+    "susanooCondParam.xfbin": "PENDING",
+    "specialInteractionManager.xfbin": "PENDING",
+    "partnerSlotParam.xfbin": "PENDING",
+    "charRelationParam.xfbin": "PENDING",
+    "gudoBallParam.xfbin": "PENDING",
+    "ougiAwakeningParam.xfbin": "PENDING: legacy fixed membership is not a generic reader",
+    "guardEffectParam.xfbin": "PENDING"
+  }
 }

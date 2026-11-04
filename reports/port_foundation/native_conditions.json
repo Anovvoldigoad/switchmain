@@ -1,0 +1,38 @@
+{
+  "status": "PASS",
+  "descriptor_getter_cases": 2578,
+  "native_lookup_cases": 124,
+  "native_field_consumer_cases": 135,
+  "total_count_cases": [
+    512,
+    513,
+    517,
+    1024
+  ],
+  "installer_count_cases": 4,
+  "installer_fingerprint_rejections": 21,
+  "native_prefix_byte_identical": true,
+  "native_crc_executed": true,
+  "native_fields": [
+    "reaction",
+    "state",
+    "icon",
+    "status",
+    "aura"
+  ],
+  "module_elf_sha256": "bba662ab22e0b4993ce5a3163d5a4504a8f8fff016ac434949cdb5632237c5aa",
+  "modeled": [
+    "hook publication and original getter ADRP relocation",
+    "diagnostic formatting/output",
+    "libc strcmp/strlen",
+    "caller contexts for two name-loop and field-consumer slices"
+  ],
+  "not_proven": [
+    "raw 176-byte conditionprm packaging/order",
+    "effect-resource compatibility",
+    "full condition application/retirement",
+    "emulator gameplay"
+  ],
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

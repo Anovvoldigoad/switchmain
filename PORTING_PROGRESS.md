@@ -22,7 +22,9 @@ instalasi baru yang diterbitkan oleh workflow branch ini.
   jumlah; alamat yang berubah atau tidak dikenal ditolak. Metadata dihapus pada
   jalur reload dan kedua jalur destructor sebelum alamat digunakan ulang.
 - Rencana patch RAM berisi 33 word: 4 kapasitas/loader, 4 batas descriptor,
-  1 prasyarat P67, 24 word koridor P128. Batas raw 512 dibiarkan utuh sampai
+  1 prasyarat P67, 24 word koridor P128. Dengan profil kondisi kosong, empat word
+  descriptor tetap bernilai stock; perubahan nyata adalah 29 word dari stock
+  dan 26 dari R180. Batas raw 512 dibiarkan utuh sampai
   getter diganti oleh callback berbasis alokasi.
 
 Source dasar adalah branch recovery R183, dengan rollback D-pad R181 yang sudah
@@ -67,8 +69,8 @@ operasi lainnya masih tanpa efek. Kontrol 14/15 kini menulis permission native;
 kesetaraan aksi semua subclass belum terbukti. Opcode 23
 terbatas koridor UJ tertentu, voice belum setara, projectile 27–29 belum dipetakan.
 CPK kini memakai daftar path eksplisit (maksimal 32); penemuan arsip, penggabungan
-parameter, dan siklus selesai-load/unbind belum terintegrasi. Descriptor kondisi dan membership ougi masih generated
-untuk data lama. Factory berbasis profil sekarang terintegrasi untuk 228 selector yang namanya
+parameter, dan siklus selesai-load/unbind belum terintegrasi. Descriptor kondisi
+kini berbasis profil append-only; membership ougi masih generated untuk data lama. Factory berbasis profil sekarang terintegrasi untuk 228 selector yang namanya
 cocok, tetapi 53 nama placeholder, reset global saat factory PC, parameter API
 lainnya, repacking PRM terkompresi,
 lifecycle timer/actor, kamera, audio, serta multi-mod belum selesai diintegrasikan.
@@ -267,3 +269,65 @@ dan wrapper/manager native, mencakup root/handle/alokasi tidak tersedia, bind ga
 ID nol, sukses, prioritas, retry, dan bit ke-31. Operasi CRI, allocator/constructor,
 locking dan logging dimodelkan. Detail ada pada `cpk_profile.json` dan
 `native_cpk.json`. Pengujian seluruh game dan emulator belum dilakukan.
+
+
+## Descriptor kondisi berdasarkan parameter PC
+
+Tabel lima kondisi Tobi yang hardcoded dihapus. Profil default tidak menambah
+kondisi. Compiler membaca satu `conditionprmManager.xfbin` PC yang sudah digabung,
+berformat raw record 112 byte: nama 48 byte, nama reaksi 48 byte, empat uint32.
+Ini berbeda dari `conditionprm.bin.xfbin` game yang menyediakan raw record 176 byte.
+Keduanya tidak boleh diperlakukan sebagai file yang sama.
+
+512 record awal wajib cocok dengan template NSC ModManager commit
+`276116ebf5ba398a867793cb02ee6c33c0927645`, SHA256
+`fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5`.
+Baseline PC direkonstruksi independen dari tabel native pada tes dan hash-nya
+cocok dengan file upstream. Ada satu perbedaan: descriptor103 `AWAKE_1SKR`
+memiliki aura5 pada PC dan aura107 pada Switch. Runtime memakai getter native
+untuk seluruh index stock, sehingga metadata Switch tetap dipertahankan.
+Stock edits/reordering ditolak; tidak diam-diam dianggap kompatibel.
+
+Entri tambahan mempertahankan ordinal PC512..1023. Nama maksimum 48 byte ASCII,
+referensi reaksi diterjemahkan ke index nama pada tabel lengkap. Nama reaksi tak
+tertemukan mengikuti source PC (index0) dan dicatat dalam laporan. Nama tambahan
+yang bertabrakan dengan entri sebelumnya ditolak. Semua field descriptor diteruskan
+sesuai layout 32 byte yang dibuktikan, tanpa mengubah actor. Ini belum membuktikan
+kesetaraan setiap ID efek atau asset yang dirujuk.
+
+```sh
+python tools/compile_condition_profile.py \
+  --param conditionprmManager.xfbin --output condition_component
+```
+
+Opsi `--module` dan `--expected-module-sha256` menyisipkan profil ke module yang
+dibangun tanpa compiler C++ di Android. Input tetap utuh dan output harus direktori
+baru. Keenam urutan konfigurasi factory/CPK/condition menghasilkan NSO akhir yang
+identik. Profil kondisi diperiksa sebelum perubahan game; pemuatan profil saat
+game berjalan tidak didukung.
+
+Empat loop nama/hash native kini memakai jumlah512+entri tambahan yang sama dengan
+getter. Batas tersebut tidak memperbesar alokasi raw176 secara membabi buta:
+raw getter tetap memakai ukuran yang ditangkap dari loader native. Pengujian
+mencakup jumlah512,513,517,1024, termasuk hasil tidak ditemukan dan index invalid.
+Kapasitas descriptor bukan klaim bahwa 1,024 karakter atau semua kondisi sudah
+berhasil dimainkan.
+
+Bukti terbaru: 41,037 profil korup ditolak, sembilan tabel PC invalid ditolak,
+2,578 kasus getter ARM64, 124 lookup melalui empat loop native, 135 pembacaan
+field konsumen native, empat konfigurasi installer, dan 21 kegagalan fingerprint
+installer tanpa pemasangan hook. CRC native dan tabel CRC game dijalankan;
+strcmp/strlen, publikasi hook, logging, dan konteks caller beberapa slice dimodelkan.
+512 descriptor native dibandingkan byte-for-byte, termasuk pointer nama.
+
+Yang masih tertunda: packaging dan keselarasan urutan raw176 companion, pengubahan
+descriptor stock, pemetaan efek lintas-platform, lifecycle penerapan/penghapusan
+kondisi secara penuh, dan gameplay. Profil ini merupakan komponen source, bukan
+paket instalasi atau bukti port ModdingAPI selesai. `PORT_STATUS.json` kini merinci
+11 keluarga parameter: dua memiliki implementasi parsial dan sembilan belum
+memiliki reader generik yang terintegrasi.
+
+Provenance reader PC: [ConditionPrmManager.cpp](https://github.com/TheLeonX/UltimateStormAPI/blob/a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc/xinput9_1_0/ConditionPrmManager.cpp),
+Git blob `3e7aacadca117b56e43f1a5c1d04cdd02aed7b1f`; template NSC ModManager
+Git blob `0e7133223f10eb2dbbb39d2166fdca9352e84c3e`. Metadata blob dikonfirmasi
+melalui GitHub pada commit pinned, bukan menggunakan nama file sebagai bukti versi.

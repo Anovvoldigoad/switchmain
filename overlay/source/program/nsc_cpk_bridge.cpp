@@ -4,7 +4,7 @@
 #include "nsc_cpk_bridge.hpp"
 #include "nsc_runtime_v2.hpp"
 #include "p81_ougi_awake_ids.hpp"
-#include "condition_compat_generated.hpp"
+#include "nsc_condition_profile.hpp"
 #include "nsc_sfx_list_generated.hpp"
 
 #include "lib.hpp"
@@ -470,7 +470,6 @@ std::atomic<uint32_t> g_play_action_logs{0};
 std::atomic<uint32_t> g_action_lookup_logs{0};
 std::atomic<uint32_t> g_action_gate_logs{0};
 std::atomic<uint32_t> g_action_remap_logs{0};
-std::atomic<uint32_t> g_condition_get_logs{0};
 std::atomic<uint32_t> g_condition_event121_logs{0};
 std::atomic<uint32_t> g_uj_start_wrapper_logs{0};
 std::atomic<uint32_t> g_uj_start_state_logs{0};
@@ -2122,23 +2121,12 @@ HOOK_DEFINE_TRAMPOLINE(Event13Hook) {
     }
 };
 
-// P50A: generic dynamic extension of the native 32-byte condition descriptor table.
-// The generated payload can contain entries from any compiled mod set; this
-// callback has no character-ID/name special case.
+// Preserve native descriptors 1..511. Additional entries come only from the
+// validated startup profile; never infer a character or invent a condition.
 HOOK_DEFINE_TRAMPOLINE(ConditionGetterHook) {
     static void* Callback(uint32_t index) {
-        using namespace condition_compat_generated;
-        if (index >= kNativeConditionCount && index < kTotalConditionCount) {
-            const uint32_t slot = index - kNativeConditionCount;
-            const auto* result = &kExtraConditions[slot];
-            const uint32_t n = g_condition_get_logs.fetch_add(1, std::memory_order_relaxed);
-            if (n < 512) {
-                Logging.Log("[NSC:P50A] COND_GET index=%u slot=%u name=%s result=%p",
-                            index, slot, result->name, static_cast<const void*>(result));
-            }
-            return const_cast<condition_compat_generated::ConditionDescriptor*>(result);
-        }
-        return Orig(index);
+        if (index < nsc::condition_profile::kNativeCount) return Orig(index);
+        return const_cast<nsc::condition_profile::Descriptor*>(nsc::condition_profile::Get(index));
     }
 };
 
@@ -2182,7 +2170,7 @@ HOOK_DEFINE_TRAMPOLINE(Event121Hook) {
             uint32_t apply_ret = 0;
             uint32_t executed = 0;
             if (owner && resolved > 0 &&
-                resolved < condition_compat_generated::kTotalConditionCount) {
+                resolved < nsc::condition_profile::TotalCount()) {
                 // Mirror the native helper chain: reacquire the owner immediately
                 // before applying, just as 0x813520..0x813534 does.
                 owner = owner_fn(actor);
@@ -6555,7 +6543,7 @@ bool InstallP63UjRouterTrace() {
 }
 
 bool InstallConditionCompat() {
-    using namespace condition_compat_generated;
+    const auto condition_count = nsc::condition_profile::TotalCount();
     static constexpr uint32_t kGetterExpected[] = {
         0xB000CFCA, 0xF9405D4A, 0x2A0003E9, 0x51000408,
         0x7107F91F, 0x8B091549, 0x9A8983E0, 0xD65F03C0,
@@ -6565,20 +6553,18 @@ bool InstallConditionCompat() {
         0xB4000180, 0xAA0003F4, 0x97FD3EFB, 0xAA1303E0,
     };
 
-    // Paired-main fingerprints are derived from the generated manifest count.
-    // Regenerating the condition table + paired main therefore stays data-driven.
-    static_assert(kTotalConditionCount > kNativeConditionCount &&
-                  kTotalConditionCount <= 0xFFFu,
-                  "generated condition count must fit the paired-main immediates");
+    // These sites were patched in RAM using this same validated profile count.
+    static_assert(nsc::condition_profile::kNativeCount+nsc::condition_profile::kCapacity <= 0xFFFu,
+                  "condition count must fit ARM64 cmp immediate");
     static constexpr uint32_t kRawCountWord =
         0x52804009u; // stock raw-storage fallback; actual count captured separately
-    static constexpr uint32_t kLoopW24Word =
-        0x7100001Fu | (kTotalConditionCount << 10) | (24u << 5); // cmp w24,#count
-    static constexpr uint32_t kLoopW19Word =
-        0x7100001Fu | (kTotalConditionCount << 10) | (19u << 5); // cmp w19,#count
+    const uint32_t kLoopW24Word =
+        0x7100001Fu | (condition_count << 10) | (24u << 5); // cmp w24,#count
+    const uint32_t kLoopW19Word =
+        0x7100001Fu | (condition_count << 10) | (19u << 5); // cmp w19,#count
     static constexpr uint32_t kRawCountExpected[]  = {kRawCountWord};
-    static constexpr uint32_t kLoopW24Expected[]   = {kLoopW24Word};
-    static constexpr uint32_t kLoopW19Expected[]   = {kLoopW19Word};
+    const uint32_t kLoopW24Expected[]   = {kLoopW24Word};
+    const uint32_t kLoopW19Expected[]   = {kLoopW19Word};
 
     bool ok = true;
     if (!MatchWords(kConditionGetterOffset, kGetterExpected)) {
@@ -6625,9 +6611,9 @@ void InstallP50AConditionCompat() {
                 "condition_native=%u condition_extra=%u condition_total=%u "
                 "event121_self=1 vis12_shadow=1 ctrl14_shadow=1 op15_shadow=1 op17_source_parity=1 op18_shadow=1",
                 cpk ? 1 : 0, charcode ? 1 : 0, event236 ? 1 : 0, play ? 1 : 0, cond ? 1 : 0,
-                condition_compat_generated::kNativeConditionCount,
-                condition_compat_generated::kExtraConditionCount,
-                condition_compat_generated::kTotalConditionCount);
+                nsc::condition_profile::kNativeCount,
+                nsc::condition_profile::Count(),
+                nsc::condition_profile::TotalCount());
 }
 
 

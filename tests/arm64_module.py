@@ -9,12 +9,12 @@ G=[getattr(ar,'UC_ARM64_REG_X'+str(i)) for i in range(31)]
 def align(n): return (n+4095)&~4095
 def w64(u,p,v): u.mem_write(p,struct.pack('<Q',v))
 def qword(u,p): return struct.unpack('<Q',u.mem_read(p,8))[0]
-def call(u,at,args):
+def call(u,at,args,instruction_budget=2000000):
     saved=[0xa0000000+i for i in range(11)]
     for i,v in enumerate(saved): u.reg_write(G[19+i],v)
     for i,v in enumerate(args): u.reg_write(G[i],v)
     u.reg_write(ar.UC_ARM64_REG_SP,S+0xfff0);u.reg_write(ar.UC_ARM64_REG_LR,STOP)
-    u.emu_start(at,STOP,count=2000000)
+    u.emu_start(at,STOP,count=instruction_budget)
     assert u.reg_read(ar.UC_ARM64_REG_PC)==STOP, hex(u.reg_read(ar.UC_ARM64_REG_PC))
     assert u.reg_read(ar.UC_ARM64_REG_SP)==S+0xfff0
     assert [u.reg_read(G[19+i]) for i in range(11)]==saved

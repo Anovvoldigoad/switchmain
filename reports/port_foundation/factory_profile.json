@@ -8,10 +8,10 @@
   "mapping_lookup_cases": 2051,
   "lz4_differential_cases": 24,
   "nso_profile_edit": {
-    "template_sha256": "56935b6886d57507e72e6b7691c7dc3635cfddb6e78ab77d13bb3d118bb562c9",
-    "configured_sha256": "becc42454b593099c8ec7b03f49530ac2a380fa08c3df8437f75789c31601c1b",
+    "template_sha256": "d9d2c43d3270d413e71a4472fabbc8403a634ab37c2ec30381b1ff40595778ef",
+    "configured_sha256": "650040aadfb93c9c132b2d16688e050ad4e8584b0d771278c92d590006beacfe",
     "profile_sha256": "c9283a0c3b495af686bfa0fc5aa03a589e8d4752db5d0dc5276078573145f0b2",
-    "profile_data_offset": 8736,
+    "profile_data_offset": 49632,
     "text_rodata_unchanged": true,
     "gameplay_verified": false,
     "full_moddingapi": false,

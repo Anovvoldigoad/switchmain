@@ -1,5 +1,5 @@
 #include "nsc_runtime_v2.hpp"
-#include "condition_compat_generated.hpp"
+#include "nsc_condition_profile.hpp"
 #include "lib.hpp"
 #include <lib/patch/random_access_patcher.hpp>
 #include <lib/util/modules.hpp>
@@ -294,7 +294,7 @@ bool RuntimeMainPatchesReady() {
 }
 
 bool InstallOriginalMainRuntimePatches() {
-    using namespace condition_compat_generated;
+    const auto condition_count = nsc::condition_profile::TotalCount();
     if (!g_resolver_ready || g_uj_session_post_offset < 0) {
         Logging.Log("[NSC:V2D] PATCH_FAIL reason=resolver_not_ready");
         return false;
@@ -359,9 +359,9 @@ bool InstallOriginalMainRuntimePatches() {
         0x540000E2u,0xF9410EEAu,0xB40000AAu,0xB9402D4Au,0x710B0D5Fu,
         0x54000041u,0x14000002u,0x1400003Du,0x17FFFFE1u};
 
-    static_assert(kTotalConditionCount <= 0xFFFu, "condition count immediate overflow");
-    const std::uint32_t cond_w24 = 0x7100001Fu | (kTotalConditionCount << 10) | (24u << 5);
-    const std::uint32_t cond_w19 = 0x7100001Fu | (kTotalConditionCount << 10) | (19u << 5);
+    static_assert(nsc::condition_profile::kNativeCount+nsc::condition_profile::kCapacity <= 0xFFFu, "condition count immediate overflow");
+    const std::uint32_t cond_w24 = 0x7100001Fu | (condition_count << 10) | (24u << 5);
+    const std::uint32_t cond_w19 = 0x7100001Fu | (condition_count << 10) | (19u << 5);
 
     WordPatch plan[33]{};
     std::size_t n = 0;

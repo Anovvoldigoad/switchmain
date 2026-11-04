@@ -6,31 +6,18 @@
   "direct_patch_rejections": 5,
   "invalid_profile_before_writes": true,
   "invalid_cpk_profile_before_writes": true,
-  "stock_changed_words": 33,
-  "r180_changed_words": 30,
+  "invalid_condition_profile_before_writes": true,
+  "configured_condition_counts": [
+    512,
+    513,
+    517,
+    1024
+  ],
+  "stock_changed_words": 29,
+  "r180_changed_words": 26,
   "outputs_identical": true,
-  "patched_text_sha256": "7ddef5dcde94d3cf1def46dbaf1dbdbdb06fc39640b0dfe327abaf1fce6de71c",
+  "patched_text_sha256": "eb7c86bd5819e74d292cf2d70874e93a93b523b2de7783ee9ff8b41084216d93",
   "words": [
-    {
-      "offset": "0x7774dc",
-      "before": "0x7108031f",
-      "after": "0x7108171f"
-    },
-    {
-      "offset": "0x777770",
-      "before": "0x7108027f",
-      "after": "0x7108167f"
-    },
-    {
-      "offset": "0x777938",
-      "before": "0x7108027f",
-      "after": "0x7108167f"
-    },
-    {
-      "offset": "0x777a6c",
-      "before": "0x7108027f",
-      "after": "0x7108167f"
-    },
     {
       "offset": "0x77c480",
       "before": "0x54000b81",

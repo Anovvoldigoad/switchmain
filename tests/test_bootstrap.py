@@ -2,9 +2,11 @@
 Only platform memory writes/cache flush and downstream hook installation are
 modeled here. Native gameplay execution is a separate test.
 """
-import argparse, ctypes, hashlib, json, struct, subprocess, tempfile
+import argparse, ctypes, hashlib, json, struct, subprocess, tempfile, sys
 from pathlib import Path
 R=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(R/'tools'))
+from portlib.condition_profile import encode as condition_encode
 def run(stock,r180,output):
     src=R/'overlay/source/program'
     with tempfile.TemporaryDirectory() as td:
@@ -12,7 +14,7 @@ def run(stock,r180,output):
         subprocess.run(['gcc','-O2','-fPIC','-c',str(src/'nsc_sha256.c'),'-o',str(td/'sha.o')],check=True)
         subprocess.run(['g++','-std=c++20','-O2','-shared','-fPIC','-Werror','-Wall','-Wextra',
             '-I'+str(R/'tests/host'),'-I'+str(src),str(R/'tests/host/harness.cpp'),
-            str(src/'nsc_runtime_core.cpp'),str(src/'nsc_controls.cpp'),str(src/'nsc_cpk_profile.cpp'),str(src/'nsc_cpk_profile_data.cpp'),str(src/'nsc_factory.cpp'),str(src/'nsc_factory_profile.cpp'),str(src/'nsc_runtime_v2.cpp'),str(src/'nsc_image_guard.cpp'),
+            str(src/'nsc_runtime_core.cpp'),str(src/'nsc_controls.cpp'),str(src/'nsc_condition_profile.cpp'),str(src/'nsc_condition_profile_data.cpp'),str(src/'nsc_cpk_profile.cpp'),str(src/'nsc_cpk_profile_data.cpp'),str(src/'nsc_factory.cpp'),str(src/'nsc_factory_profile.cpp'),str(src/'nsc_runtime_v2.cpp'),str(src/'nsc_image_guard.cpp'),
             str(td/'sha.o'),'-o',str(td/'core.so')],check=True)
         lib=ctypes.CDLL(str(td/'core.so'))
         for name in ['run_init','run_patch','profile']:
@@ -36,8 +38,12 @@ def run(stock,r180,output):
         cpk_profile[0]^=1
         assert lib.run_init(buf,len(a))==0 and lib.writes()==0 and lib.hooks()==0
         cpk_profile[0]^=1
+        condition_profile=(ctypes.c_ubyte*(64+512*80)).in_dll(lib,'nsc_condition_profile')
+        condition_profile[0]^=1
+        assert lib.run_init(buf,len(a))==0 and lib.writes()==0 and lib.hooks()==0
+        condition_profile[0]^=1
         final=[]
-        for data,p,changed in [(a,1,33),(b,2,30)]:
+        for data,p,changed in [(a,1,29),(b,2,26)]:
             buf=ctypes.create_string_buffer(data,len(data))
             assert lib.profile(buf,len(data))==p
             assert lib.profile(buf,len(data)-1)==0
@@ -52,7 +58,8 @@ def run(stock,r180,output):
         assert final[0]==final[1]
         sites=[i for i in range(0,len(a),4) if a[i:i+4]!=final[0][i:i+4]]
         # Every unsupported full-image mutation is rejected BEFORE writes/hooks.
-        for off in sites+[0,0x2000,len(a)-1]:
+        mutation_sites=sorted(set(sites+[0x7774dc,0x777770,0x777938,0x777a6c,0,0x2000,len(a)-1]))
+        for off in mutation_sites:
             bad=bytearray(a); bad[off]^=1
             buf=ctypes.create_string_buffer(bytes(bad),len(bad))
             assert lib.run_init(buf,len(bad))==0
@@ -63,11 +70,22 @@ def run(stock,r180,output):
             bad=bytearray(a);bad[off]^=1
             buf=ctypes.create_string_buffer(bytes(bad),len(bad))
             assert lib.run_patch(buf,len(bad))==0 and lib.writes()==0
+        condition_counts=[]
+        for count in [0,1,5,512]:
+            payload=condition_encode([dict(name=f'TEST_{i}',reaction=0,state=0,icon=0,status=5,aura=5) for i in range(count)])
+            ctypes.memmove(condition_profile,payload,len(payload))
+            buf=ctypes.create_string_buffer(a,len(a))
+            assert lib.run_init(buf,len(a))==1 and lib.writes()==33
+            for off,reg in [(0x7774dc,24),(0x777770,19),(0x777938,19),(0x777a6c,19)]:
+                assert struct.unpack_from('<I',buf.raw,off)[0]==0x7100001f|((512+count)<<10)|(reg<<5)
+            condition_counts.append(512+count)
+        ctypes.memmove(condition_profile,condition_encode([]),len(payload))
         output.mkdir(parents=True,exist_ok=True)
         (output/'patched.text').write_bytes(final[0])
         report={'status':'PASS','sha256_cases':14,'supported_profiles':2,
-          'rejected_mutated_images':len(sites)+3,'direct_patch_rejections':5,'invalid_profile_before_writes':True,'invalid_cpk_profile_before_writes':True,
-          'stock_changed_words':33,'r180_changed_words':30,'outputs_identical':True,
+          'rejected_mutated_images':len(mutation_sites),'direct_patch_rejections':5,'invalid_profile_before_writes':True,'invalid_cpk_profile_before_writes':True,
+          'invalid_condition_profile_before_writes':True,
+          'configured_condition_counts':condition_counts,'stock_changed_words':29,'r180_changed_words':26,'outputs_identical':True,
           'patched_text_sha256':hashlib.sha256(final[0]).hexdigest(),
           'words':[{'offset':hex(i),'before':hex(struct.unpack_from('<I',a,i)[0]),
                     'after':hex(struct.unpack_from('<I',final[0],i)[0])} for i in sites],

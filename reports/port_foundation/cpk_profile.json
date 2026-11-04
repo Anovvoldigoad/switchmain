@@ -13,10 +13,10 @@
   "invalid_replacement_preserves_registered_ids": true,
   "factory_cpk_edits_commute": true,
   "module_edit": {
-    "template_sha256": "56935b6886d57507e72e6b7691c7dc3635cfddb6e78ab77d13bb3d118bb562c9",
-    "configured_sha256": "9550f976e52726ffde62f02ccb6f50a0cdab70f65b9ab59b4b1c153755a0dabc",
+    "template_sha256": "d9d2c43d3270d413e71a4472fabbc8403a634ab37c2ec30381b1ff40595778ef",
+    "configured_sha256": "a93735d2d1e07ae67ce99e2d55b0bc0885ae35549eace805978a63f4b52866df",
     "profile_sha256": "c0bb6022175f7829f87a81413fe81c1d51f8aca3caef6b675a114e1f4954bb36",
-    "profile_data_offset": 2016,
+    "profile_data_offset": 42912,
     "text_rodata_unchanged": true,
     "gameplay_verified": false,
     "full_moddingapi": false,

@@ -33,7 +33,8 @@ def run(text_path,elf_path,out):
     u.reg_write(ar.UC_ARM64_REG_CPACR_EL1,3<<20)
     with elf_path.open('rb') as f:
         elf=ELFFile(f);segs=[s for s in elf.iter_segments() if s['p_type']=='PT_LOAD']
-        u.mem_map(D,align(max(s['p_vaddr']+s['p_memsz'] for s in segs)),7)
+        module_end=align(max(s['p_vaddr']+s['p_memsz'] for s in segs))
+        u.mem_map(D,module_end,7)
         for s in segs:u.mem_write(D+s['p_vaddr'],s.data())
         symbols={s.name:s['st_value'] for s in elf.get_section_by_name('.symtab').iter_symbols()}
         dyn=elf.get_section_by_name('.dynsym');unresolved=set()
@@ -114,7 +115,7 @@ def run(text_path,elf_path,out):
     # Exercise exlaunch's actual register-saving assembly with the exact entry
     # layout emitted by pinned inline_impl.cpp, then a displaced STR. The
     # entry/trampoline construction is modeled; their instructions execute.
-    J=D+0x40000;u.mem_map(J,4096,7)
+    J=D+module_end;u.mem_map(J,4096,7)
     impl=D+symbols['exl_inline_hook_impl']
     def branch(at,target,link=False):
         delta=target-at;assert delta%4==0 and -(1<<27)<=delta<(1<<27)

@@ -6,6 +6,7 @@
 #include "nsc_factory.hpp"
 #include "nsc_controls.hpp"
 #include "nsc_cpk_profile.hpp"
+#include "nsc_condition_profile.hpp"
 #include "lib.hpp"
 
 namespace nsc::runtime {
@@ -25,6 +26,10 @@ bool Initialize() {
     }
     if (!nsc::cpk::LoadEmbeddedProfile()) {
         Logging.Log("[NSC:PORT] INIT_REJECT reason=invalid_cpk_profile game_writes=0");
+        return false;
+    }
+    if (!nsc::condition_profile::LoadEmbeddedProfile()) {
+        Logging.Log("[NSC:PORT] INIT_REJECT reason=invalid_condition_profile game_writes=0");
         return false;
     }
     if (!nsc::controls::Initialize()) {
