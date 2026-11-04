@@ -13,6 +13,7 @@ cp "$ROOT/overlay/source/program/nsc_sha256.h" "$EXL/source/program/nsc_sha256.h
 cp "$ROOT/overlay/source/program/nsc_condition_storage.cpp" "$EXL/source/program/nsc_condition_storage.cpp"
 cp "$ROOT/overlay/source/program/nsc_condition_storage.hpp" "$EXL/source/program/nsc_condition_storage.hpp"
 cp "$ROOT/overlay/source/program/nsc_condition_hooks.cpp" "$EXL/source/program/nsc_condition_hooks.cpp"
+cp "$ROOT/overlay/source/program/nsc_event_ownership.hpp" "$EXL/source/program/nsc_event_ownership.hpp"
 cp "$ROOT/overlay/source/program/nsc_factory.hpp" "$EXL/source/program/nsc_factory.hpp"
 cp "$ROOT/overlay/source/program/nsc_factory.cpp" "$EXL/source/program/nsc_factory.cpp"
 cp "$ROOT/overlay/source/program/nsc_factory_hooks.cpp" "$EXL/source/program/nsc_factory_hooks.cpp"

@@ -70,7 +70,7 @@
     "0x747870",
     "0x7cab00"
   ],
-  "module_sha256": "12d62bf117f45727b8429b7f34a959e8e3b859a51a8994fe2119ef5eeb7f2778",
+  "module_sha256": "cd29619774b114c6f70f34857f7ef1ce188d0ef4d9fe043b691fb4cd4b6376d3",
   "actual_arm64_executed": true,
   "emulator_gameplay_tested": false,
   "modeled": [

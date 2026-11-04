@@ -61,13 +61,14 @@ emulator Android.
 
 ## Pekerjaan yang masih menghalangi port penuh
 
-Dispatcher masih menyaring berdasarkan ID karakter; operasi 12/13/18 dan banyak
+Dispatcher Event236 kini mengenali penanda eksplisit pada PRM hasil konversi;
+sejumlah helper legacy masih menyaring ID karakter. Operasi 12/13/18 dan banyak
 operasi lainnya masih tanpa efek, kontrol 14/15 terbatas selector 1, opcode 23
 terbatas koridor UJ tertentu, voice belum setara, projectile 27–29 belum dipetakan.
 CPK masih satu path Tobi; descriptor kondisi dan membership ougi masih generated
 untuk data lama. Factory berbasis profil sekarang terintegrasi untuk 228 selector yang namanya
 cocok, tetapi 53 nama placeholder, reset global saat factory PC, parameter API
-lainnya, kepemilikan event,
+lainnya, integrasi konversi event ke CPK final,
 lifecycle timer/actor, kamera, audio, serta multi-mod belum selesai diintegrasikan.
 
 Tidak ada dasar untuk menyebut binary ini “full API” atau meminta pengguna
@@ -123,3 +124,36 @@ selector kelas 58 mempertahankan ID roster 145, 281, atau 457, mode dan sisi.
 Callback native menyeleksi kelas, bukan mengganti ID di actor. Lifetime,
 resource loading, reset global ModdingAPI PC, dan subclass behavior penuh masih
 belum terbukti. Rincian batas model ada di `native_factory.json`.
+
+## Kepemilikan Event236 dan koreksi audit PRM
+
+Event236 bawaan adalah perintah enemy-hide. Menganggap semua event236 dari
+karakter >280 sebagai ModdingAPI menyebabkan salah klasifikasi dan mengecualikan
+mod yang mengganti ID stock. Runtime sekarang menerima event API hanya jika
+record236 memiliki penanda uint16 `0x4E53` pada offset `0x2A` dan opcode1..29.
+Record tanpa penanda menjalankan callback native; record bertanda dengan opcode
+invalid atau role yang belum didukung dikonsumsi tanpa menjalankan enemy-hide.
+
+`tools/mark_api_events.py` mengonversi plaintext PRM yang **sudah diketahui**
+memakai PC ModdingAPI. Field penanda harus nol atau penanda yang sama. Tool tidak
+menebak dari ID karakter. Event236 opcode0/unknown tetap native. Converter ini
+belum terhubung ke pembuat CPK final: **CPK lama belum berpenanda tidak boleh
+langsung dipasangkan dengan module branch ini sebagai paket selesai**.
+
+Aturan panjang record diambil dari instruksi pembaca Switch, termasuk predicate
+`0x7938D0`, bukan tebakan berdasarkan adanya kata DMG pada string suara.
+Pemeriksaan terhadap input Tobi memperbaiki hitungan lama: 4,876 function record,
+566 event236 = 561 operasi API + 5 operasi native. Opcode26 berjumlah **9**, bukan
+4. Lima string suara sebelumnya salah dianggap bagian damage extension oleh
+analisis lama. Konverter baru hanya mengubah 1,122 byte penanda pada 561 record.
+
+Bukti ARM64: 11,042 kasus pembacaan record, termasuk seluruh 4,876 record Tobi
+sebelum/sesudah konversi, serta 378 kasus dispatcher dengan ID0/145/276/280/281/
+1023/1024, side0/1/2, marked/unmarked/foreign marker, opcode0/3/30, dan ada/tidaknya
+musuh. Instruksi native mempertahankan penanda saat raw64/160-byte record menjadi
+runtime72-byte record. Dispatcher asli menjalankan callback compiled; perubahan
+skill pada opcode3 hanya terjadi pada event API yang valid. Enemy lookup dan
+method visibility musuh dimodelkan, sehingga ini bukan bukti rendering/gameplay.
+
+Perubahan ini tidak mengisi operasi MovesetPlus yang masih shadow/no-op. Full API,
+paket gameplay, dan kecocokan emulator tetap belum selesai/diverifikasi.

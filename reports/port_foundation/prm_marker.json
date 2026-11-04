@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "malformed_inputs_rejected": 12,
+  "marked_records": 2,
+  "native_records_unchanged": 3,
+  "idempotent": true,
+  "sound_string_not_used_as_record_size": true,
+  "gameplay_verified": false
+}

@@ -1,3 +1,4 @@
+#include "nsc_event_ownership.hpp"
 #include "nsc_cpk_bridge.hpp"
 #include "nsc_runtime_v2.hpp"
 #include "p81_ougi_awake_ids.hpp"
@@ -2567,11 +2568,17 @@ HOOK_DEFINE_TRAMPOLINE(R166SoundDispatchProbeHook) {
 
 // P43A: O14 pure shadow (layout rejected) + explicit OP15/17/18 Kamui shadows.
 // ME_ENEMY_DISP_OFF, but UltimateStormAPI uses event236 as an extension
-// container with opcode at +0x24. Valid extension opcodes never fall back to
-// native enemy-hide; unported operations are intentionally shadow/no-op.
+// container with opcode at +0x24. Only converter-marked records enter this
+// dispatcher. Untagged records retain native enemy-hide semantics. Unported
+// marked operations remain shadow/no-op until their native mappings are proven.
 HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
     static uint32_t Callback(void* actor, void* event_ptr) {
         if (!actor || !event_ptr) return Orig(actor, event_ptr);
+
+        const auto ownership = nsc::events::Classify(event_ptr);
+        if (ownership == nsc::events::Ownership::Native) return Orig(actor, event_ptr);
+        // A marked but unsupported operation must never become enemy-hide.
+        if (ownership == nsc::events::Ownership::InvalidApi) return 1u;
 
         auto* actor_bytes = reinterpret_cast<volatile uint8_t*>(actor);
         const uint32_t side = *reinterpret_cast<volatile uint32_t*>(actor_bytes + 0xE50);
@@ -2583,13 +2590,10 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
         const float p4 = *reinterpret_cast<const float*>(event + 0x2C);
         const P55ActorState p55_pre = ReadP55ActorState(actor);
 
-        // Fail closed to exact native semantics for vanilla/non-custom actors or
-        // implausible event data. v1.70 vanilla max charID is proven as 280;
-        // custom compiler IDs begin at 281, so this remains generic for future mods.
-        if (side > 1 || char_id <= kVanillaMaxCharId || char_id >= 0x1000 ||
-            op < 1 || op > 29) {
-            return Orig(actor, event_ptr);
-        }
+        // Ownership comes from converted event data, never the roster ID.
+        // Unsupported actor roles are consumed without applying an operation;
+        // they cannot fall through to the native enemy-hide callback.
+        if (side > 1 || char_id >= 1024) return 1u;
 
         if (ShouldTraceEvent236(op, p3) &&
             g_event236_logs.fetch_add(1, std::memory_order_relaxed) < 2048) {

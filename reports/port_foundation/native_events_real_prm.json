@@ -1,0 +1,40 @@
+{
+  "status": "PASS",
+  "native_reader_cases": 11042,
+  "native_damage_predicate_cases": 305,
+  "native_dispatch_cases": 378,
+  "real_prm": {
+    "source_sha256": "70c84800b92a398bc5a58be663c6337c724bed9786d46d1f65fcc2aee2be6f3a",
+    "output_sha256": "9dfe0eb60531b8a391b8c8971aada4f4cb96bf1963abe7950ad6dd043dec536b",
+    "function_records": 4876,
+    "marked_records": 561,
+    "already_marked": 0,
+    "native_event236_preserved": 5,
+    "gameplay_verified": false,
+    "full_moddingapi": false
+  },
+  "module_elf_sha256": "cd29619774b114c6f70f34857f7ef1ce188d0ef4d9fe043b691fb4cd4b6376d3",
+  "native_functions": [
+    "reader 0x81d120..0x81d384",
+    "damage predicate 0x7938d0",
+    "dispatcher 0x782e44",
+    "enemy-hide 0x816300"
+  ],
+  "compiled_callback_executed": true,
+  "marker": "0x4e53",
+  "roster_id_threshold_removed": true,
+  "modeled": [
+    "OS/RTLD relocation",
+    "table callback publication",
+    "damage allocator/string helpers",
+    "enemy lookup and enemy visibility method bodies",
+    "diagnostic output"
+  ],
+  "not_proven": [
+    "complete resource loader lifetime",
+    "all API operation effects",
+    "emulator gameplay"
+  ],
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

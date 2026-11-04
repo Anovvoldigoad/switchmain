@@ -13,10 +13,12 @@
     "condition storage retirement on native reload and both destructor free paths",
     "bounded configurable factory selector registry; 228 charcode-matched selectors; unknown placeholders rejected",
     "PC specialCondParam reader and Python-only Android NSO data-profile packer",
-    "native factory hook preserves caller roster identity in tested initialization slices"
+    "native factory hook preserves caller roster identity in tested initialization slices",
+    "explicit converted-PRM ownership marker for Event236, independent of roster ID",
+    "native reader-verified PRM conversion; original enemy-hide preserved for unmarked events"
   ],
   "blocking_gaps": [
-    "Event236 ownership still uses the legacy character-ID threshold",
+    "new marker protocol must be integrated into final CPK packaging; legacy helper-specific character filters still require review",
     "MovesetPlus operations still shadowed or narrowed in inherited runtime",
     "generic multi-mod CPK discovery and 11 parameter families not integrated",
     "53 PC factory names remain unverified against Switch placeholders; PC create-time global resets and complete actor/resource lifecycle not ported",
@@ -27,6 +29,9 @@
     "reports/port_foundation/native_storage.json",
     "reports/port_foundation/binary.json",
     "reports/port_foundation/factory_profile.json",
-    "reports/port_foundation/native_factory.json"
+    "reports/port_foundation/native_factory.json",
+    "reports/port_foundation/prm_marker.json",
+    "reports/port_foundation/native_events.json",
+    "reports/port_foundation/native_events_real_prm.json"
   ]
 }

@@ -33,6 +33,10 @@ jobs:
         run: python tests/test_factory_profile.py --module exlaunch/deploy/subsdk9 --output proof-work
       - name: Execute native factory dispatch and roster identity slices
         run: python tests/test_native_factory.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Validate explicit API event conversion
+        run: python tests/test_prm_marker.py --output proof-work
+      - name: Execute native PRM loading and event ownership
+        run: python tests/test_native_events.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
       - name: Verify generated module
         run: python tools/verify_binary.py --nso exlaunch/deploy/subsdk9 --elf exlaunch/runtime_r183.elf --output proof-work/binary.json
       - uses: actions/upload-artifact@v4
