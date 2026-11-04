@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Install the pinned Linux x86_64 build tools into an isolated directory."""
-import argparse,hashlib,subprocess,urllib.request,tarfile,shutil
+import argparse,hashlib,subprocess,shutil
 from pathlib import Path
 REPOS={
  'a64-rules':('https://github.com/devkitPro/devkitA64-rules.git','b037940200a5a9a87888743fb83d7a87e348c8e7'),
@@ -12,7 +12,10 @@ SHA='7d936cb38809c6b70863bbc345f15ed2f26f9186e3f20b9b16c714a122d2697c'
 def run(*args):subprocess.run(args,check=True)
 def install(root):
  root=root.resolve();root.mkdir(parents=True,exist_ok=True);archive=root/'devkitA64.pkg.tar.zst'
- if not archive.exists():urllib.request.urlretrieve(URL,archive)
+ if not archive.exists():
+  partial=archive.with_suffix('.download')
+  run('curl','--fail','--location','--retry','3','--connect-timeout','30','--max-time','240',URL,'--output',str(partial))
+  partial.replace(archive)
  if hashlib.sha256(archive.read_bytes()).hexdigest()!=SHA:raise ValueError('Toolchain archive SHA256 mismatch')
  run('tar','--zstd','-xf',str(archive),'-C',str(root))
  for name,(url,sha) in REPOS.items():
