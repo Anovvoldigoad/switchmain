@@ -28,6 +28,9 @@ cp "$ROOT/overlay/source/program/p81_ougi_awake_ids.hpp" "$EXL/source/program/p8
 cp "$ROOT/overlay/source/program/nsc_sfx_list_generated.hpp" "$EXL/source/program/nsc_sfx_list_generated.hpp"
 cp "$ROOT/overlay/source/program/nsc_controls.cpp" "$EXL/source/program/nsc_controls.cpp"
 cp "$ROOT/overlay/source/program/nsc_controls.hpp" "$EXL/source/program/nsc_controls.hpp"
+cp "$ROOT/overlay/source/program/nsc_cpk_profile.hpp" "$EXL/source/program/nsc_cpk_profile.hpp"
+cp "$ROOT/overlay/source/program/nsc_cpk_profile.cpp" "$EXL/source/program/nsc_cpk_profile.cpp"
+cp "$ROOT/overlay/source/program/nsc_cpk_profile_data.cpp" "$EXL/source/program/nsc_cpk_profile_data.cpp"
 python3 - "$EXL/config.mk" <<'PY'
 from pathlib import Path
 import re, sys

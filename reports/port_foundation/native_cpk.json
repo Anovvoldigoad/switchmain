@@ -1,0 +1,66 @@
+{
+  "status": "PASS",
+  "native_failure_modes": [
+    {
+      "mode": "no_root",
+      "return": 0,
+      "valid_id": false
+    },
+    {
+      "mode": "no_binder",
+      "return": 1,
+      "valid_id": false
+    },
+    {
+      "mode": "no_allocation",
+      "return": 1,
+      "valid_id": false
+    },
+    {
+      "mode": "bind_rejected",
+      "return": 0,
+      "valid_id": false
+    },
+    {
+      "mode": "zero_id",
+      "return": 1,
+      "valid_id": false
+    },
+    {
+      "mode": "success",
+      "return": 1,
+      "valid_id": true
+    }
+  ],
+  "registration_scenarios": 19,
+  "capacity": 32,
+  "failed_only_retry": true,
+  "original_result_and_id_preserved": true,
+  "native_priority_argument_chain_verified": true,
+  "no_new_hook_sites": true,
+  "native_functions": [
+    "0x473190 binder wrapper",
+    "0x115fbb8 normal path adapter",
+    "0x115e80c manager including allocation-failure return",
+    "0x115e8e0 vector insertion (preallocated)",
+    "0x115f2bc default priority wrapper"
+  ],
+  "module_elf_sha256": "a3570f0d7f763bcac7dcbf6b93ea0d14f74d0139de3cc00a6383805537e40bd0",
+  "modeled": [
+    "RTLD/hook publication",
+    "native allocator and object constructor",
+    "CRI bind operation/returned ID",
+    "CRI priority service",
+    "locking and logging"
+  ],
+  "not_proven": [
+    "CRI async completion",
+    "archive lookup precedence",
+    "game loader teardown/rebind",
+    "directory discovery",
+    "parameter merging",
+    "emulator gameplay"
+  ],
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

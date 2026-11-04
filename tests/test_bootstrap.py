@@ -12,7 +12,7 @@ def run(stock,r180,output):
         subprocess.run(['gcc','-O2','-fPIC','-c',str(src/'nsc_sha256.c'),'-o',str(td/'sha.o')],check=True)
         subprocess.run(['g++','-std=c++20','-O2','-shared','-fPIC','-Werror','-Wall','-Wextra',
             '-I'+str(R/'tests/host'),'-I'+str(src),str(R/'tests/host/harness.cpp'),
-            str(src/'nsc_runtime_core.cpp'),str(src/'nsc_controls.cpp'),str(src/'nsc_factory.cpp'),str(src/'nsc_factory_profile.cpp'),str(src/'nsc_runtime_v2.cpp'),str(src/'nsc_image_guard.cpp'),
+            str(src/'nsc_runtime_core.cpp'),str(src/'nsc_controls.cpp'),str(src/'nsc_cpk_profile.cpp'),str(src/'nsc_cpk_profile_data.cpp'),str(src/'nsc_factory.cpp'),str(src/'nsc_factory_profile.cpp'),str(src/'nsc_runtime_v2.cpp'),str(src/'nsc_image_guard.cpp'),
             str(td/'sha.o'),'-o',str(td/'core.so')],check=True)
         lib=ctypes.CDLL(str(td/'core.so'))
         for name in ['run_init','run_patch','profile']:
@@ -32,6 +32,10 @@ def run(stock,r180,output):
         buf=ctypes.create_string_buffer(a,len(a))
         assert lib.run_init(buf,len(a))==0 and lib.writes()==0 and lib.hooks()==0
         embedded[0]^=1
+        cpk_profile=(ctypes.c_ubyte*(64+32*208)).in_dll(lib,'nsc_cpk_profile')
+        cpk_profile[0]^=1
+        assert lib.run_init(buf,len(a))==0 and lib.writes()==0 and lib.hooks()==0
+        cpk_profile[0]^=1
         final=[]
         for data,p,changed in [(a,1,33),(b,2,30)]:
             buf=ctypes.create_string_buffer(data,len(data))
@@ -62,7 +66,7 @@ def run(stock,r180,output):
         output.mkdir(parents=True,exist_ok=True)
         (output/'patched.text').write_bytes(final[0])
         report={'status':'PASS','sha256_cases':14,'supported_profiles':2,
-          'rejected_mutated_images':len(sites)+3,'direct_patch_rejections':5,'invalid_profile_before_writes':True,
+          'rejected_mutated_images':len(sites)+3,'direct_patch_rejections':5,'invalid_profile_before_writes':True,'invalid_cpk_profile_before_writes':True,
           'stock_changed_words':33,'r180_changed_words':30,'outputs_identical':True,
           'patched_text_sha256':hashlib.sha256(final[0]).hexdigest(),
           'words':[{'offset':hex(i),'before':hex(struct.unpack_from('<I',a,i)[0]),

@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "corrupt_profiles_rejected": 6740,
+  "invalid_manifests_rejected": 8,
+  "capacity_cases": [
+    0,
+    1,
+    31,
+    32
+  ],
+  "reentry_no_duplicate_registration": true,
+  "concurrent_callback_no_duplicate_registration": true,
+  "invalid_replacement_preserves_registered_ids": true,
+  "factory_cpk_edits_commute": true,
+  "module_edit": {
+    "template_sha256": "56935b6886d57507e72e6b7691c7dc3635cfddb6e78ab77d13bb3d118bb562c9",
+    "configured_sha256": "9550f976e52726ffde62f02ccb6f50a0cdab70f65b9ab59b4b1c153755a0dabc",
+    "profile_sha256": "c0bb6022175f7829f87a81413fe81c1d51f8aca3caef6b675a114e1f4954bb36",
+    "profile_data_offset": 2016,
+    "text_rodata_unchanged": true,
+    "gameplay_verified": false,
+    "full_moddingapi": false,
+    "cpk_entries": 2
+  },
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

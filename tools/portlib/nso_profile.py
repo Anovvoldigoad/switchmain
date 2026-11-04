@@ -69,23 +69,23 @@ def segments(nso):
     return rows
 
 
-def configure(nso, profile, expected_sha256):
+def configure_payload(nso, profile, expected_sha256, magic, profile_size, validate):
     if len(expected_sha256) != 64 or hashlib.sha256(nso).hexdigest() != expected_sha256:
         raise ValueError('Input module SHA256 mismatch')
-    decode(profile)
+    validate(profile)
     rows = segments(nso)
     data = rows[2][1]
     locations, pos = [], 0
     while True:
-        pos = data.find(MAGIC, pos)
+        pos = data.find(magic, pos)
         if pos < 0:
             break
         locations.append(pos); pos += 1
     if len(locations) != 1:
         raise ValueError('Expected exactly one embedded profile in module data')
     pos = locations[0]
-    decode(data[pos:pos+PROFILE_SIZE])
-    changed = data[:pos] + profile + data[pos+PROFILE_SIZE:]
+    validate(data[pos:pos+profile_size])
+    changed = data[:pos] + profile + data[pos+profile_size:]
     header = bytearray(nso[:256])
     flags = struct.unpack_from('<I', header, 12)[0]
     struct.pack_into('<I', header, 12, flags & ~4)  # data becomes uncompressed
@@ -104,6 +104,12 @@ def configure(nso, profile, expected_sha256):
     return result, {'template_sha256': expected_sha256,
                     'configured_sha256': hashlib.sha256(result).hexdigest(),
                     'profile_sha256': hashlib.sha256(profile).hexdigest(),
-                    'profile_data_offset': pos, 'class_mappings': len(decode(profile)),
+                    'profile_data_offset': pos,
                     'text_rodata_unchanged': True, 'gameplay_verified': False,
                     'full_moddingapi': False}
+
+
+def configure(nso, profile, expected_sha256):
+    result, report = configure_payload(nso, profile, expected_sha256, MAGIC, PROFILE_SIZE, decode)
+    report['class_mappings'] = len(decode(profile))
+    return result, report

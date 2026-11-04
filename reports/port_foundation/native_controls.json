@@ -205,7 +205,7 @@
   "native_setter_offset": "0x93d8",
   "native_clear_offset": "0x93c4",
   "native_permission_array": "0x1214c",
-  "module_elf_sha256": "aa4b2e39ac23a7b881b64e4fc7fe9013749a027704eb963c031b8f714178e850",
+  "module_elf_sha256": "a3570f0d7f763bcac7dcbf6b93ea0d14f74d0139de3cc00a6383805537e40bd0",
   "modeled": [
     "OS/RTLD loading",
     "live actor allocations",

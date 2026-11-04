@@ -1,3 +1,4 @@
+#include "nsc_cpk_profile.hpp"
 #include "nsc_controls.hpp"
 #include "nsc_event_ownership.hpp"
 #include "nsc_cpk_bridge.hpp"
@@ -431,23 +432,13 @@ constexpr ptrdiff_t kStageRegistryMapOffset      = 0x148;
 
 constexpr uint32_t kVanillaMaxCharId = 280;
 constexpr uint32_t kFirstCustomCharId = 281;
-constexpr int kModCpkPriority = 32;
-constexpr const char* kModCpkPath = "sim:data/moddingapi/Tobi_Switch.cpk";
-
-struct CpkPathArg {
-    const char* path;
-    uint64_t unk08;
-    uint64_t unk10;
-    uint64_t unk18;
-};
-static_assert(sizeof(CpkPathArg) == 0x20);
+using CpkPathArg = nsc::cpk::PathArg;
 
 struct TrackedCode {
     uint32_t id;
     char code[16];
 };
 
-std::atomic<uint32_t> g_extra_bind_once{0};
 std::atomic<uint32_t> g_char_logs{0};
 std::atomic<uint32_t> g_request_logs{0};
 std::atomic<uint32_t> g_create_logs{0};
@@ -537,14 +528,6 @@ public:
     StatusLock() { while (g_status_lock.test_and_set(std::memory_order_acquire)) {} }
     ~StatusLock() { g_status_lock.clear(std::memory_order_release); }
 };
-
-bool StartsWith(const char* s, const char* prefix) {
-    if (!s || !prefix) return false;
-    while (*prefix) {
-        if (*s++ != *prefix++) return false;
-    }
-    return true;
-}
 
 bool BoundedEqual(const char* a, const char* b, size_t limit = 15) {
     if (!a || !b) return false;
@@ -1866,26 +1849,28 @@ void LogFingerprintFail(const char* name, ptrdiff_t offset) {
 HOOK_DEFINE_TRAMPOLINE(CpkBindHook) {
     static uint32_t Callback(CpkPathArg* desc, uint32_t* out_bind_id, int priority) {
         const uint32_t original_result = Orig(desc, out_bind_id, priority);
-        if (!desc || original_result == 0 || !desc->path || !StartsWith(desc->path, "sim:")) {
-            return original_result;
+        const auto before = nsc::cpk::RegisteredCount();
+        if (original_result && out_bind_id && *out_bind_id) {
+            nsc::cpk::AfterBind(desc, original_result,
+                [](CpkPathArg* path, uint32_t* id, int order) -> uint32_t {
+                    return Orig(path, id, order);
+                });
         }
-        uint32_t expected = 0;
-        if (!g_extra_bind_once.compare_exchange_strong(expected, 1, std::memory_order_acq_rel)) {
-            return original_result;
+        const auto after = nsc::cpk::RegisteredCount();
+        if (after != before) {
+            Logging.Log("[NSC:PORT] CPK_REGISTRATIONS accepted=%u configured=%u async_complete=unverified",
+                        after, nsc::cpk::Count());
+            for (uint32_t i = 0; i < nsc::cpk::Count(); ++i) {
+                uint32_t id = 0;
+                if (nsc::cpk::BindingId(i, &id)) {
+                    Logging.Log("[NSC:PORT] CPK_REGISTRATION index=%u bind_id=%u", i, id);
+                }
+            }
         }
-        CpkPathArg extra{kModCpkPath, 0, 0, 0};
-        uint32_t extra_bind_id = 0;
-        const uint32_t extra_result = Orig(&extra, &extra_bind_id, kModCpkPriority);
-        if (extra_result != 0u) {
+        if (nsc::cpk::Count() && after == nsc::cpk::Count()) {
+            // Legacy diagnostic only: accepted IDs do not prove async load completion.
             g_v2p_cpk_bound_success.store(1u, std::memory_order_release);
         }
-        Logging.Log("[NSC:P50A] CPK_BIND path=%s priority=%d result=%u bind_id=%u",
-                    kModCpkPath, kModCpkPriority, extra_result, extra_bind_id);
-        Logging.Log(
-            "[NSC:V2P] CPK_BOUND path=%s result=%u bind_id=%u success=%u "
-            "stageinfo_seen_before_bind=%u passive_order_probe=1",
-            kModCpkPath, extra_result, extra_bind_id, extra_result ? 1u : 0u,
-            g_v2p_stageinfo_seen_before_bind.load(std::memory_order_acquire));
         return original_result;
     }
 };

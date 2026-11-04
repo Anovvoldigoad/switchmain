@@ -9,11 +9,14 @@ PRM/spcload loops, configurable class-selector profiles, and explicit PRM marker
 that distinguish API events from native enemy-hide events. Enable/disable control
 operations now call native permission writers for all 20 PC selectors. A bounded
 CPK converter marks explicitly selected uncompressed PRMs while preserving every
-other archive byte. Both packaging tools use standard Python on Android.
+other archive byte. Explicit profiles register up to 32 CPK paths with distinct
+priorities; failed registrations remain pending without rebinding accepted IDs.
+The profile/PRM packaging tools use standard Python on Android.
 
 Major remaining work: unsupported MovesetPlus operations, the remaining parameter
-families, generic CPK integration, actor/resource lifecycle, and gameplay validation.
-The current CPK path and several legacy tables/helpers are still Tobi-specific.
+families, archive discovery/merge and asynchronous load lifecycle, actor/resource
+lifecycle, and gameplay validation. Several legacy tables/helpers remain Tobi-specific.
+The default CPK profile is empty; registration is not proof of completed loading.
 Old unmarked PRM assets must not be paired with this branch as a finished package.
 
 - [Current status](PORT_STATUS.json)

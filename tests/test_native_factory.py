@@ -46,7 +46,7 @@ def run(main,elf_path,out):
     u.mem_write(J,bytes(image[0x7cab00:0x7cab10])+abs_jump(M+0x7cab10))
     trampoline=sym('PlayerFactoryHookEE7OrigRefEvE7s_FnPtr')
     w64(u,trampoline,J)
-    load=sym('LoadEmbeddedProfileEv');installer=D+symbols['_ZN3nsc7factory18InstallFactoryHookEv']
+    load=D+symbols['_ZN3nsc7factory19LoadEmbeddedProfileEv'];installer=D+symbols['_ZN3nsc7factory18InstallFactoryHookEv']
     profile=D+symbols['nsc_factory_profile']
     w64(u,sym('s_ModuleBitset'),2);w64(u,sym('s_ModuleInfos')+72,M)
     installed=[]

@@ -66,7 +66,8 @@ sejumlah helper legacy masih menyaring ID karakter. Operasi 12/13/18 dan banyak
 operasi lainnya masih tanpa efek. Kontrol 14/15 kini menulis permission native;
 kesetaraan aksi semua subclass belum terbukti. Opcode 23
 terbatas koridor UJ tertentu, voice belum setara, projectile 27–29 belum dipetakan.
-CPK masih satu path Tobi; descriptor kondisi dan membership ougi masih generated
+CPK kini memakai daftar path eksplisit (maksimal 32); penemuan arsip, penggabungan
+parameter, dan siklus selesai-load/unbind belum terintegrasi. Descriptor kondisi dan membership ougi masih generated
 untuk data lama. Factory berbasis profil sekarang terintegrasi untuk 228 selector yang namanya
 cocok, tetapi 53 nama placeholder, reset global saat factory PC, parameter API
 lainnya, repacking PRM terkompresi,
@@ -200,7 +201,7 @@ padding, serta payload yang tidak dipilih dipertahankan byte-for-byte.
 Cakupan saat ini: TOC di depan content, table UTF plaintext, PRM tidak
 terkompresi, tanpa CRC/table tambahan. PRM terkompresi atau skema checksum yang
 belum didukung ditolak, bukan disalin sebagai seolah sudah dikonversi. Ini belum
-menjadi importer `.nsc` umum atau loader multi-CPK.
+menjadi importer `.nsc` umum. Registrasi multi-CPK terpisah dijelaskan di bawah.
 
 Tes sintetis memeriksa dua PRM, ID tidak berurutan, path tidak tersortir, payload
 PRM lain yang sengaja tidak dipilih, idempotensi, dan 35 input invalid.
@@ -214,3 +215,55 @@ Tidak ada file game atau CPK tambahan yang dipublikasikan bersama perubahan ini.
 Semua pengujian menggunakan module yang sama, dibangun dari layer image resmi
 pinned yang sama dengan CI. Hasil komponen ini tidak mengubah status port penuh
 atau kesiapan paket gameplay.
+
+
+## Registrasi CPK berdasarkan profil
+
+Path Tobi hardcoded dihapus. Profil default kosong, kapasitas 32, record 208 byte,
+path ASCII maksimum 191 byte di bawah `sim:data/moddingapi/`, ekstensi `.cpk`.
+Prioritas integer 0..2147483647 harus berbeda; path duplikat tanpa membedakan
+huruf besar/kecil, traversal, padding/reserved nonnol, dan SHA256 salah ditolak.
+Profil diperiksa saat startup sebelum penulisan game; bukan konfigurasi hot reload.
+
+Contoh manifest komponen (nama path harus mengikuti CPK yang benar-benar tersedia):
+
+```json
+[
+  {"path": "sim:data/moddingapi/mod_a.cpk", "priority": 32},
+  {"path": "sim:data/moddingapi/mod_b.cpk", "priority": 33}
+]
+```
+
+```sh
+python tools/compile_cpk_profile.py --manifest cpk.json --output cpk_component
+```
+
+Untuk menyisipkan profil ke module, tambahkan `--module <subsdk9>` dan
+`--expected-module-sha256 <hash-input-aktual>`. Output harus direktori baru.
+Tool menggunakan Python standar. Profil factory dan CPK dapat diterapkan berurutan;
+tes membuktikan hasil akhir identik dalam kedua urutan. Hash yang diberikan pada
+langkah kedua harus hash hasil langkah pertama. Text/rodata/layout tetap identik.
+Ini tidak membuat atau mengonversi isi CPK secara otomatis.
+
+Callback memakai binder Switch `0x473190`, adapter `0x115FBB8`, dan manager
+`0x115E80C`. Temuan native: manager bisa mengembalikan 1 tanpa mengisi bind ID
+ketika handle binder atau alokasi tidak tersedia. Karena itu registrasi hanya
+dicatat ketika return nonnol **dan** ID nonnol; nilai return saja tidak cukup.
+Argumen tambahan descriptor diinisialisasi nol, prioritas diteruskan ke wrapper
+native, dan hasil serta output caller asli dipertahankan. Jalur gagal awal tidak
+menambah dereference output pointer yang tidak dibaca native.
+
+Registrasi tambahan dicoba setelah bind `sim:` asli yang berhasil dan menghasilkan
+ID. Hanya entri gagal yang dicoba ulang pada kesempatan berikutnya. Reentry dan
+callback bersamaan tidak menyebabkan bind ganda. Path tersimpan selama lifetime
+modul; tidak ada tambahan hook atau trampoline. Registry belum menangani unbind
+atau pergantian manager. ID diterima bukan bukti selesai baca arsip asinkron,
+prioritas efektif saat lookup, file tersedia, atau parameter berhasil digabung.
+
+Bukti: 6,740 profil korup dan delapan manifest invalid ditolak; kapasitas 0/1/31/32,
+reentry, callback bersamaan, preservasi state saat profil invalid, dan komposisi
+kedua packer diperiksa. Sebanyak 19 skenario ARM64 menjalankan callback compiled
+dan wrapper/manager native, mencakup root/handle/alokasi tidak tersedia, bind gagal,
+ID nol, sukses, prioritas, retry, dan bit ke-31. Operasi CRI, allocator/constructor,
+locking dan logging dimodelkan. Detail ada pada `cpk_profile.json` dan
+`native_cpk.json`. Pengujian seluruh game dan emulator belum dilakukan.

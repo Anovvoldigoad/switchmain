@@ -41,6 +41,10 @@ jobs:
         run: python tests/test_native_events.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
       - name: Execute native control writes and permission consumers
         run: python tests/test_native_controls.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Validate CPK profile and composed Android packaging
+        run: python tests/test_cpk_profile.py --module exlaunch/deploy/subsdk9 --output proof-work
+      - name: Execute native CPK registration and retry branches
+        run: python tests/test_native_cpk.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
       - name: Verify generated module
         run: python tools/verify_binary.py --nso exlaunch/deploy/subsdk9 --elf exlaunch/runtime_r183.elf --output proof-work/binary.json
       - uses: actions/upload-artifact@v4
