@@ -1,0 +1,66 @@
+{
+  "source_cpk_sha256": "a9dc66fad84fc07c1d29dba08b47e330a756c945c662ed22df201c37506f4a50",
+  "output_cpk_sha256": "b7605e5cca9a9072ac28629b5028c2f46c8da168d279c41cff6a4067c18f3250",
+  "runtime_path": "sim:data/moddingapi/Tobi_component.cpk",
+  "priority": 42,
+  "entry": "data/spc/conditionprm.bin.xfbin",
+  "cpk_entry_id": 21,
+  "cpk_entry_offset": 23043072,
+  "companion": {
+    "manager_sha256": "fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5",
+    "raw_xfbin_sha256": "ee8bea3caab274333b466d3e44fcf5129249dbb649c1dd0ddeecb983e948d123",
+    "records": 512,
+    "record_bytes": 176,
+    "ordinal_names_verified": 512,
+    "appended_names": [],
+    "raw_bytes_modified": false,
+    "raw_native_prefix_values_verified": false,
+    "effect_semantics_verified": false,
+    "cpk_load_precedence_verified": false,
+    "gameplay_verified": false,
+    "full_moddingapi": false
+  },
+  "descriptor": {
+    "input_sha256": "fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5",
+    "pc_baseline_sha256": "fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5",
+    "native_prefix_preserved": 512,
+    "appended_descriptors": 0,
+    "raw_conditionprm_required_rows": 512,
+    "missing_reactions_native_zero_fallback": [],
+    "raw_conditionprm_packaged": false,
+    "gameplay_verified": false,
+    "full_moddingapi": false
+  },
+  "events": {
+    "source_sha256": "a9dc66fad84fc07c1d29dba08b47e330a756c945c662ed22df201c37506f4a50",
+    "output_sha256": "b7605e5cca9a9072ac28629b5028c2f46c8da168d279c41cff6a4067c18f3250",
+    "archive_bytes": 173996544,
+    "entries": 93,
+    "selected_prms": [
+      {
+        "path": "data/spc/mtobprm.bin.xfbin",
+        "id": 52,
+        "archive_offset": 93716480,
+        "source_sha256": "70c84800b92a398bc5a58be663c6337c724bed9786d46d1f65fcc2aee2be6f3a",
+        "output_sha256": "9dfe0eb60531b8a391b8c8971aada4f4cb96bf1963abe7950ad6dd043dec536b",
+        "function_records": 4876,
+        "marked_records": 561,
+        "already_marked": 0,
+        "native_event236_preserved": 5,
+        "gameplay_verified": false,
+        "full_moddingapi": false
+      }
+    ],
+    "metadata_and_other_payloads_unchanged": true,
+    "gameplay_verified": false,
+    "full_moddingapi": false
+  },
+  "condition_profile_sha256": "6db37b0d9f800056bc1cc3127184e7132cb1e9d98e5511a5b774a15bf7ecdf67",
+  "cpk_profile_sha256": "6b3ae14d91f0c4ea3acaa5060d4e3701b16b810c974824d4ff6bfd8cd1b43efc",
+  "archive_companion_bound_to_profile": true,
+  "runtime_load_precedence_verified": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false,
+  "ready_for_gameplay_test": false,
+  "scope": "Actual Tobi raw512 with PC baseline512; no appended condition activation; registration path/priority are test inputs, not runtime precedence proof."
+}

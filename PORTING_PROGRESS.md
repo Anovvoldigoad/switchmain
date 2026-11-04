@@ -364,3 +364,39 @@ Switch. Native raw prefix values, effect dependencies, CPK precedence dan full
 lifecycle masih pending. Seluruh raw bytes termasuk unknown fields dipertahankan.
 Tidak ada paket instalasi gameplay. Selanjutnya buktikan baseline raw Switch dan
 pasangan manager tambahan asli, lalu integrasikan dengan CPK/profile packaging.
+
+
+## Single-archive condition bundle integration
+
+`tools/compile_condition_bundle.py` binds the descriptor profile to the actual
+`data/spc/conditionprm.bin.xfbin` entry inside a SHA-pinned CPK. No separately
+supplied raw file can silently differ from the archive payload. Compressed raw
+companions are rejected. Count/name/ordinal checks run before output creation.
+Only explicitly selected known PC API PRMs are marked; other archive bytes,
+metadata and the condition companion remain identical. With no selected PRMs the
+archive is unchanged; this does not mean all movesets are API-compatible.
+
+The tool emits condition.profile, cpk.profile, archive bytes under component_data,
+and a report linking manager/raw/archive/profile hashes, CPK entry ID/offset,
+explicit runtime path and priority. Optional --module plus expected SHA configures
+both profiles. Existing CPK registrations must be empty or exactly the requested
+single entry; a different list is rejected, not discarded. Factory profile and
+other data bytes are retained. No installable romfs/exefs release is implied.
+
+Local regression passed 11 malformed archive/argument cases, same-count reorder,
+missing/compressed companion, exact PRM-marker diff, no-conversion archive equality,
+idempotence and CLI rejection before output. Module order equivalence, preservation
+of text/rodata/other data, and registration conflict rejection additionally passed
+on a synthetic NSO data container; this is serialization proof, not execution.
+The new CI step uses the built module for those same profile-composition checks.
+
+Actual Tobi.zip.cpk raw512 with the pinned PC baseline512 also passed the pipeline;
+561 API events marked, native enemy-hide events preserved. No extras were activated.
+See condition_bundle_real.json. The original merged manager517 and native raw values
+remain unverified. Priority42 and the sample sim path in the report are explicit
+test settings, not proof of archive winner or complete loading.
+
+Previous companion commit fc9e72d: all steps of run41929932638 succeeded. That CI
+result predates this bundle change. Full API, gameplay readiness and emulator tests
+remain false. Next: verify new CI, native raw baseline/value compatibility, actual
+extra-descriptor pair, then asynchronous bind/precedence/resource lifecycle.

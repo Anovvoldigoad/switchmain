@@ -1,5 +1,7 @@
 # NSC Full ModdingAPI Switch — checkpoint dan prompt lanjutan
 
+Update terbaru: `tools/compile_condition_bundle.py` kini mengikat descriptor ke companion dalam CPK aktual, konversi PRM eksplisit, profil CPK, dan konfigurasi dua profil NSO. Baca `PORTING_PROGRESS.md` bagian terakhir serta `handoff/CONTINUE_PROMPT.txt` sebelum memakai prompt historis di bawah. Raw values dan runtime lifecycle belum selesai.
+
 Update lanjutan: validasi opsional companion raw176 (hash, ukuran, jumlah, dan nama setiap indeks) sudah diimplementasikan di `tools/portlib/condition_companion.py`. Lihat bagian terbaru `PORTING_PROGRESS.md`. Packaging runtime/CPK dan semantik nilai raw masih pending. Prompt MVP di bawah adalah scope keseluruhan; jangan mengulang validator yang sudah ada.
 
 Checkpoint runtime native yang sudah diuji: **a51dd1494d0c0d793a76fd5f43ce7ae991744cf5**.
