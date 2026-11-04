@@ -4,7 +4,7 @@
   "native_damage_predicate_cases": 305,
   "native_dispatch_cases": 378,
   "real_prm": null,
-  "module_elf_sha256": "cd29619774b114c6f70f34857f7ef1ce188d0ef4d9fe043b691fb4cd4b6376d3",
+  "module_elf_sha256": "aa4b2e39ac23a7b881b64e4fc7fe9013749a027704eb963c031b8f714178e850",
   "native_functions": [
     "reader 0x81d120..0x81d384",
     "damage predicate 0x7938d0",

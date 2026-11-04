@@ -15,11 +15,13 @@
     "PC specialCondParam reader and Python-only Android NSO data-profile packer",
     "native factory hook preserves caller roster identity in tested initialization slices",
     "explicit converted-PRM ownership marker for Event236, independent of roster ID",
-    "native reader-verified PRM conversion; original enemy-hide preserved for unmarked events"
+    "native reader-verified PRM conversion; original enemy-hide preserved for unmarked events",
+    "native enable/disable writers for all 20 source control selectors; compiled callback and 20 native consumer slices tested",
+    "CPK ownership-marker conversion for explicitly selected uncompressed PRMs with exact preservation of other archive bytes"
   ],
   "blocking_gaps": [
-    "new marker protocol must be integrated into final CPK packaging; legacy helper-specific character filters still require review",
-    "MovesetPlus operations still shadowed or narrowed in inherited runtime",
+    "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
+    "remaining MovesetPlus operations shadowed or narrowed; complete control semantics/subclass overrides and legacy UJ latch lifetime unverified",
     "generic multi-mod CPK discovery and 11 parameter families not integrated",
     "53 PC factory names remain unverified against Switch placeholders; PC create-time global resets and complete actor/resource lifecycle not ported",
     "gameplay and emulator compatibility not verified"
@@ -32,6 +34,9 @@
     "reports/port_foundation/native_factory.json",
     "reports/port_foundation/prm_marker.json",
     "reports/port_foundation/native_events.json",
-    "reports/port_foundation/native_events_real_prm.json"
+    "reports/port_foundation/native_events_real_prm.json",
+    "reports/port_foundation/native_controls.json",
+    "reports/port_foundation/cpk_events.json",
+    "reports/port_foundation/cpk_events_real_tobi.json"
   ]
 }

@@ -63,12 +63,13 @@ emulator Android.
 
 Dispatcher Event236 kini mengenali penanda eksplisit pada PRM hasil konversi;
 sejumlah helper legacy masih menyaring ID karakter. Operasi 12/13/18 dan banyak
-operasi lainnya masih tanpa efek, kontrol 14/15 terbatas selector 1, opcode 23
+operasi lainnya masih tanpa efek. Kontrol 14/15 kini menulis permission native;
+kesetaraan aksi semua subclass belum terbukti. Opcode 23
 terbatas koridor UJ tertentu, voice belum setara, projectile 27–29 belum dipetakan.
 CPK masih satu path Tobi; descriptor kondisi dan membership ougi masih generated
 untuk data lama. Factory berbasis profil sekarang terintegrasi untuk 228 selector yang namanya
 cocok, tetapi 53 nama placeholder, reset global saat factory PC, parameter API
-lainnya, integrasi konversi event ke CPK final,
+lainnya, repacking PRM terkompresi,
 lifecycle timer/actor, kamera, audio, serta multi-mod belum selesai diintegrasikan.
 
 Tidak ada dasar untuk menyebut binary ini “full API” atau meminta pengguna
@@ -136,9 +137,9 @@ invalid atau role yang belum didukung dikonsumsi tanpa menjalankan enemy-hide.
 
 `tools/mark_api_events.py` mengonversi plaintext PRM yang **sudah diketahui**
 memakai PC ModdingAPI. Field penanda harus nol atau penanda yang sama. Tool tidak
-menebak dari ID karakter. Event236 opcode0/unknown tetap native. Converter ini
-belum terhubung ke pembuat CPK final: **CPK lama belum berpenanda tidak boleh
-langsung dipasangkan dengan module branch ini sebagai paket selesai**.
+menebak dari ID karakter. Event236 opcode0/unknown tetap native. Konversi CPK dengan PRM tidak terkompresi kini tersedia melalui
+`tools/mark_cpk_events.py`. **CPK lama belum berpenanda tidak boleh langsung
+dipasangkan dengan module branch ini sebagai paket selesai**.
 
 Aturan panjang record diambil dari instruksi pembaca Switch, termasuk predicate
 `0x7938D0`, bukan tebakan berdasarkan adanya kata DMG pada string suara.
@@ -157,3 +158,59 @@ method visibility musuh dimodelkan, sehingga ini bukan bukti rendering/gameplay.
 
 Perubahan ini tidak mengisi operasi MovesetPlus yang masih shadow/no-op. Full API,
 paket gameplay, dan kecocokan emulator tetap belum selesai/diverifikasi.
+
+
+## Kontrol enable/disable native (opcode 14/15)
+
+Adapter `nsc_controls.cpp` memanggil setter native `0x93D8` dan `0x93C4`.
+Getter `0x7D4588` mengakses array Switch pada actor+`0x1214C`; offset PC
+`0x12A34` tidak dipakai untuk menulis actor Switch. Seluruh 16 word ketiga
+fungsi diverifikasi sebelum perubahan game. Kegagalan menghapus base adapter.
+
+Kontrak berasal dari source PC commit `a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc`,
+blob MovesetPlus `d7c5dbbebd60415f8d304321f083897658a86146`, fungsi
+`me_enable_control`/`me_disable_control`. Selector 0..19 diterjemahkan ke index
+permission native. Target nol berarti diri sendiri; semua nilai nonnol berarti
+musuh. Enable19 juga enable1 karena fallthrough pada source; disable19 hanya
+mengubah far attack. Selector invalid, null actor/target/vtable/method ditolak.
+Adapter tidak menyimpan pointer actor dan tidak membuat thread/timer.
+
+Pengujian mengeksekusi callback Event236 compiled: 720 kombinasi ID roster,
+opcode, selector dan target; 48 kasus negatif; 16 mutasi fingerprint; 40 slice
+konsumen virtual native. Seluruh 128 KiB alokasi masing-masing dari dua actor
+dibandingkan, bukan hanya field yang diharapkan berubah. Pembacaan tabel aksi
+native `0x80F170` mengonfirmasi 12 rujukan animasi untuk 9 selector. Untuk selector
+lain, call-site dan pembacaan index sudah diuji, tetapi arti semua jalur aksi dan
+override subclass **belum** dianggap setara penuh. Angka 20 selector bukan bukti
+seluruh perilaku kontrol gameplay sudah lulus.
+
+Notifikasi UJ P64 yang sudah ada dipertahankan untuk enable/disable1 dan
+fallthrough enable19. Lifetime registry P64 masih perlu perbaikan terpisah;
+permission default=1 tidak dipakai sebagai pengganti opt-in eksplisit ke bypass UJ.
+Timer opcode16 tetap belum diimplementasikan.
+
+## Penanda PRM dalam CPK
+
+`tools/mark_cpk_events.py` menerima hash input wajib dan daftar path PRM yang
+secara eksplisit diketahui memakai ModdingAPI PC. Output selalu direktori baru.
+Tool tidak menebak kepemilikan event dari nama file atau ID karakter. Seluruh
+input divalidasi sebelum output dibuat. Metadata CPK/UTF, path, ID, offset,
+padding, serta payload yang tidak dipilih dipertahankan byte-for-byte.
+
+Cakupan saat ini: TOC di depan content, table UTF plaintext, PRM tidak
+terkompresi, tanpa CRC/table tambahan. PRM terkompresi atau skema checksum yang
+belum didukung ditolak, bukan disalin sebagai seolah sudah dikonversi. Ini belum
+menjadi importer `.nsc` umum atau loader multi-CPK.
+
+Tes sintetis memeriksa dua PRM, ID tidak berurutan, path tidak tersortir, payload
+PRM lain yang sengaja tidak dipilih, idempotensi, dan 35 input invalid.
+Pada CPK Tobi input SHA256
+`a9dc66fad84fc07c1d29dba08b47e330a756c945c662ed22df201c37506f4a50`,
+93 entry dan ukuran 173,996,544 byte tetap sama. Tepat 1,122 byte pada 561 event
+API berubah; lima event236 native tetap utuh. Hasil konversi hash
+`b7605e5cca9a9072ac28629b5028c2f46c8da168d279c41cff6a4067c18f3250`.
+Tidak ada file game atau CPK tambahan yang dipublikasikan bersama perubahan ini.
+
+Semua pengujian menggunakan module yang sama, dibangun dari layer image resmi
+pinned yang sama dengan CI. Hasil komponen ini tidak mengubah status port penuh
+atau kesiapan paket gameplay.

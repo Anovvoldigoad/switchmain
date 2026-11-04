@@ -1,0 +1,27 @@
+{
+  "source_sha256": "a9dc66fad84fc07c1d29dba08b47e330a756c945c662ed22df201c37506f4a50",
+  "output_sha256": "b7605e5cca9a9072ac28629b5028c2f46c8da168d279c41cff6a4067c18f3250",
+  "archive_bytes": 173996544,
+  "entries": 93,
+  "selected_prms": [
+    {
+      "path": "data/spc/mtobprm.bin.xfbin",
+      "id": 52,
+      "archive_offset": 93716480,
+      "source_sha256": "70c84800b92a398bc5a58be663c6337c724bed9786d46d1f65fcc2aee2be6f3a",
+      "output_sha256": "9dfe0eb60531b8a391b8c8971aada4f4cb96bf1963abe7950ad6dd043dec536b",
+      "function_records": 4876,
+      "marked_records": 561,
+      "already_marked": 0,
+      "native_event236_preserved": 5,
+      "gameplay_verified": false,
+      "full_moddingapi": false
+    }
+  ],
+  "metadata_and_other_payloads_unchanged": true,
+  "gameplay_verified": false,
+  "full_moddingapi": false,
+  "status": "PASS",
+  "exact_changed_bytes": 1122,
+  "idempotent": true
+}

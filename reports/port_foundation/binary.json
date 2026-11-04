@@ -1,29 +1,29 @@
 {
   "status": "PASS",
-  "nso_sha256": "8cad019bce3658f1002ab2867956915d5bb7a030a719abf8a208fc3b1e017dc0",
-  "elf_sha256": "cd29619774b114c6f70f34857f7ef1ce188d0ef4d9fe043b691fb4cd4b6376d3",
-  "build_id": "5aea8b4b46095467f5b55d46bbe66124aabad798000000000000000000000000",
+  "nso_sha256": "638aee704516626033314912c4deed3f8142d8773b2c6ff83bcc081694ebfc31",
+  "elf_sha256": "aa4b2e39ac23a7b881b64e4fc7fe9013749a027704eb963c031b8f714178e850",
+  "build_id": "f59494d9d323f2c7614cf2d1d5aacaa575dccb66000000000000000000000000",
   "segments": [
     {
       "segment": "text",
       "memory_offset": "0x0",
-      "bytes": 139024,
-      "sha256": "c1556d0c08d0fe7df3e5275ca4988e43ecabf9141cb70de0ca0aae8f7cffce18"
+      "bytes": 139344,
+      "sha256": "43287d4d15acef6d6cf8faafad1ef54eb4d900307602fdf00ed1e11da39ddd6e"
     },
     {
       "segment": "rodata",
-      "memory_offset": "0x22000",
-      "bytes": 50976,
-      "sha256": "ef56541cae08317a95c610a5a7423b448f082b0af9f9c981d7f57bd89789f15c"
+      "memory_offset": "0x23000",
+      "bytes": 50616,
+      "sha256": "0a1d421d8cdb05cdb30278257daf85ecfdd4b4bea5347fc34dbe502f86ea5783"
     },
     {
       "segment": "data",
-      "memory_offset": "0x2f000",
-      "bytes": 19024,
-      "sha256": "10258ccf4ee6201fa8ac5483c24342b4b556baf2d64ea84910a1df2ec7c27774"
+      "memory_offset": "0x30000",
+      "bytes": 19440,
+      "sha256": "972493a4423152027be81d9a83c58f930c7df24221209b19d417780a89a5d88c"
     }
   ],
-  "bss_bytes": 30128,
+  "bss_bytes": 29712,
   "imports": [
     "_ZN2nn2ro6detail15g_pAutoLoadListE",
     "_ZN2nn2ro6detail35g_LookupGlobalManualFunctionPointerE"

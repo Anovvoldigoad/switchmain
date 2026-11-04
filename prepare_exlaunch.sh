@@ -26,6 +26,8 @@ cp "$ROOT/overlay/source/program/nsc_runtime_v2.hpp" "$EXL/source/program/nsc_ru
 cp "$ROOT/overlay/source/program/condition_compat_generated.hpp" "$EXL/source/program/condition_compat_generated.hpp"
 cp "$ROOT/overlay/source/program/p81_ougi_awake_ids.hpp" "$EXL/source/program/p81_ougi_awake_ids.hpp"
 cp "$ROOT/overlay/source/program/nsc_sfx_list_generated.hpp" "$EXL/source/program/nsc_sfx_list_generated.hpp"
+cp "$ROOT/overlay/source/program/nsc_controls.cpp" "$EXL/source/program/nsc_controls.cpp"
+cp "$ROOT/overlay/source/program/nsc_controls.hpp" "$EXL/source/program/nsc_controls.hpp"
 python3 - "$EXL/config.mk" <<'PY'
 from pathlib import Path
 import re, sys

@@ -12,7 +12,7 @@ def run(stock,r180,output):
         subprocess.run(['gcc','-O2','-fPIC','-c',str(src/'nsc_sha256.c'),'-o',str(td/'sha.o')],check=True)
         subprocess.run(['g++','-std=c++20','-O2','-shared','-fPIC','-Werror','-Wall','-Wextra',
             '-I'+str(R/'tests/host'),'-I'+str(src),str(R/'tests/host/harness.cpp'),
-            str(src/'nsc_runtime_core.cpp'),str(src/'nsc_factory.cpp'),str(src/'nsc_factory_profile.cpp'),str(src/'nsc_runtime_v2.cpp'),str(src/'nsc_image_guard.cpp'),
+            str(src/'nsc_runtime_core.cpp'),str(src/'nsc_controls.cpp'),str(src/'nsc_factory.cpp'),str(src/'nsc_factory_profile.cpp'),str(src/'nsc_runtime_v2.cpp'),str(src/'nsc_image_guard.cpp'),
             str(td/'sha.o'),'-o',str(td/'core.so')],check=True)
         lib=ctypes.CDLL(str(td/'core.so'))
         for name in ['run_init','run_patch','profile']:

@@ -4,6 +4,7 @@
 #include "nsc_image_guard.hpp"
 #include "nsc_condition_storage.hpp"
 #include "nsc_factory.hpp"
+#include "nsc_controls.hpp"
 #include "lib.hpp"
 
 namespace nsc::runtime {
@@ -19,6 +20,10 @@ bool Initialize() {
     Logging.Log("[NSC:PORT] IMAGE_VERIFIED profile=%u", static_cast<unsigned>(profile));
     if (!nsc::factory::LoadEmbeddedProfile()) {
         Logging.Log("[NSC:PORT] INIT_REJECT reason=invalid_factory_profile game_writes=0");
+        return false;
+    }
+    if (!nsc::controls::Initialize()) {
+        Logging.Log("[NSC:PORT] INIT_REJECT reason=native_controls_mismatch game_writes=0");
         return false;
     }
     // Keep the proven R181 install order unchanged. This file intentionally

@@ -6,8 +6,10 @@ mean the game, Android emulators, or complete PC mods have passed testing.
 
 Implemented here: exact-image preflight, bounded condition storage, consistent
 PRM/spcload loops, configurable class-selector profiles, and explicit PRM markers
-that distinguish API events from native enemy-hide events. The factory profile
-packer runs with standard Python on Android.
+that distinguish API events from native enemy-hide events. Enable/disable control
+operations now call native permission writers for all 20 PC selectors. A bounded
+CPK converter marks explicitly selected uncompressed PRMs while preserving every
+other archive byte. Both packaging tools use standard Python on Android.
 
 Major remaining work: unsupported MovesetPlus operations, the remaining parameter
 families, generic CPK integration, actor/resource lifecycle, and gameplay validation.

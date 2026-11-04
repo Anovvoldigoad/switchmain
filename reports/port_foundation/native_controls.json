@@ -1,0 +1,224 @@
+{
+  "status": "PASS",
+  "event_control_cases": 720,
+  "negative_cases": 48,
+  "fingerprint_mutations_rejected": 16,
+  "native_consumer_cases": 40,
+  "native_consumers": [
+    {
+      "selector": 0,
+      "index": 0,
+      "start": "0x7aa330",
+      "call": "0x7aa340"
+    },
+    {
+      "selector": 1,
+      "index": 2,
+      "start": "0x731e9c",
+      "call": "0x731eb0"
+    },
+    {
+      "selector": 2,
+      "index": 4,
+      "start": "0x731b08",
+      "call": "0x731b1c"
+    },
+    {
+      "selector": 3,
+      "index": 6,
+      "start": "0x7aa860",
+      "call": "0x7aa870"
+    },
+    {
+      "selector": 4,
+      "index": 8,
+      "start": "0x7aaa6c",
+      "call": "0x7aaa7c"
+    },
+    {
+      "selector": 5,
+      "index": 9,
+      "start": "0x7f0258",
+      "call": "0x7f0268"
+    },
+    {
+      "selector": 6,
+      "index": 10,
+      "start": "0x7a9ae4",
+      "call": "0x7a9af4"
+    },
+    {
+      "selector": 7,
+      "index": 11,
+      "start": "0x7d00f0",
+      "call": "0x7d0100"
+    },
+    {
+      "selector": 8,
+      "index": 12,
+      "start": "0x7a9db0",
+      "call": "0x7a9dc0"
+    },
+    {
+      "selector": 9,
+      "index": 13,
+      "start": "0x7aa1a0",
+      "call": "0x7aa1b0"
+    },
+    {
+      "selector": 10,
+      "index": 14,
+      "start": "0x7a99a0",
+      "call": "0x7a99b0"
+    },
+    {
+      "selector": 11,
+      "index": 15,
+      "start": "0x7a8fbc",
+      "call": "0x7a8fcc"
+    },
+    {
+      "selector": 12,
+      "index": 16,
+      "start": "0x7a932c",
+      "call": "0x7a933c"
+    },
+    {
+      "selector": 13,
+      "index": 17,
+      "start": "0x7f61f8",
+      "call": "0x7f6208"
+    },
+    {
+      "selector": 14,
+      "index": 18,
+      "start": "0x47f58c",
+      "call": "0x47f59c"
+    },
+    {
+      "selector": 15,
+      "index": 19,
+      "start": "0x7ea780",
+      "call": "0x7ea790"
+    },
+    {
+      "selector": 16,
+      "index": 20,
+      "start": "0x7e1b4c",
+      "call": "0x7e1b5c"
+    },
+    {
+      "selector": 17,
+      "index": 22,
+      "start": "0x8046f0",
+      "call": "0x804700"
+    },
+    {
+      "selector": 18,
+      "index": 7,
+      "start": "0x7aac10",
+      "call": "0x7aac20"
+    },
+    {
+      "selector": 19,
+      "index": 1,
+      "start": "0x7aa714",
+      "call": "0x7aa724"
+    }
+  ],
+  "native_action_bindings": [
+    {
+      "selector": 0,
+      "call": "0x7aa328",
+      "action_id": 191,
+      "native_name": "PL_ANM_ATK00"
+    },
+    {
+      "selector": 3,
+      "call": "0x7aa8a0",
+      "action_id": 151,
+      "native_name": "PL_ANM_PRJ_LAND"
+    },
+    {
+      "selector": 18,
+      "call": "0x7aac08",
+      "action_id": 185,
+      "native_name": "PL_ANM_PRJ_CHA_LAND"
+    },
+    {
+      "selector": 4,
+      "call": "0x7aaa50",
+      "action_id": 248,
+      "native_name": "PL_ANM_THROW_BEGIN"
+    },
+    {
+      "selector": 4,
+      "call": "0x7aaa64",
+      "action_id": 247,
+      "native_name": "PL_ANM_ATK_GUARD_IMP"
+    },
+    {
+      "selector": 6,
+      "call": "0x7a9adc",
+      "action_id": 102,
+      "native_name": "PL_ANM_GUARDPOSE_0"
+    },
+    {
+      "selector": 8,
+      "call": "0x7a9d8c",
+      "action_id": 77,
+      "native_name": "PL_ANM_RUN1"
+    },
+    {
+      "selector": 9,
+      "call": "0x7aa184",
+      "action_id": 83,
+      "native_name": "PL_ANM_JMP0"
+    },
+    {
+      "selector": 9,
+      "call": "0x7aa198",
+      "action_id": 84,
+      "native_name": "PL_ANM_JMP1"
+    },
+    {
+      "selector": 10,
+      "call": "0x7a9998",
+      "action_id": 94,
+      "native_name": "PL_ANM_DSH_BK"
+    },
+    {
+      "selector": 12,
+      "call": "0x7a92e8",
+      "action_id": 97,
+      "native_name": "PL_ANM_CHADASH_BEGIN"
+    },
+    {
+      "selector": 12,
+      "call": "0x7a92fc",
+      "action_id": 98,
+      "native_name": "PL_ANM_CHADASH_LOOP"
+    }
+  ],
+  "compiled_callback_executed": true,
+  "source_enable19_fallthrough_preserved": true,
+  "native_setter_offset": "0x93d8",
+  "native_clear_offset": "0x93c4",
+  "native_permission_array": "0x1214c",
+  "module_elf_sha256": "aa4b2e39ac23a7b881b64e4fc7fe9013749a027704eb963c031b8f714178e850",
+  "modeled": [
+    "OS/RTLD loading",
+    "live actor allocations",
+    "enemy virtual method",
+    "diagnostic output"
+  ],
+  "not_proven": [
+    "semantic action labels for every selector",
+    "all subclass permission overrides",
+    "full surrounding consumer functions",
+    "legacy UJ latch lifetime",
+    "emulator gameplay"
+  ],
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

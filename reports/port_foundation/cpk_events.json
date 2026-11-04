@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "synthetic_prms_marked": 2,
+  "exact_changed_bytes": 12,
+  "malformed_inputs_rejected": 35,
+  "idempotent": true,
+  "input_preserved": true,
+  "validation_precedes_output_creation": true,
+  "metadata_ids_offsets_padding_preserved": true,
+  "unsupported_compression_crc_and_auxiliary_tables_rejected": true,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

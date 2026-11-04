@@ -1,3 +1,4 @@
+#include "nsc_controls.hpp"
 #include "nsc_event_ownership.hpp"
 #include "nsc_cpk_bridge.hpp"
 #include "nsc_runtime_v2.hpp"
@@ -2566,7 +2567,6 @@ HOOK_DEFINE_TRAMPOLINE(R166SoundDispatchProbeHook) {
     }
 };
 
-// P43A: O14 pure shadow (layout rejected) + explicit OP15/17/18 Kamui shadows.
 // ME_ENEMY_DISP_OFF, but UltimateStormAPI uses event236 as an extension
 // container with opcode at +0x24. Only converter-marked records enter this
 // dispatcher. Untagged records retain native enemy-hide semantics. Unported
@@ -2679,55 +2679,14 @@ HOOK_DEFINE_TRAMPOLINE(Event236Hook) {
                 return 1;
             }
 
-            case 14: {
-                // P64F functional semantic bridge: preserve victim-safe shadowing of
-                // the broken native Event236 O14 implementation, but do NOT discard
-                // MovesetPlus selector1 anymore. Store the source semantic in exlaunch
-                // state and let the proven native UJ consumer query it later.
-                if (p3 == 1) {
-                    void* target = GetEventTargetActor(actor, p2);
-                    if (target) {
-                        P64SetSemanticUltimateJutsu(target, true);
-                        const uint32_t n = g_p64_semantic_updates.fetch_add(1, std::memory_order_relaxed);
-                        if (n < 256) {
-                            uint32_t tside = 0xFFFFFFFFu, tchar = 0xFFFFFFFFu;
-                            ReadActorIdentity(target, tside, tchar);
-                            Logging.Log("[NSC:P64F] UJ_SEM_SET n=%u actor=%p target=%p side=%u char=%u p2=%d enabled=1",
-                                        n, actor, target, tside, tchar, static_cast<int>(p2));
-                        }
-                    }
-                }
-                // Keep the old P56B snapshot as a diagnostic cross-check only.
-                if (p2 == 0 && p3 == 1) {
-                    const uint32_t seq = g_p56b_custom_snapshots.fetch_add(1, std::memory_order_relaxed);
-                    if (seq < 3) LogP56BControlSnapshot(actor, "CUSTOM_O14_UJ_ENABLE", side, char_id, seq);
-                }
-                if (g_event236_logs.load(std::memory_order_relaxed) < 4096) {
-                    Logging.Log("[NSC:P50A] CTRL14_SHADOW actor=%p side=%u char=%u p2=%d p3=%d",
-                                actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3));
-                }
-                return 1;
-            }
-
+            case 14:
             case 15: {
-                // P64F source-semantic disable path for selector1. Native O15 remains
-                // shadowed for victim safety; only the exlaunch semantic latch changes.
-                if (p3 == 1) {
-                    void* target = GetEventTargetActor(actor, p2);
-                    if (target) {
-                        P64SetSemanticUltimateJutsu(target, false);
-                        const uint32_t n = g_p64_semantic_updates.fetch_add(1, std::memory_order_relaxed);
-                        if (n < 256) {
-                            uint32_t tside = 0xFFFFFFFFu, tchar = 0xFFFFFFFFu;
-                            ReadActorIdentity(target, tside, tchar);
-                            Logging.Log("[NSC:P64F] UJ_SEM_SET n=%u actor=%p target=%p side=%u char=%u p2=%d enabled=0",
-                                        n, actor, target, tside, tchar, static_cast<int>(p2));
-                        }
-                    }
-                }
-                if (g_event236_logs.load(std::memory_order_relaxed) < 4096) {
-                    Logging.Log("[NSC:P50A] OP15_SHADOW actor=%p side=%u char=%u p2=%d p3=%d",
-                                actor, side, char_id, static_cast<int>(p2), static_cast<int>(p3));
+                const bool enabled = op == 14;
+                void* target = nsc::controls::Apply(actor, p2, p3, enabled);
+                // Keep the existing explicit API UJ notification. Native default
+                // permission=1 is not an explicit opt-in to the legacy UJ bypass.
+                if (target && (p3 == 1 || (enabled && p3 == 19))) {
+                    P64SetSemanticUltimateJutsu(target, enabled);
                 }
                 return 1;
             }
