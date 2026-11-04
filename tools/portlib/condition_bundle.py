@@ -38,18 +38,57 @@ def compile_bundle(manager, archive, expected_sha256, runtime_path, priority, pc
     return converted, profile, registration, report
 
 
+def _embedded_profile(data, magic, size, validator):
+    """Read an existing validated profile without replacing its content."""
+    if data.count(magic) != 1:
+        raise ValueError('Expected exactly one embedded profile')
+    at = data.index(magic)
+    raw = data[at:at + size]
+    validator(raw)
+    return raw
+
+
+def merge_cpk_registration(existing, requested):
+    """Append one CPK without deleting earlier rows or guessing archive priority."""
+    current = cpk_profile.decode(existing)
+    new = cpk_profile.decode(requested)
+    if len(new) != 1:
+        raise ValueError('Single-archive bundle requires one requested CPK registration')
+    target = new[0]
+    for item in current:
+        if item['path'].lower() == target['path'].lower():
+            if item != target:
+                raise ValueError('CPK path already configured with different case or priority')
+            return existing  # identical registration, preserve exact bytes and ordering
+        if item['priority'] == target['priority']:
+            raise ValueError('CPK priority already allocated to another archive')
+    if len(current) == cpk_profile.CAPACITY:
+        raise ValueError('CPK profile capacity exhausted (32)')
+    return cpk_profile.encode(current + new)
+
+
 def configure_module(module, expected_sha256, condition, registration):
     if sha(module) != expected_sha256:
         raise ValueError('Input module SHA256 mismatch')
-    # Single-archive scope: never silently discard another registration list.
     data = nso_profile.segments(module)[2][1]
-    if data.count(cpk_profile.MAGIC) != 1:
-        raise ValueError('Expected one CPK profile')
-    at = data.index(cpk_profile.MAGIC)
-    old = cpk_profile.decode(data[at:at+cpk_profile.PROFILE_SIZE])
-    requested = cpk_profile.decode(registration)
-    if old and old != requested:
-        raise ValueError('Existing CPK registrations differ; multi-archive merge is not verified')
+    old_condition = _embedded_profile(data, condition_profile.MAGIC,
+                                      condition_profile.PROFILE_SIZE, condition_profile.decode)
+    old_cpk = _embedded_profile(data, cpk_profile.MAGIC,
+                                cpk_profile.PROFILE_SIZE, cpk_profile.decode)
+    condition_profile.decode(condition)
+    if condition_profile.decode(old_condition) and old_condition != condition:
+        # Additional descriptors are ordinal-dependent: never replace or
+        # concatenate two independently compiled condition tables.
+        raise ValueError('Existing condition descriptors differ; supply one combined PC manager table')
+    merged_cpk = merge_cpk_registration(old_cpk, registration)
     result, first = condition_profile.configure(module, condition, expected_sha256)
-    result, second = cpk_profile.configure(result, registration, sha(result))
-    return result, {'condition': first, 'cpk': second, 'output_sha256': sha(result)}
+    result, second = cpk_profile.configure(result, merged_cpk, sha(result))
+    return result, {'condition': first, 'cpk': second,
+                    'previous_cpk_entries': len(cpk_profile.decode(old_cpk)),
+                    'effective_cpk_entries': len(cpk_profile.decode(merged_cpk)),
+                    'cpk_list_extended': merged_cpk != old_cpk,
+                    'effective_cpk_profile_sha256': sha(merged_cpk),
+                    'old_condition_descriptors_preserved_or_identical': True,
+                    'runtime_load_precedence_verified': False,
+                    'gameplay_verified': False,
+                    'output_sha256': sha(result)}

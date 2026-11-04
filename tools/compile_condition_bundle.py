@@ -5,8 +5,9 @@ Output is a review component bundle; raw values and game lifecycle remain unveri
 """
 import argparse,json
 from pathlib import Path
-from portlib.condition_bundle import compile_bundle,configure_module
+from portlib.condition_bundle import compile_bundle,configure_module,sha
 from portlib.cpk_profile import PREFIX
+from portlib import cpk_profile,nso_profile
 
 
 def main():
@@ -24,14 +25,25 @@ def main():
     if bool(a.module)!=bool(a.expected_module_sha256):p.error('Module and hash must be supplied together')
     archive,condition,registration,report=compile_bundle(a.param.read_bytes(),a.cpk.read_bytes(),a.expected_cpk_sha256,a.runtime_path,a.priority,a.pc_api_prm)
     module=None
-    if a.module:module,report['module']=configure_module(a.module.read_bytes(),a.expected_module_sha256,condition,registration)
+    effective_registration=registration
+    if a.module:
+        module,report['module']=configure_module(a.module.read_bytes(),a.expected_module_sha256,condition,registration)
+        data=nso_profile.segments(module)[2][1]
+        at=data.index(cpk_profile.MAGIC)
+        effective_registration=data[at:at+cpk_profile.PROFILE_SIZE]
+        cpk_profile.decode(effective_registration)
+    # cpk.profile is the *effective* list matching the emitted module, not
+    # only the new archive; standalone mode still writes the one-row list.
+    report['requested_cpk_profile_sha256']=report['cpk_profile_sha256']
+    report['cpk_profile_sha256']=sha(effective_registration)
+    report['effective_cpk_entries']=len(cpk_profile.decode(effective_registration))
     # Validate the complete inputs before any output directory is created.
     a.output.mkdir(parents=True,exist_ok=False)
     target=a.output/'component_data'/a.runtime_path[len(PREFIX):]
     target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(archive)
     report['archive_relative_path']=target.relative_to(a.output).as_posix()
     (a.output/'condition.profile').write_bytes(condition)
-    (a.output/'cpk.profile').write_bytes(registration)
+    (a.output/'cpk.profile').write_bytes(effective_registration)
     if module is not None:(a.output/'subsdk9.COMPONENT_NOT_GAMEPLAY_RELEASE').write_bytes(module)
     (a.output/'condition_bundle_report.json').write_text(json.dumps(report,indent=2)+'\n')
     print('Condition/archive/profile component bundle written; NOT a gameplay installation package.')

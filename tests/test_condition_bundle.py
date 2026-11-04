@@ -56,10 +56,42 @@ def run(main,output,module=None):
         assert all(a==b or i in allowed for i,(a,b) in enumerate(zip(before[2][1],after[2][1])))
         assert configure_module(built,sha(built),profile,registration)[0]==built
         other=cpk_profile.encode([{'path':'sim:data/moddingapi/other.cpk','priority':10}])
-        conflict,_=cpk_profile.configure(original,other,sha(original))
-        try:configure_module(conflict,sha(conflict),profile,registration)
+        preloaded,_=cpk_profile.configure(original,other,sha(original))
+        composed,merged_report=configure_module(preloaded,sha(preloaded),profile,registration)
+        merged_data=nso_profile.segments(composed)[2][1]
+        at=merged_data.index(cpk_profile.MAGIC)
+        merged=merged_data[at:at+cpk_profile.PROFILE_SIZE]
+        assert cpk_profile.decode(merged)==cpk_profile.decode(other)+cpk_profile.decode(registration)
+        assert merged_report['previous_cpk_entries']==1
+        assert merged_report['effective_cpk_entries']==2
+        assert merged_report['cpk_list_extended'] and not merged_report['gameplay_verified']
+        assert nso_profile.segments(composed)[:2]==nso_profile.segments(original)[:2]
+        again,again_report=configure_module(composed,sha(composed),profile,registration)
+        assert again==composed and not again_report['cpk_list_extended']
+        assert merge_cpk_registration(merged,registration)==merged
+        for rows in [
+            [{'path':runtime,'priority':41}],
+            [{'path':'sim:data/moddingapi/other.cpk','priority':42}],
+            [{'path':runtime.upper().replace('SIM:', 'sim:').replace('DATA/', 'data/').replace('MODDINGAPI/', 'moddingapi/'),'priority':42}]
+        ]:
+            # Conflict may be path-with-different-priority, occupied priority,
+            # or the same path with different capitalization.
+            try: merge_cpk_registration(cpk_profile.encode(rows),registration)
+            except ValueError:pass
+            else:raise AssertionError('CPK path/priority conflict accepted')
+        many=[{'path':f'sim:data/moddingapi/old_{i}.cpk','priority':i} for i in range(31)]
+        filled=merge_cpk_registration(cpk_profile.encode(many),registration)
+        assert len(cpk_profile.decode(filled))==32
+        try:merge_cpk_registration(cpk_profile.encode(many+[{'path':'sim:data/moddingapi/last.cpk','priority':31}]),registration)
         except ValueError:pass
-        else:raise AssertionError('existing archive list discarded')
+        else:raise AssertionError('33rd registration accepted')
+        old_condition=condition_profile.encode([{'name':'OTHER','reaction':0,'state':1,'icon':2,'status':3,'aura':4}])
+        precondition,_=condition_profile.configure(original,old_condition,sha(original))
+        try:configure_module(precondition,sha(precondition),profile,registration)
+        except ValueError:pass
+        else:raise AssertionError('existing condition descriptors discarded')
+        same_condition,_=condition_profile.configure(original,profile,sha(original))
+        assert configure_module(same_condition,sha(same_condition),profile,registration)[0] is not None
         module_checks=True
     with tempfile.TemporaryDirectory() as d:
         d=Path(d);m=d/'manager';a=d/'input.cpk';m.write_bytes(manager);a.write_bytes(archive)
@@ -67,6 +99,18 @@ def run(main,output,module=None):
         if module:cmd+=['--module',str(module),'--expected-module-sha256',sha(module.read_bytes())]
         subprocess.run(cmd+['--output',str(d/'ok')],check=True)
         assert (d/'ok/component_data/fixture/conditions.cpk').read_bytes()==result
+        assert (d/'ok/cpk.profile').read_bytes()==registration
+        if module:
+            preloaded_file=d/'preloaded';preloaded_file.write_bytes(preloaded)
+            cmd_preloaded=[sys.executable,str(R/'tools/compile_condition_bundle.py'),
+                           '--param',str(m),'--cpk',str(a),'--expected-cpk-sha256',sha(archive),
+                           '--runtime-path',runtime,'--priority','42','--pc-api-prm',path,
+                           '--module',str(preloaded_file),'--expected-module-sha256',sha(preloaded)]
+            subprocess.run(cmd_preloaded+['--output',str(d/'multi')],check=True)
+            assert (d/'multi/cpk.profile').read_bytes()==merged
+            rr=json.loads((d/'multi/condition_bundle_report.json').read_text())
+            assert rr['cpk_profile_sha256']==sha(merged) and rr['effective_cpk_entries']==2
+            assert (d/'multi/subsdk9.COMPONENT_NOT_GAMEPLAY_RELEASE').read_bytes()==composed
         r=json.loads((d/'ok/condition_bundle_report.json').read_text())
         assert r['output_cpk_sha256']==sha(result) and not r['ready_for_gameplay_test']
         m.write_bytes(baseline)
