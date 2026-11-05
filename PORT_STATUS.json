@@ -25,7 +25,9 @@
     "configurable 0..512 additional descriptors; four native loop bounds use the validated startup count; no hardcoded Tobi descriptor table",
     "compiled descriptor getter and native name/hash/reaction/state/icon/status/aura consumers tested; 21 installer fingerprint failures reject before hooks",
     "optional hash-pinned raw176 companion validation: every descriptor/raw ordinal name must match; malformed, reordered or count-mismatched companions rejected before output; review copy preserves all input bytes",
-    "single-archive condition bundle compiler validates actual CPK companion, converts only selected PC API PRMs, emits paired condition/CPK profiles, and optionally configures both NSO profiles without dropping unrelated registrations"
+    "single-archive condition bundle compiler validates actual CPK companion, converts only selected PC API PRMs, emits paired condition/CPK profiles, and optionally configures both NSO profiles without dropping unrelated registrations",
+    "safe condition-bundle module composition appends one CPK registration to pre-existing valid entries (max 32); rejects case/priority collisions and different pre-existing condition descriptors without overwriting either",
+    "hash-pinned raw176 stock-vs-candidate byte audit reports exact per-ordinal differing byte offsets and added row hashes; tested only with synthetic inputs"
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -33,7 +35,8 @@
     "CPK directory discovery, async completion/unbind lifecycle and archive precedence unverified; parameter-family coverage remains partial",
     "53 PC factory names remain unverified against Switch placeholders; PC create-time global resets and complete actor/resource lifecycle not ported",
     "gameplay and emulator compatibility not verified",
-    "condition descriptor compiler requires unchanged pinned PC baseline; raw 176-byte conditionprm packaging/order and complete effect/application lifecycle remain unverified"
+    "condition descriptor compiler requires unchanged pinned PC baseline; raw 176-byte conditionprm packaging/order and complete effect/application lifecycle remain unverified",
+    "actual unmodified Switch v1.70 raw176 conditionprm input and true merged PC manager517 have not been supplied/independently authenticated; byte-value audit has synthetic CI proof only"
   ],
   "proofs": [
     "reports/port_foundation/bootstrap.json",
@@ -54,7 +57,9 @@
     "reports/port_foundation/condition_companion.json",
     "reports/port_foundation/condition_companion_real.json",
     "reports/port_foundation/condition_bundle.json",
-    "reports/port_foundation/condition_bundle_real.json"
+    "reports/port_foundation/condition_bundle_real.json",
+    "reports/port_foundation/condition_bundle_multi_cpk.json",
+    "reports/port_foundation/condition_raw_value_audit.json"
   ],
   "parameter_family_coverage": {
     "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -68,5 +73,21 @@
     "gudoBallParam.xfbin": "PENDING",
     "ougiAwakeningParam.xfbin": "PENDING: legacy fixed membership is not a generic reader",
     "guardEffectParam.xfbin": "PENDING"
+  },
+  "condition_raw_value_audit": {
+    "tool": "tools/audit_condition_raw_values.py",
+    "test": "tests/test_condition_raw_audit.py",
+    "ci_run_id": 41938539789,
+    "test_status": "PASS_SYNTHETIC_ONLY",
+    "real_stock_raw_compared": false,
+    "native_value_equivalence_verified": false
+  },
+  "cpk_multi_archive_packaging": {
+    "ci_run_id": 41937948988,
+    "test_status": "PASS_COMPONENT",
+    "append_existing_registrations": true,
+    "max_entries": 32,
+    "condition_descriptor_table_merge": false,
+    "archive_precedence_verified": false
   }
 }

@@ -1,5 +1,13 @@
 # NSC Full ModdingAPI Switch — checkpoint dan prompt lanjutan
 
+**2026-11-05 checkpoint update:** From a30b284, module-profile merge was added at
+40eab530 (Actions 41937948988 PASS) and stock-vs-candidate raw176 byte audit at
+4f190568 (Actions 41938539789 PASS, synthetic only). Both are component/CI
+proof, not runtime gameplay. Read handoff/CONTINUE_PROMPT.txt and current
+PORT_STATUS.json first. The actual Switch stock raw176 and original merged
+manager517 are still unverified. Never overwrite a different existing condition
+profile or claim archive precedence from successful bind registration.
+
 Update terbaru: `tools/compile_condition_bundle.py` kini mengikat descriptor ke companion dalam CPK aktual, konversi PRM eksplisit, profil CPK, dan konfigurasi dua profil NSO. Baca `PORTING_PROGRESS.md` bagian terakhir serta `handoff/CONTINUE_PROMPT.txt` sebelum memakai prompt historis di bawah. Raw values dan runtime lifecycle belum selesai.
 
 Update lanjutan: validasi opsional companion raw176 (hash, ukuran, jumlah, dan nama setiap indeks) sudah diimplementasikan di `tools/portlib/condition_companion.py`. Lihat bagian terbaru `PORTING_PROGRESS.md`. Packaging runtime/CPK dan semantik nilai raw masih pending. Prompt MVP di bawah adalah scope keseluruhan; jangan mengulang validator yang sudah ada.

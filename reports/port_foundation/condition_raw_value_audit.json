@@ -1,0 +1,17 @@
+{
+  "status": "PASS_SYNTHETIC_ONLY",
+  "test": "tests/test_condition_raw_audit.py",
+  "commit": "4f190568f73973682023582e34ddb7587662c309",
+  "ci_run_id": 41938539789,
+  "ci_conclusion": "success",
+  "synthetic_prefix_changed_rows": 1,
+  "synthetic_appended_rows": 1,
+  "synthetic_record_offset": 77,
+  "invalid_cases_rejected": 7,
+  "cli_rejects_before_output": true,
+  "real_switch_raw_input_tested": false,
+  "source_provenance_verified": false,
+  "effect_semantics_verified": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

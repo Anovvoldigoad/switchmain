@@ -5,7 +5,7 @@
   "repository": "https://github.com/Anovvoldigoad/switchmain",
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
-  "documentation_commit": "Resolve containing commit: includes condition_bundle implementation; native runtime still unchanged from a51dd14.",
+  "documentation_commit": "Documentation is a subsequent commit; resolve the actual branch HEAD before any write",
   "prior_storm_checkpoint_id": "c7ca5be9-1c45-47c1-84d2-312b33f0bf4f",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
@@ -34,7 +34,9 @@
       "configurable 0..512 additional descriptors; four native loop bounds use the validated startup count; no hardcoded Tobi descriptor table",
       "compiled descriptor getter and native name/hash/reaction/state/icon/status/aura consumers tested; 21 installer fingerprint failures reject before hooks",
       "optional hash-pinned raw176 companion validation: every descriptor/raw ordinal name must match; malformed, reordered or count-mismatched companions rejected before output; review copy preserves all input bytes",
-      "single-archive condition bundle compiler validates actual CPK companion, converts only selected PC API PRMs, emits paired condition/CPK profiles, and optionally configures both NSO profiles without dropping unrelated registrations"
+      "single-archive condition bundle compiler validates actual CPK companion, converts only selected PC API PRMs, emits paired condition/CPK profiles, and optionally configures both NSO profiles without dropping unrelated registrations",
+      "safe condition-bundle module composition appends one CPK registration to pre-existing valid entries (max 32); rejects case/priority collisions and different pre-existing condition descriptors without overwriting either",
+      "hash-pinned raw176 stock-vs-candidate byte audit reports exact per-ordinal differing byte offsets and added row hashes; tested only with synthetic inputs"
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -42,7 +44,8 @@
       "CPK directory discovery, async completion/unbind lifecycle and archive precedence unverified; parameter-family coverage remains partial",
       "53 PC factory names remain unverified against Switch placeholders; PC create-time global resets and complete actor/resource lifecycle not ported",
       "gameplay and emulator compatibility not verified",
-      "condition descriptor compiler requires unchanged pinned PC baseline; raw 176-byte conditionprm packaging/order and complete effect/application lifecycle remain unverified"
+      "condition descriptor compiler requires unchanged pinned PC baseline; raw 176-byte conditionprm packaging/order and complete effect/application lifecycle remain unverified",
+      "actual unmodified Switch v1.70 raw176 conditionprm input and true merged PC manager517 have not been supplied/independently authenticated; byte-value audit has synthetic CI proof only"
     ],
     "proofs": [
       "reports/port_foundation/bootstrap.json",
@@ -63,7 +66,9 @@
       "reports/port_foundation/condition_companion.json",
       "reports/port_foundation/condition_companion_real.json",
       "reports/port_foundation/condition_bundle.json",
-      "reports/port_foundation/condition_bundle_real.json"
+      "reports/port_foundation/condition_bundle_real.json",
+      "reports/port_foundation/condition_bundle_multi_cpk.json",
+      "reports/port_foundation/condition_raw_value_audit.json"
     ],
     "parameter_family_coverage": {
       "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -77,13 +82,30 @@
       "gudoBallParam.xfbin": "PENDING",
       "ougiAwakeningParam.xfbin": "PENDING: legacy fixed membership is not a generic reader",
       "guardEffectParam.xfbin": "PENDING"
+    },
+    "condition_raw_value_audit": {
+      "tool": "tools/audit_condition_raw_values.py",
+      "test": "tests/test_condition_raw_audit.py",
+      "ci_run_id": 41938539789,
+      "test_status": "PASS_SYNTHETIC_ONLY",
+      "real_stock_raw_compared": false,
+      "native_value_equivalence_verified": false
+    },
+    "cpk_multi_archive_packaging": {
+      "ci_run_id": 41937948988,
+      "test_status": "PASS_COMPONENT",
+      "append_existing_registrations": true,
+      "max_entries": 32,
+      "condition_descriptor_table_merge": false,
+      "archive_precedence_verified": false
     }
   },
   "ci": {
-    "run_id": 41929932638,
+    "run_id": 41938539789,
     "status": "completed",
     "conclusion": "success",
-    "scope": "Previous companion validation commit; not proof for new bundle changes"
+    "head_sha": "4f190568f73973682023582e34ddb7587662c309",
+    "scope": "AArch64 module build and component/native-slice tests; raw176 values synthetic only; no Uzuy gameplay"
   },
   "provenance": {
     "manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
@@ -114,15 +136,16 @@
     }
   ],
   "next_mvp": {
-    "name": "Verified condition descriptor/raw companion integration",
-    "status": "PARTIAL: single-archive companion/profile/event bundle integration implemented; native raw values, full runtime precedence/lifecycle remain pending",
-    "spec": "NSC_FULL_API_CONTINUE_CHAT.md#prompt-eksplisit--salin-seluruh-blok-ini",
+    "name": "Real raw176 stock/PC candidate evidence and runtime archive lifecycle",
+    "status": "PENDING_REAL_INPUT_AND_NATIVE_PROOF",
+    "spec": "handoff/CONTINUE_PROMPT.txt",
     "acceptance": [
-      "Prove ordinal mapping from actual PC/Switch readers and input bytes; equal counts alone are insufficient.",
-      "Reject 517 descriptors with 512 raw rows; reject malformed or unproved-order pairs before emitting an apparent install package.",
-      "Preserve native prefix including Sakura aura107 and all untargeted bytes.",
-      "Compose with factory/CPK profiles and explicit Event236 conversion; test failures and native lifetime paths affected.",
-      "Save code, reports, hashes and actual CI results. Component success does not set gameplay-ready or full API true."
+      "Locate genuine stock Switch v1.70 raw conditionprm XFBIN and original merged PC manager517, authenticate origin and exact SHA256.",
+      "Use audit_condition_raw_values.py on real stock and candidate; report every stock-prefix byte delta without inferring stat/effect meanings.",
+      "Trace actual raw loader, CPK async completion/unbind and precedence in Switch native code and test exact snapshots with ARM64/host modeling.",
+      "Keep each independent condition descriptor table from silently replacing an existing one; explicit combined manager required.",
+      "Continue remaining MovesetPlus, CPK, factory, resource lifecycle and parameter-family gaps with source/offset proof.",
+      "Update GitHub code, reports, CI results and handoff; no gameplay PASS until Uzuy game execution."
     ]
   },
   "continuation": {
@@ -145,5 +168,19 @@
       "Continue authorized work without repeated permission prompts; preserve honest evidence labels."
     ]
   },
-  "verified_component_commit": "fc9e72da60bf3d2777dc34978fccc8ccc4916342"
+  "verified_component_commit": "4f190568f73973682023582e34ddb7587662c309",
+  "progress_since_previous_handoff": [
+    {
+      "commit": "40eab530d7d90811250cea085d941ca26b929651",
+      "ci_run_id": 41937948988,
+      "ci_conclusion": "success",
+      "scope": "CPK registration append/merge and conflict-preserving condition profile composition"
+    },
+    {
+      "commit": "4f190568f73973682023582e34ddb7587662c309",
+      "ci_run_id": 41938539789,
+      "ci_conclusion": "success",
+      "scope": "Hash-pinned raw176 byte comparator and synthetic regressions"
+    }
+  ]
 }

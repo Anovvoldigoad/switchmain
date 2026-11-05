@@ -400,3 +400,67 @@ Previous companion commit fc9e72d: all steps of run41929932638 succeeded. That C
 result predates this bundle change. Full API, gameplay readiness and emulator tests
 remain false. Next: verify new CI, native raw baseline/value compatibility, actual
 extra-descriptor pair, then asynchronous bind/precedence/resource lifecycle.
+
+## 2026-11-05 — Multi-CPK preservation and raw176 value-audit prerequisite
+
+Starting point: `a30b284` / Actions run41932841482 was green. The new work
+below does not change the ARM64 runtime hooks. The module remains a component
+foundation, not an installable or GAME_TESTED ModdingAPI release.
+
+### Safe multi-CPK condition-bundle composition
+
+Commit `40eab530d7d90811250cea085d941ca26b929651` added
+`merge_cpk_registration` to `tools/portlib/condition_bundle.py`.
+A bundle may append its one requested CPK to a valid existing registration
+list, preserving order and every original entry. An exact duplicate is
+idempotent. Case-insensitive path collisions with a different spelling or
+priority, duplicate priorities, and a 33rd entry are rejected. An existing
+nonempty condition profile differing from the requested table is also rejected:
+appended condition ordinals may depend on a global combined manager and must
+not be blindly concatenated or replaced.
+
+`tools/compile_condition_bundle.py` now emits the EFFECTIVE `cpk.profile`
+matching the configured NSO and reports requested versus effective hashes.
+Tests cover existing-row preservation, 31→32 capacity, 32→33 rejection,
+priority/path conflicts, condition-profile conflict, reconfiguration and CLI
+artifact equivalence. Action run41937948988: success. This is profile packing
+proof only. Archive precedence, file opening, async load completion and unbind
+were NOT measured. A single bundle still includes only one archive's companion;
+the change is not a global multi-mod condition-table merge.
+
+### Raw176 comparison tool
+
+Commit `4f190568f73973682023582e34ddb7587662c309` added
+`tools/audit_condition_raw_values.py` and
+`tools/portlib/condition_raw_audit.py`. The tool requires exact SHA256 for
+both XFBINs and the pinned PC manager data, parses 176-byte rows, requires a
+512-row stock file and matching candidate descriptor ordinals, and reports the
+precise raw record byte offsets changed in the shared 512-record prefix.
+Additional rows are identified by ordinal, name and SHA256 of the remaining
+112 bytes. It does not assign meanings to unknown raw fields.
+
+Example review-only command:
+
+```sh
+python tools/audit_condition_raw_values.py \
+  --pc-manager merged_conditionprmManager.xfbin \
+  --stock-raw stock_switch_conditionprm.bin.xfbin \
+  --expected-stock-sha256 ACTUAL_64_HEX_SHA256 \
+  --candidate-raw candidate_conditionprm.bin.xfbin \
+  --expected-candidate-sha256 ACTUAL_64_HEX_SHA256 \
+  --output new_raw_audit_directory
+```
+
+Only synthetic input validation was exercised in CI: one altered stock-prefix
+record at offset77, one appended record, and seven invalid cases rejected before
+CLI output creation. Run41938539789: successful; source provenance, real
+Switch raw values, effect semantics and gameplay remain UNVERIFIED. Baseline
+Switch raw XFBIN and the real merged manager517 remain inputs to obtain or
+authenticate. Prior Tobi raw512 and romfs raw517 hash references are not
+substitutes for the missing genuine stock-versus-candidate comparison.
+
+No code in these two commits changes native actor/condition application,
+existing UJ latch lifetime, unresolved factory placeholders, parameter-family
+readers, archive precedence, or asynchronous CPK loading. `PORT_STATUS.json`
+retains `IMPLEMENTATION_INCOMPLETE`, `full_moddingapi=false`,
+`ready_for_gameplay_test=false`, and `emulator_tested=false`.
