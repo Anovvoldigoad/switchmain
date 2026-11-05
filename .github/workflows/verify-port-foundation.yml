@@ -69,6 +69,8 @@ jobs:
         run: python tests/test_condition_bundle.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --module exlaunch/deploy/subsdk9 --output proof-work
       - name: Verify pinned PC Susanoo and Partner raw32 parameter reader layouts
         run: python tests/test_pc_param_rows.py --output proof-work
+      - name: Verify last four PC ModdingAPI source-grounded raw formats against public bytes
+        run: python tests/test_pc_param_remaining.py --output proof-work
       - name: Verify multi-CPK global condition batch component
         run: python tests/test_condition_batch.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --module exlaunch/deploy/subsdk9 --output proof-work
       - name: Execute native condition lookups and descriptor consumers
