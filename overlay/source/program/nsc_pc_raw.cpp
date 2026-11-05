@@ -87,7 +87,7 @@ bool Parse(std::uint32_t family, const std::uint8_t* raw, std::size_t size,
         const std::size_t width=family==5 ? 0x18u : family==6 ? 0x68u : 0xF8u;
         terminal=family==5 ? std::uint32_t(size%width) : 0u;
         if (family==5 ? terminal>1 : size%width!=0) return false;
-        if (size/width>kMaxRows) return false;
+        if (size<width || size/width>kMaxRows) return false;
         for (std::size_t off=0;off+width<=size;off+=width) {
             std::uint32_t a=0,b=0;
             if (family==5) {

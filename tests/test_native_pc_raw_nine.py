@@ -145,7 +145,7 @@ def run(out):
           2:[b"a",b"\0"*40004],
           3:[b"abc",b"\0"*40004],
           4:[struct.pack("<I",2)+struct.pack("<I",17),b"\0"*40004],
-          5:[fixtures()[5]+b"X",b"a"*23],
+          5:[fixtures()[5]+b"X",b"a"*23,b"\x7f"],
           6:[fixtures()[6][:-1]],
           7:[struct.pack("<ii",1,2),struct.pack("<iii",1,25,-1)],
           8:[fixtures()[8][:-1]]}
