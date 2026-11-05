@@ -654,3 +654,54 @@ Commit fc24971ab3d635d9061b132842607d46ae2551a2 added exact public PC source fix
 TheLeoNX public manager baseline NSC conditionprmManager.xfbin is 57344 bytes (512*112), NOT an original 517-record merged manager. The true merged PC manager517 and independently authenticated unmodified Switch 1.70 raw176 stock are still missing. Library common.cpk and romfs.zip remain inaccessible to local executable analysis due tool failures, and were not uploaded to GitHub. Seven parameter-family readers remain pending, two have only PC raw32 payload parsers, and two earlier families are partially covered. Full runtime integration, compressed PRMs, MovesetPlus, 53 factory unknowns and Uzuy gameplay remain unfinished.
 
 All release flags remain false: full_moddingapi, ready_for_gameplay_test, emulator_tested. See reports/port_foundation/native_cpk_indirect_refs_summary.json and reports/port_foundation/pc_param_rows.json for narrow evidence.
+
+## 2026-11-05 — PC stream readers and executable-target relocation tables
+
+Verified from HEAD 2c79c9f409ac92a99f19c578af3e4da437ec46fe.
+Commit 4702118dfaf574f252f79b4b6c19ded57fda831a (CI 41972748025 SUCCESS)
+adds PC OugiAwakeningParam/GudoBallParam uint32 ID-array readers and CharRelationParam
+count-prefixed uint32 ID-array reader, based on pinned PC source at TheLeonX/UltimateStormAPI
+a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc. Exact source blobs from public
+TheLeonX/NSC-ModManager 276116ebf5ba398a867793cb02ee6c33c0927645 were
+copied without modification and matched upstream Git SHA. Input SHA256 for Ougi
+aafe5c9d06106459ae1b56891f2cae5751596c24db3cf15898160499b7c88509
+(one 4-byte uint32), Gudo 7516b57455c49ab9508b6fc12bc644aae797d96b5ef8253e2f809f0319df467f
+(two uint32), CharRelation 80edf5c8fcb60825fad9a2ff4c1c82864b6b5656ecb7775e5d4c77a3ca47ce2a
+(30 variable-length records over 548 bytes). CI rejected nine synthetic malformed
+or mismatched inputs. These are PC ModdingAPI raw payloads despite .xfbin extension;
+NO native Switch loader or gameplay proof is implied.
+
+The same commit added pinned native nearby-target census around CPK manager
+(0x115E80C), adapter (0x115FBB8), file-open (0x1170FB0), fileload status
+(0x1207EFC) and fileload_process (0x106F404). Exact main SHA256 is
+2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
+Around 0x106F404, the scan found 2 BL edges from outside the bounded
+window, 5 local BL and 7 local B edges, plus BLR sites at 0x106ED9C and
+0x106EDD0. RELATIVE relocation addends near this region include slots
+0x212B5F0->0x106EDB8, 0x212B5F8->0x106EDC4,
+0x212B600->0x106EDE0, 0x212B608->0x106EDE8.
+These facts supersede the earlier narrow statement of zero references to
+the exact 0x106F404 address; the original exact-address result remains valid.
+
+Commit ef738a5eba5738f40d9f8ca2384912496210e148 (CI 41973202913 SUCCESS)
+extends this analysis to adjacent eight-byte executable-target relocation
+groups. Eight candidate groups were counted, and all four known exact
+slot/addend pairs reproduced. Some groups contain 13 consecutive slots
+with repeated code targets; ownership, vtable class, method ordinals,
+calling ABI, async completion/unbind and runtime archive winner remain
+UNVERIFIED. This does NOT justify installing hooks yet. The static graph
+results are in the full CI artifact and summary JSON report.
+
+User Library searches did not find a byte-verifiable original merged
+PC conditionprmManager517 in this turn. Existing named common.cpk cannot
+be authenticated as unmodified stock through metadata; programmatic local
+container inspection failed. No actual stock-vs-candidate raw176 comparison
+was made. No private stock CPK was committed to the public repository.
+
+Five previously pending families now have PC-only reader validation
+(SusanooCond, PartnerSlot, Ougi, Gudo, CharRelation). Four still have no
+reader (pairSpSkill, bgmManager, specialInteraction, guardEffect). The five
+PC readers are not wired to Switch; lifecycle, actor/resource ownership,
+MovsetPlus, 53 factory placeholders and compressed PRMs remain incomplete.
+full_moddingapi=false; ready_for_gameplay_test=false;
+emulator_tested=false; GAMEPLAY_UNVERIFIED.

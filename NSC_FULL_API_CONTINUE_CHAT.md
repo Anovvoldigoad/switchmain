@@ -1,5 +1,7 @@
 # NSC Full ModdingAPI Switch — checkpoint dan prompt lanjutan
 
+2026-11-05 native code-pointer progress: ef738a5 CI 41973202913 PASS (8 adjacent reloc table candidates near 0x106F404), 4702118 CI 41972748025 PASS (Ougi/Gudo/CharRelation public PC raw readers, 5/9 PC formats now partially covered). No runtime hook or gameplay proof. Authoritative handoff: handoff/CONTINUE_PROMPT.txt.
+
 2026-11-05 source-format checkpoint: fc24971 adds 2 authentic public PC parameter templates with SHA/Git blob proof, CI 41969845880 PASS. be99b93/45f52dd add bounded native exact-anchor indirect reference census (zero hits does NOT prove absence). Switch runtime integration still incomplete. Read authoritative handoff/CONTINUE_PROMPT.txt.
 
 2026-11-05 native static update: 3b9f3f7/e314f9c add exact-main 10-anchor direct-branch census, CI 41964408868 PASS; status remains component-only. See handoff/CONTINUE_PROMPT.txt and latest PORTING_PROGRESS.md; no async/unbind or real stock CPK proof.
