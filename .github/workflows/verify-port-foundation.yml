@@ -43,6 +43,8 @@ jobs:
         run: python tests/test_native_controls.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
       - name: Validate CPK profile and composed Android packaging
         run: python tests/test_cpk_profile.py --module exlaunch/deploy/subsdk9 --output proof-work
+      - name: Audit inter-CPK path collisions without claiming precedence
+        run: python tests/test_cpk_overlaps.py --output proof-work
       - name: Execute native CPK registration and retry branches
         run: python tests/test_native_cpk.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
       - name: Validate PC condition descriptors and Android packaging
