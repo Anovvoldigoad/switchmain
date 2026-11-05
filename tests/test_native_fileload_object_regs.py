@@ -63,7 +63,11 @@ def run(main,out):
                 ("X1","X22","0x116f5ac")]
     for src,name in (("x1","X1_before_X22_capture"),
                      ("x2","X2_before_X20_capture")):
-        assert proof["register_traces"][src]["sites"][name]["possible_reaching_writes"]
+        origins=proof["register_traces"][src]["sites"][name]["possible_reaching_writes"]
+        assert len(origins)==1
+        assert origins[0]["kind"]=="incoming_caller_saved_argument_value"
+    assert all(x["source_register_unchanged_since_entry_in_bounded_static_CFG"]
+               for x in proof["original_caller_argument_register_alias_witnesses"])
     for alias in proof["original_caller_argument_register_alias_witnesses"]:
         assert "source_register_inbound_origin_candidates" in alias
         assert not alias["pointer_type_and_ownership_proven"]

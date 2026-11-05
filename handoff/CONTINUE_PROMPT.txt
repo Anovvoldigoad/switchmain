@@ -1,33 +1,36 @@
 LANJUTKAN FULL PC MODDINGAPI -> NARUTO STORM CONNECTIONS SWITCH v1.70
-Repository Anovvoldigoad/switchmain; branch port/full-api-v170
-LATEST VERIFIED CODE 696629615085cd0e586d00f9665d5f07d0e2b495
-Last code Actions 42000801083 COMPLETED SUCCESS.
-DOCS HEAD WILL BE NEWER: always verify actual HEAD and newest Actions first.
-Storm Modding Lab prior checkpoint 80be5308-6dfa-44d8-91e9-71c92a4f00e2.
+Repository: Anovvoldigoad/switchmain
+Branch: port/full-api-v170
+LATEST VERIFIED CODE: c32b1d2235e54b17c334081063132aa6df389424
+Last verified code Actions: 42013833559 COMPLETED SUCCESS.
+Current docs HEAD may be newer: verify LIVE branch HEAD and latest Actions before editing.
 
-READ first:
-handoff/checkpoint.json; PORT_STATUS.json; last PORTING_PROGRESS.md;
-.github/workflows/verify-port-foundation.yml;
-reports/port_foundation/native_fileload_result_flow_summary.json;
-reports/port_foundation/native_fileload_zero_return_summary.json;
-reports/port_foundation/real_condition_intake_summary.json;
-reports/port_foundation/pc_api_manifest_new_summary.json.
+READ FIRST:
+- handoff/CONTINUE_PROMPT.txt (this document), handoff/checkpoint.json
+- PORT_STATUS.json; last PORTING_PROGRESS.md
+- .github/workflows/verify-port-foundation.yml
+- reports/port_foundation/native_fileopen_returns_summary.json
+- reports/port_foundation/native_fileload_entry_register_summary.json
+- reports/port_foundation/real_condition_intake_summary.json
+- reports/port_foundation/pc_api_manifest_new_summary.json
 
-DO NOT REPEAT ALREADY VERIFIED:
-* Original pinned main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
-* 0x106F404 is an original BL callsite, not verified FileLoad entry; corrected original prologue at 0x116F404, eight-word exact match.
-* First native FileOpen BL 0x116F47C->0x1170FB0 then 0x116F480 CBZ W0,0x116F4D8.
-* From zero CBZ target first status5 0x116F520 is syntactically reachable, second status5 0x116F5C0 is NOT reachable via this bounded corridor; second has independent [X22,#0x1D8] compare.
-* NEW 6966296 / Actions 42000801083 SUCCESS: a selected branch-to-first-status5 path contains 19 original ARM64 instructions and zero additional conditional decisions; caller sets W1=5, X0=X20. Original status helper receives X0->X21, W1->W20; compares old status 3 and 5 and has guarded store W20 to [X21,#0x68]. Native setter 32 scenarios were previously executed with MOCKED external locks; no live CRI test. Added synthetic CFG positive/negative/loop regression and SHA-negative test. Tool: tools/audit_native_fileload_result_flow.py.
-* Nine exact source-verified PC parameter-family DATA-ONLY readers/manifest (9 unresolved audio/effect candidate names), source-pinned condition manager 512/517 synthetic audits and CPK overlap tooling. 53 factory placeholders remain unported.
-* Exact original Sakura aura107 preserved, Event236 marker 0x4E53 at record+0x2A, native unmarked Event236 unchanged.
+DO NOT REPEAT ALREADY PASSED:
+- Original main exact SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; original corrected FileLoad prologue 0x116F404 (old 0x106F404 is a BL, not entry).
+- FileOpen BL 0x116F47C->0x1170FB0, followed by 0x116F480 CBZ W0,0x116F4D8.
+- Commit 943f440 CI42011552173 SUCCESS: bounded FileOpen original CFG 52 reachable instructions, 2 RETs and 11 W0 definition sites.
+- Commit 80dd4b4 CI42012372858 SUCCESS: reaching source original register writes for X20 and X22.
+- Commit e5e3e4d CI42013112991 SUCCESS: 0x1171068 RET gets W0=1 from 0x1171058 MOV W0,#1; 0x117107C RET gets W0=0 from 0x117106C MOV W0,WZR. No nonreturn CFG escapes in fixed window, assuming calls return. This is NOT CRI success/failure interpretation.
+- Commit c32b1d2 CI42013833559 SUCCESS: 0x116F434 MOV X20,X2, 0x116F438 MOV X22,X1; X1 and X2 are unchanged from the corrected original function entry up to these captures in bounded CFG with caller-saved clobbers modeled. X20 source of first and second status5 calls; X22 source of independent +0x1D8 guard. No object type, class, pointer ownership or full function ABI proven.
+- First status5 0x116F520 statically reachable on original CBZ W0 zero branch, second 0x116F5C0 is different +0x1D8 guard path. 32 native setter original AArch64 cases with MOCKED locks were previously tested, not real CRI.
+- Source-verified nine PC-only parameter raw readers, synthetic CPK manager 512/517 audit, 53 unsupported factory placeholders; no original real stock common.cpk/merged PC manager517 authenticated.
+- Invariants: original exact main SHA guard; Sakura aura107; Event236 0x4E53 at record +0x2A; untouched native Event236 without marker.
 
 NEXT INDEPENDENT IMPLEMENTATION:
-1. Use exact original Switch AArch64 code to trace 0x1170FB0 FileOpen W0 return definitions on EVERY original reachable return path. Resolve register alias, original X20 ownership and CRI object layout without guessing. Check whether zero means failure using real source/native runtime, not CBZ intuition. Model or execute only functions whose ABI/side effects are verified. Never activate legacy diagnostic hook or assert safe trampoline from CFG alone.
-2. Trace native locks, callbacks, async status completion, resource ownership, unbind/destructor, archive precedence and rollback; distinguish 0x116F520 failure candidate from 0x116F5C0 +0x1D8 guard. Require memory-write and lifetime proofs before hooks.
-3. Locate authentic unmodified Switch v1.70 stock common.cpk, candidate CPK and original merged PC conditionprmManager517 BY ORIGINAL BYTES, SHA256 AND INDEPENDENT PROVENANCE. Neither Drive metadata, a matching filename, a synthetic fixture nor a renamed ZIP proves stock. Run tools/audit_real_condition_intake.py on true paired 512/517 raw176 data. CI so far is synthetic only.
-4. Correlate nine PC parameter readers with actual Switch actor/factory native structures, model/effect/audio/SFX/JP voice and resource lifetime. Connect native loaders only with proof; finish 53 unsupported factory selectors, MovesetPlus behavior, compressed PRM, full manager/ModdingAPI compatibility.
-5. Build/code/tests/report/PORT_STATUS.json/checkpoint/continuation update on SAME branch. Verify current HEAD before writes, use expected parent SHA and no force; run GitHub Actions on EVERY commit and inspect actual completed result and logs. Preserve exact main SHA gate, Sakura aura107 and Event236 marked/unmarked distinction.
-6. Keep release flags full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false until matching installable artifact passes real Uzuy. Never state GAMEPLAY PASS from CI, static analysis, Unicorn or mocked locks.
+1. Trace original 0x1170FB0 native FileOpen CFG branch predicates and call/data dependencies leading to the two definitive machine-code return literals. Establish return-value semantics from actual CRI/native usage, do not assume zero=failure from CBZ alone. Read original code branches, field accesses and upstream callsite interfaces with exact SHA and bounded path evidence; report unresolved calls explicitly.
+2. Trace X2-derived object register X20 and X1-derived context register X22 from original entry, including object allocation, class/vtable, callback dispatch, status+0x68 and context+0x1D8 fields, error rollback, CRI lock/unlock, async completion, unbind/destructor and archive precedence. No patch until ABI+teardown proven.
+3. Authenticate true original PC merged conditionprmManager517, truly UNMODIFIED Switch 1.70 stock common.cpk and candidate CPK by byte/hash and independent provenance. Run real raw176 using tools/audit_real_condition_intake.py. Name/size/library metadata are NOT proof. Synthetic CI not stock audit.
+4. Continue full ModdingAPI with native-backed nine PC family integrations, 53 factory placeholders, complete MovesetPlus and compressed PRM, actor/model/FX, SFX/JP voice, resource lifetime, new-slot and multi-mod compatibility. No speculative hook or guessed resource IDs.
+5. Every code/docs commit on branch: verify current HEAD first, expected-SHA fast-forward only, no force; run full GitHub Actions and inspect completed conclusion AND logs. Update source, tests, reports, PORT_STATUS.json, checkpoint, prompt. Store new prompt for ordinary Chat.
+6. All three release flags full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false until exact installable artifact genuinely tested in Uzuy. Do not equate CI/Unicorn/stubs/static with gameplay.
 
-Finish by reporting CURRENT GitHub HEAD, actual final Actions status/run, exact remaining blockers, artifacts written, and an updated copy-ready prompt. Continue independently without asking permission for authorized repo work.
+At finish report actual latest GitHub HEAD, CI job/run status, real blockers and copy-ready prompt. Continue independently; don't ask permission for already authorized repo work. FULL API remains the target, not a boot probe or clone.

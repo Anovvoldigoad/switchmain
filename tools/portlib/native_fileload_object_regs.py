@@ -100,8 +100,13 @@ def _trace_register(graph, instructions, reg, start, sites, low, high):
         origins=[]
         for label in sorted(labels):
             if label==entry:
-                origins.append({"at":None, "kind":"incoming_callee_saved_value",
-                                "register":reg, "source_identity_proven":False})
+                origins.append({
+                    "at":None,
+                    "kind":("incoming_caller_saved_argument_value"
+                            if reg in ("x1","x2")
+                            else "incoming_callee_saved_value"),
+                    "register":reg,
+                    "source_identity_proven":False})
             else:
                 pc=int(label.split("@")[1],16)
                 origins.append({**definitions[pc]})
@@ -171,7 +176,7 @@ def inspect(nso):
         src_reg,src_site=entry_checks[source]
         src_origins=traces[src_reg]["sites"][src_site]["possible_reaching_writes"]
         unchanged=(len(src_origins)==1 and src_origins[0]["kind"]==
-                   "incoming_callee_saved_value" and src_origins[0]["at"] is None)
+                   "incoming_caller_saved_argument_value" and src_origins[0]["at"] is None)
         alias_proofs.append({
             "at":at, "original_word_le":code[origin_pc:origin_pc+4].hex(),
             "original_instruction":phrase, "source_register_at_copy":source,

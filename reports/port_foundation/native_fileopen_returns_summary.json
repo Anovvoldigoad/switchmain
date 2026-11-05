@@ -1,0 +1,34 @@
+{
+  "status": "PASS_ORIGINAL_PINNED_FILEOPEN_BOUNDED_TWO_RETURN_VALUES_STATIC_ONLY",
+  "code_commit": "e5e3e4deacfe5987710921628840e3a5609c5735",
+  "verified_followup_commit": "c32b1d2235e54b17c334081063132aa6df389424",
+  "ci_run_id": 42013833559,
+  "ci_conclusion": "success",
+  "main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "candidate_entry": "0x1170FB0",
+  "analysis_end_exclusive": "0x11712B0",
+  "reachable_instructions": 52,
+  "bounded_return_values": [
+    {
+      "ret": "0x1171068",
+      "def": "0x1171058",
+      "instruction": "mov w0, #1",
+      "value": 1
+    },
+    {
+      "ret": "0x117107c",
+      "def": "0x117106c",
+      "instruction": "mov w0, wzr",
+      "value": 0
+    }
+  ],
+  "non_return_exit_count_in_bounded_syntactic_CFG": 0,
+  "calls_are_assumed_to_return": true,
+  "original_fileload_callsite": "0x116F47C -> 0x1170FB0",
+  "caller_zero_check": "0x116F480 CBZ W0,0x116F4D8",
+  "native_CRI_zero_means_failure_verified": false,
+  "runtime_execution_verified": false,
+  "native_hook_installed": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

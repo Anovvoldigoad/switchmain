@@ -44,7 +44,8 @@
     "2026-11-05 external preexisting 7 commits b882d5a..a1bd96f: reference-use census, PC->CPK literal TOC resource probe, corrected FileLoad 0x116F404 prologue eight-word match, failure status5 branches and 32 original ARM64 status setter executions with modeled lock services. These passed GitHub CI; no real CRI lock/audio/asset/Uzuy proof.",
     "2026-11-05 commit a256dcf: bounded syntactic ARM64 CFG from corrected 0x116F404 native FileLoad entry; 166 reachable instruction words and all 3 direct callsite witnesses (FileOpen 0x116F47C, status5 0x116F520 and 0x116F5C0) reachable; Actions 41994695967 SUCCESS. No new hooks or ABI claim.",
     "2026-11-05 original FileOpen return W0==0 branch 0x116F480 CBZ to 0x116F4D8 has syntactic bounded native CFG path to status5 setter BL 0x116F520->0x120661C. Separate status5 BL 0x116F5C0 is NOT syntactically reachable from that zero-result branch within the analyzed window; it follows its distinct context +0x1D8 guard. Original main SHA pinned. CI 41995755104 SUCCESS. Zero real CRI failure tests, ABI/async unverified.",
-    "2026-11-05 commit 6966296: original SHA-pinned read-only FileOpen W0==0 branch to first native status5 argument/body audit. CI 42000801083 SUCCESS; selected syntactic path length 19, zero conditional decisions on that selected path. Exact caller W1=5 / X0=X20, helper X0->X21/W1->W20, guarded store W20 to [X21,#0x68]. Synthetic graph regressions and wrong-main SHA fail-closed tests pass. This is NOT live CRI zero return, X20 ownership, real locking/async, ABI-safe hook or gameplay."
+    "2026-11-05 commit 6966296: original SHA-pinned read-only FileOpen W0==0 branch to first native status5 argument/body audit. CI 42000801083 SUCCESS; selected syntactic path length 19, zero conditional decisions on that selected path. Exact caller W1=5 / X0=X20, helper X0->X21/W1->W20, guarded store W20 to [X21,#0x68]. Synthetic graph regressions and wrong-main SHA fail-closed tests pass. This is NOT live CRI zero return, X20 ownership, real locking/async, ABI-safe hook or gameplay.",
+    "2026-11-05 pinned native FileOpen 0x1170FB0 bounded CFG: 52 reached machine instructions; two RETs: 0x1171068 with W0=1 (MOV W0,#1) and 0x117107C with W0=0 (MOV W0,WZR). No other non-RET exit in bounded CFG assuming calls return; W0=0 interpretation as CRI failure still not validated. Native FileLoad 0x116F404: 0x116F434 MOV X20,X2, 0x116F438 MOV X22,X1; original X1/X2 have no prior reached writes from entry under bounded CFG with caller-saved call-clobber modeling; status5 first/second object argument from X20, +0x1D8 context guard from X22. No class identity, lifetime, callback, rollback, precedence, ABI safety, authentic original stock CPK or real manager517; no new patch or gameplay."
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -66,7 +67,8 @@
     "Nine raw PC parameter readers feed an offline source manifest, but 9 resource-name strings remain unverified against actual CPK sound/effect banks and NO native Switch 1.70 reader, actor or factory hook is proven.",
     "Verified corrected FileLoad frame prologue 0x116F404 and callsite reachability alone do NOT prove FileOpen failure -> status5 causality, real CRI async completion, unbind/destructor, CPK precedence, actor/factory ABI, or safe patch trampoline.",
     "Original FileOpen-zero -> first status5 has only original machine-code/CFG conditional reachability. Second context-guarded status5 0x116F5C0 was NOT reachable from zero branch in bounded scan. Live CRI returned values, causal failure handling, object destruction, archive precedence and native safe hooks require separate proof.",
-    "The 19-word FileOpen-zero-to-status5 witness and pinned X0/X20/W1 status helper body only establish machine-code/static path and argument transfers. Actual FileOpen W0=0 semantics, object ownership, failure rollback, CRI locks/async, unbind/destructor, archive winner and hook ABI remain unproven."
+    "The 19-word FileOpen-zero-to-status5 witness and pinned X0/X20/W1 status helper body only establish machine-code/static path and argument transfers. Actual FileOpen W0=0 semantics, object ownership, failure rollback, CRI locks/async, unbind/destructor, archive winner and hook ABI remain unproven.",
+    "Native original FileOpen two local literal W0 return values and FileLoad entry-source X2/X1 register transfer are proved within bounded static CFG, but success/failure meaning, object class/ownership, callback async/CRI locks, unbind/destructor, archive precedence, and safe ABI remain UNPROVEN. Runtime hooks must not be installed from these facts."
   ],
   "proofs": [
     "reports/port_foundation/bootstrap.json",
@@ -105,7 +107,9 @@
     "reports/port_foundation/pc_api_manifest_new_summary.json",
     "reports/port_foundation/native_fileload_corridor_cfg_summary.json",
     "reports/port_foundation/native_fileload_zero_return_summary.json",
-    "reports/port_foundation/native_fileload_result_flow_summary.json"
+    "reports/port_foundation/native_fileload_result_flow_summary.json",
+    "reports/port_foundation/native_fileopen_returns_summary.json",
+    "reports/port_foundation/native_fileload_entry_register_summary.json"
   ],
   "parameter_family_coverage": {
     "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -559,5 +563,74 @@
     "real_CRI_failure_or_async_proven": false,
     "hook_ABI_proven": false,
     "gameplay_verified": false
+  },
+  "native_fileopen_returns": {
+    "status": "PASS_ORIGINAL_PINNED_FILEOPEN_BOUNDED_TWO_RETURN_VALUES_STATIC_ONLY",
+    "code_commit": "e5e3e4deacfe5987710921628840e3a5609c5735",
+    "verified_followup_commit": "c32b1d2235e54b17c334081063132aa6df389424",
+    "ci_run_id": 42013833559,
+    "ci_conclusion": "success",
+    "main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "candidate_entry": "0x1170FB0",
+    "analysis_end_exclusive": "0x11712B0",
+    "reachable_instructions": 52,
+    "bounded_return_values": [
+      {
+        "ret": "0x1171068",
+        "def": "0x1171058",
+        "instruction": "mov w0, #1",
+        "value": 1
+      },
+      {
+        "ret": "0x117107c",
+        "def": "0x117106c",
+        "instruction": "mov w0, wzr",
+        "value": 0
+      }
+    ],
+    "non_return_exit_count_in_bounded_syntactic_CFG": 0,
+    "calls_are_assumed_to_return": true,
+    "original_fileload_callsite": "0x116F47C -> 0x1170FB0",
+    "caller_zero_check": "0x116F480 CBZ W0,0x116F4D8",
+    "native_CRI_zero_means_failure_verified": false,
+    "runtime_execution_verified": false,
+    "native_hook_installed": false,
+    "gameplay_verified": false,
+    "full_moddingapi": false
+  },
+  "native_fileload_entry_register_provenance": {
+    "status": "PASS_ORIGINAL_PINNED_FILELOAD_ENTRY_ARGUMENT_REGISTER_PROVENANCE_STATIC_ONLY",
+    "code_commit": "c32b1d2235e54b17c334081063132aa6df389424",
+    "ci_run_id": 42013833559,
+    "ci_conclusion": "success",
+    "main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "fileload_candidate_entry": "0x116F404",
+    "register_copies": [
+      {
+        "at": "0x116F434",
+        "instruction": "mov x20, x2",
+        "source": "entry X2 (no preceding reached write in bounded CFG)",
+        "use": [
+          "0x116F51C",
+          "0x116F5BC"
+        ]
+      },
+      {
+        "at": "0x116F438",
+        "instruction": "mov x22, x1",
+        "source": "entry X1 (no preceding reached write in bounded CFG)",
+        "use": [
+          "0x116F5AC read of [X22,#0x1D8]"
+        ]
+      }
+    ],
+    "caller_saved_X1_X2_clobbers_modeled": true,
+    "class_identity_or_pointer_ownership_proven": false,
+    "callback_or_status_async_proven": false,
+    "archive_precedence_proven": false,
+    "safe_hook_ABI_proven": false,
+    "native_patch_installed": false,
+    "gameplay_verified": false,
+    "full_moddingapi": false
   }
 }
