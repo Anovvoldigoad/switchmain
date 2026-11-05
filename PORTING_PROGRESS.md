@@ -807,3 +807,9 @@ New commit a256dcf5702525ea4ea71ec386f95060868b6fb3, Actions 41994695967 SUCCESS
 Original stock common.cpk and merged PC manager517 provenance/actual SHA remain unauthenticated. Local container failed to read materialized CPK. Tools/audit_real_condition_intake.py only passed synthetic manager517 CPK pair. Nine PC families have format-validated readers and data-only manifest; zero native integrations. MovesetPlus, 53 factory placeholders, compressed PRM and SFX/audio/effect/model handling remain incomplete.
 
 Release flags stay full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. No new hook or playable package.
+
+## 2026-11-05 — Branch-sensitive FileOpen zero-return status5 research
+
+Commit d6b357cc93fc14ef36d8aa0bf218f5ab84167de3 (Actions 41995755104 SUCCESS) adds an original SHA-pinned static branch-flow audit, directly after the corrected native FileLoad entry 0x116F404. FileOpen BL at 0x116F47C -> 0x1170FB0 is immediately followed by 0x116F480 CBZ W0,0x116F4D8. When that machine-code branch is taken, there is a syntactic original CFG path to the first status5 setter BL at 0x116F520 -> 0x120661C. The other status5 BL at 0x116F5C0 is NOT reachable from that zero branch under the bounded original CFG scan: its previous code checks the separate [X22,#0x1D8] field against 1 and branches over the setter if nonmatching. This is a meaningful distinction for the next API failure-path port.
+
+A follow-up regression added exact expected true/false static reachability and explicit original-branch operand checks. This is not live FileOpen failure execution; all native async completion, source ownership, lock ABI, archive precedence, unbind and gameplay remain unverified. No hooks installed or resources modified. Original stock CPK and PC merged manager517 still not authenticated. Release flags remain false.

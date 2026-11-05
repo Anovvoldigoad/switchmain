@@ -1,0 +1,21 @@
+{
+  "status": "PASS_PINNED_STATIC_FILEOPEN_ZERO_BRANCH_TO_STATUS5_ONLY",
+  "source_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "code_commit": "d6b357cc93fc14ef36d8aa0bf218f5ab84167de3",
+  "ci_id": 41995755104,
+  "conclusion": "success",
+  "fileopen": "0x116F47C BL->0x1170FB0",
+  "zero_check": "0x116F480 CBZ W0,0x116F4D8",
+  "first_status5": "0x116F520 BL->0x120661C",
+  "first_reachable_from_zero_branch": true,
+  "second_status5": "0x116F5C0 BL->0x120661C",
+  "second_reachable_from_zero_branch": false,
+  "second_guard": "LDR W8,[X22,#0x1D8]; CMP W8,#1; B.NE 0x116F5C4",
+  "real_CRI_error_execution_proven": false,
+  "async_completion_proven": false,
+  "unbinding_proven": false,
+  "archive_priority_winner_proven": false,
+  "safe_native_ABI_proven": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

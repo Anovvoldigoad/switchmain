@@ -13,6 +13,10 @@ def run(main,out):
     assert q["file_open_zero_result_branch"]["zero_branch_target"]=="0x116f4d8"
     assert q["first_status5"]["target"]=="0x120661c"
     assert q["second_status5"]["target"]=="0x120661c"
+    # Exact bounded original CFG result, not a runtime failure test.
+    assert q["first_status5"]["reachable_from_CBZ_zero_taken"] is True
+    assert q["second_status5"]["reachable_from_CBZ_zero_taken"] is False
+    assert q["first_status5"]["syntactic_path_offsets"][0]=="0x116f4d8"
     assert q["second_status5"]["guarding_branch"]=="0x116f5b4 B.NE 0x116F5C4"
     assert not q["actual_CRI_file_open_failure_tested"]
     assert not q["safe_trampoline_ABI_verified"]

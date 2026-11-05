@@ -1,55 +1,56 @@
 LANJUTKAN FULL PC MODDINGAPI -> NARUTO STORM CONNECTIONS SWITCH v1.70
-Repo Anovvoldigoad/switchmain | branch port/full-api-v170
-LATEST VERIFIED CODE COMMIT a256dcf5702525ea4ea71ec386f95060868b6fb3
-CI 41994695967 SUCCESS. Handoff/documentation HEAD will be newer: ALWAYS FETCH ACTUAL HEAD BEFORE WRITES.
-Read first: handoff/checkpoint.json, PORT_STATUS.json, latest PORTING_PROGRESS.md,
-.github/workflows/verify-port-foundation.yml and
-reports/port_foundation/native_fileload_corridor_cfg_summary.json.
+Repository Anovvoldigoad/switchmain branch port/full-api-v170
+LATEST VERIFIED CODE d6b357cc93fc14ef36d8aa0bf218f5ab84167de3
+Last code Actions 41995755104 SUCCESS.
+DOCS HEAD WILL BE NEWER: verify current HEAD and newest Actions before edits.
 
-IMPORTANT CONCURRENT HISTORY: Last user HEAD b15178b changed independently to
-a1bd96f (7 additional commits: b882d5a, e3171e7, 4f50223, 8de85f6,
-5bd5859, be0d074, a1bd96f) before this turn.
-Already CI PASS: native pointer source scan, PC+CPK TOC exact-string
-resource audit (synthetic), legacy wrong FileLoad hook fingerprint
-rejection, 8-word corrected original prologue at 0x116F404, two
-status-5 branches and native status setter 32 Unicorn scenarios with
-MODELED locks. Do not repeat these unless new evidence.
+READ first: handoff/checkpoint.json, PORT_STATUS.json,
+latest PORTING_PROGRESS.md, .github/workflows/verify-port-foundation.yml,
+reports/port_foundation/native_fileload_corridor_cfg_summary.json,
+reports/port_foundation/native_fileload_zero_return_summary.json.
 
-THIS TURN new code a256dcf: bounded original AArch64 FileLoad CFG from
-CORRECTED 0x116F404, 166 syntactically reachable words, all three
-original BL callsites syntactically reachable: 0x116F47C -> 0x1170FB0
-FileOpen and 0x116F520 / 0x116F5C0 -> 0x120661C status5 helper.
-The old 0x106F404 address is a BL to 0xFFF6A0 and its legacy dormant
-hook prologue fingerprint is INVALID. Do not enable or simply
-relocate that hook! The true AAPCS64 ABI and resource lifetime remain
-unverified.
+ALREADY PASS, DO NOT REPEAT:
+All nine source-verified PC raw format readers and unified data-only
+manifest. Original pinned main SHA256
+2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
+Original corrected FileLoad prologue at 0x116F404 (8 exact words); old
+0x106F404 = BL to 0xFFF6A0 and its dormant hook source fingerprint
+is INVALID. Original status setter 0x120661C ARM64 slice 32 cases
+with MODELED locks (original status 3 and 5 preserved).
+Corrected entry static CFG 166 reachable words; fileopen and status5
+BL sites reachable, CI 41994695967 PASS.
+NEW: original FileOpen at 0x116F47C BL->0x1170FB0; subsequent
+0x116F480 CBZ W0,0x116F4D8; first status5 BL at 0x116F520
+BL->0x120661C is syntactically reachable when zero branch taken.
+Second status5 BL at 0x116F5C0 is NOT syntactically reachable from
+that zero-result branch, guarded by distinct [X22,#0x1D8] compare 1.
+CI 41995755104 PASS. This is NOT proof of real runtime CRI error,
+async completion, archive source ownership, or safe ABI.
 
-NEXT INDEPENDENT WORK:
-1. Reconstruct CAUSAL native FileOpen failure branches and status5
-from original main 0x116F404, verify lock/actor storage and failure
-rollback and establish async callback completion. A CFG path is not
-execution, original status helper Unicorn uses mocked locks.
-2. Determine CRI bind completion, unbind/destructor, native archive
-winning priority and file/resource precedence; use exact original
-main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9,
-word fingerprints, code/data xrefs, ABI tests. No guesses or hook
-until signature, ownership, failure path and teardown proven.
-3. Find genuine unmodified stock Switch v1.70 common.cpk, merged
-PC 517 manager and candidate CPK. Calculate SHA256 from real bytes,
-establish provenance independent from filename and run
-tools/audit_real_condition_intake.py with real raw176. The prior CI
-audit used synthetic 512/517 rows, actual stock not verified.
-4. PC formats: all 9 original public raw readers have hashes, none
-bound to Switch native actor/factory. Cross-reference 9 unresolved
-effect/audio candidate names against AUTHENTIC source CRI/CPK banks.
-Implement native readers once ABI and actor lifecycle proven.
-5. Full MovesetPlus, 53 unsupported factory placeholders, compressed
-PRM, model, SFX, JP voice, effects and resource allocation still pending.
-Add CI, inspect actual job logs, commit code/tests/report/status/new
-handoff to SAME branch. Preserve exact main SHA guard, Sakura aura107,
-Event236 marker 0x4E53 at record+0x2A, native Event236 without marker.
-Three flags must remain false until genuine Uzuy gameplay tested:
-full_moddingapi, ready_for_gameplay_test, emulator_tested. CI, static
-analysis or Unicorn slices are NOT a gameplay test.
-Always finish with actual HEAD, Actions conclusion, blockers and a
-new self-contained prompt for ordinary chat.
+NEXT:
+1. Confirm original FileOpen zero-result branch into status5 using
+real native AArch64/CRI services and failure path including registers,
+memory writes, locks, exact source and rollback. Distinguish the
+separate +0x1D8 error guard from FileOpen failure.
+2. Prove async completion, unbind/destructor, archive precedence and
+resource lifetime with pinned code/data xrefs and runtime evidence.
+Never install a hook from static CFG alone. Require prologue,
+AAPCS64 caller/callee preservation, failure path and teardown proof.
+3. Authentic unmodified Switch v1.70 stock common.cpk and real
+original merged PC manager517 STILL MISSING byte provenance. Obtain
+actual candidate CPK, SHA256 independently and run actual raw176 via
+tools/audit_real_condition_intake.py. Synthetic tests are not stock.
+4. Map nine PC-only reader outputs against source-verified Switch
+factory IDs, model/effect audio/SFX/JP voice and actor resource ABI.
+Existing CPK TOC path scanner only tested synthetic archive.
+5. Finish MovesetPlus, 53 unsupported PC factory placeholders,
+compressed PRM, full API mod manager compatibility. Add tests/CI,
+inspect actual Actions logs, commit code/report/status/checkpoint
+and new continuation prompt to same branch.
+
+CRITICAL INVARIANTS: Exact main SHA; Sakura aura107; Event236
+0x4E53 marker at +0x2A and native Event236 without marker.
+Keep full_moddingapi=false, ready_for_gameplay_test=false and
+emulator_tested=false until playable ARTIFACT tested in actual Uzuy.
+Do not confuse static/CI/Unicorn/stub with game PASS.
+Always finish with HEAD + actual CI + blockers + next prompt.

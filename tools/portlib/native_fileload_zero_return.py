@@ -72,7 +72,7 @@ def inspect(nso):
         if direct_branch(int.from_bytes(code[at:at+4],"little"),at)!=("BL",SETTER):
             raise ValueError("Native status call callee mismatch")
     check=_one(code,0x116F5B4)
-    if (check.mnemonic,check.op_str)!=("b.ne"," #0x116f5c4".strip()):
+    if (check.mnemonic,check.op_str)!=("b.ne","#0x116f5c4"):
         raise ValueError("Second status setter 0x1D8 compare branch changed")
     witness={
         "source_callsite":"0x116f47c",
