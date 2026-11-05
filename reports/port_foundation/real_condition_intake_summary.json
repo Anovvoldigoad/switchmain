@@ -1,0 +1,17 @@
+{
+  "status": "PASS_SYNTHETIC_MANAGER517_STOCK512_CANDIDATE517_ONLY",
+  "code_commit": "f441c5a54bd370b6e01ee263b8e76cac4805286b",
+  "ci_id": 41987276792,
+  "ci_conclusion": "success",
+  "test_manager_records": 517,
+  "test_stock_records": 512,
+  "test_candidate_records": 517,
+  "synthetic_invalid_cases_rejected": 7,
+  "tool": "tools/audit_real_condition_intake.py",
+  "real_file_stream_hash_support": true,
+  "true_pc_merged_manager517_available": false,
+  "actual_unmodified_switch_CPK_authenticated": false,
+  "actual_stock_candidate_raw176_values_compared": false,
+  "actual_gameplay": false,
+  "full_moddingapi": false
+}

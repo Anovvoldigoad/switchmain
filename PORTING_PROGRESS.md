@@ -748,3 +748,51 @@ Full API remains INCOMPLETE; full_moddingapi=false,
 ready_for_gameplay_test=false, emulator_tested=false. No new native
 hooks/PC DLL emulation/gameplay package; no game playback tested.
 
+## 2026-11-05 — Follow-up native CFG, real-input intake and nine-PC-family index
+
+Verified branch HEAD before modification: 293f3a3f3a92c7551548e641d1b0e2823f32fe05,
+GitHub Actions 41980021960 SUCCESS. Existing parser, compiler, Event236,
+Sakura aura107, CPK overlap, direct and indirect scans were NOT rewritten.
+
+Commit 1c40470550195e200e39c9537856736e69d5d191
+(Actions 41986733558 SUCCESS) added bounded Capstone AArch64 static CFG
+analysis for exact SHA-pinned original main
+2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
+Candidate 0x106F394: 147 syntactically reachable words, no inbound direct
+B/BL, one pinned RELATIVE pointer at slot 0x215C478, four observed
+return/termination addresses and the legacy 0x106F404 BL callsite reachable.
+Candidate 0x106EDB8: 3 reachable words, 0 direct B/BL inbound,
+RELA slot 0x212B5F0. Native file-open 0x1170FB0: 52 reachable words
+and one direct B/BL inbound. These are bounded static candidates, not
+vtable ownership, confirmed function boundaries or live CRI lifecycle.
+
+Commit f441c5a54bd370b6e01ee263b8e76cac4805286b
+(Actions 41987276792 SUCCESS) added `tools/audit_real_condition_intake.py`
+for Android/Termux: byte-stream SHA256 real CPK and merged PC manager517,
+reject 512 public baseline, optionally discover exactly one validated
+517-row PC manager, then invoke existing `condition_archive_audit.inspect`
+for original stock512 and candidate517 raw176 CPK entries. CI proved only
+SYNTHETIC manager517/CPK pair with 7 malformed inputs rejected. It does
+NOT prove the user Library common.cpk is untouched Switch stock or that a
+genuine original merged manager517 has been located. The previously
+materialized actual `common.cpk` remains byte-uninspected due container
+and Python errors. No real original stock-vs-candidate raw176 comparison.
+
+Commit 85e14efd4bf6269be148810a9175766351ec063a
+(Actions 41987853686 SUCCESS) added SHA-validated union manifest of
+all NINE public PC raw parameter families, invoking prior validated
+readers rather than reimplementing them. Nine unresolved BGM sound/Guard
+effect name candidates were enumerated, seven malformed source specs
+rejected, deterministic index SHA256
+7b3b07919a14356ca91bd5b0ec0bb6bef80178607d12d017d1c10143b07c03ca.
+Manifest is PC ONLY. There are ZERO verified Switch reader/actor/factory
+integrations, and no real user mod package was loaded as test input.
+
+Native hook ABI, CRI async completion and resource/actor lifecycle,
+archive precedence, unbind/teardown, complete MovesetPlus, 53 PC
+factory placeholders, compressed PRM, SFX/audio/effect banks and
+Uzuy gameplay are NOT verified. No gameplay patch/installation candidate
+was produced. full_moddingapi=false, ready_for_gameplay_test=false,
+emulator_tested=false. Storm Modding Lab checkpoint
+80be5308-6dfa-44d8-91e9-71c92a4f00e2.
+

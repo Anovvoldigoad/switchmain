@@ -1,3 +1,11 @@
+2026-11-05: 1c40470 CI41986733558 SUCCESS pinned CFG candidate 0x106F394 147 words;
+f441c5a CI41987276792 SUCCESS manager517 CPK real-byte intake (SYNTHETIC-only test);
+85e14ef CI41987853686 SUCCESS all nine public PC raw-family source manifest
+9 unresolved resource name candidates. No genuine unmodified stock or merged
+original PC manager517, no native hook/ABI or Uzuy proof. Storm checkpoint
+80be5308-6dfa-44d8-91e9-71c92a4f00e2. Authoritative handoff:
+handoff/CONTINUE_PROMPT.txt.
+
 2026-11-05 update: ef0bd858 (4 remaining source-authenticated PC raw readers) CI41976177875 SUCCESS; 90be754 (nine pinned Capstone ARM64 windows) CI41976417627 SUCCESS; 9dfbf05 (seven BLR register-chain witnesses and correction of 0x106F404 to BL callsite) CI41977060825 SUCCESS. All nine PC raw formats now validated, ZERO native Switch loader integrations. Full API and Uzuy gameplay not proved. Storm Lab checkpoint e864bb82-5156-413c-9cdf-6d7177e0da61. Authoritative next prompt: handoff/CONTINUE_PROMPT.txt.
 
 # NSC Full ModdingAPI Switch — checkpoint dan prompt lanjutan

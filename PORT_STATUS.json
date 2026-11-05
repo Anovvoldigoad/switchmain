@@ -37,7 +37,10 @@
     "Three more PC source-verified raw parameter stream readers, with byte-authenticated public NSC Ougi (1 uint32), GudoBall (2 uint32) and CharRelation (30 variable-length records); CI PASS only, no native Switch integration",
     "Pinned original v1.70 main static nearby file-load CPK B/BL/BR/BLR neighborhood census and adjacent R_AARCH64_RELATIVE executable-target relocation cluster grouping; 8 candidate adjacent tables, four witnessed slots reproducible; no vtable/async/unbind claim",
     "All nine previously uncovered PC ModdingAPI parameter families now have source-pinned read-only format readers, validated with exact public raw samples; newest four: TUJ pairSpSkill (55x0x18), BGM (1x0x68), SpecialInteraction (4 count-prefixed records), GuardEffect (2x0xF8). 14 invalid inputs rejected. No Switch ABI/hook proof.",
-    "Exact SHA-pinned Switch 1.70 ARM64 Capstone code-window transcript (9 windows); 7 word-exact register/BLR witnesses, candidate 0x106F394 prolog from relocation, corrected former fileload_process 0x106F404 to mid-code BL to 0xFFF6A0. No CRI lifecycle proven."
+    "Exact SHA-pinned Switch 1.70 ARM64 Capstone code-window transcript (9 windows); 7 word-exact register/BLR witnesses, candidate 0x106F394 prolog from relocation, corrected former fileload_process 0x106F404 to mid-code BL to 0xFFF6A0. No CRI lifecycle proven.",
+    "SHA-pinned bounded ARM64 CFG exploration of relocated 0x106F394 candidate (147 reachable words, zero direct B/BL inbound, one RELA pointer, 4 observed terminal addresses), 0x106EDB8 candidate (3 words), and file-open 0x1170FB0 (52 words, one direct caller); no CRI ABI/lifecycle proof",
+    "Fail-closed Termux genuine file intake tooling: automatically SHA256-hash actual stock/candidate CPK and select a unique pinned PC manager517, invoke existing raw176 CPK pair audit; CI PASS on 512/517 synthetic originals only; true provenance remains unverified",
+    "Unified read-only nine-family PC ModdingAPI manifest from exact authenticated public raw fixture SHA256 inputs; CI PASS, nine unresolved audio/effect resource-name candidates, no native Switch factory/loader/hook integration"
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -50,11 +53,13 @@
     "actual Switch 1.70 CPK and original merged manager517 are still required for a verified stock-vs-candidate raw176 comparison; accessible Library file metadata is not source authentication",
     "multi-CPK raw conditionprm path collisions detected statically but runtime archive winner, async completion, unbind and global condition source order are not verified",
     "multi-CPK batch component packaging now available, but existing preloaded CPK entry content is not accessible to overlap analysis, global runtime condition source order and actual CRI async archive completion remain unverified",
-    "Native call-edge scan finds zero direct B/BL inbound to fileload_process 0x106F404; indirect/callback dispatch not traced. CPK async completion, manager unbind/teardown and archive precedence remain unresolved.",
+    "Prior fileload_process label 0x106F404 was a misclassified BL callsite, not proven entry. Corrected candidate 0x106F394 has one RELA pointer (0x215C478), 147 CFG-reachable words and zero direct B/BL inbound; CRI lifetime ownership and archive async/priority remain unknown.",
     "No address references to any of ten exact CPK/fileload anchor offsets were identified via pinned RELATIVE relocation, ADR or adjacent ADRP+ADD / load-of-relocation-slot patterns. This narrow negative result does NOT resolve indirect callbacks, vtables, unbind, priority or function starts.",
     "Eight adjacent executable-target RELATIVE relocation clusters were found around 0x106F404, including 4 reproducible slots at 0x212B5F0..0x212B608. Cannot identify their native class/vtable ownership, async status, unbind semantics, or archive lookup precedence from static relocation grouping.",
     "All nine source-grounded PC raw parameter family readers are validated, but ZERO of the nine is proven bound to native Switch 1.70 factories/actors; x64 PC calls, CRC32/BGM, effect data and audio lifecycle remain unported.",
-    "Original 0x106F404 is verified AArch64 BL to 0xFFF6A0, not a function entry. 0x106F394 has a pointer relocation/prolog but class/function ownership unknown. Indirect BLR X8 chains at 0x106ED9C and 0x106EDD0 have observed offsets 0x20 and 0x10, not proven vtable method indices."
+    "Original 0x106F404 is verified AArch64 BL to 0xFFF6A0, not a function entry. 0x106F394 has a pointer relocation/prolog but class/function ownership unknown. Indirect BLR X8 chains at 0x106ED9C and 0x106EDD0 have observed offsets 0x20 and 0x10, not proven vtable method indices.",
+    "Real intake now hashes original byte files and enforces unique 517-manager vs 512-stock/517-candidate geometry, but no byte-authenticated actual unmodified Switch CPK or true merged original PC manager517 was accessible; CPK pair result is synthetic only.",
+    "Nine raw PC parameter readers feed an offline source manifest, but 9 resource-name strings remain unverified against actual CPK sound/effect banks and NO native Switch 1.70 reader, actor or factory hook is proven."
   ],
   "proofs": [
     "reports/port_foundation/bootstrap.json",
@@ -87,7 +92,10 @@
     "reports/port_foundation/pc_param_streams.json",
     "reports/port_foundation/native_cpk_pointer_candidates_summary.json",
     "reports/port_foundation/pc_remaining_four_summary.json",
-    "reports/port_foundation/native_cpk_blr_structure_summary.json"
+    "reports/port_foundation/native_cpk_blr_structure_summary.json",
+    "reports/port_foundation/native_cpk_cfg_summary.json",
+    "reports/port_foundation/real_condition_intake_summary.json",
+    "reports/port_foundation/pc_api_manifest_new_summary.json"
   ],
   "parameter_family_coverage": {
     "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -391,5 +399,74 @@
     "async_verified": false,
     "unbind_verified": false,
     "archive_precedence_verified": false
+  },
+  "native_cpk_cfg": {
+    "commit": "1c40470550195e200e39c9537856736e69d5d191",
+    "ci_id": 41986733558,
+    "conclusion": "success",
+    "main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "pinned_observations": {
+      "candidate_106f394": {
+        "reachable_instructions": 147,
+        "incoming_direct_B_BL": 0,
+        "relocation_slots": [
+          "0x215c478"
+        ],
+        "observed_terminators": [
+          "0x106f47c",
+          "0x106f444",
+          "0x106f59c",
+          "0x106f578"
+        ],
+        "legacy_callsite_0x106f404_reachable": true
+      },
+      "relocated_106edb8": {
+        "reachable_instructions": 3,
+        "incoming_direct_B_BL": 0,
+        "relocation_slots": [
+          "0x212b5f0"
+        ],
+        "observed_terminators": [
+          "0x106edc0"
+        ]
+      },
+      "file_open_1170fb0": {
+        "reachable_instructions": 52,
+        "incoming_direct_B_BL": 1
+      }
+    },
+    "function_extent_proven": false,
+    "class_or_vtable_proven": false,
+    "async_verified": false,
+    "unbind_verified": false,
+    "archive_precedence_verified": false,
+    "gameplay_verified": false
+  },
+  "real_condition_intake": {
+    "code_commit": "f441c5a54bd370b6e01ee263b8e76cac4805286b",
+    "ci_id": 41987276792,
+    "conclusion": "success",
+    "manager_rows_synthetic": 517,
+    "stock_rows_synthetic": 512,
+    "candidate_rows_synthetic": 517,
+    "negative_cases_rejected": 7,
+    "sha256_streaming_implemented": true,
+    "real_unmodified_stock_CPK_authenticated": false,
+    "real_merged_manager517_authenticated": false,
+    "actual_raw176_pair_audited": false,
+    "synthetic_only": true,
+    "gameplay_verified": false
+  },
+  "pc_api_manifest": {
+    "code_commit": "85e14efd4bf6269be148810a9175766351ec063a",
+    "ci_id": 41987853686,
+    "conclusion": "success",
+    "original_public_PC_families": 9,
+    "manifest_identity_sha256": "7b3b07919a14356ca91bd5b0ec0bb6bef80178607d12d017d1c10143b07c03ca",
+    "unresolved_audio_effect_name_candidates": 9,
+    "invalid_specs_rejected": 7,
+    "native_switch_family_readers_integrated": 0,
+    "effect_audio_resources_verified": false,
+    "gameplay_verified": false
   }
 }
