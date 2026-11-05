@@ -62,6 +62,17 @@ def run(main, out):
     assert result["entry_candidate"] == "0x1170fb0"
     assert result["reachable_decoded_instructions"] >= 30
     assert result["reachable_decoded_instructions"] <= 384
+    # Original pinned machine code proves two bounded RET values, but
+    # NOT what those values mean to the CRI API at runtime.
+    assert result["reachable_return_sites"] == 2
+    assert result["all_bounded_syntactic_exits_are_RET"]
+    assert result["all_bounded_returns_have_single_constant_W0"]
+    assert result["other_terminations_or_out_of_window"] == []
+    assert [(r["at"],r["reaching_w0_definitions"][0]["w0_observed_value"])
+            for r in result["all_reachable_within_window_return_sites"]] == [
+                ("0x1171068", 1), ("0x117107c", 0)]
+    assert _definition(8,Dummy("mov","w0, wzr",(0,)))["w0_observed_value"] == 0
+    assert _definition(8,Dummy("mov","x0, xzr",(1,)))["w0_observed_value"] == 0
     for ret in result["all_reachable_within_window_return_sites"]:
         assert ret["at"].startswith("0x")
         assert ret["reaching_w0_definitions"]

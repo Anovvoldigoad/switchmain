@@ -137,8 +137,33 @@ def inspect(nso):
             raise ValueError("Original object register origin missing: "+name)
         if site not in ins:
             raise ValueError("Original object source site no longer decoded")
+    # The original machine instructions and reaching definitions now
+    # distinguish the status object source X2 from the guard source X1.
+    # These are register mappings, not class/ownership/lifetime proofs.
+    pinned = [
+        ("first_status_X20_argument_move", "x20",
+         "0x116f434", "mov x20, x2", "X2"),
+        ("second_status_X20_argument_move", "x20",
+         "0x116f434", "mov x20, x2", "X2"),
+        ("second_guard_X22_field_base", "x22",
+         "0x116f438", "mov x22, x1", "X1")
+    ]
+    alias_proofs = []
+    for name,reg,at,phrase,source in pinned:
+        origin = traces[reg]["sites"][name]["possible_reaching_writes"]
+        if len(origin) != 1 or origin[0]["at"] != at or origin[0]["instruction"] != phrase:
+            raise ValueError("Pinned native caller register provenance changed: "+name)
+        origin_pc = int(at,16)
+        alias_proofs.append({
+            "at":at, "original_word_le":code[origin_pc:origin_pc+4].hex(),
+            "original_instruction":phrase, "source_caller_register":source,
+            "destination_saved_register":reg.upper(),
+            "observed_at":traces[reg]["sites"][name]["at"],
+            "pointer_type_and_ownership_proven":False
+        })
     return {
         "status":"SHA_PINNED_ORIGINAL_FILELOAD_X20_X22_REACHING_WRITE_SITES_ONLY",
+        "original_caller_argument_register_alias_witnesses":alias_proofs,
         "original_main_sha256":actual,
         "original_entry_candidate":hex(ENTRY),
         "window_end_exclusive":hex(END),

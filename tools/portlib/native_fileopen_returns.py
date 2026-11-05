@@ -52,6 +52,12 @@ def _definition(pc, ins):
         return {"at": hex(pc), "kind": "literal_register_assignment",
                 "instruction": f"{ins.mnemonic} {ins.op_str}",
                 "w0_observed_value": n & 0xffffffff}
+    # MOV W0,WZR and MOV X0,XZR read the architectural zero register.
+    # This is a literal zero for the native return, NOT an error meaning.
+    if ins.mnemonic == "mov" and op in ("w0,wzr", "x0,xzr"):
+        return {"at": hex(pc), "kind": "architectural_zero_register_assignment",
+                "instruction": f"{ins.mnemonic} {ins.op_str}",
+                "w0_observed_value": 0}
     return {"at": hex(pc), "kind": "write_from_unresolved_register_or_memory",
             "instruction": f"{ins.mnemonic} {ins.op_str}",
             "w0_observed_value": None}
@@ -107,6 +113,11 @@ def _trace(graph, decoded, start=ENTRY, lo=ENTRY, hi=END):
             if target is None:
                 if kind == "indirect_call_unresolved":
                     unresolved_indirect_calls.add(pc)
+                elif (kind == "return_or_indirect_terminator"
+                      and ins.mnemonic in ("ret", "retaa", "retab")):
+                    # Expected original returns are already recorded above;
+                    # they are not unresolved out-of-window control flow.
+                    pass
                 else:
                     escapes[(pc, kind, None)] = True
                 continue
@@ -162,7 +173,9 @@ def inspect(nso):
                      "instruction": f"{ins.mnemonic} {ins.op_str}".strip(),
                      "reaching_w0_definitions": origins,
                      "single_constant_w0_only": len(origins) == 1
-                         and origins[0]["kind"] == "literal_register_assignment",
+                         and origins[0]["kind"] in
+                         ("literal_register_assignment",
+                          "architectural_zero_register_assignment"),
                      "actual_runtime_return_value_proven": False})
     exits = [{"from":hex(pc),"kind":kind,
               "target":hex(target) if target is not None else None}
@@ -177,6 +190,10 @@ def inspect(nso):
         "all_reachable_within_window_return_sites": rows,
         "reachable_return_sites": len(rows),
         "other_terminations_or_out_of_window": exits,
+        "all_bounded_syntactic_exits_are_RET": len(rows) > 0 and not exits,
+        "all_bounded_returns_have_single_constant_W0": (
+            len(rows) > 0 and all(r["single_constant_w0_only"] for r in rows)),
+        "return_values_proven_by_original_A64_local_instruction_only": True,
         "indirect_calls_with_unknown_ABI": [
             hex(x) for x in sorted(tr["unresolved_indirect_calls"])],
         "reaching_w0_definition_sites": [

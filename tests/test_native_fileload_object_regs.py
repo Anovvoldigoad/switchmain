@@ -55,6 +55,12 @@ def run(main,out):
         assert proof["register_traces"]["x20"]["sites"][key]["possible_reaching_writes"]
     assert proof["register_traces"]["x22"]["sites"]["second_guard_X22_field_base"][
         "possible_reaching_writes"]
+    assert [(x["source_caller_register"],x["destination_saved_register"],
+             x["observed_at"])
+            for x in proof["original_caller_argument_register_alias_witnesses"]] == [
+                ("X2","X20","0x116f51c"),
+                ("X2","X20","0x116f5bc"),
+                ("X1","X22","0x116f5ac")]
     for field in ("object_X20_type_or_lifetime_verified",
                   "X22_guard_context_type_verified",
                   "source_archive_priority_verified",
