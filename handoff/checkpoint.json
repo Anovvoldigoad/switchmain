@@ -62,7 +62,9 @@
       "2026-11-05 3ad8b129 Actions 42041112374 SUCCESS: Original v1.70 FileOpen tail eight direct BL targets and bounded W0 reaching-def provenance; original job 127291860119 logs verified. No CPK/CRI ABI.",
       "2026-11-05 d7abbf28 Actions 42043526861 SUCCESS: Guarded native FileOpen tail argument/indirect-BR provenance and source-grounded PC NSC ZIP importer for Termux, 12 rejected unsafe/wrong examples; original job 127300266132 61 steps SUCCESS.",
       "2026-11-05 23aba1b0 GitHub Actions 42049654252 COMPLETED SUCCESS 62 steps: Source ZIP/staged CPK/original NSO SHA256-pinned multi-mod CPK candidate assembler: 2 positive, 13 negatives, exact binary cpk_profile encode/decode, byte-preserving CPK copies, fail-closed any duplicate CPK TOC path; NOT an installable Switch mod.",
-      "2026-11-05 372cfa1a GitHub Actions 42050734300 COMPLETED SUCCESS 63 steps: Original FileOpen two indirect dispatch corridors: 0x116B718 LDR X8,[X0], 0x116B71C LDR X1,[X8,#0xC0], 0x116B724 BR X1; 0x116B41C LDR X8,[X0], 0x116B424 LDR X2,[X8,#0x58], 0x116B430 BR X2. Original exact main SHA pinned, no runtime ABI/ownership."
+      "2026-11-05 372cfa1a GitHub Actions 42050734300 COMPLETED SUCCESS 63 steps: Original FileOpen two indirect dispatch corridors: 0x116B718 LDR X8,[X0], 0x116B71C LDR X1,[X8,#0xC0], 0x116B724 BR X1; 0x116B41C LDR X8,[X0], 0x116B424 LDR X2,[X8,#0x58], 0x116B430 BR X2. Original exact main SHA pinned, no runtime ABI/ownership.",
+      "2026-11-05 912ef384 GitHub Actions 42055285084 COMPLETED SUCCESS: Compiles 9 bounded PC raw formats into ARM64 module with AArch64-only registration and matches 123 actual/synthetic PC row views with 38 invalids rejected; job 127341886598, 64 steps.",
+      "2026-11-05 9af5c535 GitHub Actions 42057187119 COMPLETED SUCCESS: Exact symbol lookup fixed; original ELF AArch64 9-family reader calls pass Unicorn: 30 positive API calls, 19 negative cases, host C++ 123 matching PC rows and 39 negatives; 65 steps, job 127348672877 log inspected."
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -94,7 +96,8 @@
       "True original PC manager517, independently authenticated unmodified Switch v1.70 stock common.cpk and mod candidate CPK are missing. Therefore actual-stock raw176 comparison remains unexecuted. Nine PC parameter readers, 53 factory placeholders, full MovesetPlus, compressed PRM, model/effects/audio/SFX/Japanese voice remain incomplete.",
       "Original ARM64 shows X8 loaded from [X0] before both BR dispatch chains, but concrete X0 instance/class, table object, method-pointer values, lock/async semantics, teardown/rollback and CPK archive winner remain UNVERIFIED. New hook must not be activated.",
       "Multi-mod CPK candidate output is byte-preserved staging with verified CPK TOC and synthetic tests only. Runtime native CPK binding and interpretation of PC model/moveset/effect/sound resources, actual Uzuy launch, and stock archive collision policy remain UNVERIFIED.",
-      "True original PC merged manager517, independently authenticated genuine stock Switch v1.70 common.cpk and mod candidate CPK bytes are missing; raw176 real stock-game audit cannot be honestly marked PASS."
+      "True original PC merged manager517, independently authenticated genuine stock Switch v1.70 common.cpk and mod candidate CPK bytes are missing; raw176 real stock-game audit cannot be honestly marked PASS.",
+      "Nine PC source raw families are now parsed by compiled AArch64 C++ and verified against nine source-pinned public NSC templates (30 positive ARM64/19 negative); native acquisition/lifetime/owner class and consumer integration in real Switch 1.70 game remain NOT implemented/proven. MovesetPlus/factories/asset audio effects still incomplete."
     ],
     "proofs": [
       "reports/port_foundation/bootstrap.json",
@@ -661,11 +664,11 @@
     }
   },
   "ci": {
-    "run_id": 42050734300,
-    "head_sha": "372cfa1a7a2bb256628c84032fa6a9804e2a3a76",
+    "run_id": 42057187119,
+    "head_sha": "9af5c5357e11e944e82f14babe0c95fe120e778a",
     "status": "completed",
     "conclusion": "success",
-    "scope": "Exact original 1.70 X8->X1/X2 indirect dispatch writer chains + multmod CPK candidate profile CI, NOT native/runtime/Uzuy gameplay"
+    "scope": "Nine PC parameter source raw readers built into ARM64, tested on pinned original PC sample rows + Unicorn ELF, 30 valid /19 rejects, not original game-engine parameter consumers"
   },
   "provenance": {
     "manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
@@ -727,7 +730,7 @@
       "Continue authorized work without repeated permission prompts; preserve honest evidence labels."
     ]
   },
-  "verified_component_commit": "372cfa1a7a2bb256628c84032fa6a9804e2a3a76",
+  "verified_component_commit": "9af5c5357e11e944e82f14babe0c95fe120e778a",
   "progress_since_previous_handoff": [
     {
       "commit": "40eab530d7d90811250cea085d941ca26b929651",
@@ -977,6 +980,36 @@
       "ci_conclusion": "success",
       "verified_job": 127325814383,
       "scope": "Original FileOpen two indirect dispatch corridors: 0x116B718 LDR X8,[X0], 0x116B71C LDR X1,[X8,#0xC0], 0x116B724 BR X1; 0x116B41C LDR X8,[X0], 0x116B424 LDR X2,[X8,#0x58], 0x116B430 BR X2. Original exact main SHA pinned, no runtime ABI/ownership."
+    },
+    {
+      "commit": "3fde9d9eafc46ebaa54f21c8afcd10e80142db2c",
+      "ci_run_id": 42054426581,
+      "ci_conclusion": "failure",
+      "scope": "First ARM64 build missed two newly added source/header files in prepare_exlaunch.sh; compilation failed on missing nsc_pc_raw.hpp."
+    },
+    {
+      "commit": "ca5790ed8abb2946b5be96ed346f2ace87e7141f",
+      "ci_run_id": 42054951462,
+      "ci_conclusion": "failure",
+      "scope": "After inclusion, host bootstrap harness separately linked runtime_core without native raw API; undefined nsc_pc_raw_get_api."
+    },
+    {
+      "commit": "912ef38465bb466e2b3ad1fb1c70bddcfd799221",
+      "ci_run_id": 42055285084,
+      "ci_conclusion": "success",
+      "scope": "Compiles 9 bounded PC raw formats into ARM64 module with AArch64-only registration and matches 123 actual/synthetic PC row views with 38 invalids rejected; job 127341886598, 64 steps."
+    },
+    {
+      "commit": "76a450b9015587dd942a26c458997ba3b94ddfa8",
+      "ci_run_id": 42056338732,
+      "ci_conclusion": "failure",
+      "scope": "New ARM64 Unicorn test had ambiguous substring symbol resolution nsc_pc_raw_get_api vs its static table; not a native parser mismatch. Also fixed TUJ one-byte zero-record acceptance."
+    },
+    {
+      "commit": "9af5c5357e11e944e82f14babe0c95fe120e778a",
+      "ci_run_id": 42057187119,
+      "ci_conclusion": "success",
+      "scope": "Exact symbol lookup fixed; original ELF AArch64 9-family reader calls pass Unicorn: 30 positive API calls, 19 negative cases, host C++ 123 matching PC rows and 39 negatives; 65 steps, job 127348672877 log inspected."
     }
   ],
   "native_fileopen_branch_dependency_checkpoint": {
@@ -1134,6 +1167,67 @@
     "real_CRI_async_unbind_destructor_proven": false,
     "new_hook_added": false,
     "runtime_ABI_safe_proven": false,
+    "gameplay_verified": false,
+    "full_moddingapi": false,
+    "ready_for_gameplay_test": false,
+    "emulator_tested": false
+  },
+  "native_pc_raw_nine": {
+    "latest_code_commit": "9af5c5357e11e944e82f14babe0c95fe120e778a",
+    "native_code_file": "overlay/source/program/nsc_pc_raw.cpp",
+    "native_abi_header": "overlay/source/program/nsc_pc_raw.hpp",
+    "native_runtime_registration": "overlay/source/program/nsc_runtime_core.cpp (AArch64-only API capability log, no game consumer hook)",
+    "native_abi_version": 1,
+    "all_nine_PC_source_raw_families": [
+      "susanooCondParam",
+      "partnerSlotParam",
+      "ougiAwakeningParam",
+      "gudoBallParam",
+      "charRelationParam",
+      "pairSpSkillManagerParam",
+      "bgmManagerParam",
+      "specialInteractionManager",
+      "guardEffectParam"
+    ],
+    "verified_upstream_public_fixtures": 9,
+    "host_C_plus_plus_verified_PC_rows": 123,
+    "host_rejected_inputs": 39,
+    "arm64_unicorn_positive_API_and_row_calls": 30,
+    "arm64_unicorn_negative_rejections": 19,
+    "original_game_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "code_ci": {
+      "run": 42057187119,
+      "status": "completed",
+      "conclusion": "success",
+      "steps": 65,
+      "job": 127348672877
+    },
+    "previous_ci_failures_not_mislabeled": [
+      {
+        "commit": "3fde9d9eafc46ebaa54f21c8afcd10e80142db2c",
+        "run": 42054426581,
+        "result": "failure",
+        "why": "First ARM64 build missed two newly added source/header files in prepare_exlaunch.sh; compilation failed on missing nsc_pc_raw.hpp."
+      },
+      {
+        "commit": "ca5790ed8abb2946b5be96ed346f2ace87e7141f",
+        "run": 42054951462,
+        "result": "failure",
+        "why": "After inclusion, host bootstrap harness separately linked runtime_core without native raw API; undefined nsc_pc_raw_get_api."
+      },
+      {
+        "commit": "76a450b9015587dd942a26c458997ba3b94ddfa8",
+        "run": 42056338732,
+        "result": "failure",
+        "why": "New ARM64 Unicorn test had ambiguous substring symbol resolution nsc_pc_raw_get_api vs its static table; not a native parser mismatch. Also fixed TUJ one-byte zero-record acceptance."
+      }
+    ],
+    "source_readers_compiled_in_ARM64": true,
+    "source_readers_executed_in_Unicorn": true,
+    "native_game_parameter_consumers_connected": false,
+    "engine_resource_loader_ABI_proven": false,
+    "actors_or_audio_effects_loaded": false,
+    "no_new_main_or_game_hooks": true,
     "gameplay_verified": false,
     "full_moddingapi": false,
     "ready_for_gameplay_test": false,

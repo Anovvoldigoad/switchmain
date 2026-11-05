@@ -1,0 +1,72 @@
+{
+  "status": "COMPILED_NATIVE_NINE_PC_RAW_READERS_SOURCE_PARITY_AND_AARCH64_EXECUTION_PASS_NOT_GAMEPLAY",
+  "code_commit": "9af5c5357e11e944e82f14babe0c95fe120e778a",
+  "code_actions": 42057187119,
+  "code_job": 127348672877,
+  "code_steps": 65,
+  "code_success": true,
+  "prior_runs": [
+    {
+      "commit": "3fde9d9eafc46ebaa54f21c8afcd10e80142db2c",
+      "run": 42054426581,
+      "result": "failure",
+      "why": "First ARM64 build missed two newly added source/header files in prepare_exlaunch.sh; compilation failed on missing nsc_pc_raw.hpp."
+    },
+    {
+      "commit": "ca5790ed8abb2946b5be96ed346f2ace87e7141f",
+      "run": 42054951462,
+      "result": "failure",
+      "why": "After inclusion, host bootstrap harness separately linked runtime_core without native raw API; undefined nsc_pc_raw_get_api."
+    },
+    {
+      "commit": "912ef38465bb466e2b3ad1fb1c70bddcfd799221",
+      "run": 42055285084,
+      "result": "success",
+      "why": "Compiles 9 bounded PC raw formats into ARM64 module with AArch64-only registration and matches 123 actual/synthetic PC row views with 38 invalids rejected; job 127341886598, 64 steps."
+    },
+    {
+      "commit": "76a450b9015587dd942a26c458997ba3b94ddfa8",
+      "run": 42056338732,
+      "result": "failure",
+      "why": "New ARM64 Unicorn test had ambiguous substring symbol resolution nsc_pc_raw_get_api vs its static table; not a native parser mismatch. Also fixed TUJ one-byte zero-record acceptance."
+    },
+    {
+      "commit": "9af5c5357e11e944e82f14babe0c95fe120e778a",
+      "run": 42057187119,
+      "result": "success",
+      "why": "Exact symbol lookup fixed; original ELF AArch64 9-family reader calls pass Unicorn: 30 positive API calls, 19 negative cases, host C++ 123 matching PC rows and 39 negatives; 65 steps, job 127348672877 log inspected."
+    }
+  ],
+  "all_nine_families": [
+    "susanooCondParam",
+    "partnerSlotParam",
+    "ougiAwakeningParam",
+    "gudoBallParam",
+    "charRelationParam",
+    "pairSpSkillManagerParam",
+    "bgmManagerParam",
+    "specialInteractionManager",
+    "guardEffectParam"
+  ],
+  "test_fixtures_source": "pinned nine public NSC Mod Manager 2.1.2.1 raw source templates already checked by PC source fixture Git blob tests",
+  "host_rows_matched": 123,
+  "host_bad_rejected": 39,
+  "arm64_native_api_calls_pass": 30,
+  "arm64_rejected_inputs_or_indices": 19,
+  "native_abi_version": 1,
+  "native_compiled_in_module": true,
+  "native_entrypoint_address_executed_with_Unicorn": true,
+  "source_binary_SHA256_guard": true,
+  "read_only_no_heap_source_views": true,
+  "game_loader_calls_or_hook_installed": false,
+  "real_PC_resource_lifetime_proven": false,
+  "actual_original_native_Switch_consumers_connected": false,
+  "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "authentic_original_merged_manager517_proven": false,
+  "stock_CPK_170_proven": false,
+  "original_aura107_Event236_invariants_no_new_main_patch": true,
+  "full_moddingapi": false,
+  "ready_for_gameplay_test": false,
+  "emulator_tested": false,
+  "gameplay_verified": false
+}
