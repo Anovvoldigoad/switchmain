@@ -6,7 +6,7 @@ Uzuy gameplay or CPK owner modeled/verified in this test.
 """
 import argparse,hashlib,json,struct,sys
 from pathlib import Path
-from arm64_module import module,call,H
+from arm64_module import module,call,H,D
 from test_native_pc_raw_nine import NAMES,_meta_python
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"tools"))
@@ -28,10 +28,10 @@ ORIGINAL_MAIN="2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
 def run(main,elf,out):
     if hashlib.sha256(main.read_bytes()).hexdigest()!=ORIGINAL_MAIN:
         raise ValueError("Original stock NSO main SHA256 guard failed")
-    u,sym,_,_=module(elf)
+    u,sym,symbols,_=module(elf)
     validate=sym("nsc_pc_raw_validate")
     row=sym("nsc_pc_raw_row_at")
-    api=sym("nsc_pc_raw_get_api")
+    api=D+symbols["nsc_pc_raw_get_api"]
     api_ptr=call(u,api,[])
     version,families,validator,reader=struct.unpack("<IIQQ",u.mem_read(api_ptr,24))
     assert (version,families,validator,reader)==(1,9,validate,row)
