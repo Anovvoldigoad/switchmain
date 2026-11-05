@@ -99,10 +99,14 @@ def inspect(nso):
             stop=min(start+MAX_CALLEE_WINDOW,len(text))
             target_decoded,target_graph=_decode_window(text,start,stop)
             target_reached,target_escapes=_reached(target_graph,start,start,stop)
-            result["bounded_target_reachable"]=len(target_reached)
+            # Out-of-window branch destinations remain unresolved evidence.
+            # Never pass them to _predecessors, which requires decoded
+            # source instructions inside the bounded graph.
+            target_inside={pc for pc in target_reached if pc in target_graph}
+            result["bounded_target_reachable"]=len(target_inside)
             result["bounded_target_external_edges"]=target_escapes
             result["native_indirect_br_register_sources"]=_indirect_branch_feeds(
-                target_graph,target_decoded,target_reached,start)
+                target_graph,target_decoded,target_inside,start)
             result["original_machine_word_sample"]=[
                 {"at":hex(pc),"word_le":text[pc:pc+4].hex(),
                  "instruction":((target_decoded[pc].mnemonic+" "+target_decoded[pc].op_str).strip()
