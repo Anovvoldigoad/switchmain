@@ -83,8 +83,10 @@ def _image_and_relocations(nso):
     for off in range(dyn,min(dyn+8192,len(memory)-15),16):
         typ,value=struct.unpack_from('<QQ',memory,off)
         if not typ:break
-        if typ in tags and tags[typ]!=value:
-            raise ValueError('Ambiguous dynamic tag')
+        # DT_NEEDED and other dynamic tags can legitimately repeat. Only
+        # the relocation table selectors used below must be unambiguous.
+        if typ in (7,8,9) and typ in tags and tags[typ]!=value:
+            raise ValueError('Conflicting RELA dynamic tag')
         tags[typ]=value
     else:
         raise ValueError('Dynamic table unterminated')
