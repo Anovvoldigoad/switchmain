@@ -59,6 +59,8 @@ jobs:
         run: python tests/test_native_cpk_pointer_tables.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Disassemble pinned ARM64 FileLoad BLR and relocation-target code with Capstone
         run: python tests/test_native_cpk_disasm.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Verify pinned ARM64 BLR register chains and correct callsite/entrypoint distinction
+        run: python tests/test_native_cpk_blr_structure.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Validate PC condition descriptors and Android packaging
         run: python tests/test_condition_profile.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --module exlaunch/deploy/subsdk9 --output proof-work
       - name: Validate raw condition companion identity and rejection
