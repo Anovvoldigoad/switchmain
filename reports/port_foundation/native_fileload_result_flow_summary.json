@@ -1,0 +1,31 @@
+{
+  "status": "PASS_ORIGINAL_SHA_PINNED_STATIC_FILEOPEN_ARGUMENT_BODY_ONLY",
+  "code_commit": "696629615085cd0e586d00f9665d5f07d0e2b495",
+  "actions_run_id": 42000801083,
+  "actions_conclusion": "success",
+  "pinned_original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "fileopen_bl": "0x116F47C -> 0x1170FB0",
+  "zero_result_branch": "0x116F480 CBZ W0,0x116F4D8",
+  "first_status5": "0x116F520 -> 0x120661C",
+  "second_status5": "0x116F5C0 -> 0x120661C (not reached from zero branch)",
+  "selected_syntactic_path_length": 19,
+  "additional_conditional_decisions_on_selected_path": 0,
+  "verified_machine_code_argument_transfers": [
+    "W1=5 at 0x116F518",
+    "X0=X20 at 0x116F51C",
+    "X0->X21 at 0x1206628",
+    "W1->W20 at 0x1206630"
+  ],
+  "native_guarded_store": "W20 -> [X21,#0x68]",
+  "synthetic_negative_tests_pass": true,
+  "real_fileopen_return_result_proven": false,
+  "object_ownership_proven": false,
+  "live_CRI_async_unbind_archive_precedence_proven": false,
+  "native_safe_hook_ABI_proven": false,
+  "native_patch_installed": false,
+  "Uzuy_gameplay_tested": false,
+  "full_moddingapi": false,
+  "ready_for_gameplay_test": false,
+  "emulator_tested": false,
+  "full_proof": "GitHub Actions proof-work/native_fileload_result_flow.json"
+}

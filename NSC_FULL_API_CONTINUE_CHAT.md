@@ -1,3 +1,5 @@
+2026-11-05: Code 696629615085cd0e586d00f9665d5f07d0e2b495 Actions 42000801083 SUCCESS, native FileOpen-zero 19-instruction static path with exact status setter X0/X20 and W1/W20 body witnesses. This does NOT prove CRI runtime/gameplay. Authoritative continuation prompt: handoff/CONTINUE_PROMPT.txt.
+
 2026-11-05 follow-up: d6b357c (Actions 41995755104 SUCCESS) pinned original FileOpen W0=0 CBZ at 0x116F480 -> 0x116F4D8 with static reachability to first status5 BL 0x116F520, but not second status5 BL 0x116F5C0. 0x116F404 is corrected native entry (8-word prologue), not old 0x106F404. Real CRI async/runtime and gameplay unverified. Full handoff handoff/CONTINUE_PROMPT.txt.
 
 Latest correction 2026-11-05: Native FileLoad entry 0x116F404 (not 0x106F404); source frame prologue matches 8 machine words. Original ARM64 setter 0x120661C executed in 32 modeled-lock scenarios, not CRI async. Commit a256dcf CI41994695967 PASS proves 166 CFG-reachable words and FileOpen/status5 BLs reachable. Full port not playable; authoritative handoff handoff/CONTINUE_PROMPT.txt.

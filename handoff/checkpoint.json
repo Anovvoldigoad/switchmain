@@ -5,7 +5,7 @@
   "repository": "https://github.com/Anovvoldigoad/switchmain",
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
-  "documentation_commit": "Resolve actual branch HEAD: documentation commit follows verified code be2a86c",
+  "documentation_commit": "Resolve actual branch HEAD: this documentation commit follows code 6966296 with CI 42000801083 SUCCESS",
   "prior_storm_checkpoint_id": "80be5308-6dfa-44d8-91e9-71c92a4f00e2",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
@@ -52,7 +52,8 @@
       "Unified read-only nine-family PC ModdingAPI manifest from exact authenticated public raw fixture SHA256 inputs; CI PASS, nine unresolved audio/effect resource-name candidates, no native Switch factory/loader/hook integration",
       "2026-11-05 external preexisting 7 commits b882d5a..a1bd96f: reference-use census, PC->CPK literal TOC resource probe, corrected FileLoad 0x116F404 prologue eight-word match, failure status5 branches and 32 original ARM64 status setter executions with modeled lock services. These passed GitHub CI; no real CRI lock/audio/asset/Uzuy proof.",
       "2026-11-05 commit a256dcf: bounded syntactic ARM64 CFG from corrected 0x116F404 native FileLoad entry; 166 reachable instruction words and all 3 direct callsite witnesses (FileOpen 0x116F47C, status5 0x116F520 and 0x116F5C0) reachable; Actions 41994695967 SUCCESS. No new hooks or ABI claim.",
-      "2026-11-05 original FileOpen return W0==0 branch 0x116F480 CBZ to 0x116F4D8 has syntactic bounded native CFG path to status5 setter BL 0x116F520->0x120661C. Separate status5 BL 0x116F5C0 is NOT syntactically reachable from that zero-result branch within the analyzed window; it follows its distinct context +0x1D8 guard. Original main SHA pinned. CI 41995755104 SUCCESS. Zero real CRI failure tests, ABI/async unverified."
+      "2026-11-05 original FileOpen return W0==0 branch 0x116F480 CBZ to 0x116F4D8 has syntactic bounded native CFG path to status5 setter BL 0x116F520->0x120661C. Separate status5 BL 0x116F5C0 is NOT syntactically reachable from that zero-result branch within the analyzed window; it follows its distinct context +0x1D8 guard. Original main SHA pinned. CI 41995755104 SUCCESS. Zero real CRI failure tests, ABI/async unverified.",
+      "2026-11-05 commit 6966296: original SHA-pinned read-only FileOpen W0==0 branch to first native status5 argument/body audit. CI 42000801083 SUCCESS; selected syntactic path length 19, zero conditional decisions on that selected path. Exact caller W1=5 / X0=X20, helper X0->X21/W1->W20, guarded store W20 to [X21,#0x68]. Synthetic graph regressions and wrong-main SHA fail-closed tests pass. This is NOT live CRI zero return, X20 ownership, real locking/async, ABI-safe hook or gameplay."
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -73,7 +74,8 @@
       "Real intake now hashes original byte files and enforces unique 517-manager vs 512-stock/517-candidate geometry, but no byte-authenticated actual unmodified Switch CPK or true merged original PC manager517 was accessible; CPK pair result is synthetic only.",
       "Nine raw PC parameter readers feed an offline source manifest, but 9 resource-name strings remain unverified against actual CPK sound/effect banks and NO native Switch 1.70 reader, actor or factory hook is proven.",
       "Verified corrected FileLoad frame prologue 0x116F404 and callsite reachability alone do NOT prove FileOpen failure -> status5 causality, real CRI async completion, unbind/destructor, CPK precedence, actor/factory ABI, or safe patch trampoline.",
-      "Original FileOpen-zero -> first status5 has only original machine-code/CFG conditional reachability. Second context-guarded status5 0x116F5C0 was NOT reachable from zero branch in bounded scan. Live CRI returned values, causal failure handling, object destruction, archive precedence and native safe hooks require separate proof."
+      "Original FileOpen-zero -> first status5 has only original machine-code/CFG conditional reachability. Second context-guarded status5 0x116F5C0 was NOT reachable from zero branch in bounded scan. Live CRI returned values, causal failure handling, object destruction, archive precedence and native safe hooks require separate proof.",
+      "The 19-word FileOpen-zero-to-status5 witness and pinned X0/X20/W1 status helper body only establish machine-code/static path and argument transfers. Actual FileOpen W0=0 semantics, object ownership, failure rollback, CRI locks/async, unbind/destructor, archive winner and hook ABI remain unproven."
     ],
     "proofs": [
       "reports/port_foundation/bootstrap.json",
@@ -111,7 +113,8 @@
       "reports/port_foundation/real_condition_intake_summary.json",
       "reports/port_foundation/pc_api_manifest_new_summary.json",
       "reports/port_foundation/native_fileload_corridor_cfg_summary.json",
-      "reports/port_foundation/native_fileload_zero_return_summary.json"
+      "reports/port_foundation/native_fileload_zero_return_summary.json",
+      "reports/port_foundation/native_fileload_result_flow_summary.json"
     ],
     "parameter_family_coverage": {
       "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -549,14 +552,30 @@
       "async_completed": false,
       "unbind_verified": false,
       "gameplay_verified": false
+    },
+    "native_fileload_result_flow": {
+      "status": "PASS_SHA_PINNED_STATIC_CALLER_ARGUMENT_AND_STATUS_BODY_ONLY",
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "verified_code_commit": "696629615085cd0e586d00f9665d5f07d0e2b495",
+      "ci_run_id": 42000801083,
+      "ci_conclusion": "success",
+      "zero_branch": "0x116F480 CBZ W0 -> 0x116F4D8",
+      "first_status5": "0x116F520 BL->0x120661C",
+      "selected_static_path_length": 19,
+      "conditional_decisions_on_selected_path": 0,
+      "machine_argument_witness": "W1=5; X0=X20",
+      "native_status_body_store": "W20 -> [X21,#0x68] after original terminal 3/5 guard",
+      "real_CRI_failure_or_async_proven": false,
+      "hook_ABI_proven": false,
+      "gameplay_verified": false
     }
   },
   "ci": {
-    "run_id": 41995755104,
+    "run_id": 42000801083,
     "status": "completed",
     "conclusion": "success",
-    "head_sha": "d6b357cc93fc14ef36d8aa0bf218f5ab84167de3",
-    "scope": "corrected FileLoad W0==0 branch to first status5 machine-code CFG, with second status5 not reachable; no real CRI failure or gameplay"
+    "head_sha": "696629615085cd0e586d00f9665d5f07d0e2b495",
+    "scope": "Original SHA-pinned FileOpen-zero 19-instruction static path and status5 helper caller register/body witnesses; real CRI/lifecycle/Uzuy unverified"
   },
   "provenance": {
     "manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
@@ -591,6 +610,7 @@
     "status": "PENDING_REAL_CRI_RUNTIME_AND_PROVENANCE",
     "spec": "handoff/CONTINUE_PROMPT.txt",
     "acceptance": [
+      "Read Actions artifact proof-work/native_fileload_result_flow.json; 19-instruction selected static path has zero extra conditional branches. Next prove original FileOpen return-value semantics and CRI lifecycle with genuine native execution; static transfer does not prove FileOpen returned zero.",
       "Prove native original FileOpen 0x1170FB0 return W0==0 causes taken 0x116F480 CBZ to first status5 call 0x116F520, with return/lock/allocator services and error branches modeled only where ABI verified. Static CFG currently proves first branch syntactically reachable, not runtime.",
       "Investigate separate +0x1D8 context guard before second status5 call 0x116F5C0; static CFG from FileOpen-zero does NOT reach that call. Do not incorrectly label it same failure path.",
       "Obtain original merged PC manager517, exact genuinely unmodified stock CPK and candidate CPK; hash/provenance and audit raw176 real bytes.",
@@ -618,7 +638,7 @@
       "Continue authorized work without repeated permission prompts; preserve honest evidence labels."
     ]
   },
-  "verified_component_commit": "d6b357cc93fc14ef36d8aa0bf218f5ab84167de3",
+  "verified_component_commit": "696629615085cd0e586d00f9665d5f07d0e2b495",
   "progress_since_previous_handoff": [
     {
       "commit": "40eab530d7d90811250cea085d941ca26b929651",
@@ -776,6 +796,12 @@
       "ci_run_id": 41995755104,
       "ci_conclusion": "success",
       "scope": "SHA-pinned original FileOpen W0 return CBZ machine word at 0x116F480 -> 0x116F4D8; bounded path to first status5 (0x116F520) exists, second (0x116F5C0) not reachable; no runtime causal/async proof"
+    },
+    {
+      "commit": "696629615085cd0e586d00f9665d5f07d0e2b495",
+      "ci_run_id": 42000801083,
+      "ci_conclusion": "success",
+      "scope": "FileOpen W0 zero branch syntactic path length 19 and exact original setter X0/X20 W1/W20 [X21,#0x68] witnesses; native async/hook ABI/gameplay unverified"
     }
   ]
 }
