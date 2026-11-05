@@ -30,7 +30,8 @@
     "hash-pinned raw176 stock-vs-candidate byte audit reports exact per-ordinal differing byte offsets and added row hashes; tested only with synthetic inputs",
     "hash-pinned mmap-based multi-CPK path overlap audit with exact/casefold and stored-byte identity; conflict reject-before-output; no runtime winner inference",
     "direct hash-pinned CPK-to-CPK conditionprm raw176 audit invokes existing manager/ordinal comparator without extracting files manually; synthetic integration PASS only",
-    "multi-archive condition batch compiler: one explicit global conditionprm owner, independent CPK PRM marking, source SHA256 pins, disjoint TOC path guard, atomic component output and composed NSO condition/CPK registration; synthetic CI PASS only"
+    "multi-archive condition batch compiler: one explicit global conditionprm owner, independent CPK PRM marking, source SHA256 pins, disjoint TOC path guard, atomic component output and composed NSO condition/CPK registration; synthetic CI PASS only",
+    "read-only exact SHA-pinned Switch 1.70 native CPK/file-load ARM64 direct-call census: 493563 direct B/BL candidate instructions and 10 verified source anchor windows; indirect callbacks, async completion, unbind and archive precedence remain unverified"
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -42,7 +43,8 @@
     "actual unmodified Switch v1.70 raw176 conditionprm input and true merged PC manager517 have not been supplied/independently authenticated; byte-value audit has synthetic CI proof only",
     "actual Switch 1.70 CPK and original merged manager517 are still required for a verified stock-vs-candidate raw176 comparison; accessible Library file metadata is not source authentication",
     "multi-CPK raw conditionprm path collisions detected statically but runtime archive winner, async completion, unbind and global condition source order are not verified",
-    "multi-CPK batch component packaging now available, but existing preloaded CPK entry content is not accessible to overlap analysis, global runtime condition source order and actual CRI async archive completion remain unverified"
+    "multi-CPK batch component packaging now available, but existing preloaded CPK entry content is not accessible to overlap analysis, global runtime condition source order and actual CRI async archive completion remain unverified",
+    "Native call-edge scan finds zero direct B/BL inbound to fileload_process 0x106F404; indirect/callback dispatch not traced. CPK async completion, manager unbind/teardown and archive precedence remain unresolved."
   ],
   "proofs": [
     "reports/port_foundation/bootstrap.json",
@@ -68,7 +70,8 @@
     "reports/port_foundation/condition_raw_value_audit.json",
     "reports/port_foundation/cpk_overlaps.json",
     "reports/port_foundation/condition_archive_audit.json",
-    "reports/port_foundation/condition_batch.json"
+    "reports/port_foundation/condition_batch.json",
+    "reports/port_foundation/native_cpk_call_edges_summary.json"
   ],
   "parameter_family_coverage": {
     "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -127,6 +130,60 @@
     "actual_game_archive_tested": false,
     "global_condition_source_order_runtime_verified": false,
     "async_archive_completion_verified": false,
+    "gameplay_verified": false
+  },
+  "native_cpk_graph": {
+    "code_commit": "3b9f3f7618f3a48d10f789c9284ca59ccd629233",
+    "test_output_commit": "e314f9c2157bb84ae16c1aa6394bb7b7c4c6e663",
+    "ci_run_id": 41964408868,
+    "status": "PASS_STATIC_PINNED_MAIN",
+    "main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "direct_branch_candidate_instructions": 493563,
+    "anchors": {
+      "cpk_bind_wrapper": {
+        "anchor": "0x473190",
+        "inbound": 12
+      },
+      "cpk_manager_bind": {
+        "anchor": "0x115e80c",
+        "inbound": 2
+      },
+      "cpk_path_adapter": {
+        "anchor": "0x115fbb8",
+        "inbound": 2
+      },
+      "cpk_priority_wrapper": {
+        "anchor": "0x115f2bc",
+        "inbound": 2
+      },
+      "cpk_vector_insert": {
+        "anchor": "0x115e8e0",
+        "inbound": 2
+      },
+      "fileload_request": {
+        "anchor": "0x1206b4c",
+        "inbound": 4
+      },
+      "fileload_create": {
+        "anchor": "0x1206c9c",
+        "inbound": 2
+      },
+      "fileload_status": {
+        "anchor": "0x1207efc",
+        "inbound": 7
+      },
+      "fileload_process": {
+        "anchor": "0x106f404",
+        "inbound": 0
+      },
+      "file_open_request": {
+        "anchor": "0x1170fb0",
+        "inbound": 1
+      }
+    },
+    "asynchronous_completion_verified": false,
+    "unbinding_verified": false,
+    "priority_winner_verified": false,
     "gameplay_verified": false
   }
 }

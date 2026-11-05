@@ -1,0 +1,80 @@
+{
+  "status": "PASS_STATIC_PINNED_MAIN",
+  "main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "code_commit": "3b9f3f7618f3a48d10f789c9284ca59ccd629233",
+  "logs_commit": "e314f9c2157bb84ae16c1aa6394bb7b7c4c6e663",
+  "ci_run_id": 41964408868,
+  "conclusion": "success",
+  "candidate_direct_branches": 493563,
+  "anchor_inbound_counts": {
+    "cpk_bind_wrapper": {
+      "anchor": "0x473190",
+      "inbound": 12
+    },
+    "cpk_manager_bind": {
+      "anchor": "0x115e80c",
+      "inbound": 2
+    },
+    "cpk_path_adapter": {
+      "anchor": "0x115fbb8",
+      "inbound": 2
+    },
+    "cpk_priority_wrapper": {
+      "anchor": "0x115f2bc",
+      "inbound": 2
+    },
+    "cpk_vector_insert": {
+      "anchor": "0x115e8e0",
+      "inbound": 2
+    },
+    "fileload_request": {
+      "anchor": "0x1206b4c",
+      "inbound": 4
+    },
+    "fileload_create": {
+      "anchor": "0x1206c9c",
+      "inbound": 2
+    },
+    "fileload_status": {
+      "anchor": "0x1207efc",
+      "inbound": 7
+    },
+    "fileload_process": {
+      "anchor": "0x106f404",
+      "inbound": 0
+    },
+    "file_open_request": {
+      "anchor": "0x1170fb0",
+      "inbound": 1
+    }
+  },
+  "verified_direct_edges": [
+    {
+      "caller": "0x4731f8",
+      "target": "0x115fbb8",
+      "kind": "BL"
+    },
+    {
+      "caller": "0x115fbc0",
+      "target": "0x115e80c",
+      "kind": "B"
+    },
+    {
+      "caller": "0x1206b9c",
+      "target": "0x1206c9c",
+      "kind": "BL"
+    },
+    {
+      "caller": "0x116f47c",
+      "target": "0x1170fb0",
+      "kind": "BL"
+    }
+  ],
+  "indirect_callers_resolved": false,
+  "full_function_extents_proven": false,
+  "async_completion_verified": false,
+  "unbind_verified": false,
+  "archive_precedence_verified": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

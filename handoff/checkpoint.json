@@ -39,7 +39,8 @@
       "hash-pinned raw176 stock-vs-candidate byte audit reports exact per-ordinal differing byte offsets and added row hashes; tested only with synthetic inputs",
       "hash-pinned mmap-based multi-CPK path overlap audit with exact/casefold and stored-byte identity; conflict reject-before-output; no runtime winner inference",
       "direct hash-pinned CPK-to-CPK conditionprm raw176 audit invokes existing manager/ordinal comparator without extracting files manually; synthetic integration PASS only",
-      "multi-archive condition batch compiler: one explicit global conditionprm owner, independent CPK PRM marking, source SHA256 pins, disjoint TOC path guard, atomic component output and composed NSO condition/CPK registration; synthetic CI PASS only"
+      "multi-archive condition batch compiler: one explicit global conditionprm owner, independent CPK PRM marking, source SHA256 pins, disjoint TOC path guard, atomic component output and composed NSO condition/CPK registration; synthetic CI PASS only",
+      "read-only exact SHA-pinned Switch 1.70 native CPK/file-load ARM64 direct-call census: 493563 direct B/BL candidate instructions and 10 verified source anchor windows; indirect callbacks, async completion, unbind and archive precedence remain unverified"
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -51,7 +52,8 @@
       "actual unmodified Switch v1.70 raw176 conditionprm input and true merged PC manager517 have not been supplied/independently authenticated; byte-value audit has synthetic CI proof only",
       "actual Switch 1.70 CPK and original merged manager517 are still required for a verified stock-vs-candidate raw176 comparison; accessible Library file metadata is not source authentication",
       "multi-CPK raw conditionprm path collisions detected statically but runtime archive winner, async completion, unbind and global condition source order are not verified",
-      "multi-CPK batch component packaging now available, but existing preloaded CPK entry content is not accessible to overlap analysis, global runtime condition source order and actual CRI async archive completion remain unverified"
+      "multi-CPK batch component packaging now available, but existing preloaded CPK entry content is not accessible to overlap analysis, global runtime condition source order and actual CRI async archive completion remain unverified",
+      "Native call-edge scan finds zero direct B/BL inbound to fileload_process 0x106F404; indirect/callback dispatch not traced. CPK async completion, manager unbind/teardown and archive precedence remain unresolved."
     ],
     "proofs": [
       "reports/port_foundation/bootstrap.json",
@@ -77,7 +79,8 @@
       "reports/port_foundation/condition_raw_value_audit.json",
       "reports/port_foundation/cpk_overlaps.json",
       "reports/port_foundation/condition_archive_audit.json",
-      "reports/port_foundation/condition_batch.json"
+      "reports/port_foundation/condition_batch.json",
+      "reports/port_foundation/native_cpk_call_edges_summary.json"
     ],
     "parameter_family_coverage": {
       "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -137,14 +140,68 @@
       "global_condition_source_order_runtime_verified": false,
       "async_archive_completion_verified": false,
       "gameplay_verified": false
+    },
+    "native_cpk_graph": {
+      "code_commit": "3b9f3f7618f3a48d10f789c9284ca59ccd629233",
+      "test_output_commit": "e314f9c2157bb84ae16c1aa6394bb7b7c4c6e663",
+      "ci_run_id": 41964408868,
+      "status": "PASS_STATIC_PINNED_MAIN",
+      "main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "direct_branch_candidate_instructions": 493563,
+      "anchors": {
+        "cpk_bind_wrapper": {
+          "anchor": "0x473190",
+          "inbound": 12
+        },
+        "cpk_manager_bind": {
+          "anchor": "0x115e80c",
+          "inbound": 2
+        },
+        "cpk_path_adapter": {
+          "anchor": "0x115fbb8",
+          "inbound": 2
+        },
+        "cpk_priority_wrapper": {
+          "anchor": "0x115f2bc",
+          "inbound": 2
+        },
+        "cpk_vector_insert": {
+          "anchor": "0x115e8e0",
+          "inbound": 2
+        },
+        "fileload_request": {
+          "anchor": "0x1206b4c",
+          "inbound": 4
+        },
+        "fileload_create": {
+          "anchor": "0x1206c9c",
+          "inbound": 2
+        },
+        "fileload_status": {
+          "anchor": "0x1207efc",
+          "inbound": 7
+        },
+        "fileload_process": {
+          "anchor": "0x106f404",
+          "inbound": 0
+        },
+        "file_open_request": {
+          "anchor": "0x1170fb0",
+          "inbound": 1
+        }
+      },
+      "asynchronous_completion_verified": false,
+      "unbinding_verified": false,
+      "priority_winner_verified": false,
+      "gameplay_verified": false
     }
   },
   "ci": {
-    "run_id": 41963328524,
+    "run_id": 41964408868,
     "status": "completed",
     "conclusion": "success",
-    "head_sha": "6819a8c2321ad38f39389745a35ffff3d0948196",
-    "scope": "CI build, synthetic disjoint multi-CPK condition batch and existing native component tests; no real game archive or Uzuy gameplay"
+    "head_sha": "e314f9c2157bb84ae16c1aa6394bb7b7c4c6e663",
+    "scope": "SHA-pinned native main static B/BL call-edge census and existing synthetic/component/compiled native-slice tests; not real CRI IO, async or Uzuy gameplay"
   },
   "provenance": {
     "manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
@@ -175,15 +232,15 @@
     }
   ],
   "next_mvp": {
-    "name": "Authenticate real game CPK+PC manager517 and prove native CPK lifecycle before release",
-    "status": "PENDING_REAL_INPUT_AND_NATIVE_PROOF",
+    "name": "Authenticate real CPK/517 manager; resolve native indirect completion/unbind and archive precedence",
+    "status": "PENDING_AUTHENTIC_SOURCE_AND_RUNTIME_LIFECYCLE",
     "spec": "handoff/CONTINUE_PROMPT.txt",
     "acceptance": [
-      "Obtain unmodified Switch 1.70 stock archive with provenance and true merged PC manager517; verify SHA256 and run raw176 CPK-pair audit on REAL bytes.",
-      "Use tools/audit_cpk_overlaps.py against exact candidate archive set and resolve any collisions with native lookup evidence, not priority guesses.",
-      "Disassemble exact native async completion/unbind and manager teardown callsites, establish ABI and add ARM64 fingerprint tests before installing any new hook.",
-      "Extend MovesetPlus ops, resolve factory placeholders and parameter-family readers without guesses.",
-      "Preserve no-gameplay flags until actual Uzuy battle logs and full functionality tests."
+      "Establish provenance and actual SHA256 for genuine unmodified Switch v1.70 CPK and original PC merged manager517; run real CPK raw176 audit.",
+      "Trace static call 0x116F47C→0x1170FB0 and parent fileload paths; investigate indirect callers of 0x106F404 without assuming it is unused.",
+      "Identify exact native CRI async completion callback, unbind/manager teardown, and archive lookup precedence, with ARM64 fingerprints and modeled failure cases before hook implementation.",
+      "Complete missing MovesetPlus operations, remaining 53 factory names, compressed PRM repacking, condition/effect lifecycle and nine parameter families.",
+      "Do not change full_moddingapi, ready_for_gameplay_test or emulator_tested before actual real Uzuy gameplay proof."
     ]
   },
   "continuation": {
@@ -206,7 +263,7 @@
       "Continue authorized work without repeated permission prompts; preserve honest evidence labels."
     ]
   },
-  "verified_component_commit": "6819a8c2321ad38f39389745a35ffff3d0948196",
+  "verified_component_commit": "e314f9c2157bb84ae16c1aa6394bb7b7c4c6e663",
   "progress_since_previous_handoff": [
     {
       "commit": "40eab530d7d90811250cea085d941ca26b929651",
@@ -237,6 +294,18 @@
       "ci_run_id": 41963328524,
       "ci_conclusion": "success",
       "scope": "global condition owner batch packaging for disjoint CPK entries; source/output hashes, atomic write and prior profile preservation; synthetic proof only"
+    },
+    {
+      "commit": "3b9f3f7618f3a48d10f789c9284ca59ccd629233",
+      "ci_run_id": 41963998226,
+      "ci_conclusion": "success",
+      "scope": "Read-only SHA-pinned native CPK/file loader direct-branch graph; 10 anchors, no ABI/runtime proof"
+    },
+    {
+      "commit": "e314f9c2157bb84ae16c1aa6394bb7b7c4c6e663",
+      "ci_run_id": 41964408868,
+      "ci_conclusion": "success",
+      "scope": "Publish per-anchor incoming counts and bounded outbound candidate edges to CI logs for native investigation"
     }
   ]
 }

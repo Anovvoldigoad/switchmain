@@ -595,3 +595,48 @@ proof, compressed PRM repacking, complete API operations, 53 factory unknowns,
 nine parameter families, actual Uzuy gameplay. Stage remains
 IMPLEMENTATION_INCOMPLETE; full_moddingapi=false,
 ready_for_gameplay_test=false, emulator_tested=false.
+
+## 2026-11-05 — Pinned ARM64 CPK/file-load direct-edge census
+
+Commit 3b9f3f7618f3a48d10f789c9284ca59ccd629233 added
+tools/portlib/native_cpk_graph.py, tools/audit_native_cpk_graph.py,
+tests/test_native_cpk_graph.py and a CI step. It scans only the verified
+R180 Switch 1.70 main NSO (SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9).
+No unpinned input, decompilation heuristics, or new runtime hooks are used.
+Read-only native B/BL immediate decoding finds 493563 candidate direct
+branch instructions and records incoming direct-edge candidates to ten
+anchors, plus outbound edges inside bounded 0x100-byte windows.
+
+A follow-up test-log update at e314f9c2157bb84ae16c1aa6394bb7b7c4c6e663
+exposes per-anchor counts. Actions 41963998226 and 41964408868 are both
+completed/success. Observed inbound counts from log41964408868:
+- CpkBind wrapper 0x473190: 12
+- CPK manager bind 0x115E80C: 2
+- CPK path adapter 0x115FBB8: 2
+- CPK priority wrapper 0x115F2BC: 2
+- CPK vector insert 0x115E8E0: 2
+- Fileload request 0x1206B4C: 4
+- Fileload create 0x1206C9C: 2
+- Fileload status 0x1207EFC: 7
+- Fileload process 0x106F404: 0 *direct* B/BL callers found
+- File-open request 0x1170FB0: 1
+
+Specific static edges in the verified image: 0x4731F8 BL→0x115FBB8,
+0x115FBC0 B→0x115E80C, 0x1206B9C BL→0x1206C9C, and
+0x116F47C BL→0x1170FB0. These are static machine-word branch edges,
+not proof that functions execute or that the bounded windows contain full
+function bodies. The zero direct callers of 0x106F404 does not imply
+inactivity: indirect branches, vtables, callbacks and dynamic dispatch
+were not resolved. CRI async completion, unbind, archive winner/precedence,
+error paths and game resources remain UNKNOWN.
+
+The next native step is cross-referencing indirect dispatch and lifecycle
+handlers, then testing verified exact entrypoint/ABI failure paths in ARM64.
+Do not patch an alleged async completion offset without disassembly proof.
+See reports/port_foundation/native_cpk_call_edges_summary.json and download
+Actions artifacts for full read-only edge lists.
+
+Stock Switch common.cpk/romfs.zip Library filenames remain unverified byte
+sources because the local container could not inspect them. No user game
+archive was committed. Original merged PC manager517 also remains absent.
+Full API, gameplay readiness and emulator tested flags remain FALSE.

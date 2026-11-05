@@ -1,50 +1,54 @@
-LANJUTKAN FULL NSC MODDINGAPI PC -> SWITCH 1.70
-REPO Anovvoldigoad/switchmain, BRANCH port/full-api-v170.
-VERIFIED CODE COMMIT: 6819a8c2321ad38f39389745a35ffff3d0948196
-CODE CI: Actions 41963328524 completed SUCCESS (component tests only).
-Document/checkpoint commit is newer. Read ACTUAL HEAD first; do not force update.
+LANJUTKAN FULL PC MODDINGAPI -> NARUTO STORM CONNECTIONS SWITCH v1.70
+Repo: Anovvoldigoad/switchmain, branch: port/full-api-v170.
+LAST VERIFIED CODE: e314f9c2157bb84ae16c1aa6394bb7b7c4c6e663
+Last CI: Actions 41964408868 completed/success (static/native component tests).
+Documentation HEAD may be later: ALWAYS VERIFY ACTUAL BRANCH HEAD BEFORE WRITING.
 
-READ:
-handoff/checkpoint.json, PORT_STATUS.json, end of PORTING_PROGRESS.md,
-.github/workflows/verify-port-foundation.yml, NSC_FULL_API_CONTINUE_CHAT.md.
-Also read tools/portlib/condition_batch.py and tests/test_condition_batch.py.
+READ FIRST handoff/checkpoint.json, PORT_STATUS.json, the END of
+PORTING_PROGRESS.md, .github/workflows/verify-port-foundation.yml
+and NSC_FULL_API_CONTINUE_CHAT.md.
 
-DO NOT REPEAT:
-- Event236 marker 0x4E53 at +0x2A, nonmarked enemy-hide native.
-- existing factory/control/condition/CPK profile and ARM64 callback work.
-- 40eab53 CPK registration preservation.
-- 4f19056 raw176 stock comparison tool.
-- 96c8684 multi-CPK TOC collision audit.
-- be2a86c direct CPK-pair raw176 audit.
-- 6819a8c disjoint multi-CPK batch compiler, one condition owner,
-  SHA-locked input, explicit PRM marking, component-only NSO packaging.
+COMPLETED -- DO NOT REDO:
+Event236 0x4E53 @record+0x2A ownership; original unmarked enemy-hide.
+SHA-pinned main gate/ARM64 callbacks; factory/condition/CPK profile handlers.
+40eab53 CPK safe registration merge; 4f19056 raw176 comparator.
+96c8684 inter-CPK path overlap checks; be2a86c direct CPK-pair raw176 audit.
+6819a8c disjoint multi-CPK batch component compiler using one global manager/
+one explicit condition companion owner (CI 41963328524 PASS).
+3b9f3f7 native exact-main read-only 10-anchor call-edge census and e314f9c
+per-anchor CI logging (41964408868 PASS). No new native runtime hooks.
 
-DO NEXT WITHOUT GUESSING:
-1. Authenticate genuine Switch v1.70 stock CPK and original PC merged
-   conditionprmManager with 517 rows. Compute actual SHA256, distinguish
-   stock/base from modified patches, document source provenance.
-   Current Library common.cpk and romfs.zip are named/size identified only;
-   local container execution failed; not proof of authentic bytes.
-2. Run tools/audit_condition_cpk_pair.py on actual CPK/manager and
-   tools/audit_cpk_overlaps.py on the exact archives. Use real hashes.
-   Do not infer raw field meanings or winner from priority.
-3. Trace exact native CPK async completion, unbind/destructor and lookup
-   precedence. Verify guarded main, ABI, fingerprints and native slices
-   BEFORE adding runtime hooks; existing CpkBindHook proves bind ID only.
-4. Implement missing MovesetPlus semantics, unresolved factory 53 names,
-   compressed PRM support, nine pending parameter families, resource/effect/
-   audio lifecycle and global condition table integration as evidence permits.
-5. Run tests and GitHub Actions after each actual code change; commit
-   source, reports, PORT_STATUS, checkpoint and NEW continuation prompt.
+NEW NATIVE STATIC EVIDENCE:
+0x4731F8 BL 0x115FBB8 -> 0x115FBC0 B 0x115E80C (binder path).
+0x1206B9C BL 0x1206C9C (fileload request/create).
+0x116F47C BL 0x1170FB0 (file-open).
+0x106F404 fileload process has zero direct inbound B/BL in the full text
+scan; indirect calls NOT studied, so do not infer absence/execution.
+Detailed counts in reports/port_foundation/native_cpk_call_edges_summary.json.
+Branch decoding and 0x100 windows do NOT prove function extents or async ABI.
+
+NEXT:
+1. Obtain genuine unchanged Switch 1.70 CPK and original PC merged
+   conditionprmManager517, independently validate source and SHA256;
+   run real tools/audit_condition_cpk_pair.py and audit_cpk_overlaps.py.
+   User Library common.cpk and romfs.zip metadata alone prove nothing;
+   current container cannot inspect them. Do not make up hashes.
+2. Trace CRI async completion, unbind/destructor and archive winner: first
+   inspect indirect call dispatch and 0x116F47C -> 0x1170FB0 path in the
+   exact pinned main; determine ABI/function bounds from evidence. Do not
+   install new hooks until native fingerprints and ARM64 regression tests.
+3. Continue missing MovesetPlus ops, factory 53 unverified names,
+   compressed PRM, actor/effect/audio lifecycle, nine missing parameter
+   families and global condition effects/reader integration.
+4. Build, run Actions, inspect logs. Commit code, tests, reports, status,
+   checkpoint and this updated continuation prompt to the same branch.
 
 INVARIANTS:
-Exact main SHA guard. Native Sakura AWAKE_1SKR aura107 remains.
-PC manager112 vs Switch native descriptor32 vs raw conditionprm176.
-Never use character ID heuristic for Event236; nonmarked Event236 native.
-Don't mark FULL_API, GAME_TESTED or ready unless real Uzuy battle proof.
-Compiled ARM64 slice / modeled native imports is not game runtime.
-Current flags: full_moddingapi=false; ready_for_gameplay_test=false;
-emulator_tested=false. No complete playable module claimed.
-User authorized GitHub edits/CI; do not require fresh "lanjut" prompt.
-Always include newest actual branch SHA, Actions result, blockers,
-and a fresh standalone continuation prompt.
+Switch Sakura AWAKE_1SKR aura107 and exact main SHA guard.
+PC manager112 != native descriptor32 != raw conditionprm176.
+Unmarked Event236 stays native hide enemy. NO char-ID heuristics.
+Do not claim GAME_TESTED from synthetic, host or Unicorn execution.
+Current full_moddingapi=false, ready_for_gameplay_test=false,
+emulator_tested=false. No verified full API gameplay package exists.
+Continue authorized work without demanding "lanjut" after every component;
+always publish actual newest SHA, real CI result, blockers and fresh prompt.
