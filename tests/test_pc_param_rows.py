@@ -62,6 +62,26 @@ def run(out):
         except ValueError:rejected+=1
         else:raise AssertionError('Invalid PC raw32 table accepted')
     assert rejected==len(bads)
+    # Exact public PC manager templates from TheLeonX/NSC-ModManager pinned
+    # commit 276116ebf5ba398a867793cb02ee6c33c0927645.
+    template_hashes={}
+    fixtures=[
+        ('susanooCondParam','NSC_susanooCondParam.raw32.bin',
+         'd983860d4bbaa58440ea1b3ba2b6e6e33fa48b17',5),
+        ('partnerSlotParam','NSC_partnerSlotParam.raw32.bin',
+         '8155d1e0a76add995051b45fe68d27f19cca49dc',8)]
+    for family,filename,blob_sha,expected_rows in fixtures:
+        source=(R/'tests/fixtures/pc_source'/filename).read_bytes()
+        calculated_blob=hashlib.sha1(
+            b'blob '+str(len(source)).encode()+b'\0'+source).hexdigest()
+        assert calculated_blob==blob_sha
+        result=inspect(source,family,sha(source))
+        assert result['record_count']==expected_rows
+        assert not result['switch_v170_reader_integrated']
+        template_hashes[family]=sha(source)
+        print('PC_UPSTREAM_TEMPLATE',family,
+              'git_blob',blob_sha,'sha256',sha(source),
+              'records',expected_rows,'Switch_native_runtime=UNVERIFIED')
     with tempfile.TemporaryDirectory() as tmp:
         root=Path(tmp)
         file=root/'pc.bin';file.write_bytes(partner)
@@ -83,6 +103,8 @@ def run(out):
             'unmodified_opaque_tail_preserved':True,
             'rejected_invalid_cases':rejected,
             'actual_PC_mod_sample_tested':False,
+            'authentic_public_PC_manager_templates_tested':True,
+            'public_template_sha256':template_hashes,
             'switch_native_parameter_reader_integrated':False,
             'gameplay_verified':False,'full_moddingapi':False}
     (out/'pc_param_rows.json').write_text(json.dumps(result,indent=2)+'\n')
