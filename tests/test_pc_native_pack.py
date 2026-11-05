@@ -188,7 +188,8 @@ def run(main,out):
         source_file=Path(spec["mods"][0]["staged_path"])/"mod"/Path(*original_name.split("/"))
         raw=source_file.read_bytes();source_file.write_bytes(raw[:-1]+bytes([raw[-1]^1]))
         stage_manifest=Path(spec["mods"][0]["staged_path"])/"manifest.json"
-        stage_info=json.loads(stage_manifest.read_text())
+        original_stage_manifest=stage_manifest.read_text()
+        stage_info=json.loads(original_stage_manifest)
         for entry in stage_info["files"]:
             if entry["path"]==original_name:
                 entry["sha256"]=hashlib.sha256(source_file.read_bytes()).hexdigest()
@@ -196,6 +197,7 @@ def run(main,out):
         reject(spec)
         # CLI integration on a separate newly staged source after resetting.
         source_file.write_bytes(raw)
+        stage_manifest.write_text(original_stage_manifest)
         result_dir=root/"cli"
         config=root/"config.json";config.write_text(json.dumps(spec))
         command=[sys.executable,str(ROOT/"tools/assemble_pc_nsc_param_pack.py"),
