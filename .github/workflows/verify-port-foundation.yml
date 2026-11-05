@@ -51,6 +51,10 @@ jobs:
         run: python tests/test_native_cpk_graph.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Inspect pinned CPK indirect address references and RELA slots
         run: python tests/test_native_cpk_indirect.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Inspect pinned CPK near-entrypoint and local indirect branches
+        run: python tests/test_native_cpk_neighborhood.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Verify authentic PC Ougi, Gudo, CharRelation raw parameter streams
+        run: python tests/test_pc_param_streams.py --output proof-work
       - name: Validate PC condition descriptors and Android packaging
         run: python tests/test_condition_profile.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --module exlaunch/deploy/subsdk9 --output proof-work
       - name: Validate raw condition companion identity and rejection
