@@ -1,0 +1,102 @@
+{
+  "status": "PASS_NATIVE_TAIL_CALL_ARGUMENT_CANDIDATES_AND_SOURCE_BACKED_PC_ZIP_STAGING_NOT_GAMEPLAY",
+  "original_switch_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "verified_code_commit": "d7abbf28bcd3c3d4a36ec3fdb48d2de87c556818",
+  "actions_run": 42043526861,
+  "actions_conclusion": "success",
+  "original_job_id": 127300266132,
+  "completed_steps": 61,
+  "prior_fix_provenance": [
+    {
+      "code": "93153c6ff258da28e67af51dfe5c72e7f48165ee",
+      "ci": 42040639506,
+      "result": "failure",
+      "scope": "First eight-callee audit incorrectly inverted _decode_window decode/graph outputs; exact original CI failure detected, subsequently fixed."
+    },
+    {
+      "code": "3ad8b1299b5f4707e377b4a133e31b2497ef3c0c",
+      "ci": 42041112374,
+      "result": "success",
+      "scope": "Original v1.70 FileOpen tail eight direct BL targets and bounded W0 reaching-def provenance; original job 127291860119 logs verified. No CPK/CRI ABI."
+    },
+    {
+      "code": "3e78cc5581c29b7a06348cd6af3bb9a476594bb8",
+      "ci": 42042384779,
+      "result": "failure",
+      "scope": "Argument/BR register provenance initially included out-of-window synthetic CFG escape addresses, causing KeyError."
+    },
+    {
+      "code": "4df44e6348343d7b484e74f6900b2eb2a4a1b0cf",
+      "ci": 42043283000,
+      "result": "failure",
+      "scope": "First source-backed Android NSC ZIP importer implementation; inherited earlier native argument-test KeyError in CI."
+    },
+    {
+      "code": "d7abbf28bcd3c3d4a36ec3fdb48d2de87c556818",
+      "ci": 42043526861,
+      "result": "success",
+      "scope": "Guarded native FileOpen tail argument/indirect-BR provenance and source-grounded PC NSC ZIP importer for Termux, 12 rejected unsafe/wrong examples; original job 127300266132 61 steps SUCCESS."
+    }
+  ],
+  "native_tail_targets": {
+    "0x115EC18": "0x115ECAC",
+    "0x115EC28": "0x1160290",
+    "0x115EC48": "0x10ACBE0",
+    "0x115EC68": "0x12155A0",
+    "0x115EC84": "0x116B6E8",
+    "0x115EC88": "0x116D3C0",
+    "0x115EC90": "0x116B3F0",
+    "0x115EC94": "0x116D420"
+  },
+  "confirmed_indirect_BRs": {
+    "code_commit": "d7abbf28bcd3c3d4a36ec3fdb48d2de87c556818",
+    "ci_run_id": 42043526861,
+    "ci_conclusion": "success",
+    "machine_word_1": {
+      "site": "0x116B724",
+      "instruction": "BR X1",
+      "reaching_writer": "0x116B71C LDR X1,[X8,#0xC0]"
+    },
+    "machine_word_2": {
+      "site": "0x116B430",
+      "instruction": "BR X2",
+      "reaching_writer": "0x116B424 LDR X2,[X8,#0x58]"
+    },
+    "report": "GitHub Actions proof-work/native_fileopen_tail_abi_candidates.json",
+    "type_or_vtable_proven": false,
+    "lifecycle_proven": false,
+    "actual_gameplay_proven": false
+  },
+  "original_PC_mod_zip_install_source": {
+    "code_commit": "4df44e6348343d7b484e74f6900b2eb2a4a1b0cf",
+    "verified_ci_commit": "d7abbf28bcd3c3d4a36ec3fdb48d2de87c556818",
+    "ci_run_id": 42043526861,
+    "ci_conclusion": "success",
+    "cli": "tools/stage_pc_nsc_mod.py",
+    "source_repo": "TheLeonX/NSC-ModManager",
+    "source_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+    "source_file": "ViewModel/TitleViewModel.cs",
+    "original_source_git_blob": "f7ca7602d12cf9689a08fd6b7e55abc4dc8fd4ca",
+    "extensions_supported_as_original_ZIP": [
+      ".nsc",
+      ".uns",
+      ".unse",
+      ".ensc"
+    ],
+    "nus4_special_format_supported": false,
+    "negative_test_cases": 12,
+    "report": "GitHub Actions proof-work/pc_nsc_archive_stage_summary.json",
+    "real_user_archive_tested": false,
+    "Switch_port_or_gameplay_proven": false
+  },
+  "execution_scope": "SHA-pinned machine-word and CI synthetic ZIP regression, no Uzuy runtime",
+  "raw176_real_stock_game_archive_tested": false,
+  "abi_or_lifecycle_proven": false,
+  "original_PC_merged_517_authenticated": false,
+  "original_Switch_stock_common_CPK_authenticated": false,
+  "PC_zip_source_archive_real_mod_tested": false,
+  "native_hook_added": false,
+  "full_moddingapi": false,
+  "ready_for_gameplay_test": false,
+  "emulator_tested": false
+}
