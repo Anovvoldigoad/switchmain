@@ -4,6 +4,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EXL="${1:-$ROOT/exlaunch}"
 if [[ ! -d "$EXL" ]]; then echo "[!] Missing exlaunch tree: $EXL"; exit 1; fi
 cp "$ROOT/overlay/source/program/main.cpp" "$EXL/source/program/main.cpp"
+cp "$ROOT/overlay/source/program/nsc_pc_raw.hpp" "$EXL/source/program/nsc_pc_raw.hpp"
+cp "$ROOT/overlay/source/program/nsc_pc_raw.cpp" "$EXL/source/program/nsc_pc_raw.cpp"
 cp "$ROOT/overlay/source/program/nsc_runtime_core.cpp" "$EXL/source/program/nsc_runtime_core.cpp"
 cp "$ROOT/overlay/source/program/nsc_runtime_core.hpp" "$EXL/source/program/nsc_runtime_core.hpp"
 cp "$ROOT/overlay/source/program/nsc_image_guard.cpp" "$EXL/source/program/nsc_image_guard.cpp"

@@ -105,6 +105,40 @@ def run(out):
             neg+=1
             details.append({"family":family,"source_bytes":len(raw),"records":len(rows),
                             "native_rows_match_PC_python_reader":True})
+        # Public raw templates are already bundled in this repository and
+        # independently checked against upstream Git blob IDs by earlier tests.
+        # Check all nine actual public NSC Mod Manager 2.1.2.1 inputs, not only
+        # synthetic records. They are PC raw bytes, not Switch XFBIN assets.
+        real_names=[
+            "NSC_susanooCondParam.raw32.bin",
+            "NSC_partnerSlotParam.raw32.bin",
+            "NSC_ougiAwakeningParam.raw.bin",
+            "NSC_gudoBallParam.raw.bin",
+            "NSC_charRelationParam.raw.bin",
+            "NSC_pairSpSkillManagerParam.raw.bin",
+            "NSC_bgmManagerParam.raw.bin",
+            "NSC_specialInteractionManager.raw.bin",
+            "NSC_guardEffectParam.raw.bin",
+        ]
+        authentic=[]
+        for k,name in enumerate(real_names):
+            raw=(ROOT/"tests/fixtures/pc_source"/name).read_bytes()
+            digest=hashlib.sha256(raw).hexdigest()
+            report=FAMILY_READERS[NAMES[k]](raw,NAMES[k],digest)
+            rows=report.get("rows",report.get("records"))
+            ok,summary,_=invoke(k,raw)
+            assert ok and summary.record_count==len(rows),(k,name,summary.record_count,len(rows))
+            for i,row in enumerate(rows):
+                okay,_,native=invoke(k,raw,which=i)
+                assert okay and native==_meta_python(k,row),(k,i,native,row)
+                good+=1
+            expected_tail=1 if len(raw)%24==1 and k==5 else 0
+            assert summary.consumed_bytes==len(raw)-expected_tail
+            assert summary.ignored_terminal_bytes==expected_tail
+            authentic.append({"family":NAMES[k],"filename":name,
+                              "actual_public_template_sha256":digest,
+                              "bytes":len(raw),"records":len(rows),
+                              "native_CPP_rows_match_original_PC_fixture":True})
         invalid={
           0:[b"x"*32,fixtures()[0]*2,fixtures()[0][:-1]],
           1:[b"x"*32,fixtures()[1]*2],
@@ -130,7 +164,9 @@ def run(out):
         assert invoke(7,special)[1].record_count==0 and invoke(7,special)[0]==1
         result={"status":"NATIVE_CPP_PC_RAW_NINE_FAMILY_CROSS_LANGUAGE_PASS",
                 "source":"compiled shared C++ reader also built into overlay",
-                "families":details,"matching_PC_row_views":good,
+                "families":details,"actual_public_manager_raw_fixtures":authentic,
+                "authentic_public_PC_families_checked":len(authentic),
+                "matching_PC_row_views":good,
                 "invalid_and_wrong_SHA_rejected":neg,
                 "native_engine_consumers_connected":False,
                 "native_game_ABI_or_owned_buffer_lifetimes_verified":False,
