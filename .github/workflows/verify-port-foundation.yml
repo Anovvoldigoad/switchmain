@@ -71,6 +71,8 @@ jobs:
         run: python tests/test_condition_archive_audit.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Compare raw176 condition values without inferred semantics
         run: python tests/test_condition_raw_audit.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Validate SHA-streaming manager517 stock/candidate source intake on synthetic CPKs
+        run: python tests/test_real_condition_intake.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Validate condition CPK bundle and coupled module profiles
         run: python tests/test_condition_bundle.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --module exlaunch/deploy/subsdk9 --output proof-work
       - name: Verify pinned PC Susanoo and Partner raw32 parameter reader layouts
