@@ -141,7 +141,7 @@ def inspect(nso):
     if va!=0:
         raise ValueError("Expected NSO text base zero")
     tags=_tags(mem)
-    graph,decoded=_decode_window(text,TAIL_TARGET,
+    decoded,graph=_decode_window(text,TAIL_TARGET,
                                   TAIL_TARGET+TAIL_WINDOW_SIZE)
     before=previous["tail_window_bounded_cfg"]
     if before["return_sites"]!=[hex(RET_SITE)] or before["other_exits"]:
