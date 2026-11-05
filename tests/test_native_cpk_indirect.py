@@ -60,6 +60,16 @@ def run(main,out):
     print('PASS_PINNED_STATIC CPK indirect references, anchors',len(report['anchors']),
           'relocations',report['relocation_record_count'],
           'function pointers not runtime call proof')
+    for entry in report['anchors']:
+        types=entry['direct_code_address_materializations']
+        slots=entry['load_relocation_slot_candidates']
+        print('CPK_INDIRECT_PINNED',entry['name'],
+              'relative_relocation_slots',entry['relative_relocation_slots'][:8],
+              'adr',types['adr'][:8],
+              'adrp_add',types['immediately_adjacent_adrp_add'][:8],
+              'adrp_ldr',slots['immediately_adjacent_adrp_ldr'][:8],
+              'literal_ldr',slots['literal_ldr'][:8],
+              'not_runtime_proof=1')
 
 
 if __name__=='__main__':

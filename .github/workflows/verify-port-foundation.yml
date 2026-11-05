@@ -61,6 +61,8 @@ jobs:
         run: python tests/test_condition_raw_audit.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Validate condition CPK bundle and coupled module profiles
         run: python tests/test_condition_bundle.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --module exlaunch/deploy/subsdk9 --output proof-work
+      - name: Verify pinned PC Susanoo and Partner raw32 parameter reader layouts
+        run: python tests/test_pc_param_rows.py --output proof-work
       - name: Verify multi-CPK global condition batch component
         run: python tests/test_condition_batch.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --module exlaunch/deploy/subsdk9 --output proof-work
       - name: Execute native condition lookups and descriptor consumers
