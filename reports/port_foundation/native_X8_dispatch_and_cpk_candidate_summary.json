@@ -1,0 +1,54 @@
+{
+  "status": "CODE_AND_SOURCE_VERIFIED_OFFLINE_CPK_CANDIDATE_PLUS_X8_DISPATCH_STATIC_ONLY",
+  "repo": "Anovvoldigoad/switchmain",
+  "branch": "port/full-api-v170",
+  "verified_code_commits": [
+    {
+      "commit": "23aba1b0fa5375b37e718aaf89641296dd02308e",
+      "run": 42049654252,
+      "job": 127322007659,
+      "steps": 62,
+      "summary": "Source ZIP/staged CPK/original NSO SHA256-pinned multi-mod CPK candidate assembler: 2 positive, 13 negatives, exact binary cpk_profile encode/decode, byte-preserving CPK copies, fail-closed any duplicate CPK TOC path; NOT an installable Switch mod."
+    },
+    {
+      "commit": "372cfa1a7a2bb256628c84032fa6a9804e2a3a76",
+      "run": 42050734300,
+      "job": 127325814383,
+      "steps": 63,
+      "summary": "Original FileOpen two indirect dispatch corridors: 0x116B718 LDR X8,[X0], 0x116B71C LDR X1,[X8,#0xC0], 0x116B724 BR X1; 0x116B41C LDR X8,[X0], 0x116B424 LDR X2,[X8,#0x58], 0x116B430 BR X2. Original exact main SHA pinned, no runtime ABI/ownership."
+    }
+  ],
+  "main_SHA256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "cpk_candidate": {
+    "status": "PASS_2_POSITIVE_13_NEGATIVE_SYNTHETIC_ONLY",
+    "original_PC_user_archive_integrated": false,
+    "genuine_switch_stock_CPK_integrated": false,
+    "copy_original_bytes": true,
+    "generated_binary_profile": true,
+    "unresolved_TOС_overlap_rejected": true,
+    "real_archive_priority_proven": false
+  },
+  "native_dispatch": {
+    "status": "SHA_PINNED_A64_X8_BASE_WRITERS_PROVEN_STATIC_ONLY",
+    "first": {
+      "load_X8": "0x116B718 LDR X8,[X0]",
+      "function_pointer_load": "0x116B71C LDR X1,[X8,#0xC0]",
+      "indirect_branch": "0x116B724 BR X1"
+    },
+    "second": {
+      "load_X8": "0x116B41C LDR X8,[X0]",
+      "function_pointer_load": "0x116B424 LDR X2,[X8,#0x58]",
+      "indirect_branch": "0x116B430 BR X2"
+    },
+    "vtable_class_identity_proven": false,
+    "actual_runtime_method_addresses_proven": false,
+    "async_lifecycle_safe_hook_proven": false
+  },
+  "manager517_genuine_source_obtained": false,
+  "actual_raw176_stock_verified": false,
+  "original_aura107_and_Event236_invariants_preserved_by_no_native_patch": true,
+  "gameplay_verified": false,
+  "full_moddingapi": false,
+  "ready_for_gameplay_test": false,
+  "emulator_tested": false
+}

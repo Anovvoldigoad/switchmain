@@ -51,7 +51,9 @@
     "2026-11-05 ed3e32ac Actions 42035689408 SUCCESS: Pinned original FileOpen imported PLT/GOT target at 0x1171028 -> 0x12F39A0 -> 0x2142080 is R_AARCH64_JUMP_SLOT symbol #52 strncpy. Public original PC condition manager512 from TheLeonX/NSC-ModManager 2.1.2.1 Git blob 0e7133223f10eb2dbbb39d2166fdca9352e84c3e authenticated against SHA256 fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5; 517 merged and Switch CPK still missing.",
     "2026-11-05 51639ef9 Actions 42036653763 SUCCESS: Pinned original FileOpen 0x117103C BL -> 0x115FC2C ADD X0,X0,#0x18 -> B 0x115EBD8, after return CMP W0,#1, B.LT to zero-result branch; bounded tail target CFG 53 reachable words, one local RET 0x115ECA8 and 8 other callsites. Original job logs inspected. No ABI/async/gameplay proof.",
     "2026-11-05 3ad8b129 Actions 42041112374 SUCCESS: Original v1.70 FileOpen tail eight direct BL targets and bounded W0 reaching-def provenance; original job 127291860119 logs verified. No CPK/CRI ABI.",
-    "2026-11-05 d7abbf28 Actions 42043526861 SUCCESS: Guarded native FileOpen tail argument/indirect-BR provenance and source-grounded PC NSC ZIP importer for Termux, 12 rejected unsafe/wrong examples; original job 127300266132 61 steps SUCCESS."
+    "2026-11-05 d7abbf28 Actions 42043526861 SUCCESS: Guarded native FileOpen tail argument/indirect-BR provenance and source-grounded PC NSC ZIP importer for Termux, 12 rejected unsafe/wrong examples; original job 127300266132 61 steps SUCCESS.",
+    "2026-11-05 23aba1b0 GitHub Actions 42049654252 COMPLETED SUCCESS 62 steps job 127322007659 inspected: Source ZIP/staged CPK/original NSO SHA256-pinned multi-mod CPK candidate assembler: 2 positive, 13 negatives, exact binary cpk_profile encode/decode, byte-preserving CPK copies, fail-closed any duplicate CPK TOC path; NOT an installable Switch mod.",
+    "2026-11-05 372cfa1a GitHub Actions 42050734300 COMPLETED SUCCESS 63 steps job 127325814383 inspected: Original FileOpen two indirect dispatch corridors: 0x116B718 LDR X8,[X0], 0x116B71C LDR X1,[X8,#0xC0], 0x116B724 BR X1; 0x116B41C LDR X8,[X0], 0x116B424 LDR X2,[X8,#0x58], 0x116B430 BR X2. Original exact main SHA pinned, no runtime ABI/ownership."
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -80,7 +82,10 @@
     "Authentic latest published NSC Mod Manager 2.1.2.1 public PC condition manager512 has Git blob 0e713322... and SHA256 fae4c1e1..., but original merged PC manager517, genuine unmodified Switch 1.70 stock common.cpk and modded candidate bytes are STILL unavailable; no actual 512/517 raw176 stock-game audit, SFX/voice bank or runtime proof.",
     "Original eight callee direct BL targets and two indirect BR register writers are observed, but target value/dispatch ABI, X0+0x18 owning class, CRI async callbacks, rollback, lock/unlock, unbind/destructor, archive priority and safe hook lifecycle remain unproven.",
     "Latest official NSC Mod Manager 2.1.2.1 .nsc/.uns/.unse/.ensc ZIP source staging works only as offline PC archive import; it is NOT yet a Switch resource ABI conversion, native CPK load, patched main or full gameplay installer. No authentic original mod package has passed this input tool yet.",
-    "True original PC manager517, independently authenticated unmodified Switch v1.70 stock common.cpk and mod candidate CPK are missing. Therefore actual-stock raw176 comparison remains unexecuted. Nine PC parameter readers, 53 factory placeholders, full MovesetPlus, compressed PRM, model/effects/audio/SFX/Japanese voice remain incomplete."
+    "True original PC manager517, independently authenticated unmodified Switch v1.70 stock common.cpk and mod candidate CPK are missing. Therefore actual-stock raw176 comparison remains unexecuted. Nine PC parameter readers, 53 factory placeholders, full MovesetPlus, compressed PRM, model/effects/audio/SFX/Japanese voice remain incomplete.",
+    "Original ARM64 shows X8 loaded from [X0] before both BR dispatch chains, but concrete X0 instance/class, table object, method-pointer values, lock/async semantics, teardown/rollback and CPK archive winner remain UNVERIFIED. New hook must not be activated.",
+    "Multi-mod CPK candidate output is byte-preserved staging with verified CPK TOC and synthetic tests only. Runtime native CPK binding and interpretation of PC model/moveset/effect/sound resources, actual Uzuy launch, and stock archive collision policy remain UNVERIFIED.",
+    "True original PC merged manager517, independently authenticated genuine stock Switch v1.70 common.cpk and mod candidate CPK bytes are missing; raw176 real stock-game audit cannot be honestly marked PASS."
   ],
   "proofs": [
     "reports/port_foundation/bootstrap.json",
@@ -773,5 +778,60 @@
     "report": "GitHub Actions proof-work/pc_nsc_archive_stage_summary.json",
     "real_user_archive_tested": false,
     "Switch_port_or_gameplay_proven": false
+  },
+  "pc_nsc_multi_mod_candidate": {
+    "code_commit": "23aba1b0fa5375b37e718aaf89641296dd02308e",
+    "ci_run_id": 42049654252,
+    "ci_status": "completed",
+    "ci_conclusion": "success",
+    "steps": 62,
+    "CLI": "tools/assemble_pc_nsc_cpk_candidates.py",
+    "lib": "tools/portlib/pc_nsc_cpk_candidates.py",
+    "source_intake": "tools/stage_pc_nsc_mod.py",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "output_contains": [
+      "candidate_cpk_registration_profile.bin",
+      "candidate_manifest.json",
+      "candidate_data_root/data/moddingapi/"
+    ],
+    "test_source": "synthetic PC ZIP and synthetic CRI CPK only",
+    "positive_test_cases": 2,
+    "invalid_or_conflicting_test_cases_rejected": 13,
+    "source_archive_sha256_checked": true,
+    "staged_original_CPK_bytes_checked": true,
+    "native_CPK_priority_winner_verified": false,
+    "native_loader_installed": false,
+    "no_real_stock_CPK_authenticated": true,
+    "real_User_mod_gameplay_tested": false,
+    "full_moddingapi": false,
+    "ready_for_gameplay_test": false,
+    "emulator_tested": false
+  },
+  "native_fileopen_dispatch_X8_chains": {
+    "code_commit": "372cfa1a7a2bb256628c84032fa6a9804e2a3a76",
+    "ci_run_id": 42050734300,
+    "ci_status": "completed",
+    "ci_conclusion": "success",
+    "steps": 63,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "first": {
+      "load_X8": "0x116B718 LDR X8,[X0]",
+      "function_pointer_load": "0x116B71C LDR X1,[X8,#0xC0]",
+      "indirect_branch": "0x116B724 BR X1"
+    },
+    "second": {
+      "load_X8": "0x116B41C LDR X8,[X0]",
+      "function_pointer_load": "0x116B424 LDR X2,[X8,#0x58]",
+      "indirect_branch": "0x116B430 BR X2"
+    },
+    "actual_X0_object_class_authenticated": false,
+    "actual_function_pointer_target_resolved": false,
+    "real_CRI_async_unbind_destructor_proven": false,
+    "new_hook_added": false,
+    "runtime_ABI_safe_proven": false,
+    "gameplay_verified": false,
+    "full_moddingapi": false,
+    "ready_for_gameplay_test": false,
+    "emulator_tested": false
   }
 }
