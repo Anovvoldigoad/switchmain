@@ -5,7 +5,7 @@
   "repository": "https://github.com/Anovvoldigoad/switchmain",
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
-  "documentation_commit": "Documentation is a subsequent commit; resolve the actual branch HEAD before any write",
+  "documentation_commit": "Resolve actual branch HEAD: documentation commit follows verified code be2a86c",
   "prior_storm_checkpoint_id": "c7ca5be9-1c45-47c1-84d2-312b33f0bf4f",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
@@ -36,7 +36,9 @@
       "optional hash-pinned raw176 companion validation: every descriptor/raw ordinal name must match; malformed, reordered or count-mismatched companions rejected before output; review copy preserves all input bytes",
       "single-archive condition bundle compiler validates actual CPK companion, converts only selected PC API PRMs, emits paired condition/CPK profiles, and optionally configures both NSO profiles without dropping unrelated registrations",
       "safe condition-bundle module composition appends one CPK registration to pre-existing valid entries (max 32); rejects case/priority collisions and different pre-existing condition descriptors without overwriting either",
-      "hash-pinned raw176 stock-vs-candidate byte audit reports exact per-ordinal differing byte offsets and added row hashes; tested only with synthetic inputs"
+      "hash-pinned raw176 stock-vs-candidate byte audit reports exact per-ordinal differing byte offsets and added row hashes; tested only with synthetic inputs",
+      "hash-pinned mmap-based multi-CPK path overlap audit with exact/casefold and stored-byte identity; conflict reject-before-output; no runtime winner inference",
+      "direct hash-pinned CPK-to-CPK conditionprm raw176 audit invokes existing manager/ordinal comparator without extracting files manually; synthetic integration PASS only"
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -45,7 +47,9 @@
       "53 PC factory names remain unverified against Switch placeholders; PC create-time global resets and complete actor/resource lifecycle not ported",
       "gameplay and emulator compatibility not verified",
       "condition descriptor compiler requires unchanged pinned PC baseline; raw 176-byte conditionprm packaging/order and complete effect/application lifecycle remain unverified",
-      "actual unmodified Switch v1.70 raw176 conditionprm input and true merged PC manager517 have not been supplied/independently authenticated; byte-value audit has synthetic CI proof only"
+      "actual unmodified Switch v1.70 raw176 conditionprm input and true merged PC manager517 have not been supplied/independently authenticated; byte-value audit has synthetic CI proof only",
+      "actual Switch 1.70 CPK and original merged manager517 are still required for a verified stock-vs-candidate raw176 comparison; accessible Library file metadata is not source authentication",
+      "multi-CPK raw conditionprm path collisions detected statically but runtime archive winner, async completion, unbind and global condition source order are not verified"
     ],
     "proofs": [
       "reports/port_foundation/bootstrap.json",
@@ -68,7 +72,9 @@
       "reports/port_foundation/condition_bundle.json",
       "reports/port_foundation/condition_bundle_real.json",
       "reports/port_foundation/condition_bundle_multi_cpk.json",
-      "reports/port_foundation/condition_raw_value_audit.json"
+      "reports/port_foundation/condition_raw_value_audit.json",
+      "reports/port_foundation/cpk_overlaps.json",
+      "reports/port_foundation/condition_archive_audit.json"
     ],
     "parameter_family_coverage": {
       "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -98,14 +104,32 @@
       "max_entries": 32,
       "condition_descriptor_table_merge": false,
       "archive_precedence_verified": false
+    },
+    "cpk_overlap_static_audit": {
+      "tool": "tools/audit_cpk_overlaps.py",
+      "test": "tests/test_cpk_overlaps.py",
+      "ci_run_id": 41949468472,
+      "ci_conclusion": "success",
+      "scope": "SYNTHETIC_STATIC",
+      "real_archives_scanned": false,
+      "runtime_winner_verified": false
+    },
+    "condition_cpk_pair_audit": {
+      "tool": "tools/audit_condition_cpk_pair.py",
+      "test": "tests/test_condition_archive_audit.py",
+      "ci_run_id": 41950000370,
+      "ci_conclusion": "success",
+      "scope": "SYNTHETIC_STATIC",
+      "real_stock_switch_compared": false,
+      "effect_semantics_verified": false
     }
   },
   "ci": {
-    "run_id": 41938539789,
+    "run_id": 41950000370,
     "status": "completed",
     "conclusion": "success",
-    "head_sha": "4f190568f73973682023582e34ddb7587662c309",
-    "scope": "AArch64 module build and component/native-slice tests; raw176 values synthetic only; no Uzuy gameplay"
+    "head_sha": "be2a86c6944dfcf84dada2f2b7ffd9fd43250ae2",
+    "scope": "AArch64 build and synthetic static CPK raw176 pair, collision and native component tests; no real stock byte comparison or Uzuy gameplay"
   },
   "provenance": {
     "manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
@@ -136,16 +160,16 @@
     }
   ],
   "next_mvp": {
-    "name": "Real raw176 stock/PC candidate evidence and runtime archive lifecycle",
-    "status": "PENDING_REAL_INPUT_AND_NATIVE_PROOF",
+    "name": "Real stock CPK raw176 verification plus source-provenance and Switch native CPK async lifecycle",
+    "status": "PENDING_REAL_SOURCE_BYTES_AND_NATIVE_PROOF",
     "spec": "handoff/CONTINUE_PROMPT.txt",
     "acceptance": [
-      "Locate genuine stock Switch v1.70 raw conditionprm XFBIN and original merged PC manager517, authenticate origin and exact SHA256.",
-      "Use audit_condition_raw_values.py on real stock and candidate; report every stock-prefix byte delta without inferring stat/effect meanings.",
-      "Trace actual raw loader, CPK async completion/unbind and precedence in Switch native code and test exact snapshots with ARM64/host modeling.",
-      "Keep each independent condition descriptor table from silently replacing an existing one; explicit combined manager required.",
-      "Continue remaining MovesetPlus, CPK, factory, resource lifecycle and parameter-family gaps with source/offset proof.",
-      "Update GitHub code, reports, CI results and handoff; no gameplay PASS until Uzuy game execution."
+      "Identify exact unmodified Switch 1.70 archive and PC merged manager517, authenticate independent provenance/hash (not by size or filename).",
+      "Run direct tools/audit_condition_cpk_pair.py on authentic stock/candidate CPKs and PC manager517; record companion entry IDs offsets, hashes, values, and all row diffs.",
+      "Run tools/audit_cpk_overlaps.py on authentic stock/mod archive set; distinguish colliding names and bytes, do not claim runtime winner from priority.",
+      "Disassemble native CRI archive lookup/async completion and unload path from exact guarded main, add ARM64 tests for verified signatures before write hooks.",
+      "Continue remaining MovesetPlus operations, factory 53 placeholders, compressed PRMs, condition/resource lifecycle, 9 parameter families, and Android loader packaging.",
+      "Keep full_moddingapi, ready_for_gameplay_test and emulator_tested false until full integration and real Uzuy tests."
     ]
   },
   "continuation": {
@@ -168,7 +192,7 @@
       "Continue authorized work without repeated permission prompts; preserve honest evidence labels."
     ]
   },
-  "verified_component_commit": "4f190568f73973682023582e34ddb7587662c309",
+  "verified_component_commit": "be2a86c6944dfcf84dada2f2b7ffd9fd43250ae2",
   "progress_since_previous_handoff": [
     {
       "commit": "40eab530d7d90811250cea085d941ca26b929651",
@@ -181,6 +205,18 @@
       "ci_run_id": 41938539789,
       "ci_conclusion": "success",
       "scope": "Hash-pinned raw176 byte comparator and synthetic regressions"
+    },
+    {
+      "commit": "96c8684db1fe8965b4ac8d6315ea3a878f06ffb6",
+      "ci_run_id": 41949468472,
+      "ci_conclusion": "success",
+      "scope": "hash-pinned mmap multi-CPK path/content collision review, no runtime precedence"
+    },
+    {
+      "commit": "be2a86c6944dfcf84dada2f2b7ffd9fd43250ae2",
+      "ci_run_id": 41950000370,
+      "ci_conclusion": "success",
+      "scope": "pair of actual CPK entry extraction and ordinal-value comparison through synthetic fixture, real stock not tested"
     }
   ]
 }

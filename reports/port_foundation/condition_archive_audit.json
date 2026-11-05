@@ -1,0 +1,15 @@
+{
+  "status": "PASS_SYNTHETIC",
+  "ci_run_id": 41950000370,
+  "ci_conclusion": "success",
+  "source_archive_hashes_verified": true,
+  "companion_extracted_from_synthetic_cpk": true,
+  "stock_records": 512,
+  "synthetic_candidate_records": 513,
+  "rejected_bad_pairs": 6,
+  "real_stock_switch_archive_tested": false,
+  "source_provenance_verified": false,
+  "effect_semantics_verified": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

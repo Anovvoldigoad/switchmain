@@ -27,7 +27,9 @@
     "optional hash-pinned raw176 companion validation: every descriptor/raw ordinal name must match; malformed, reordered or count-mismatched companions rejected before output; review copy preserves all input bytes",
     "single-archive condition bundle compiler validates actual CPK companion, converts only selected PC API PRMs, emits paired condition/CPK profiles, and optionally configures both NSO profiles without dropping unrelated registrations",
     "safe condition-bundle module composition appends one CPK registration to pre-existing valid entries (max 32); rejects case/priority collisions and different pre-existing condition descriptors without overwriting either",
-    "hash-pinned raw176 stock-vs-candidate byte audit reports exact per-ordinal differing byte offsets and added row hashes; tested only with synthetic inputs"
+    "hash-pinned raw176 stock-vs-candidate byte audit reports exact per-ordinal differing byte offsets and added row hashes; tested only with synthetic inputs",
+    "hash-pinned mmap-based multi-CPK path overlap audit with exact/casefold and stored-byte identity; conflict reject-before-output; no runtime winner inference",
+    "direct hash-pinned CPK-to-CPK conditionprm raw176 audit invokes existing manager/ordinal comparator without extracting files manually; synthetic integration PASS only"
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -36,7 +38,9 @@
     "53 PC factory names remain unverified against Switch placeholders; PC create-time global resets and complete actor/resource lifecycle not ported",
     "gameplay and emulator compatibility not verified",
     "condition descriptor compiler requires unchanged pinned PC baseline; raw 176-byte conditionprm packaging/order and complete effect/application lifecycle remain unverified",
-    "actual unmodified Switch v1.70 raw176 conditionprm input and true merged PC manager517 have not been supplied/independently authenticated; byte-value audit has synthetic CI proof only"
+    "actual unmodified Switch v1.70 raw176 conditionprm input and true merged PC manager517 have not been supplied/independently authenticated; byte-value audit has synthetic CI proof only",
+    "actual Switch 1.70 CPK and original merged manager517 are still required for a verified stock-vs-candidate raw176 comparison; accessible Library file metadata is not source authentication",
+    "multi-CPK raw conditionprm path collisions detected statically but runtime archive winner, async completion, unbind and global condition source order are not verified"
   ],
   "proofs": [
     "reports/port_foundation/bootstrap.json",
@@ -59,7 +63,9 @@
     "reports/port_foundation/condition_bundle.json",
     "reports/port_foundation/condition_bundle_real.json",
     "reports/port_foundation/condition_bundle_multi_cpk.json",
-    "reports/port_foundation/condition_raw_value_audit.json"
+    "reports/port_foundation/condition_raw_value_audit.json",
+    "reports/port_foundation/cpk_overlaps.json",
+    "reports/port_foundation/condition_archive_audit.json"
   ],
   "parameter_family_coverage": {
     "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -89,5 +95,23 @@
     "max_entries": 32,
     "condition_descriptor_table_merge": false,
     "archive_precedence_verified": false
+  },
+  "cpk_overlap_static_audit": {
+    "tool": "tools/audit_cpk_overlaps.py",
+    "test": "tests/test_cpk_overlaps.py",
+    "ci_run_id": 41949468472,
+    "ci_conclusion": "success",
+    "scope": "SYNTHETIC_STATIC",
+    "real_archives_scanned": false,
+    "runtime_winner_verified": false
+  },
+  "condition_cpk_pair_audit": {
+    "tool": "tools/audit_condition_cpk_pair.py",
+    "test": "tests/test_condition_archive_audit.py",
+    "ci_run_id": 41950000370,
+    "ci_conclusion": "success",
+    "scope": "SYNTHETIC_STATIC",
+    "real_stock_switch_compared": false,
+    "effect_semantics_verified": false
   }
 }

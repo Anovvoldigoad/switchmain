@@ -464,3 +464,66 @@ existing UJ latch lifetime, unresolved factory placeholders, parameter-family
 readers, archive precedence, or asynchronous CPK loading. `PORT_STATUS.json`
 retains `IMPLEMENTATION_INCOMPLETE`, `full_moddingapi=false`,
 `ready_for_gameplay_test=false`, and `emulator_tested=false`.
+
+## 2026-11-05 — CPK overlap and CPK-to-CPK condition raw inspection
+
+After checkpoint b4a8a95, two source changes were committed and verified:
+
+1. Commit 96c8684db1fe8965b4ac8d6315ea3a878f06ffb6 adds
+   tools/portlib/cpk_overlap.py, tools/audit_cpk_overlaps.py and
+   tests/test_cpk_overlaps.py. The tool validates each archive against an explicit
+   lowercase SHA256 and existing bounded CPK profile paths/priorities. It maps
+   individual CPK TOC paths, compares exact/casefold path names and stored
+   payload SHA256, marks conditionprm collisions, and distinguishes same stored
+   bytes from unverified decompressed identity. Optional --reject-unresolved
+   fails before output. Memory mapping avoids loading entire CPKs into Python.
+   CI run41949468472: PASS. Fixture: two archives, three overlapping paths,
+   two unresolved, eleven malformed manifests rejected. No real game archives
+   supplied to CI and no precedence/asynchronous load/unbind proof.
+
+2. Commit be2a86c6944dfcf84dada2f2b7ffd9fd43250ae2 adds
+   tools/portlib/condition_archive_audit.py, tools/audit_condition_cpk_pair.py
+   and tests/test_condition_archive_audit.py. Hash-pinned actual CPK entry
+   extraction drives the existing raw176 comparator; it checks archive TOC
+   geometry, uncompressed payload, embedded source offsets and SHA256,
+   manager/companion name+ordinal agreement and stock-prefix byte deltas.
+   Outputs are audit JSON only, not a module or release.
+   CI run41950000370: PASS. Synthetic stock512 and appended513 companion,
+   six invalid paired inputs rejected. This is NOT authentic stock v1.70 raw
+   value evidence, not manager517 proof and not gameplay.
+
+The user Library contains files named common.cpk and romfs.zip, but their
+filename and size alone cannot authenticate unmodified stock origin. They
+were materialized in the analysis environment, which then failed before
+programmatic inspection. No SHA256 or condition values were obtained and
+none are asserted. Only local file metadata was observed; no private
+game archives were uploaded to this public GitHub repository.
+
+Code inspection of CpkBindHook: it calls the verified original bind function
+first and adds extra registrations only when the original status and bind ID
+are nonzero. A successful bind ID is then logged, explicitly with
+async_complete=unverified. The existing native CPK emulator models the
+allocation/CRI registration paths; it does not run real CRI file I/O,
+archive priority winner lookup, unbind or manager teardown. No new native
+hooks were added, because offsets/ABI and lifecycle order beyond those
+already established remain unproven.
+
+Before using these tools on Android, supply only authenticated source files.
+Review command for direct CPK pair (replace all paths and real hashes):
+
+    python tools/audit_condition_cpk_pair.py \
+      --pc-manager MERGED_PC_MANAGER517 \
+      --stock-cpk VERIFIED_STOCK_CPK \
+      --stock-cpk-sha256 ACTUAL_STOCK_SHA256 \
+      --candidate-cpk VERIFIED_CANDIDATE_CPK \
+      --candidate-cpk-sha256 ACTUAL_CANDIDATE_SHA256 \
+      --output NEW_REVIEW_DIRECTORY
+
+A rejection from this command is evidence of unsupported or inconsistent
+inputs, not proof that the game cannot load them. Even on a successful audit,
+actual raw field meanings and effect dependencies are still unverified.
+
+Current stage: IMPLEMENTATION_INCOMPLETE; full_moddingapi=false,
+ready_for_gameplay_test=false, emulator_tested=false. The next engineering
+work is source authentication and the native asynchronous completion/
+precedence/unbind investigation, followed by outstanding PC API features.

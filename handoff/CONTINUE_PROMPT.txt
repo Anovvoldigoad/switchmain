@@ -1,66 +1,45 @@
-LANJUTKAN NSC FULL MODDINGAPI SWITCH 1.70 — CHECKPOINT 2026-11-05
+LANJUTKAN FULL PC MODDINGAPI -> NARUTO STORM CONNECTIONS SWITCH 1.70
+CHECKPOINT: 2026-11-05, repo Anovvoldigoad/switchmain branch port/full-api-v170.
+VERIFIED CODE SHA: be2a86c6944dfcf84dada2f2b7ffd9fd43250ae2.
+Actions 41950000370 completed/success and 41949468472 completed/success.
+Documentation commit is newer: resolve ACTUAL branch HEAD, do not overwrite it.
 
-GitHub: Anovvoldigoad/switchmain
-Branch: port/full-api-v170
-Last verified code commit: 4f190568f73973682023582e34ddb7587662c309
-Verified Actions: 41938539789 (success, component tests), 41937948988 (success, component tests).
-Always resolve ACTUAL branch HEAD before editing; documentation commits may be newer.
+READ FIRST: handoff/checkpoint.json, PORT_STATUS.json, latest PORTING_PROGRESS.md,
+NSC_FULL_API_CONTINUE_CHAT.md, workflow verify-port-foundation.yml.
 
-READ FIRST:
-- handoff/checkpoint.json
-- PORT_STATUS.json
-- end of PORTING_PROGRESS.md
-- NSC_FULL_API_CONTINUE_CHAT.md
-- tools/portlib/condition_bundle.py, tests/test_condition_bundle.py
-- tools/portlib/condition_raw_audit.py, tests/test_condition_raw_audit.py
-- .github/workflows/verify-port-foundation.yml
+IMPLEMENTED (DO NOT REPEAT):
+- Native condition descriptor/factory/event ownership/control selectors and
+  CPK bind registration from earlier commits (keep source fingerprints).
+- 40eab53 safe CPK list append, conflict and capacity guards.
+- 4f19056 hash-pinned raw176 stock-vs-candidate ordinal/byte diff.
+- 96c8684 offline inter-CPK collision audit (casefold, payload hashes, strict reject).
+- be2a86c hash-pinned direct CPK-pair condition raw inspection. Both latest
+  parts pass synthetic CI only. No CRI runtime winner, no unbind, no gameplay.
 
-GOAL:
-Continue the complete PC NSC ModdingAPI port to Naruto Storm Connections Switch 1.70
-(new character slots, Android/Uzuy). Do not shrink the target to a converter.
-Do not redo pre-existing condition bundle, Event236 marker, CPK profile,
-condition descriptor, factory or control-selector components.
-
-NEWLY IMPLEMENTED AND TESTED:
-1. Bundle configuration preserves existing CPK registrations and appends an
-   explicitly requested archive (maximum 32); identical registrations remain
-   idempotent, path/priority/capacity collisions fail. Existing different nonempty
-   condition descriptors are rejected rather than overwritten. Effective
-   cpk.profile output matches configured NSO. Run41937948988 PASS.
-2. Hash-pinned raw176 stock-vs-candidate comparison tool reports byte differences
-   per shared stock ordinal and hashes appended candidate rows. CI synthetic
-   test passed with 7 rejection cases. Run41938539789 PASS.
-3. Existing ARM64 native slice, module build, condition bundle/profile/event
-   tests remain PASS. This is NOT evidence of live game execution.
-
-NEXT VERIFIED WORK:
-- Find/authenticate genuine unmodified Switch 1.70 raw conditionprm XFBIN,
-  candidate raw, and original 517-record merged PC conditionprmManager.
-  Record source and SHA256, run tools/audit_condition_raw_values.py with REAL
-  bytes. Do not infer stat/effect semantics from unknown offsets.
-- Validate raw prefix compatibility, effect dependencies, condition creation/
-  application/retirement, and global descriptor+raw ordering. One bundle
-  cannot merge independently compiled condition tables by concatenation.
-- Audit native CPK discovery, async completion, unbind/manager replacement,
-  file precedence and overlay lookup using actual code and test evidence.
-- Continue remaining MovesetPlus operations, actor/UJ latch lifetime,
-  factory 53 unknown classes, compressed PRMs, missing parameter readers
-  and resource effects/audio. Make targeted reversible edits, add tests.
-- Run real CI after code change; use logs and artifact, commit code, reports,
-  status and handoff back to the same branch. Stop and preserve evidence when
-  a required input is genuinely unavailable; continue other independent work.
+STILL MISSING / NEXT:
+1. Authenticate genuine unmodified Switch 1.70 CPK and merged PC manager517.
+   User Library has common.cpk and romfs.zip but local runtime failed before
+   reading their bytes. NEVER claim their hash, origin or condition values
+   based on name/size. Try a real functioning runtime, otherwise leave pending.
+2. Run tools/audit_condition_cpk_pair.py with actual hashes/manager and CPKs;
+   run tools/audit_cpk_overlaps.py against exact candidate archive set.
+   Record input provenance, bytes, ordinal/field deltas and all collision paths.
+3. Disassemble exact Switch 1.70 CRI archive lookup path, async completion,
+   unbind and manager destructor; investigate precedence and actor/resource
+   lifetime. Don't add native hooks without ABI/site fingerprints and tests.
+4. Implement remaining MovesetPlus operations, 53 unknown factory placeholders,
+   compressed PRM repacking, nine pending parameter families, global PC
+   condition descriptor/raw merge and effect/audio lifecycle. Preserve baseline.
+5. Build & run GitHub Actions on each actual change. Commit source, reports,
+   checkpoint and refreshed continuation text to the branch. Verify HEAD first.
 
 INVARIANTS:
-- Keep exact main SHA/image guard, native baseline, condition Sakura aura107.
-- PC manager112, native descriptor32, raw conditionprm176 are different.
-- Event236 marker uint16 0x4E53 at record+0x2A; unmarked Event236 remains
-  native enemy-hide; never use roster ID heuristics.
-- No guessed addresses, char slots, API fields, or stat/effect values.
-- STATIC_VERIFIED, EMULATED_WITH_STUBS, BUILD_PASS and GAME_TESTED are distinct.
-- Preserve PORT_STATUS flags full_moddingapi=false,
-  ready_for_gameplay_test=false, emulator_tested=false until actual proof.
-- Do not claim GPT Astra/Work equivalence from a prompt.
-- User already authorized implementation, tests and GitHub commits; no need to
-  ask for a new "lanjut" at every step.
-- Always include a fresh, copyable continuation prompt and the actual newest
-  GitHub commit SHA in your final answer.
+Main exact SHA guard; Sakura aura107 Switch prefix; PRM 0x4E53 Event236 marker
+at record+0x2A; unmarked Event236 is native enemy-hide; no char ID heuristic.
+Never treat 112-byte PC descriptor table as 176-byte raw game rows.
+Do NOT claim gameplay/full API/ready if source, CI or live Uzuy proof is missing.
+STATIC_VERIFIED, EMULATED_WITH_STUBS, BUILD_PASS and GAME_TESTED are distinct.
+Do not claim a prompt changes the model into Astra or grants Work capabilities.
+The user authorizes GitHub changes/tests, no repeated request for "lanjut".
+Always supply newest actual commit, real Actions results, blockers and
+a fresh copyable prompt in the final answer.
