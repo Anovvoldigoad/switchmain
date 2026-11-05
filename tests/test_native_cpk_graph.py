@@ -40,6 +40,12 @@ def run(main,out):
     (out/'native_cpk_call_edges.json').write_text(json.dumps(report,indent=2)+'\n')
     print('CPK native static call edges inspected:',report['candidate_direct_branches'],
           'candidate instructions,',len(ANCHORS),'anchor windows. NOT runtime proof.')
+    for row in report['anchors']:
+        print('CPK_NATIVE_EDGE',row['name'],row['offset'],
+              'direct_inbound',row['incoming_count'],
+              'inbound_samples',row['incoming_samples'][:5],
+              'bounded_outbound_samples',row['outgoing_edges_in_bounded_window'][:7],
+              'not_async_or_unbind_proof=1')
 
 
 if __name__=='__main__':
