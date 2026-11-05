@@ -55,7 +55,10 @@
       "2026-11-05 original FileOpen return W0==0 branch 0x116F480 CBZ to 0x116F4D8 has syntactic bounded native CFG path to status5 setter BL 0x116F520->0x120661C. Separate status5 BL 0x116F5C0 is NOT syntactically reachable from that zero-result branch within the analyzed window; it follows its distinct context +0x1D8 guard. Original main SHA pinned. CI 41995755104 SUCCESS. Zero real CRI failure tests, ABI/async unverified.",
       "2026-11-05 commit 6966296: original SHA-pinned read-only FileOpen W0==0 branch to first native status5 argument/body audit. CI 42000801083 SUCCESS; selected syntactic path length 19, zero conditional decisions on that selected path. Exact caller W1=5 / X0=X20, helper X0->X21/W1->W20, guarded store W20 to [X21,#0x68]. Synthetic graph regressions and wrong-main SHA fail-closed tests pass. This is NOT live CRI zero return, X20 ownership, real locking/async, ABI-safe hook or gameplay.",
       "2026-11-05 pinned native FileOpen 0x1170FB0 bounded CFG: 52 reached machine instructions; two RETs: 0x1171068 with W0=1 (MOV W0,#1) and 0x117107C with W0=0 (MOV W0,WZR). No other non-RET exit in bounded CFG assuming calls return; W0=0 interpretation as CRI failure still not validated. Native FileLoad 0x116F404: 0x116F434 MOV X20,X2, 0x116F438 MOV X22,X1; original X1/X2 have no prior reached writes from entry under bounded CFG with caller-saved call-clobber modeling; status5 first/second object argument from X20, +0x1D8 context guard from X22. No class identity, lifetime, callback, rollback, precedence, ABI safety, authentic original stock CPK or real manager517; no new patch or gameplay.",
-      "2026-11-05 code 9a9b6cd: pinned FileOpen 3 branch-edge sites and 4 callsite dependency census, CI 42016068823 completed SUCCESS and original job log verified; synthetic/negative guard PASS; no CRI error/lifecycle/ownership/Uzuy claims."
+      "2026-11-05 code 9a9b6cd: pinned FileOpen 3 branch-edge sites and 4 callsite dependency census, CI 42016068823 completed SUCCESS and original job log verified; synthetic/negative guard PASS; no CRI error/lifecycle/ownership/Uzuy claims.",
+      "2026-11-05 6c9b18db Actions 42034757420 SUCCESS: Original pinned FileOpen bounded external callees and flag/register writer sources: 3 condition branches, 4 callsites; first/last empty RET stubs, separate PLT and native X0+0x18 tail wrapper. CI completed SUCCESS; not original CRI ABI execution.",
+      "2026-11-05 ed3e32ac Actions 42035689408 SUCCESS: Pinned original FileOpen imported PLT/GOT target at 0x1171028 -> 0x12F39A0 -> 0x2142080 is R_AARCH64_JUMP_SLOT symbol #52 strncpy. Public original PC condition manager512 from TheLeonX/NSC-ModManager 2.1.2.1 Git blob 0e7133223f10eb2dbbb39d2166fdca9352e84c3e authenticated against SHA256 fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5; 517 merged and Switch CPK still missing.",
+      "2026-11-05 51639ef9 Actions 42036653763 SUCCESS: Pinned original FileOpen 0x117103C BL -> 0x115FC2C ADD X0,X0,#0x18 -> B 0x115EBD8, after return CMP W0,#1, B.LT to zero-result branch; bounded tail target CFG 53 reachable words, one local RET 0x115ECA8 and 8 other callsites. Original job logs inspected. No ABI/async/gameplay proof."
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -79,7 +82,9 @@
       "Original FileOpen-zero -> first status5 has only original machine-code/CFG conditional reachability. Second context-guarded status5 0x116F5C0 was NOT reachable from zero branch in bounded scan. Live CRI returned values, causal failure handling, object destruction, archive precedence and native safe hooks require separate proof.",
       "The 19-word FileOpen-zero-to-status5 witness and pinned X0/X20/W1 status helper body only establish machine-code/static path and argument transfers. Actual FileOpen W0=0 semantics, object ownership, failure rollback, CRI locks/async, unbind/destructor, archive winner and hook ABI remain unproven.",
       "Native original FileOpen two local literal W0 return values and FileLoad entry-source X2/X1 register transfer are proved within bounded static CFG, but success/failure meaning, object class/ownership, callback async/CRI locks, unbind/destructor, archive precedence, and safe ABI remain UNPROVEN. Runtime hooks must not be installed from these facts.",
-      "FileOpen branch-dependency census yields 3 conditional sites, 4 original calls; no proven callee effects, semantic branch feasibility, true CRI failure meaning, object allocator/teardown, async, unbind, or archive precedence."
+      "FileOpen branch-dependency census yields 3 conditional sites, 4 original calls; no proven callee effects, semantic branch feasibility, true CRI failure meaning, object allocator/teardown, async, unbind, or archive precedence.",
+      "Original FileOpen imported symbol strncpy is byte-proven via PLT/GOT relocation, not an imported CRI FileOpen function; actual failure/ownership semantics depend on native X0+0x18 tail target 0x115EBD8 and its 8 unresolved callees, plus X20/X22, status+0x68, guard+0x1D8, async/callback/teardown and archive order.",
+      "Authentic latest published NSC Mod Manager 2.1.2.1 public PC condition manager512 has Git blob 0e713322... and SHA256 fae4c1e1..., but original merged PC manager517, genuine unmodified Switch 1.70 stock common.cpk and modded candidate bytes are STILL unavailable; no actual 512/517 raw176 stock-game audit, SFX/voice bank or runtime proof."
     ],
     "proofs": [
       "reports/port_foundation/bootstrap.json",
@@ -646,11 +651,11 @@
     }
   },
   "ci": {
-    "run_id": 42013833559,
-    "head_sha": "c32b1d2235e54b17c334081063132aa6df389424",
+    "run_id": 42036653763,
+    "head_sha": "51639ef9bba9a64a45f26abc0b58d13b79b20e65",
     "status": "completed",
     "conclusion": "success",
-    "scope": "Pinned native FileOpen two literal return values and FileLoad X1/X2 inbound register definitions; static bounded and not CRI ABI/gameplay"
+    "scope": "Original PLT/GOT strncpy import, public PC manager512 Git blob plus SHA256, FileOpen X0+0x18 wrapper/tail target 53-word static CFG; NO gameplay"
   },
   "provenance": {
     "manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
@@ -712,7 +717,7 @@
       "Continue authorized work without repeated permission prompts; preserve honest evidence labels."
     ]
   },
-  "verified_component_commit": "9a9b6cd755e19598735df3c85a5bb637254b36c6",
+  "verified_component_commit": "51639ef9bba9a64a45f26abc0b58d13b79b20e65",
   "progress_since_previous_handoff": [
     {
       "commit": "40eab530d7d90811250cea085d941ca26b929651",
@@ -900,6 +905,24 @@
       "ci_run_id": 42013833559,
       "ci_conclusion": "success",
       "scope": "X1/X2 caller-saved provenance at capture from original function-entry registers, no earlier reached writes under bounded CFG; no actual gameplay/CRI execution"
+    },
+    {
+      "commit": "6c9b18db4bf80b07b4227dde6da8c58144b9df83",
+      "ci_run_id": 42034757420,
+      "ci_conclusion": "success",
+      "scope": "Original pinned FileOpen bounded external callees and flag/register writer sources: 3 condition branches, 4 callsites; first/last empty RET stubs, separate PLT and native X0+0x18 tail wrapper. CI completed SUCCESS; not original CRI ABI execution."
+    },
+    {
+      "commit": "ed3e32ac03b492000e8eb1cf410312b639200603",
+      "ci_run_id": 42035689408,
+      "ci_conclusion": "success",
+      "scope": "Pinned original FileOpen imported PLT/GOT target at 0x1171028 -> 0x12F39A0 -> 0x2142080 is R_AARCH64_JUMP_SLOT symbol #52 strncpy. Public original PC condition manager512 from TheLeonX/NSC-ModManager 2.1.2.1 Git blob 0e7133223f10eb2dbbb39d2166fdca9352e84c3e authenticated against SHA256 fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5; 517 merged and Switch CPK still missing."
+    },
+    {
+      "commit": "51639ef9bba9a64a45f26abc0b58d13b79b20e65",
+      "ci_run_id": 42036653763,
+      "ci_conclusion": "success",
+      "scope": "Pinned original FileOpen 0x117103C BL -> 0x115FC2C ADD X0,X0,#0x18 -> B 0x115EBD8, after return CMP W0,#1, B.LT to zero-result branch; bounded tail target CFG 53 reachable words, one local RET 0x115ECA8 and 8 other callsites. Original job logs inspected. No ABI/async/gameplay proof."
     }
   ],
   "native_fileopen_branch_dependency_checkpoint": {
@@ -911,5 +934,41 @@
     "source_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
     "report": "reports/port_foundation/native_fileopen_branch_dependencies_summary.json",
     "gameplay_verified": false
+  },
+  "original_pc_manager512_provenance": {
+    "code_commit": "ed3e32ac03b492000e8eb1cf410312b639200603",
+    "ci_run_id": 42035689408,
+    "source_repo": "TheLeonX/NSC-ModManager",
+    "source_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+    "source_path": "ModdingAPIFiles/moddingapi/param/NSC/conditionprmManager.xfbin",
+    "sha256": "fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5",
+    "git_blob_sha1": "0e7133223f10eb2dbbb39d2166fdca9352e84c3e",
+    "size_bytes": 57344,
+    "rows": 512,
+    "real_merged_517_authenticated": false,
+    "Switch_CPK_provenance_verified": false
+  },
+  "original_fileopen_followup": {
+    "code_commit": "51639ef9bba9a64a45f26abc0b58d13b79b20e65",
+    "ci_run_id": 42036653763,
+    "ci_conclusion": "success",
+    "fileopen_call": "0x117103C",
+    "wrapper": "0x115FC2C",
+    "x0_offset": 24,
+    "tail": "0x115EBD8",
+    "bounded_reachable_instructions": 53,
+    "local_ret": "0x115ECA8",
+    "calls": [
+      "0x115EC18",
+      "0x115EC28",
+      "0x115EC48",
+      "0x115EC68",
+      "0x115EC84",
+      "0x115EC88",
+      "0x115EC90",
+      "0x115EC94"
+    ],
+    "safe_hook_ABI_verified": false,
+    "report": "GitHub Actions proof-work/native_fileopen_tail.json"
   }
 }

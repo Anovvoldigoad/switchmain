@@ -1,0 +1,114 @@
+{
+  "status": "ORIGINAL_NATIVE_FILEOPEN_SOURCES_PROVEN_NO_CRI_OR_GAMEPLAY_PASS",
+  "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "code_commits": [
+    {
+      "commit": "6c9b18db4bf80b07b4227dde6da8c58144b9df83",
+      "ci": 42034757420,
+      "job": 127269892400,
+      "summary": "Original pinned FileOpen bounded external callees and flag/register writer sources: 3 condition branches, 4 callsites; first/last empty RET stubs, separate PLT and native X0+0x18 tail wrapper. CI completed SUCCESS; not original CRI ABI execution."
+    },
+    {
+      "commit": "ed3e32ac03b492000e8eb1cf410312b639200603",
+      "ci": 42035689408,
+      "job": 127273107976,
+      "summary": "Pinned original FileOpen imported PLT/GOT target at 0x1171028 -> 0x12F39A0 -> 0x2142080 is R_AARCH64_JUMP_SLOT symbol #52 strncpy. Public original PC condition manager512 from TheLeonX/NSC-ModManager 2.1.2.1 Git blob 0e7133223f10eb2dbbb39d2166fdca9352e84c3e authenticated against SHA256 fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5; 517 merged and Switch CPK still missing."
+    },
+    {
+      "commit": "51639ef9bba9a64a45f26abc0b58d13b79b20e65",
+      "ci": 42036653763,
+      "job": 127276447046,
+      "summary": "Pinned original FileOpen 0x117103C BL -> 0x115FC2C ADD X0,X0,#0x18 -> B 0x115EBD8, after return CMP W0,#1, B.LT to zero-result branch; bounded tail target CFG 53 reachable words, one local RET 0x115ECA8 and 8 other callsites. Original job logs inspected. No ABI/async/gameplay proof."
+    }
+  ],
+  "code_latest_verified_ci_run": 42036653763,
+  "code_ci_conclusion": "success",
+  "original_ci_job": 127276447046,
+  "original_branch_count": 3,
+  "original_call_count": 4,
+  "original_branches": [
+    {
+      "at": "0x1171010",
+      "instruction": "CBZ X0",
+      "source": "0x117100C LDR X0,[X23]"
+    },
+    {
+      "at": "0x1171030",
+      "instruction": "CBZ X21",
+      "source": "0x117102C LDR X21,[X23]"
+    },
+    {
+      "at": "0x1171048",
+      "instruction": "B.LT",
+      "source": "0x1171040 CMP W0,#1"
+    }
+  ],
+  "original_calls": [
+    {
+      "at": "0x1171018",
+      "target": "0x115FC28",
+      "bounded_kind": "RET"
+    },
+    {
+      "at": "0x1171028",
+      "target": "0x12F39A0",
+      "bounded_kind": "PLT_Imported_strncpy"
+    },
+    {
+      "at": "0x117103C",
+      "target": "0x115FC2C",
+      "bounded_kind": "ADD_X0_0x18_tail_B_0x115EBD8"
+    },
+    {
+      "at": "0x1171054",
+      "target": "0x115FBE8",
+      "bounded_kind": "RET"
+    }
+  ],
+  "original_PLT_import": {
+    "target": "0x12F39A0",
+    "got_slot": "0x2142080",
+    "relocation": "R_AARCH64_JUMP_SLOT",
+    "symbol_index": 52,
+    "symbol": "strncpy",
+    "symbol_is_native_CRI_FileOpen": false
+  },
+  "native_tail": {
+    "target": "0x115EBD8",
+    "bounded_reachable_words": 53,
+    "local_RET": "0x115ECA8",
+    "other_direct_calls": [
+      "0x115EC18",
+      "0x115EC28",
+      "0x115EC48",
+      "0x115EC68",
+      "0x115EC84",
+      "0x115EC88",
+      "0x115EC90",
+      "0x115EC94"
+    ],
+    "original_calls_assumed_to_return": true
+  },
+  "PC_public_baseline": {
+    "code_commit": "ed3e32ac03b492000e8eb1cf410312b639200603",
+    "ci_run_id": 42035689408,
+    "source_repo": "TheLeonX/NSC-ModManager",
+    "source_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+    "source_path": "ModdingAPIFiles/moddingapi/param/NSC/conditionprmManager.xfbin",
+    "sha256": "fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5",
+    "git_blob_sha1": "0e7133223f10eb2dbbb39d2166fdca9352e84c3e",
+    "size_bytes": 57344,
+    "rows": 512,
+    "real_merged_517_authenticated": false,
+    "Switch_CPK_provenance_verified": false
+  },
+  "merged_manager_517_authenticated": false,
+  "genuine_stock_Switch_CPK_authenticated": false,
+  "actual_raw176_stock_game_audit_done": false,
+  "native_runtime_ABI_proven": false,
+  "real_CRl_lock_async_unbind_destructor_proven": false,
+  "native_hook_installed": false,
+  "full_moddingapi": false,
+  "ready_for_gameplay_test": false,
+  "emulator_tested": false
+}

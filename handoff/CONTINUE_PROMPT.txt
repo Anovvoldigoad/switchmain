@@ -1,29 +1,30 @@
 LANJUTKAN FULL PC MODDINGAPI -> NARUTO STORM CONNECTIONS SWITCH v1.70
 Repository: Anovvoldigoad/switchmain
 Branch: port/full-api-v170
-LATEST VERIFIED IMPLEMENTATION: 9a9b6cd755e19598735df3c85a5bb637254b36c6
-IMPLEMENTATION ACTIONS: 42016068823 completed SUCCESS; actual job 127206799099 logs inspected.
-Documentation HEAD may be later: ALWAYS verify live HEAD before editing, fast-forward expected_sha only, never force-push.
+LAST VERIFIED IMPLEMENTATION: 51639ef9bba9a64a45f26abc0b58d13b79b20e65
+CODE ACTIONS: 42036653763 COMPLETED SUCCESS (57 steps, job 127276447046, raw job logs read).
+EARLIER CODE: 6c9b18d -> Actions 42034757420 SUCCESS; ed3e32a -> Actions 42035689408 SUCCESS.
+Docs HEAD may be newer. VERIFY LIVE HEAD AND REAL CI FIRST, use expected_sha fast-forward only; never force push.
 
-READ FIRST: handoff/CONTINUE_PROMPT.txt, handoff/checkpoint.json, PORT_STATUS.json, latest PORTING_PROGRESS.md, workflow .github/workflows/verify-port-foundation.yml, reports/port_foundation/native_fileopen_branch_dependencies_summary.json, reports/port_foundation/native_fileopen_returns_summary.json, reports/port_foundation/native_fileload_entry_register_summary.json.
+READ: handoff/CONTINUE_PROMPT.txt, handoff/checkpoint.json, PORT_STATUS.json, latest PORTING_PROGRESS.md, .github/workflows/verify-port-foundation.yml, reports/port_foundation/native_fileopen_native_import_summary.json.
+Source is original exact-main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
 
-EXACT ORIGINAL SWITCH 1.70 MAIN SHA256: 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
+DO NOT REPEAT PASS:
+- Correct FileLoad entry 0x116F404, old 0x106F404 is mid-code BL.
+- Native FileOpen 0x1170FB0: 52 reached bounded words, literal W0=1 at 0x1171058 -> RET 0x1171068 and literal W0=0 at 0x117106C -> RET 0x117107C, 3 branch conditions, 4 callsites. These are static, NOT runtime success/failure meaning.
+- Branches 0x1171010 CBZ X0 after LDR X0,[X23], 0x1171030 CBZ X21 after LDR X21,[X23], 0x1171048 B.LT after 0x1171040 CMP W0,#1.
+- Four FileOpen BLs: 0x1171018 -> 0x115FC28 RET, 0x1171028 -> 0x12F39A0, 0x117103C -> 0x115FC2C, 0x1171054 -> 0x115FBE8 RET.
+- Import identified by original ELF64 GOT relocation: 0x1171028 BL 0x12F39A0 -> 0x2142080 R_AARCH64_JUMP_SLOT, symbol index52 'strncpy'. This is C-library strncpy, NOT CRI FileOpen, and does not prove string length, bounds, heap ownership or async.
+- Native tail wrapper 0x115FC2C ADD X0,X0,#0x18; B 0x115EBD8. Original FileOpen after BL wrapper CMP W0,#1, B.LT to W0 zero path. Tail 0x115EBD8 bounded CFG 53 reached machine words, one RET 0x115ECA8, eight calls at 0x115EC18/28/48/68/84/88/90/94. Calls assumed return, NO verified native ABI or failure.
+- Native FileLoad X20 <- entry X2 and X22 <- entry X1. Distinct first status5 from FileOpen W0 CBZ path vs second status5 with X22+0x1D8 guard. Status helper field +0x68. No lifecycle proof.
+- Independently authenticated official public PC manager512 (NOT merged 517), official repo TheLeonX/NSC-ModManager commit 276116ebf5ba398a867793cb02ee6c33c0927645, path ModdingAPIFiles/moddingapi/param/NSC/conditionprmManager.xfbin, 57344 bytes, Git blob SHA1 0e7133223f10eb2dbbb39d2166fdca9352e84c3e, SHA256 fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5. CI compares original reconstructed PC baseline with exact Git blob identity.
 
-ALREADY PASSED, DO NOT REPEAT:
-- Original FileLoad entry 0x116F404; 0x106F404 is a BL, NOT entry.
-- Original FileOpen 0x1170FB0 bounded CFG 52 reachable instructions, W0=1 at 0x1171058 -> RET 0x1171068; W0=0 at 0x117106C -> RET 0x117107C. CALLS ASSUMED TO RETURN.
-- Original FileLoad caller BL at 0x116F47C followed by 0x116F480 CBZ W0 -> 0x116F4D8; zero-branch first status5 BL 0x116F520, second status5 0x116F5C0 is a separate X22+0x1D8 guarded path.
-- Original 0x116F434 MOV X20,X2, 0x116F438 MOV X22,X1, X1/X2 unchanged from bounded candidate entry under ABI clobber modeling; no ownership/type proof.
-- NEW commit 9a9b6cd755e19598735df3c85a5bb637254b36c6: SHA-pinned native branch predicate/call dependency read-only analyzer + negative tests + GitHub Actions. Original job log: FILEOPEN_BRANCH_DEPENDENCIES_STATIC_PASS 3 4 NOT_CRI_OR_GAMEPLAY. 3 conditional branch sites, 4 reachable calls; paths to both literal returns are syntactic only. GitHub Actions 42016068823 SUCCESS.
-- Source-grounded nine PC-only parameter raw readers and 53 unsupported native factory placeholders still NOT bound. Synthetic raw176 manager512/517 tests are NOT stock game authentication.
+IMMEDIATE NEXT ENGINEERING:
+1. Trace eight callees of original native 0x115EBD8 and their W0 return-source, pointer/object ownership, status/lock/error rollback with exact SHA and machine words. Identify native CPK/resource resolution/async callbacks/teardown by real instruction + relocation, not guessed function names. Map X0+0x18 context field and all original callsites; do not hook until ABI/lifecycle safety proven.
+2. Continue reverse engineering current NSC Mod Manager 2.1.2.1 PC ModdingAPI runtime and output formats (not old UltimateStormAPI) including plugin DLL behavior and compatibility. Nine prior public PC raw readers are only offline input validation, not native Switch readers; 53 factory placeholders, MovesetPlus, compressed PRM, actor/model/effects/audio/SFX/Japanese voice still incomplete.
+3. Obtain and independently authenticate original PC merged conditionprmManager517, truly unmodified Switch v1.70 common.cpk and modded candidate CPK by bytes, SHA256 and provenance. Run real raw176 audit. NO stock game bytes available means no real-game PASS; do not invent them.
+4. Preserve exact SHA main guard, Sakura aura107, Event236 0x4E53 marker +0x2A, and native unmarked Event236.
+5. Every code/docs commit: relevant tests + actual completed GitHub Actions and job logs, write code/report/PORT_STATUS/checkpoint/prompt on SAME branch. No force-push, no overwriting newer HEAD. Use current ordinary chat; no assumed Work parity.
+6. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false until matching installable artifact really passes actual Uzuy. No CI/static/Unicorn/stub = gameplay.
 
-NEXT FULL PORT ENGINEERING:
-1. Read proof-work/native_fileopen_branch_dependencies.json from Actions artifact, identify each of 3 predicate sites and each of 4 BL/BLR callsites by original machine bytes. Disassemble and SHA-pin each external target's original native body and investigate register/field dataflow, call outcomes, allocation and failure rollback. Do NOT infer CRI zero=failure from CBZ alone. Test bounded subgraphs and uncertain indirects separately.
-2. Establish object X2->X20 and context X1->X22 class/layout/ownership, status field +0x68, second guard +0x1D8, callback dispatch, real locks/unlocks, async completion, error rollback, archive resolution/precedence, unbind/destructor. NO hook until lifecycle and ABI safety proved.
-3. Independently authenticate actual UNMODIFIED stock common.cpk Switch 1.70, PC original merged conditionprmManager517 and candidate by exact bytes, SHA256 and independent provenance, run true raw176 audit. Never call synthetic PASS real game PASS.
-4. Continue complete native-backed integration for nine PC parameter families, 53 factory placeholders, MovesetPlus, compressed PRM, actor/model/effects/audio/SFX/Japanese voice, resource lifetime, new-slot and multi-mod runtime.
-5. Preserve main SHA guard, Sakura aura107, Event236 marker 0x4E53 at +0x2A and unmarked Event236 native behavior. Don't regress existing valid tests.
-6. Every code commit: relevant tests + actual completed GitHub Actions/job logs; record source, report, PORT_STATUS, checkpoint, progress, continuation prompt in same branch. NO guessing or fake gameplay PASS.
-7. Keep all three flags false: full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false, until the exact installable artifact passes actual Uzuy testing.
-
-At finish give LIVE GitHub HEAD, exact CI checked, blockers and new copy-ready prompt. FULL PC API PORT remains final objective, not merely an audit/boot probe.
+At finish report LIVE HEAD, actual CI, blockers, and new copy-ready prompt. Target FULL PC API PORT, never merely an audit or boot probe.
