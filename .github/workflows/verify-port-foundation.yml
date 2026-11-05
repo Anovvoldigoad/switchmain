@@ -79,6 +79,8 @@ jobs:
         run: python tests/test_native_fileload_result_flow.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Enumerate exact SHA pinned FileOpen return W0 provenance on bounded original CFG
         run: python tests/test_native_fileopen_returns.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Trace pinned FileLoad X20 object and X22 guard register origins
+        run: python tests/test_native_fileload_object_regs.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Execute actual pinned ARM64 FileLoad status helper 3/5 guards with lock services modeled
         run: python tests/test_native_fileload_status_slice.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
       - name: Validate PC condition descriptors and Android packaging

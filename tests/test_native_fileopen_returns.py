@@ -87,6 +87,13 @@ def run(main, out):
     out.mkdir(parents=True,exist_ok=True)
     (out/"native_fileopen_returns.json").write_text(
         json.dumps(result,indent=2)+"\n")
+    print("FILEOPEN_BOUNDED_RETURN_DETAIL",
+          [(p["at"], [(d["at"],d["kind"],d["instruction"],
+                       d["w0_observed_value"])
+                      for d in p["reaching_w0_definitions"]])
+           for p in result["all_reachable_within_window_return_sites"]])
+    print("FILEOPEN_OUT_OF_WINDOW_OR_TERMINALS",
+          result["other_terminations_or_out_of_window"])
     print("PINNED_FILEOPEN_ALL_BOUNDED_RETURN_PATHS_PASS",
           "reachable",result["reachable_decoded_instructions"],
           "RET",result["reachable_return_sites"],
