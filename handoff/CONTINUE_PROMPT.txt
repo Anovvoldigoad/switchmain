@@ -1,24 +1,24 @@
 LANJUTKAN FULL PC MODDINGAPI -> NARUTO STORM CONNECTIONS SWITCH v1.70
-Repo: Anovvoldigoad/switchmain branch port/full-api-v170
-LATEST VERIFIED CODE 9af5c5357e11e944e82f14babe0c95fe120e778a
-GITHUB ACTIONS 42057187119 COMPLETED SUCCESS 65 steps original job 127348672877 logs inspected.
-Docs HEAD MAY BE NEWER. VERIFY LIVE HEAD and CI first, use expected_sha non-force fast-forward.
-READ handoff/CONTINUE_PROMPT.txt, handoff/checkpoint.json, PORT_STATUS.json, newest PORTING_PROGRESS.md, workflows, reports/port_foundation/native_pc_raw_nine_summary.json.
+Repo Anovvoldigoad/switchmain; branch port/full-api-v170.
+LATEST VERIFIED CODE HEAD 4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4. GitHub Actions 42065894664 COMPLETED SUCCESS, 67 steps, original job 127379739873 logs checked.
+DOCS HEAD may now be newer: VERIFY LIVE HEAD before editing; no force push, expected_sha fast-forward.
 
-ALREADY DONE—DO NOT REPEAT:
-1. Original v1.70 main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. FileOpen 0x1170FB0 call sites and two indirect dispatch paths from tail have been transcribed including X8 LDR [X0], X1=[X8,#0xC0] -> BR X1, X2=[X8,#0x58] -> BR X2. Proven machine words only; class/lifetime/CRI semantics unknown.
-2. Source-verified PC NSC .nsc/.unse/.uns/.ensc ZIP importer and multi-CPK offline candidate assembler; exact source hashes, TOC collision rejection, encoded binary CPK profile. No installable Switch mod.
-3. NEW actual ARM64 C++ raw reader API: overlay/source/program/nsc_pc_raw.cpp/.hpp, versioned nsc_pc_raw_get_api, nsc_pc_raw_validate, nsc_pc_raw_row_at. Nine PC formats (Susanoo 0x20, Partner 0x20, Ougi uint32, Gudo uint32, CharRelation prefix-count, PairSpSkill 0x18 + 0/1 terminal, BGM 0x68, SpecialInteraction variable, GuardEffect 0xF8). Mandatory SHA256, max4MiB, bounded read-only row metadata, no heap, no native game actor pointers. ARM64 core logs API presence without hooking original parameter consumers. Host test compares all 9 genuine PC public fixtures and synthetic tests: 123 matching rows, 39 negatives; ARM64 Unicorn executes real ELF: 30 successful API/row calls, 19 rejected failures. Exact CI 42057187119 SUCCESS.
-4. CI failures fixed transparently: 42054426581 missing C++ in overlay prep, 42054951462 host stub link, 42056338732 ambiguous ELF test symbol; current verified CI green.
-5. Public PC manager512 baseline authenticated, NOT user's merged manager517. Nine PC raw readers are now ARM64 compiled but NOT connected to native game resource consumers; 53 factories and MovesetPlus remain incomplete.
+READ handoff/CONTINUE_PROMPT.txt, handoff/checkpoint.json, PORT_STATUS.json, last PORTING_PROGRESS.md, workflow and reports/port_foundation/pc_native_pack_summary.json.
 
-IMMEDIATE REAL IMPLEMENTATION WORK:
-1. Connect nine validated native PC parameter rows to actual Switch engine consumer ABI without making up ownership. Identify native loading/allocator/runtime lifecycle for each family, controlled fail-closed hooks only after original functions, locks, async completion, object ownership, destructor, cleanup and unbind verified. Prove native FileOpen X0 caller/lifetime and archive resolution/precedence, no guessed vtable or W0 error semantic.
-2. Advance full ModdingAPI native implementation (53 factory placeholders, MovesetPlus, compressed PRM, actor/model, effects, sound/SFX/Japanese voice, new slot, multi-mod). Build practical working code and real tests each turn, not only static audit.
-3. Integrate source-pinned PC ZIP importer + multi-CPK assembler with nine compiled source readers using exact per-file SHA, provenance and collision policy; do not treat raw .xfbin filenames as NUCC containers without proof.
-4. Independently authenticate actual original PC merged manager517, unmodified stock Switch1.70 common.cpk and candidate CPK bytes using SHA and provenance; run REAL raw176; never mark synthetic evidence as game stock.
-5. Preserve exact main SHA, Sakura aura107, Event236 magic 0x4E53 at raw +0x2A and unmarked native Event236; no unsafe main/CPK hook.
-6. Every commit code+tests, completed GitHub Actions and raw job logs, status/report/checkpoint/prompt, no force-push; prefer smaller coherent functionality. Need real Uzuy gameplay on exact installable artifact before claiming release.
-7. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. Unicorn/CI/source templates are NOT gameplay.
+ALREADY PASS — NEVER REDO:
+- Original Switch main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; Sakura aura107 / Event236 marker 0x4E53 at +0x2A, and native unmarked behavior remain pinned. No changes to main/CRI file hooks.
+- Previous original FileOpen, X8 LDR and BR target static paths; no object ownership ABI/lifecycle proven.
+- Nine PC raw source family AArch64 readers built and executed on original public templates; prior 123 row host parity / ARM64 positive 30 negative 19.
+- Source PC ZIP .nsc/.unse/.uns/.ensc staging, source-hashed multi-CPK candidate builder, fail-closed CPK TOC collisions, not an installable mod.
+- NEW original PC ZIP SOURCE-to-NATIVE ARM64 bundle: tools/portlib/pc_nsc_param_pack.py, tools/assemble_pc_nsc_param_pack.py, overlay/source/program/nsc_pc_pack.cpp/.hpp. Versioned C API nsc_pc_pack_get_api, nsc_pc_pack_validate, nsc_pc_pack_row_at. Fixed nine directory rows, per-raw + pack SHA, source archive ZIP and staging byte hashes, source family precedence conflict rejection, deterministic padding, no heap/retained pointer. AArch64 runtime core links APIs but NO engine parameter consumer hooks. GitHub Actions 42065894664 SUCCESS; host 24 positive/26 rejected; compiled ARM64 22 positive/12 rejected. Tests used source-pinned authentic upstream PC raw templates inside synthetic ZIP. See docs/PC_NSC_NATIVE_SOURCE_PACK_TERMUX.md. Not installable/gameplay.
+- Transparent failed CI history: 42065320767 host test staged manifest restore error fixed in dae9998e; 42065447433 pack ARM64 API removed by linker GC, fixed 4ecbeea, latest 42065894664 green.
 
-At end report ACTUAL HEAD, verified CI, blockers and new copy-ready handoff prompt. TARGET FULL FUNCTIONAL PC MODDINGAPI SWITCH V1.70, not only audits, parsers, boot probe or staging.
+HIGH-PRIORITY REAL IMPLEMENTATION:
+1. Connect newly implemented packed source readers to ACTUAL original Switch engine parameter consumers, after proving native function contracts: file acquisition, caller-owned buffer lifetime, allocator, object ownership, async callback, rollback, locking/unlocking, destroy/unbind and archive precedence. Do not invent ABI or hook/w0 semantics.
+2. Advance remaining 53 factory placeholders, MovesetPlus, compressed PRM, actor/model, effects, audio/SFX/Japanese voice and new slots, with evidence-backed original CPK/XFBIN payload handling and robust multi-mod identity/priority. Avoid endless duplicate audit.
+3. Test new source pack on genuine user .nsc/.unse when available; authenticate unmodified stock v1.70 common.cpk, real mod candidate CPK and original PC merged manager517 by byte/SHA/provenance; run REAL raw176. Do not mark synthetic/template results as stock-game PASS.
+4. Preserve main SHA guard, Sakura aura107 and Event236 marker +0x2A/vanilla unmarked; no unsafe native hook.
+5. Code commits require relevant tests, GitHub Actions FULL COMPLETED SUCCESS and actual job logs; update reports, checkpoint, PORT_STATUS, fresh prompt, only expected_sha fast-forward.
+6. full_moddingapi=false; ready_for_gameplay_test=false; emulator_tested=false until matching installable artifact truly passes Uzuy. Do not call Unicorn/CI/source template a gameplay release.
+
+Continue independently, report actual new HEAD, verified CI, unresolved blockers, and copy-ready next prompt. FINAL GOAL FULL PC MODDINGAPI SWITCH v1.70, not parsers and staging alone.

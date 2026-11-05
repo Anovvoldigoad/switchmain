@@ -1,0 +1,64 @@
+{
+  "status": "completed",
+  "run_id": 42065894664,
+  "job_id": 127379739873,
+  "conclusion": "success",
+  "steps": 67,
+  "original_job_logs_read": true,
+  "code_commit": "4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4",
+  "source_markers": [
+    "PC_NSC_NATIVE_PACK_HOST_PASS 24 26 NO_GAMEPLAY",
+    "PC_NSC_NATIVE_PACK_AARCH64_PASS 22 12 NOT_NATIVE_ENGINE_OR_UZUY",
+    "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF"
+  ],
+  "source_converter": "tools/portlib/pc_nsc_param_pack.py",
+  "command_line": "tools/assemble_pc_nsc_param_pack.py",
+  "compiled_native_source": "overlay/source/program/nsc_pc_pack.cpp",
+  "compiled_native_header": "overlay/source/program/nsc_pc_pack.hpp",
+  "native_runtime_registration": "overlay/source/program/nsc_runtime_core.cpp",
+  "host_test": "tests/test_pc_native_pack.py",
+  "arm64_executed_test": "tests/test_pc_native_pack_arm64.py",
+  "source_upstream": "TheLeonX/NSC-ModManager 2.1.2.1",
+  "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "source_families_supported": 9,
+  "binary_format": "NSC_PC_PACK_V1",
+  "format_version": 1,
+  "present_mask_conflicts_rejected": true,
+  "per_family_sha256_and_container_sha256_guarded": true,
+  "original_PC_ZIP_entry_and_stage_bytes_crosschecked": true,
+  "host_positive_calls": 24,
+  "host_negative_conditions_rejected": 26,
+  "actual_ARM64_positive_calls": 22,
+  "actual_ARM64_negative_conditions_rejected": 12,
+  "latest_code_source_sha": "4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4",
+  "previous_unverified_or_failed_runs": [
+    {
+      "commit": "de15cec99a535468c2e431049c277a4b74b8154d",
+      "run": 42065320767,
+      "conclusion": "failure",
+      "reason": "Test CLI parity did not restore forged staged source manifest; fixed in dae9998."
+    },
+    {
+      "commit": "dae9998e8d0535069b8c676fddda1eec3a840749",
+      "run": 42065447433,
+      "conclusion": "failure",
+      "reason": "Native compiled pack symbols eliminated by linker because runtime did not reference API; fixed in 4ecbeea."
+    }
+  ],
+  "output_files": [
+    "pc_native_sources.pack",
+    "manifest.json"
+  ],
+  "pack_is_caller_owned_read_only": true,
+  "original_game_consumer_connected": false,
+  "real_XFBIN_CPK_compatibility_proven": false,
+  "real_CRI_fileopen_ownership_async_precedence_proven": false,
+  "real_merged_PC_manager517_authenticated": false,
+  "real_170_stock_common_cpk_authenticated": false,
+  "real_user_mod_zip_executed": false,
+  "no_original_main_hook_or_game_asset_modified": true,
+  "full_moddingapi": false,
+  "ready_for_gameplay_test": false,
+  "emulator_tested": false,
+  "gameplay_verified": false
+}

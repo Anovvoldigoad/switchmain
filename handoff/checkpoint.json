@@ -64,7 +64,8 @@
       "2026-11-05 23aba1b0 GitHub Actions 42049654252 COMPLETED SUCCESS 62 steps: Source ZIP/staged CPK/original NSO SHA256-pinned multi-mod CPK candidate assembler: 2 positive, 13 negatives, exact binary cpk_profile encode/decode, byte-preserving CPK copies, fail-closed any duplicate CPK TOC path; NOT an installable Switch mod.",
       "2026-11-05 372cfa1a GitHub Actions 42050734300 COMPLETED SUCCESS 63 steps: Original FileOpen two indirect dispatch corridors: 0x116B718 LDR X8,[X0], 0x116B71C LDR X1,[X8,#0xC0], 0x116B724 BR X1; 0x116B41C LDR X8,[X0], 0x116B424 LDR X2,[X8,#0x58], 0x116B430 BR X2. Original exact main SHA pinned, no runtime ABI/ownership.",
       "2026-11-05 912ef384 GitHub Actions 42055285084 COMPLETED SUCCESS: Compiles 9 bounded PC raw formats into ARM64 module with AArch64-only registration and matches 123 actual/synthetic PC row views with 38 invalids rejected; job 127341886598, 64 steps.",
-      "2026-11-05 9af5c535 GitHub Actions 42057187119 COMPLETED SUCCESS: Exact symbol lookup fixed; original ELF AArch64 9-family reader calls pass Unicorn: 30 positive API calls, 19 negative cases, host C++ 123 matching PC rows and 39 negatives; 65 steps, job 127348672877 log inspected."
+      "2026-11-05 9af5c535 GitHub Actions 42057187119 COMPLETED SUCCESS: Exact symbol lookup fixed; original ELF AArch64 9-family reader calls pass Unicorn: 30 positive API calls, 19 negative cases, host C++ 123 matching PC rows and 39 negatives; 65 steps, job 127348672877 log inspected.",
+      "2026-11-05 4ecbeeae Actions 42065894664 COMPLETED SUCCESS 67 steps job 127379739873 actual logs verified: new source-authenticated ZIP PC raw pack binary and AArch64 native reader (host 24 positive/26 rejected; ARM64 22 positive/12 rejected). No game consumer hooks, no Uzuy gameplay."
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -97,7 +98,8 @@
       "Original ARM64 shows X8 loaded from [X0] before both BR dispatch chains, but concrete X0 instance/class, table object, method-pointer values, lock/async semantics, teardown/rollback and CPK archive winner remain UNVERIFIED. New hook must not be activated.",
       "Multi-mod CPK candidate output is byte-preserved staging with verified CPK TOC and synthetic tests only. Runtime native CPK binding and interpretation of PC model/moveset/effect/sound resources, actual Uzuy launch, and stock archive collision policy remain UNVERIFIED.",
       "True original PC merged manager517, independently authenticated genuine stock Switch v1.70 common.cpk and mod candidate CPK bytes are missing; raw176 real stock-game audit cannot be honestly marked PASS.",
-      "Nine PC source raw families are now parsed by compiled AArch64 C++ and verified against nine source-pinned public NSC templates (30 positive ARM64/19 negative); native acquisition/lifetime/owner class and consumer integration in real Switch 1.70 game remain NOT implemented/proven. MovesetPlus/factories/asset audio effects still incomplete."
+      "Nine PC source raw families are now parsed by compiled AArch64 C++ and verified against nine source-pinned public NSC templates (30 positive ARM64/19 negative); native acquisition/lifetime/owner class and consumer integration in real Switch 1.70 game remain NOT implemented/proven. MovesetPlus/factories/asset audio effects still incomplete.",
+      "PC source-ZIP -> 9-family source pack is now byte/SHA-authenticated and callable in the built AArch64 module, but native Switch engine consumers and CRI resource ownership/lifecycle/async/teardown/precedence remain unconnected/unproven; not installable or Uzuy playable."
     ],
     "proofs": [
       "reports/port_foundation/bootstrap.json",
@@ -664,11 +666,13 @@
     }
   },
   "ci": {
-    "run_id": 42057187119,
-    "head_sha": "9af5c5357e11e944e82f14babe0c95fe120e778a",
+    "run_id": 42065894664,
+    "head_sha": "4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4",
     "status": "completed",
     "conclusion": "success",
-    "scope": "Nine PC parameter source raw readers built into ARM64, tested on pinned original PC sample rows + Unicorn ELF, 30 valid /19 rejects, not original game-engine parameter consumers"
+    "scope": "Original PC source ZIP staging -> nine-family PC binary pack + compiled AArch64 reader, no native game consumers",
+    "original_job_id": 127379739873,
+    "completed_steps": 67
   },
   "provenance": {
     "manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
@@ -730,7 +734,7 @@
       "Continue authorized work without repeated permission prompts; preserve honest evidence labels."
     ]
   },
-  "verified_component_commit": "9af5c5357e11e944e82f14babe0c95fe120e778a",
+  "verified_component_commit": "4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4",
   "progress_since_previous_handoff": [
     {
       "commit": "40eab530d7d90811250cea085d941ca26b929651",
@@ -1010,6 +1014,30 @@
       "ci_run_id": 42057187119,
       "ci_conclusion": "success",
       "scope": "Exact symbol lookup fixed; original ELF AArch64 9-family reader calls pass Unicorn: 30 positive API calls, 19 negative cases, host C++ 123 matching PC rows and 39 negatives; 65 steps, job 127348672877 log inspected."
+    },
+    {
+      "commit": "8fb8a1f1cbc3e04de73d07d45fe93fb81dcbe542",
+      "ci_run_id": 42064991061,
+      "ci_conclusion": "success",
+      "scope": "Initial nine-PC-family pack source implementation and native reader compiled, before new pack regression inserted; no game consumer proof."
+    },
+    {
+      "commit": "de15cec99a535468c2e431049c277a4b74b8154d",
+      "ci_run_id": 42065320767,
+      "ci_conclusion": "failure",
+      "scope": "New pack host CLI parity test failed after intentionally forged manifest was not restored."
+    },
+    {
+      "commit": "dae9998e8d0535069b8c676fddda1eec3a840749",
+      "ci_run_id": 42065447433,
+      "ci_conclusion": "failure",
+      "scope": "Host pack regression passed; ELF native pack API symbols garbage collected before runtime reference."
+    },
+    {
+      "commit": "4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4",
+      "ci_run_id": 42065894664,
+      "ci_conclusion": "success",
+      "scope": "2026-11-05 4ecbeeae Actions 42065894664 COMPLETED SUCCESS 67 steps job 127379739873 actual logs verified: new source-authenticated ZIP PC raw pack binary and AArch64 native reader (host 24 positive/26 rejected; ARM64 22 positive/12 rejected). No game consumer hooks, no Uzuy gameplay."
     }
   ],
   "native_fileopen_branch_dependency_checkpoint": {
@@ -1232,5 +1260,69 @@
     "full_moddingapi": false,
     "ready_for_gameplay_test": false,
     "emulator_tested": false
+  },
+  "pc_native_zip_to_arm64_pack": {
+    "status": "completed",
+    "run_id": 42065894664,
+    "job_id": 127379739873,
+    "conclusion": "success",
+    "steps": 67,
+    "original_job_logs_read": true,
+    "code_commit": "4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4",
+    "source_markers": [
+      "PC_NSC_NATIVE_PACK_HOST_PASS 24 26 NO_GAMEPLAY",
+      "PC_NSC_NATIVE_PACK_AARCH64_PASS 22 12 NOT_NATIVE_ENGINE_OR_UZUY",
+      "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF"
+    ],
+    "source_converter": "tools/portlib/pc_nsc_param_pack.py",
+    "command_line": "tools/assemble_pc_nsc_param_pack.py",
+    "compiled_native_source": "overlay/source/program/nsc_pc_pack.cpp",
+    "compiled_native_header": "overlay/source/program/nsc_pc_pack.hpp",
+    "native_runtime_registration": "overlay/source/program/nsc_runtime_core.cpp",
+    "host_test": "tests/test_pc_native_pack.py",
+    "arm64_executed_test": "tests/test_pc_native_pack_arm64.py",
+    "source_upstream": "TheLeonX/NSC-ModManager 2.1.2.1",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "source_families_supported": 9,
+    "binary_format": "NSC_PC_PACK_V1",
+    "format_version": 1,
+    "present_mask_conflicts_rejected": true,
+    "per_family_sha256_and_container_sha256_guarded": true,
+    "original_PC_ZIP_entry_and_stage_bytes_crosschecked": true,
+    "host_positive_calls": 24,
+    "host_negative_conditions_rejected": 26,
+    "actual_ARM64_positive_calls": 22,
+    "actual_ARM64_negative_conditions_rejected": 12,
+    "latest_code_source_sha": "4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4",
+    "previous_unverified_or_failed_runs": [
+      {
+        "commit": "de15cec99a535468c2e431049c277a4b74b8154d",
+        "run": 42065320767,
+        "conclusion": "failure",
+        "reason": "Test CLI parity did not restore forged staged source manifest; fixed in dae9998."
+      },
+      {
+        "commit": "dae9998e8d0535069b8c676fddda1eec3a840749",
+        "run": 42065447433,
+        "conclusion": "failure",
+        "reason": "Native compiled pack symbols eliminated by linker because runtime did not reference API; fixed in 4ecbeea."
+      }
+    ],
+    "output_files": [
+      "pc_native_sources.pack",
+      "manifest.json"
+    ],
+    "pack_is_caller_owned_read_only": true,
+    "original_game_consumer_connected": false,
+    "real_XFBIN_CPK_compatibility_proven": false,
+    "real_CRI_fileopen_ownership_async_precedence_proven": false,
+    "real_merged_PC_manager517_authenticated": false,
+    "real_170_stock_common_cpk_authenticated": false,
+    "real_user_mod_zip_executed": false,
+    "no_original_main_hook_or_game_asset_modified": true,
+    "full_moddingapi": false,
+    "ready_for_gameplay_test": false,
+    "emulator_tested": false,
+    "gameplay_verified": false
   }
 }
