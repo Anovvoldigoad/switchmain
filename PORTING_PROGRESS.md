@@ -527,3 +527,71 @@ Current stage: IMPLEMENTATION_INCOMPLETE; full_moddingapi=false,
 ready_for_gameplay_test=false, emulator_tested=false. The next engineering
 work is source authentication and the native asynchronous completion/
 precedence/unbind investigation, followed by outstanding PC API features.
+
+## 2026-11-05 — Disjoint multi-CPK condition batch packaging
+
+Starting from 9437e8f764d374344656659d7cbeb24586e5afec, commit
+6819a8c2321ad38f39389745a35ffff3d0948196 adds
+tools/portlib/condition_batch.py, tools/compile_condition_batch.py and
+tests/test_condition_batch.py. Action 41963328524 completed SUCCESS.
+The new test ran two synthetic CPKs through the production TOC parser,
+source SHA256 checks, Event236 PRM ownership marking, descriptor compilation,
+and composed NSO data profiles. It rejected 12 invalid manifests and four
+invalid manager/module cases. Preexisting registered CPK rows were retained;
+other selected archives did not need to contain conditionprm. Tests also
+verified unchanged original CPKs, collision rejection and non-clobber output.
+
+This closes a packaging integration gap only: one explicitly declared CPK
+must own data/spc/conditionprm.bin.xfbin, other CPKs may contain explicitly
+selected known PRMs, and all CPK entry paths must be disjoint (including
+casefold collisions). Different/identical duplicates are rejected because
+native archive lookup precedence has not been proven. The manager is one
+global pinned PC table; independently compiled condition tables are NOT
+concatenated. The module is configured through existing condition/CPK
+profile packers, with existing CPK registrations preserved and conflicts
+rejected. A temporary staged output directory is renamed only after all
+checks succeed. Output is deliberately named COMPONENT_NOT_GAMEPLAY_RELEASE.
+
+Example review-only manifest (replace actual paths/SHA256 from proven sources):
+
+    {
+      "condition_owner": "sim:data/moddingapi/condition.cpk",
+      "archives": [
+        {"source": "input/condition.cpk", "sha256": "ACTUAL_SHA256",
+         "path": "sim:data/moddingapi/condition.cpk", "priority": 10,
+         "pc_api_prms": ["data/spc/known_pc_api_prm.bin.xfbin"]},
+        {"source": "input/secondary.cpk", "sha256": "ACTUAL_SHA256",
+         "path": "sim:data/moddingapi/secondary.cpk", "priority": 20,
+         "pc_api_prms": []}
+      ]
+    }
+
+Run on Android Termux with standard-library Python:
+
+    python tools/compile_condition_batch.py \
+      --manifest INPUT_MANIFEST.json \
+      --pc-manager ACTUAL_PINNED_PC_MANAGER \
+      --expected-manager-sha256 ACTUAL_MANAGER_HASH \
+      --module VERIFIED_COMPONENT_SUBSDK9 \
+      --expected-module-sha256 ACTUAL_MODULE_HASH \
+      --output NEW_COMPONENT_DIRECTORY
+
+The resulting data under component_data and the NSO profile are not an
+installable or GAME_TESTED mod. The exact Switch stock v1.70 common.cpk
+and original merged PC manager517 were NOT authenticated this turn.
+The user's Library metadata cannot establish byte identity; local Python/
+container execution was unavailable. The GitHub repository's inspected tree
+contains no packaged .cpk, .xfbin, .zip, .nsc or .unse assets. CI runs only
+synthetic CPK fixtures and exact native main module slices, not actual CRI IO.
+
+The native CpkBindHook in overlay/source/program/nsc_cpk_bridge.cpp calls the
+original binder, then conditionally registers extra CPKs based on returned
+status and nonzero bind ID, and explicitly logs async_complete=unverified.
+No native async completion, unbind, priority winner or actor/resource lifetime
+was established and no new game hook was installed in this change.
+
+Still missing: authenticated stock/raw517 evidence, native lifecycle/priority
+proof, compressed PRM repacking, complete API operations, 53 factory unknowns,
+nine parameter families, actual Uzuy gameplay. Stage remains
+IMPLEMENTATION_INCOMPLETE; full_moddingapi=false,
+ready_for_gameplay_test=false, emulator_tested=false.

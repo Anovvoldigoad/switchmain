@@ -1,0 +1,16 @@
+{
+  "status": "PASS_COMPONENT",
+  "ci_run_id": 41963328524,
+  "commit": "6819a8c2321ad38f39389745a35ffff3d0948196",
+  "archives": 2,
+  "invalid_manifests_rejected": 12,
+  "additional_invalid_hash_or_manager_cases_rejected": 4,
+  "effective_profile_preserves_old_registrations": true,
+  "global_condition_owner_enforced": true,
+  "cross_archive_collisions_rejected": true,
+  "source_and_output_immutability_tested": true,
+  "real_game_archives_tested": false,
+  "emulator_gameplay_tested": false,
+  "full_moddingapi": false,
+  "ready_for_gameplay_test": false
+}

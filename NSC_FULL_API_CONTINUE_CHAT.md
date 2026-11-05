@@ -1,5 +1,7 @@
 # NSC Full ModdingAPI Switch — checkpoint dan prompt lanjutan
 
+2026-11-05 newest: commit 6819a8c adds disjoint multi-CPK condition batch component; Actions 41963328524 PASS (synthetic). Global condition owner explicit, archive collisions rejected, profile entries preserved. No real stock CPK/PC manager517 provenance, CRI async lifecycle or Uzuy gameplay. Use handoff/CONTINUE_PROMPT.txt as the authoritative newest prompt.
+
 **2026-11-05 further update:** Source commits `96c8684` (inter-CPK collision audit) and `be2a86c` (CPK pair raw176 source binding) passed Actions `41949468472` and `41950000370` respectively. Both are synthetic/static component verifications. No genuine Switch stock raw comparison was executed; no native CPK lifecycle or emulator gameplay was proven. See latest `PORTING_PROGRESS.md` and `handoff/CONTINUE_PROMPT.txt`.
 
 **2026-11-05 checkpoint update:** From a30b284, module-profile merge was added at

@@ -29,7 +29,8 @@
     "safe condition-bundle module composition appends one CPK registration to pre-existing valid entries (max 32); rejects case/priority collisions and different pre-existing condition descriptors without overwriting either",
     "hash-pinned raw176 stock-vs-candidate byte audit reports exact per-ordinal differing byte offsets and added row hashes; tested only with synthetic inputs",
     "hash-pinned mmap-based multi-CPK path overlap audit with exact/casefold and stored-byte identity; conflict reject-before-output; no runtime winner inference",
-    "direct hash-pinned CPK-to-CPK conditionprm raw176 audit invokes existing manager/ordinal comparator without extracting files manually; synthetic integration PASS only"
+    "direct hash-pinned CPK-to-CPK conditionprm raw176 audit invokes existing manager/ordinal comparator without extracting files manually; synthetic integration PASS only",
+    "multi-archive condition batch compiler: one explicit global conditionprm owner, independent CPK PRM marking, source SHA256 pins, disjoint TOC path guard, atomic component output and composed NSO condition/CPK registration; synthetic CI PASS only"
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -40,7 +41,8 @@
     "condition descriptor compiler requires unchanged pinned PC baseline; raw 176-byte conditionprm packaging/order and complete effect/application lifecycle remain unverified",
     "actual unmodified Switch v1.70 raw176 conditionprm input and true merged PC manager517 have not been supplied/independently authenticated; byte-value audit has synthetic CI proof only",
     "actual Switch 1.70 CPK and original merged manager517 are still required for a verified stock-vs-candidate raw176 comparison; accessible Library file metadata is not source authentication",
-    "multi-CPK raw conditionprm path collisions detected statically but runtime archive winner, async completion, unbind and global condition source order are not verified"
+    "multi-CPK raw conditionprm path collisions detected statically but runtime archive winner, async completion, unbind and global condition source order are not verified",
+    "multi-CPK batch component packaging now available, but existing preloaded CPK entry content is not accessible to overlap analysis, global runtime condition source order and actual CRI async archive completion remain unverified"
   ],
   "proofs": [
     "reports/port_foundation/bootstrap.json",
@@ -65,7 +67,8 @@
     "reports/port_foundation/condition_bundle_multi_cpk.json",
     "reports/port_foundation/condition_raw_value_audit.json",
     "reports/port_foundation/cpk_overlaps.json",
-    "reports/port_foundation/condition_archive_audit.json"
+    "reports/port_foundation/condition_archive_audit.json",
+    "reports/port_foundation/condition_batch.json"
   ],
   "parameter_family_coverage": {
     "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -113,5 +116,17 @@
     "scope": "SYNTHETIC_STATIC",
     "real_stock_switch_compared": false,
     "effect_semantics_verified": false
+  },
+  "condition_batch": {
+    "code_commit": "6819a8c2321ad38f39389745a35ffff3d0948196",
+    "ci_run_id": 41963328524,
+    "component_test": "PASS_COMPONENT",
+    "archive_count_fixture": 2,
+    "invalid_manifest_cases": 12,
+    "invalid_manager_module_cases": 4,
+    "actual_game_archive_tested": false,
+    "global_condition_source_order_runtime_verified": false,
+    "async_archive_completion_verified": false,
+    "gameplay_verified": false
   }
 }
