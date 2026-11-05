@@ -33,6 +33,9 @@ def run(main,out):
         assert not (d/"rejected").exists()
     out.mkdir(parents=True,exist_ok=True)
     (out/"native_fileload_failure.json").write_text(json.dumps(report,indent=2)+"\n")
+    for item in report["corridor"]["instructions"]:
+        if 0x106f490<=int(item["at"],16)<=0x106f518:
+            print("FILELOAD_NATIVE_WORD",item["at"],item["bytes_le"],item["mnemonic"],item["operands"])
     print("NATIVE_FILELOAD_CORRIDOR_PASS",report["corridor"]["word_count"],
           "word-exact instructions; stale hook fingerprint unsafe; ABI unknown")
 
