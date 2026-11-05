@@ -796,3 +796,14 @@ was produced. full_moddingapi=false, ready_for_gameplay_test=false,
 emulator_tested=false. Storm Modding Lab checkpoint
 80be5308-6dfa-44d8-91e9-71c92a4f00e2.
 
+## 2026-11-05 — Corrected original FileLoad lifecycle hypothesis and guarded native status setter
+
+Verified live GitHub HEAD a1bd96f348ef009b91869bf07b75fb93d1df6f10, already 7 commits ahead of last handoff; compared to b15178b3188a263350a14197900e63480bfb9635 and did not overwrite their new source. Prior Actions 41994096469 SUCCESS.
+
+Seven preexisting commits b882d5a, e3171e7, 4f50223, 8de85f6, 5bd5859, be0d074, a1bd96f introduced: original CPK relocation data-slot use witnesses, exact PC literal resource-string vs CPK-TOC scanner on synthetic archives, correction of dormant bad FileLoad hook fingerprint, original 0x116F404 eight-word native function prologue, two native status5 callsites (0x116F520 and 0x116F5C0) to original setter 0x120661C, and execution of 32 original ARM64 setter scenarios with modeled external lock/unlock (terminal statuses 3 and 5 preserved). A lock mock does not prove real lock or CRI async. The CPK TOC scanner has not been run against authentic stock Switch archives.
+
+New commit a256dcf5702525ea4ea71ec386f95060868b6fb3, Actions 41994695967 SUCCESS: tools/portlib/native_fileload_corridor_cfg.py performs SHA-pinned bounded AArch64 CFG at the corrected 0x116F404 prologue. It finds 166 syntactically reachable decoded instructions. Original BL at 0x116F47C -> 0x1170FB0 (file open) and BL at 0x116F520 / 0x116F5C0 -> 0x120661C (status5 helper) are all reachable. This is an important control-flow witness; it is NOT proof that failing file open causes status5, not a native status setter ABI proof for hooking, and not live CRI async, vtable ownership, unbind, priority or gameplay evidence.
+
+Original stock common.cpk and merged PC manager517 provenance/actual SHA remain unauthenticated. Local container failed to read materialized CPK. Tools/audit_real_condition_intake.py only passed synthetic manager517 CPK pair. Nine PC families have format-validated readers and data-only manifest; zero native integrations. MovesetPlus, 53 factory placeholders, compressed PRM and SFX/audio/effect/model handling remain incomplete.
+
+Release flags stay full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. No new hook or playable package.

@@ -1,3 +1,5 @@
+Latest correction 2026-11-05: Native FileLoad entry 0x116F404 (not 0x106F404); source frame prologue matches 8 machine words. Original ARM64 setter 0x120661C executed in 32 modeled-lock scenarios, not CRI async. Commit a256dcf CI41994695967 PASS proves 166 CFG-reachable words and FileOpen/status5 BLs reachable. Full port not playable; authoritative handoff handoff/CONTINUE_PROMPT.txt.
+
 2026-11-05: 1c40470 CI41986733558 SUCCESS pinned CFG candidate 0x106F394 147 words;
 f441c5a CI41987276792 SUCCESS manager517 CPK real-byte intake (SYNTHETIC-only test);
 85e14ef CI41987853686 SUCCESS all nine public PC raw-family source manifest

@@ -1,66 +1,55 @@
 LANJUTKAN FULL PC MODDINGAPI -> NARUTO STORM CONNECTIONS SWITCH v1.70
-Repository Anovvoldigoad/switchmain | branch port/full-api-v170
-LAST VERIFIED CODE HEAD 85e14efd4bf6269be148810a9175766351ec063a
-CI Actions 41987853686,41987276792,41986733558 all completed SUCCESS.
-Documentation HEAD is newer; always fetch ACTUAL GitHub HEAD first.
-Storm Modding Lab checkpoint 80be5308-6dfa-44d8-91e9-71c92a4f00e2.
+Repo Anovvoldigoad/switchmain | branch port/full-api-v170
+LATEST VERIFIED CODE COMMIT a256dcf5702525ea4ea71ec386f95060868b6fb3
+CI 41994695967 SUCCESS. Handoff/documentation HEAD will be newer: ALWAYS FETCH ACTUAL HEAD BEFORE WRITES.
+Read first: handoff/checkpoint.json, PORT_STATUS.json, latest PORTING_PROGRESS.md,
+.github/workflows/verify-port-foundation.yml and
+reports/port_foundation/native_fileload_corridor_cfg_summary.json.
 
-READ FIRST handoff/checkpoint.json, PORT_STATUS.json, newest
-PORTING_PROGRESS.md, .github/workflows/verify-port-foundation.yml,
-reports/port_foundation/native_cpk_cfg_summary.json,
-reports/port_foundation/real_condition_intake_summary.json,
-reports/port_foundation/pc_api_manifest_new_summary.json.
+IMPORTANT CONCURRENT HISTORY: Last user HEAD b15178b changed independently to
+a1bd96f (7 additional commits: b882d5a, e3171e7, 4f50223, 8de85f6,
+5bd5859, be0d074, a1bd96f) before this turn.
+Already CI PASS: native pointer source scan, PC+CPK TOC exact-string
+resource audit (synthetic), legacy wrong FileLoad hook fingerprint
+rejection, 8-word corrected original prologue at 0x116F404, two
+status-5 branches and native status setter 32 Unicorn scenarios with
+MODELED locks. Do not repeat these unless new evidence.
 
-DO NOT REPEAT passed components: nine source-proven PC raw parameter
-readers, existing CPK+Event236 marker/condition/raw176/multi-CPK and
-factory audits, exact pinned ARM64 direct/indirect branch+relocation scan,
-Capstone disassembly, or bounded CFG unless investigating NEW ownership
-evidence. No arbitrary ABI or invented lifecycle.
+THIS TURN new code a256dcf: bounded original AArch64 FileLoad CFG from
+CORRECTED 0x116F404, 166 syntactically reachable words, all three
+original BL callsites syntactically reachable: 0x116F47C -> 0x1170FB0
+FileOpen and 0x116F520 / 0x116F5C0 -> 0x120661C status5 helper.
+The old 0x106F404 address is a BL to 0xFFF6A0 and its legacy dormant
+hook prologue fingerprint is INVALID. Do not enable or simply
+relocate that hook! The true AAPCS64 ABI and resource lifetime remain
+unverified.
 
-NEW VERIFIED WORK (all three code CI SUCCESS):
-1c40470: bounded pinned original ARM64 CFG: candidate 0x106F394 147
-reachable words, 0 direct B/BL inbound, RELA pointer 0x215C478, 4
-observed return/terminators. 0x106F404 is reachable BL to 0xFFF6A0
-NOT an entrypoint. Candidate 0x106EDB8 3 reachable words with
-RELA 0x212B5F0; 0x1170FB0 file-open 52 words with 1 direct caller.
-Function boundaries/CPK callback identity still NOT proven.
-f441c5a: tools/audit_real_condition_intake.py auto SHA256-streams
-real PC manager517/stock CPK/candidate CPK files; optional manager
-discovery with exact 517x112-byte pinned baseline, invokes already
-tested raw176 CPK pair audit. CI used 512/517 synthetic data ONLY.
-No genuine source stock CPK or original merged manager517 audited.
-85e14ef: tools/audit_pc_api_manifest.py unifies nine original public
-PC ModdingAPI source readers into a SHA-verified data-only report.
-CI found 9 unresolved BGM sound/Guard effect identifiers and rejected
-7 invalid specs. ZERO Switch native reader integrations.
-
-PRIORITY CONTINUATION WITHOUT ASKING FOR PERMISSION:
-1. Authenticate byte SHA and independently grounded untouched provenance
-of Switch 1.70 stock common.cpk and true original merged PC manager517;
-find actual candidate CPK; run tools/audit_real_condition_intake.py on
-real inputs and compare raw176. Do NOT commit proprietary CPK assets or
-claim source authenticity from filename, file size or self-computed hash.
-Library common.cpk/romfs.zip were materialized but Python/container
-backend failed; original manager517 was not located.
-2. Trace CPK class/object ownership and dataflow from 0x106F394 and
-BLR X8 sequences at 0x106ED9C/0x106EDD0; prove native AAPCS64 ABI,
-CRI async bind complete/error, unbind/manager destruction, archive
-winner/path precedence and per-file resource loading. No hook without
-fingerprint/prolog/caller, failure/rollback evidence, ARM64 tests.
-3. Use nine-family PC-only manifest to map exact IDs, effect/audio
-resource strings to REAL Switch factory/actor/resource types and
-authenticated CPK sound/effect bank entries. Only then add complete
-native loaders and actor-lifetime hooks.
-4. Continue MovesetPlus unported semantics, 53 factory placeholders,
-compressed PRM, model/effect/audio/SFX and JP voice dependencies.
-5. Run Actions and inspect actual logs after each commit; commit code,
-tests, reports, PORT_STATUS.json, checkpoint, fresh independent-chat
-prompt on SAME branch. Never treat CI as GAME_TESTED.
-
-INVARIANTS: exact pinned main SHA guard; Sakura AWAKE_1SKR aura107;
-Event236 marker 0x4E53 on record+0x2A and native Event236 without
-marker unchanged. Keep full_moddingapi=false,
-ready_for_gameplay_test=false, emulator_tested=false until real Uzuy
-gameplay proof for EXACT installable artifact.
-END with actual HEAD, Actions exact status, remaining blockers, and
-standalone continuation prompt for ordinary ChatGPT chat.
+NEXT INDEPENDENT WORK:
+1. Reconstruct CAUSAL native FileOpen failure branches and status5
+from original main 0x116F404, verify lock/actor storage and failure
+rollback and establish async callback completion. A CFG path is not
+execution, original status helper Unicorn uses mocked locks.
+2. Determine CRI bind completion, unbind/destructor, native archive
+winning priority and file/resource precedence; use exact original
+main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9,
+word fingerprints, code/data xrefs, ABI tests. No guesses or hook
+until signature, ownership, failure path and teardown proven.
+3. Find genuine unmodified stock Switch v1.70 common.cpk, merged
+PC 517 manager and candidate CPK. Calculate SHA256 from real bytes,
+establish provenance independent from filename and run
+tools/audit_real_condition_intake.py with real raw176. The prior CI
+audit used synthetic 512/517 rows, actual stock not verified.
+4. PC formats: all 9 original public raw readers have hashes, none
+bound to Switch native actor/factory. Cross-reference 9 unresolved
+effect/audio candidate names against AUTHENTIC source CRI/CPK banks.
+Implement native readers once ABI and actor lifecycle proven.
+5. Full MovesetPlus, 53 unsupported factory placeholders, compressed
+PRM, model, SFX, JP voice, effects and resource allocation still pending.
+Add CI, inspect actual job logs, commit code/tests/report/status/new
+handoff to SAME branch. Preserve exact main SHA guard, Sakura aura107,
+Event236 marker 0x4E53 at record+0x2A, native Event236 without marker.
+Three flags must remain false until genuine Uzuy gameplay tested:
+full_moddingapi, ready_for_gameplay_test, emulator_tested. CI, static
+analysis or Unicorn slices are NOT a gameplay test.
+Always finish with actual HEAD, Actions conclusion, blockers and a
+new self-contained prompt for ordinary chat.

@@ -49,7 +49,9 @@
       "Exact SHA-pinned Switch 1.70 ARM64 Capstone code-window transcript (9 windows); 7 word-exact register/BLR witnesses, candidate 0x106F394 prolog from relocation, corrected former fileload_process 0x106F404 to mid-code BL to 0xFFF6A0. No CRI lifecycle proven.",
       "SHA-pinned bounded ARM64 CFG exploration of relocated 0x106F394 candidate (147 reachable words, zero direct B/BL inbound, one RELA pointer, 4 observed terminal addresses), 0x106EDB8 candidate (3 words), and file-open 0x1170FB0 (52 words, one direct caller); no CRI ABI/lifecycle proof",
       "Fail-closed Termux genuine file intake tooling: automatically SHA256-hash actual stock/candidate CPK and select a unique pinned PC manager517, invoke existing raw176 CPK pair audit; CI PASS on 512/517 synthetic originals only; true provenance remains unverified",
-      "Unified read-only nine-family PC ModdingAPI manifest from exact authenticated public raw fixture SHA256 inputs; CI PASS, nine unresolved audio/effect resource-name candidates, no native Switch factory/loader/hook integration"
+      "Unified read-only nine-family PC ModdingAPI manifest from exact authenticated public raw fixture SHA256 inputs; CI PASS, nine unresolved audio/effect resource-name candidates, no native Switch factory/loader/hook integration",
+      "2026-11-05 external preexisting 7 commits b882d5a..a1bd96f: reference-use census, PC->CPK literal TOC resource probe, corrected FileLoad 0x116F404 prologue eight-word match, failure status5 branches and 32 original ARM64 status setter executions with modeled lock services. These passed GitHub CI; no real CRI lock/audio/asset/Uzuy proof.",
+      "2026-11-05 commit a256dcf: bounded syntactic ARM64 CFG from corrected 0x116F404 native FileLoad entry; 166 reachable instruction words and all 3 direct callsite witnesses (FileOpen 0x116F47C, status5 0x116F520 and 0x116F5C0) reachable; Actions 41994695967 SUCCESS. No new hooks or ABI claim."
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -68,7 +70,8 @@
       "All nine source-grounded PC raw parameter family readers are validated, but ZERO of the nine is proven bound to native Switch 1.70 factories/actors; x64 PC calls, CRC32/BGM, effect data and audio lifecycle remain unported.",
       "Original 0x106F404 is verified AArch64 BL to 0xFFF6A0, not a function entry. 0x106F394 has a pointer relocation/prolog but class/function ownership unknown. Indirect BLR X8 chains at 0x106ED9C and 0x106EDD0 have observed offsets 0x20 and 0x10, not proven vtable method indices.",
       "Real intake now hashes original byte files and enforces unique 517-manager vs 512-stock/517-candidate geometry, but no byte-authenticated actual unmodified Switch CPK or true merged original PC manager517 was accessible; CPK pair result is synthetic only.",
-      "Nine raw PC parameter readers feed an offline source manifest, but 9 resource-name strings remain unverified against actual CPK sound/effect banks and NO native Switch 1.70 reader, actor or factory hook is proven."
+      "Nine raw PC parameter readers feed an offline source manifest, but 9 resource-name strings remain unverified against actual CPK sound/effect banks and NO native Switch 1.70 reader, actor or factory hook is proven.",
+      "Verified corrected FileLoad frame prologue 0x116F404 and callsite reachability alone do NOT prove FileOpen failure -> status5 causality, real CRI async completion, unbind/destructor, CPK precedence, actor/factory ABI, or safe patch trampoline."
     ],
     "proofs": [
       "reports/port_foundation/bootstrap.json",
@@ -104,7 +107,8 @@
       "reports/port_foundation/native_cpk_blr_structure_summary.json",
       "reports/port_foundation/native_cpk_cfg_summary.json",
       "reports/port_foundation/real_condition_intake_summary.json",
-      "reports/port_foundation/pc_api_manifest_new_summary.json"
+      "reports/port_foundation/pc_api_manifest_new_summary.json",
+      "reports/port_foundation/native_fileload_corridor_cfg_summary.json"
     ],
     "parameter_family_coverage": {
       "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -477,14 +481,51 @@
       "native_switch_family_readers_integrated": 0,
       "effect_audio_resources_verified": false,
       "gameplay_verified": false
+    },
+    "native_fileload_corrected_corridor": {
+      "source_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "source_prologue_address": "0x116f404",
+      "stale_legacy_address": "0x106f404",
+      "prologue_word_count": 8,
+      "bounded_CFG_reachable_instruction_count": 166,
+      "name_to_direct_callsite": {
+        "file_open": {
+          "at": "0x116f47c",
+          "callee": "0x1170fb0",
+          "reachable": true
+        },
+        "status5_1": {
+          "at": "0x116f520",
+          "callee": "0x120661c",
+          "reachable": true
+        },
+        "status5_2": {
+          "at": "0x116f5c0",
+          "callee": "0x120661c",
+          "reachable": true
+        }
+      },
+      "native_status_setter_unicorn_modeled_locks_scenarios": 32,
+      "native_status_setter_terminal_values_preserved": [
+        3,
+        5
+      ],
+      "code_commit": "a256dcf5702525ea4ea71ec386f95060868b6fb3",
+      "ci_id": 41994695967,
+      "conclusion": "success",
+      "safe_new_hook_abi_verified": false,
+      "async_completion_verified": false,
+      "unbind_verified": false,
+      "archive_precedence_verified": false,
+      "gameplay_verified": false
     }
   },
   "ci": {
-    "run_id": 41987853686,
+    "run_id": 41994695967,
     "status": "completed",
     "conclusion": "success",
-    "head_sha": "85e14efd4bf6269be148810a9175766351ec063a",
-    "scope": "source-verifiable PC-only nine-family manifest; genuine byte intake synthetic 517 manager; native main CFG pinned; all tests/build passed but no genuine stock CPK or Uzuy gameplay"
+    "head_sha": "a256dcf5702525ea4ea71ec386f95060868b6fb3",
+    "scope": "corrected native FileLoad CFG + three syntactically reachable direct calls; full prior ARM64 native slices and PC data tests passed, gameplay unverified"
   },
   "provenance": {
     "manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
@@ -515,15 +556,15 @@
     }
   ],
   "next_mvp": {
-    "name": "Prove native CPK async/owner/teardown plus genuine stock CPK and actual merged PC manager517; bridge offline PC manifest to verified Switch runtime",
-    "status": "PENDING_ORIGINAL_BYTES_AND_NATIVE_LIFECYCLE",
+    "name": "Prove causal native FileOpen->status5 failure corridor, original CRI async completion and archive priority with pinned ARM64 before any hook",
+    "status": "PENDING_END_TO_END_NATIVE_CRI_EVIDENCE",
     "spec": "handoff/CONTINUE_PROMPT.txt",
     "acceptance": [
-      "Run tools/audit_real_condition_intake.py on exact unmodified Switch v1.70 common.cpk and actual merged 517-row PC manager with actual candidate CPK. Record real file SHA256 and independent provenance. Do not call synthetic test actual stock.",
-      "From pinned original main inspect candidate 0x106F394 actual CFG reachable 147 instructions and two observed BLR chains 0x106ED9C/0x106EDD0. Prove method/class ownership, error/async completion, unbind and archive priority winner before hooks.",
-      "Use tools/audit_pc_api_manifest.py as metadata only to map actual mod package PC parameter files to resource IDs. Validate nine unresolved names against real CRI/CPK data without inventing assets; map actor and factory ABI before native import.",
-      "Continue MovesetPlus, 53 unsupported PC factory selectors, compressed PRMs, effect/audio/voice and dynamic dependencies with tests.",
-      "Keep exact main SHA/Sakura aura107/Event236 0x4E53 at record+0x2A and native behavior for unmarked; all three release flags false without actual Uzuy gameplay."
+      "Obtain real original stock CPK Switch 1.70, actual merged PC manager517 and real candidate CPK with provenance and byte hashes; run real raw176 intake. Synthetic data cannot be labeled stock.",
+      "Prove original corrected FileLoad 0x116F404 failure path connecting BL FileOpen 0x116F47C -> status5 helper 0x120661C; existing ARM64 slices model lock services, not full CRI async/cause.",
+      "Trace async completion, unbind/destructor, archive winner and actor lifetime; validate ABI, callee/caller saved registers and failure rollback before installing new runtime hook.",
+      "Cross-check 9 PC raw families and unresolved BGM/Guard effect names against real source archives; integrate native readers only with factory/actor ownership proof.",
+      "Protect exact main SHA guard, Sakura aura107 and native/marked Event236 behavior; maintain three false release flags until actual Uzuy execution evidence."
     ]
   },
   "continuation": {
@@ -546,7 +587,7 @@
       "Continue authorized work without repeated permission prompts; preserve honest evidence labels."
     ]
   },
-  "verified_component_commit": "85e14efd4bf6269be148810a9175766351ec063a",
+  "verified_component_commit": "a256dcf5702525ea4ea71ec386f95060868b6fb3",
   "progress_since_previous_handoff": [
     {
       "commit": "40eab530d7d90811250cea085d941ca26b929651",
@@ -661,6 +702,43 @@
       "ci_run_id": 41987853686,
       "ci_conclusion": "success",
       "scope": "One fail-closed index for all nine PC raw readers, exact public fixture hashes, 9 unresolved effect/audio names, seven bad inputs rejected; zero native Switch integrations"
+    },
+    {
+      "commit": "b882d5a711cc8e2ccb535eb545776375e2f4dfbb",
+      "ci_conclusion": "success",
+      "scope": "Pinned AArch64 relocation-slot data-reference candidate audit, no vtable ownership"
+    },
+    {
+      "commit": "e3171e79c48a3881af3f21c2a4b0a8d106af9b46",
+      "ci_conclusion": "success",
+      "scope": "PC resource names cross-referenced against synthetic CPK TOC, not actual stock game"
+    },
+    {
+      "commit": "4f50223defb54ea5923c321c31c163e7140edc7f",
+      "ci_conclusion": "success",
+      "scope": "Pinned FileLoad original error corridor; stale legacy diagnostic 0x106F404 hook fingerprint unsafe"
+    },
+    {
+      "commit": "5bd585929d108697ead1bce6ca340e8f0347e319",
+      "ci_conclusion": "success",
+      "scope": "Original FileLoad entry candidate 0x116F404 eight source prologue machine words match, 0x100000 legacy error"
+    },
+    {
+      "commit": "be0d074f8b40b125c1b74b92aceddbf8e0f46b68",
+      "ci_conclusion": "success",
+      "scope": "Two native status5 arg/call sequences and target 0x120661C disassembly"
+    },
+    {
+      "commit": "a1bd96f348ef009b91869bf07b75fb93d1df6f10",
+      "ci_run_id": 41994096469,
+      "ci_conclusion": "success",
+      "scope": "32 original native status setter ARM64 scenarios with modeled lock/unlock, old terminal states 3/5 preserved"
+    },
+    {
+      "commit": "a256dcf5702525ea4ea71ec386f95060868b6fb3",
+      "ci_run_id": 41994695967,
+      "ci_conclusion": "success",
+      "scope": "Native FileLoad corrected entry CFG 166 syntactically reachable words; FileOpen and two status5 BL sites reachable"
     }
   ]
 }

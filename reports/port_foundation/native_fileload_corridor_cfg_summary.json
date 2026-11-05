@@ -1,0 +1,35 @@
+{
+  "status": "PASS_CORRECTED_FILELOAD_PINNED_STATIC_CFG_ONLY",
+  "code_commit": "a256dcf5702525ea4ea71ec386f95060868b6fb3",
+  "ci_id": 41994695967,
+  "conclusion": "success",
+  "main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "actual_pinned_entry": "0x116f404",
+  "stale_legacy_mislocated": "0x106f404",
+  "source_prologue_8_words_match": true,
+  "syntactically_reachable_original_instructions": 166,
+  "named_direct_callsite_reachability": {
+    "file_open": {
+      "at": "0x116f47c",
+      "callee": "0x1170fb0",
+      "reachable": true
+    },
+    "status5_1": {
+      "at": "0x116f520",
+      "callee": "0x120661c",
+      "reachable": true
+    },
+    "status5_2": {
+      "at": "0x116f5c0",
+      "callee": "0x120661c",
+      "reachable": true
+    }
+  },
+  "prior_native_status_setter_scenarios_with_modeled_locks": 32,
+  "prior_CI_run": 41994096469,
+  "actual_critically_missing": "FileOpen causal failure to status5, CRI async completion, lifecycle/unbind/priority, safe ABI and Uzuy gameplay",
+  "live_gameplay_verified": false,
+  "full_moddingapi": false,
+  "ready_for_gameplay_test": false,
+  "emulator_tested": false
+}
