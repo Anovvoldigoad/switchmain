@@ -14,7 +14,7 @@ def main():
     a.output.mkdir(parents=True,exist_ok=False)
     (a.output/"native_fileload_object_regs.json").write_text(
         json.dumps(proof,indent=2)+"\n")
-    for r in ("x20","x22"):
+    for r in ("x20","x22","x1","x2"):
         names=list(proof["register_traces"][r]["sites"])
         print("ORIGINAL_REGISTER_ORIGINS",r,
               [(s,len(proof["register_traces"][r]["sites"][s]["possible_reaching_writes"]))

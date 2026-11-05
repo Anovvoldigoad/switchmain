@@ -55,12 +55,18 @@ def run(main,out):
         assert proof["register_traces"]["x20"]["sites"][key]["possible_reaching_writes"]
     assert proof["register_traces"]["x22"]["sites"]["second_guard_X22_field_base"][
         "possible_reaching_writes"]
-    assert [(x["source_caller_register"],x["destination_saved_register"],
+    assert [(x["source_register_at_copy"],x["destination_saved_register"],
              x["observed_at"])
             for x in proof["original_caller_argument_register_alias_witnesses"]] == [
                 ("X2","X20","0x116f51c"),
                 ("X2","X20","0x116f5bc"),
                 ("X1","X22","0x116f5ac")]
+    for src,name in (("x1","X1_before_X22_capture"),
+                     ("x2","X2_before_X20_capture")):
+        assert proof["register_traces"][src]["sites"][name]["possible_reaching_writes"]
+    for alias in proof["original_caller_argument_register_alias_witnesses"]:
+        assert "source_register_inbound_origin_candidates" in alias
+        assert not alias["pointer_type_and_ownership_proven"]
     for field in ("object_X20_type_or_lifetime_verified",
                   "X22_guard_context_type_verified",
                   "source_archive_priority_verified",
@@ -81,13 +87,19 @@ def run(main,out):
     out.mkdir(parents=True,exist_ok=True)
     (out/"native_fileload_object_regs.json").write_text(
         json.dumps(proof,indent=2)+"\n")
-    for r in ("x20","x22"):
+    for r in ("x20","x22","x1","x2"):
         t=proof["register_traces"][r]
         print("PINNED_OBJECT_REGISTER",r,"write_sites",
               [(x["at"],x["instruction"]) for x in t["definition_sites"]],
               "site_origins",
               {k:[x.get("at") for x in v["possible_reaching_writes"]]
                for k,v in t["sites"].items()})
+    print("X1_X2_ORIGINAL_ENTRY_ARGUMENT_PROVENANCE",
+          [(p["source_register_at_copy"],
+            p["source_register_unchanged_since_entry_in_bounded_static_CFG"],
+            [(v["kind"],v.get("at"))
+             for v in p["source_register_inbound_origin_candidates"]])
+           for p in proof["original_caller_argument_register_alias_witnesses"]])
     print("PINNED_OBJECT_REGISTER_ORIGINS_PASS",
           "NOT_CLASS_OR_LIFETIME_OR_GAMEPLAY")
 

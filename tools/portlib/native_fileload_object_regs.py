@@ -20,6 +20,8 @@ SITES = {
     "first_status_X20_argument_move": ("x20", 0x116F51C),
     "second_status_X20_argument_move": ("x20", 0x116F5BC),
     "second_guard_X22_field_base": ("x22", 0x116F5AC),
+    "X2_before_X20_capture": ("x2", 0x116F434),
+    "X1_before_X22_capture": ("x1", 0x116F438),
 }
 MAX_NODES = 256
 MAX_DEFINITIONS = 64
@@ -52,10 +54,18 @@ def _trace_register(graph, instructions, reg, start, sites, low, high):
         ins = instructions.get(pc)
         if ins is None:
             raise ValueError("Undecodable reached instruction in register audit")
-        if _written(ins, reg):
+        # Under AAPCS64, X1/X2 are caller-saved; an opaque BL/BLR
+        # invalidates any incoming X1/X2 argument value even if Capstone
+        # does not report these implicit ABI effects. X20/X22 are
+        # callee-saved and remain modeled as preserved across calls.
+        clobber=(reg in ("x1","x2") and
+                 ins.mnemonic in ("bl","blr","blraa","blrab"))
+        if _written(ins, reg) or clobber:
             definitions[pc] = {
                 "at":hex(pc), "register":reg,
                 "instruction":f"{ins.mnemonic} {ins.op_str}".strip(),
+                "kind":"caller_saved_call_clobber" if clobber
+                       else "original_instruction_write",
                 "assignment_source_semantics_resolved":False}
             out={f"def@{pc:x}"}
         else:
@@ -94,7 +104,7 @@ def _trace_register(graph, instructions, reg, start, sites, low, high):
                                 "register":reg, "source_identity_proven":False})
             else:
                 pc=int(label.split("@")[1],16)
-                origins.append({**definitions[pc],"kind":"original_instruction_write"})
+                origins.append({**definitions[pc]})
         result[name]={"at":hex(site), "possible_reaching_writes":origins,
                       "all_runtime_paths_executed":False}
     return {
@@ -127,7 +137,7 @@ def inspect(nso):
             ins[pc]=one[0]
             graph[pc]=_edges(pc,one[0].mnemonic,one[0].op_str)
     traces={}
-    for reg in ("x20","x22"):
+    for reg in ("x20","x22","x1","x2"):
         sites={k:site for k,(r,site) in SITES.items() if r==reg}
         traces[reg]=_trace_register(graph,ins,reg,ENTRY,sites,ENTRY,END)
     if status["verified_status_argument_and_callsite_words"][1]["at"]!="0x116f51c":
@@ -149,16 +159,27 @@ def inspect(nso):
          "0x116f438", "mov x22, x1", "X1")
     ]
     alias_proofs = []
+    entry_checks = {
+        "X2": ("x2","X2_before_X20_capture"),
+        "X1": ("x1","X1_before_X22_capture")
+    }
     for name,reg,at,phrase,source in pinned:
         origin = traces[reg]["sites"][name]["possible_reaching_writes"]
         if len(origin) != 1 or origin[0]["at"] != at or origin[0]["instruction"] != phrase:
             raise ValueError("Pinned native caller register provenance changed: "+name)
         origin_pc = int(at,16)
+        src_reg,src_site=entry_checks[source]
+        src_origins=traces[src_reg]["sites"][src_site]["possible_reaching_writes"]
+        unchanged=(len(src_origins)==1 and src_origins[0]["kind"]==
+                   "incoming_callee_saved_value" and src_origins[0]["at"] is None)
         alias_proofs.append({
             "at":at, "original_word_le":code[origin_pc:origin_pc+4].hex(),
-            "original_instruction":phrase, "source_caller_register":source,
+            "original_instruction":phrase, "source_register_at_copy":source,
             "destination_saved_register":reg.upper(),
             "observed_at":traces[reg]["sites"][name]["at"],
+            "source_register_inbound_origin_candidates":src_origins,
+            "source_register_unchanged_since_entry_in_bounded_static_CFG":unchanged,
+            "argument_source_AAPCS64_caller_saved_call_clobbers_modeled":True,
             "pointer_type_and_ownership_proven":False
         })
     return {
@@ -173,6 +194,7 @@ def inspect(nso):
         "register_traces":traces,
         "AAPCS64_callee_saved_registers_assumed_not_runtime_proven":True,
         "register_write_origin_not_pointer_class_or_ownership":True,
+        "X1_X2_entry_argument_proven_at_capture_only_if_unmodified":True,
         "all_function_paths_proven":False,
         "object_X20_type_or_lifetime_verified":False,
         "X22_guard_context_type_verified":False,
