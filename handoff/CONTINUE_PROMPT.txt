@@ -1,54 +1,49 @@
-LANJUTKAN FULL PC MODDINGAPI -> NARUTO STORM CONNECTIONS SWITCH v1.70
-Repo: Anovvoldigoad/switchmain, branch: port/full-api-v170.
-LAST VERIFIED CODE: e314f9c2157bb84ae16c1aa6394bb7b7c4c6e663
-Last CI: Actions 41964408868 completed/success (static/native component tests).
-Documentation HEAD may be later: ALWAYS VERIFY ACTUAL BRANCH HEAD BEFORE WRITING.
+LANJUTKAN FULL PORT PC MODDINGAPI -> NARUTO STORM CONNECTIONS SWITCH 1.70
+REPO Anovvoldigoad/switchmain BRANCH port/full-api-v170
+LAST CODE SHA fc24971ab3d635d9061b132842607d46ae2551a2
+CODE ACTIONS 41969845880 completed / success (static/source-format tests, no gameplay).
+Documentation HEAD may be newer. Resolve ACTUAL HEAD before editing; do not overwrite.
 
-READ FIRST handoff/checkpoint.json, PORT_STATUS.json, the END of
-PORTING_PROGRESS.md, .github/workflows/verify-port-foundation.yml
-and NSC_FULL_API_CONTINUE_CHAT.md.
+READ FIRST handoff/checkpoint.json, PORT_STATUS.json, END of PORTING_PROGRESS.md,
+.github/workflows/verify-port-foundation.yml and NSC_FULL_API_CONTINUE_CHAT.md.
 
-COMPLETED -- DO NOT REDO:
-Event236 0x4E53 @record+0x2A ownership; original unmarked enemy-hide.
-SHA-pinned main gate/ARM64 callbacks; factory/condition/CPK profile handlers.
-40eab53 CPK safe registration merge; 4f19056 raw176 comparator.
-96c8684 inter-CPK path overlap checks; be2a86c direct CPK-pair raw176 audit.
-6819a8c disjoint multi-CPK batch component compiler using one global manager/
-one explicit condition companion owner (CI 41963328524 PASS).
-3b9f3f7 native exact-main read-only 10-anchor call-edge census and e314f9c
-per-anchor CI logging (41964408868 PASS). No new native runtime hooks.
+DO NOT REDO: 40eab53 safe CPK list merge; 4f19056 raw176 audit;
+96c8684 collision report; be2a86c CPK-pair raw audit; 6819a8c batch
+multi-CPK condition component compiler; 3b9f3f7/e314f9c direct native call
+edges; be99b93 indirect reloc/ADR scan; 45f52dd PC Susanoo/Partner
+raw32 reader; fc24971 authenticated public PC parameter fixtures.
+Main SHA guard, native baseline, Sakura aura107 and explicit Event236
+0x4E53 marker at offset +0x2A MUST remain. Unmarked Event236 stays native.
 
-NEW NATIVE STATIC EVIDENCE:
-0x4731F8 BL 0x115FBB8 -> 0x115FBC0 B 0x115E80C (binder path).
-0x1206B9C BL 0x1206C9C (fileload request/create).
-0x116F47C BL 0x1170FB0 (file-open).
-0x106F404 fileload process has zero direct inbound B/BL in the full text
-scan; indirect calls NOT studied, so do not infer absence/execution.
-Detailed counts in reports/port_foundation/native_cpk_call_edges_summary.json.
-Branch decoding and 0x100 windows do NOT prove function extents or async ABI.
+VERIFIED SOURCE FINDINGS:
+Exact pinned v1.70 main NSO 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
+288312 relocation records; zero exact-pointer hits in limited RELATIVE/
+ADR/adjacent ADRP+ADD/slot-load methods for 10 inspected CPK anchors.
+Indirect dispatch, callbacks, vtable and neighboring function entrypoints
+remain UNKNOWN. Do NOT infer fileload_process 0x106F404 is dead.
+Public PC source SusanooCondParam.cpp and PartnerSlotParam.cpp support raw
+32-byte table, 24-byte type and uint16 char ID at +0x18 only.
+Public template NSC inputs are exactly 5 and 8 rows and CI passed.
+They do NOT prove Switch native factory/layout compatibility.
 
-NEXT:
-1. Obtain genuine unchanged Switch 1.70 CPK and original PC merged
-   conditionprmManager517, independently validate source and SHA256;
-   run real tools/audit_condition_cpk_pair.py and audit_cpk_overlaps.py.
-   User Library common.cpk and romfs.zip metadata alone prove nothing;
-   current container cannot inspect them. Do not make up hashes.
-2. Trace CRI async completion, unbind/destructor and archive winner: first
-   inspect indirect call dispatch and 0x116F47C -> 0x1170FB0 path in the
-   exact pinned main; determine ABI/function bounds from evidence. Do not
-   install new hooks until native fingerprints and ARM64 regression tests.
-3. Continue missing MovesetPlus ops, factory 53 unverified names,
-   compressed PRM, actor/effect/audio lifecycle, nine missing parameter
-   families and global condition effects/reader integration.
-4. Build, run Actions, inspect logs. Commit code, tests, reports, status,
-   checkpoint and this updated continuation prompt to the same branch.
+NEXT INDEPENDENT VERIFIED WORK:
+1. Obtain independent provenance + actual SHA256 for unchanged Switch 1.70
+stock CPK and original merged PC conditionprmManager 517. Library names
+common.cpk and romfs.zip are not provenance; local container has failed.
+Run real tools/audit_condition_cpk_pair.py and audit_cpk_overlaps.py,
+record every stock-prefix raw176 delta and PC manager ordinal.
+2. Investigate code/vtable/pointer-table references NEAR suspected
+fileload_process 0x106F404 and native CRI async completion, archive
+lookup precedence, manager replacement, unbind/destructor. Only install
+an ARM64 hook if ABI, fingerprints and exact failure paths are proven.
+3. Integrate two PC raw32 readers with native Switch only after proof
+of factory selectors/actor ownership; seven parameter families still
+lack readers. Complete MovesetPlus operations, 53 factory placeholders,
+compressed PRMs, effect/audio/resource lifetimes and actual tests.
+4. Execute CI after code changes, inspect job logs and artifacts,
+commit status, reports, checkpoint and fresh continuation prompt.
 
-INVARIANTS:
-Switch Sakura AWAKE_1SKR aura107 and exact main SHA guard.
-PC manager112 != native descriptor32 != raw conditionprm176.
-Unmarked Event236 stays native hide enemy. NO char-ID heuristics.
-Do not claim GAME_TESTED from synthetic, host or Unicorn execution.
-Current full_moddingapi=false, ready_for_gameplay_test=false,
-emulator_tested=false. No verified full API gameplay package exists.
-Continue authorized work without demanding "lanjut" after every component;
-always publish actual newest SHA, real CI result, blockers and fresh prompt.
+FULL_API=false, READY_FOR_GAMEPLAY_TEST=false, EMULATOR_TESTED=false.
+Do not assert Uzuy gameplay PASS from build, Unicorn, static analyses
+or PC template parser. Current outputs are component-only, not playable.
+Always end with actual GitHub HEAD SHA, CI proof, blockers and prompt.

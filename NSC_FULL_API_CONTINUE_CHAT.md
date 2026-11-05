@@ -1,5 +1,7 @@
 # NSC Full ModdingAPI Switch — checkpoint dan prompt lanjutan
 
+2026-11-05 source-format checkpoint: fc24971 adds 2 authentic public PC parameter templates with SHA/Git blob proof, CI 41969845880 PASS. be99b93/45f52dd add bounded native exact-anchor indirect reference census (zero hits does NOT prove absence). Switch runtime integration still incomplete. Read authoritative handoff/CONTINUE_PROMPT.txt.
+
 2026-11-05 native static update: 3b9f3f7/e314f9c add exact-main 10-anchor direct-branch census, CI 41964408868 PASS; status remains component-only. See handoff/CONTINUE_PROMPT.txt and latest PORTING_PROGRESS.md; no async/unbind or real stock CPK proof.
 
 2026-11-05 newest: commit 6819a8c adds disjoint multi-CPK condition batch component; Actions 41963328524 PASS (synthetic). Global condition owner explicit, archive collisions rejected, profile entries preserved. No real stock CPK/PC manager517 provenance, CRI async lifecycle or Uzuy gameplay. Use handoff/CONTINUE_PROMPT.txt as the authoritative newest prompt.

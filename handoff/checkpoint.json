@@ -40,7 +40,9 @@
       "hash-pinned mmap-based multi-CPK path overlap audit with exact/casefold and stored-byte identity; conflict reject-before-output; no runtime winner inference",
       "direct hash-pinned CPK-to-CPK conditionprm raw176 audit invokes existing manager/ordinal comparator without extracting files manually; synthetic integration PASS only",
       "multi-archive condition batch compiler: one explicit global conditionprm owner, independent CPK PRM marking, source SHA256 pins, disjoint TOC path guard, atomic component output and composed NSO condition/CPK registration; synthetic CI PASS only",
-      "read-only exact SHA-pinned Switch 1.70 native CPK/file-load ARM64 direct-call census: 493563 direct B/BL candidate instructions and 10 verified source anchor windows; indirect callbacks, async completion, unbind and archive precedence remain unverified"
+      "read-only exact SHA-pinned Switch 1.70 native CPK/file-load ARM64 direct-call census: 493563 direct B/BL candidate instructions and 10 verified source anchor windows; indirect callbacks, async completion, unbind and archive precedence remain unverified",
+      "SHA-pinned native NSO RELA/ADR/adjacent ADRP address-materialization audit for 10 CPK/fileloader anchors; CI verified 288312 relocation records, no exact-anchor address candidates in the supported patterns; indirect callbacks and function boundaries still unknown",
+      "PC ModdingAPI raw32 parameter payload readers for susanooCondParam and partnerSlotParam grounded in pinned upstream C++ source; validated exact public upstream 160-byte/256-byte NSC templates with matching Git blob SHA and observed SHA256; no native Switch reader or factory binding implemented"
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -53,7 +55,9 @@
       "actual Switch 1.70 CPK and original merged manager517 are still required for a verified stock-vs-candidate raw176 comparison; accessible Library file metadata is not source authentication",
       "multi-CPK raw conditionprm path collisions detected statically but runtime archive winner, async completion, unbind and global condition source order are not verified",
       "multi-CPK batch component packaging now available, but existing preloaded CPK entry content is not accessible to overlap analysis, global runtime condition source order and actual CRI async archive completion remain unverified",
-      "Native call-edge scan finds zero direct B/BL inbound to fileload_process 0x106F404; indirect/callback dispatch not traced. CPK async completion, manager unbind/teardown and archive precedence remain unresolved."
+      "Native call-edge scan finds zero direct B/BL inbound to fileload_process 0x106F404; indirect/callback dispatch not traced. CPK async completion, manager unbind/teardown and archive precedence remain unresolved.",
+      "Of the nine previously pending parameter families, SusanooCond and PartnerSlot now have PC payload-format readers only; seven remain completely pending and neither PC reader is wired into Switch runtime. PC public templates do not supply stock Switch data.",
+      "No address references to any of ten exact CPK/fileload anchor offsets were identified via pinned RELATIVE relocation, ADR or adjacent ADRP+ADD / load-of-relocation-slot patterns. This narrow negative result does NOT resolve indirect callbacks, vtables, unbind, priority or function starts."
     ],
     "proofs": [
       "reports/port_foundation/bootstrap.json",
@@ -80,16 +84,18 @@
       "reports/port_foundation/cpk_overlaps.json",
       "reports/port_foundation/condition_archive_audit.json",
       "reports/port_foundation/condition_batch.json",
-      "reports/port_foundation/native_cpk_call_edges_summary.json"
+      "reports/port_foundation/native_cpk_call_edges_summary.json",
+      "reports/port_foundation/native_cpk_indirect_refs_summary.json",
+      "reports/port_foundation/pc_param_rows.json"
     ],
     "parameter_family_coverage": {
       "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
       "specialCondParam.xfbin": "PARTIAL: 228 class selectors; 53 placeholders and full construction/resource lifecycle pending",
       "pairSpSkillManagerParam.xfbin": "PENDING",
       "bgmManagerParam.xfbin": "PENDING",
-      "susanooCondParam.xfbin": "PENDING",
+      "susanooCondParam.xfbin": "PARTIAL_PC_READER_ONLY: authenticated 5x0x20-byte NSC PC template and source-grounded 24-byte type/16-bit ID at +0x18; no Switch native loader, Susanoo hook ABI or actor lifetime",
       "specialInteractionManager.xfbin": "PENDING",
-      "partnerSlotParam.xfbin": "PENDING",
+      "partnerSlotParam.xfbin": "PARTIAL_PC_READER_ONLY: authenticated 8x0x20-byte NSC PC template and source-grounded 24-byte type/16-bit ID at +0x18; no Switch native partner factory/ABI",
       "charRelationParam.xfbin": "PENDING",
       "gudoBallParam.xfbin": "PENDING",
       "ougiAwakeningParam.xfbin": "PENDING: legacy fixed membership is not a generic reader",
@@ -194,14 +200,54 @@
       "unbinding_verified": false,
       "priority_winner_verified": false,
       "gameplay_verified": false
+    },
+    "native_cpk_indirect": {
+      "initial_code_commit": "100bdea09ef39db558d449146b5a313f809882ff",
+      "parser_fix_commit": "be99b93e9b323944afd32a8dd75fd8c1cc9e4083",
+      "ci_run_id": 41969481009,
+      "status": "PASS_STATIC_PINNED_IMAGE",
+      "relocation_records": 288312,
+      "anchors": 10,
+      "exact_anchor_reference_hits_in_supported_patterns": 0,
+      "indirect_calls_resolved": false,
+      "async_completion_verified": false,
+      "unbind_verified": false,
+      "archive_precedence_verified": false,
+      "gameplay_verified": false
+    },
+    "pc_parameter_readers": {
+      "code_commit": "45f52ddb8832cf9a7433bb9c9bd79dcb6e64d389",
+      "real_fixture_commit": "fc24971ab3d635d9061b132842607d46ae2551a2",
+      "ci_run_id": 41969845880,
+      "status": "PASS_SOURCE_FORMAT_REAL_PUBLIC_PC_TEMPLATES_ONLY",
+      "upstream_manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+      "upstream_api_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+      "templates": [
+        {
+          "family": "susanooCondParam",
+          "record_count": 5,
+          "git_blob": "d983860d4bbaa58440ea1b3ba2b6e6e33fa48b17",
+          "sha256": "a0b1dabfa72634c71e601c1fb9cc938c9fb00820591e44972771aeee6c3aed7c"
+        },
+        {
+          "family": "partnerSlotParam",
+          "record_count": 8,
+          "git_blob": "8155d1e0a76add995051b45fe68d27f19cca49dc",
+          "sha256": "f7190ee92bbcca9e157ecfc7aa497a699e32b858bb865e9012e9df40e5103055"
+        }
+      ],
+      "real_pc_template_bytes_verified": true,
+      "real_mod_addon_verified": false,
+      "switch_native_reader_integrated": false,
+      "gameplay_verified": false
     }
   },
   "ci": {
-    "run_id": 41964408868,
+    "run_id": 41969845880,
     "status": "completed",
     "conclusion": "success",
-    "head_sha": "e314f9c2157bb84ae16c1aa6394bb7b7c4c6e663",
-    "scope": "SHA-pinned native main static B/BL call-edge census and existing synthetic/component/compiled native-slice tests; not real CRI IO, async or Uzuy gameplay"
+    "head_sha": "fc24971ab3d635d9061b132842607d46ae2551a2",
+    "scope": "AArch64 build plus pinned NSO static relocation audit, source-authenticated public PC raw32 parameter templates and existing synthetic/native-slice component tests; no Switch CPK stock, CRI async or Uzuy gameplay"
   },
   "provenance": {
     "manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
@@ -232,15 +278,15 @@
     }
   ],
   "next_mvp": {
-    "name": "Authenticate real CPK/517 manager; resolve native indirect completion/unbind and archive precedence",
-    "status": "PENDING_AUTHENTIC_SOURCE_AND_RUNTIME_LIFECYCLE",
+    "name": "Real Switch CPK+merged PC manager517 and native dispatch/lifecycle proof",
+    "status": "PENDING_NATIVE_RUNTIME_AND_STOCK_DATA",
     "spec": "handoff/CONTINUE_PROMPT.txt",
     "acceptance": [
-      "Establish provenance and actual SHA256 for genuine unmodified Switch v1.70 CPK and original PC merged manager517; run real CPK raw176 audit.",
-      "Trace static call 0x116F47C→0x1170FB0 and parent fileload paths; investigate indirect callers of 0x106F404 without assuming it is unused.",
-      "Identify exact native CRI async completion callback, unbind/manager teardown, and archive lookup precedence, with ARM64 fingerprints and modeled failure cases before hook implementation.",
-      "Complete missing MovesetPlus operations, remaining 53 factory names, compressed PRM repacking, condition/effect lifecycle and nine parameter families.",
-      "Do not change full_moddingapi, ready_for_gameplay_test or emulator_tested before actual real Uzuy gameplay proof."
+      "Locate independently authenticated original Switch 1.70 stock common CPK and original merged 517-record PC condition manager; collect bytes and SHA256 then run real raw176 pair audit.",
+      "Reinterpret 0x106F404 as an offset not necessarily a function entry; find indirect dispatch and possible nearby entrypoints using exact pinned main and check vtable or call-site evidence.",
+      "Prove real CRI asynchronous bind completion, file priority precedence, archive unbind and manager replacement, then implement verified, fingerprinted ARM64 hooks with failure-path tests.",
+      "Connect PC validated SusanooCond and PartnerSlot parameters to Switch only after source-layout, factory selector, actor ABI, and lifetime proof; continue seven other unimplemented family readers, MovesetPlus and compressed PRM.",
+      "Preserve main SHA, Sakura aura107, Event236 0x4E53 ownership and native unmarked fallback; do not claim Uzuy gameplay without logs."
     ]
   },
   "continuation": {
@@ -263,7 +309,7 @@
       "Continue authorized work without repeated permission prompts; preserve honest evidence labels."
     ]
   },
-  "verified_component_commit": "e314f9c2157bb84ae16c1aa6394bb7b7c4c6e663",
+  "verified_component_commit": "fc24971ab3d635d9061b132842607d46ae2551a2",
   "progress_since_previous_handoff": [
     {
       "commit": "40eab530d7d90811250cea085d941ca26b929651",
@@ -306,6 +352,30 @@
       "ci_run_id": 41964408868,
       "ci_conclusion": "success",
       "scope": "Publish per-anchor incoming counts and bounded outbound candidate edges to CI logs for native investigation"
+    },
+    {
+      "commit": "100bdea09ef39db558d449146b5a313f809882ff",
+      "ci_run_id": 41968568148,
+      "ci_conclusion": "failure",
+      "scope": "Initial indirect RELOCATION parser incorrectly rejected repeated ordinary dynamic tags; transparent failure corrected in next commit"
+    },
+    {
+      "commit": "be99b93e9b323944afd32a8dd75fd8c1cc9e4083",
+      "ci_run_id": 41968889996,
+      "ci_conclusion": "success",
+      "scope": "Validate only relocation dynamic tags on duplicate; exact pinned main indirect address references static audit"
+    },
+    {
+      "commit": "45f52ddb8832cf9a7433bb9c9bd79dcb6e64d389",
+      "ci_run_id": 41969481009,
+      "ci_conclusion": "success",
+      "scope": "Two PC ModdingAPI source-grounded raw32 readers, synthetic validation, pinned indirect anchor logging"
+    },
+    {
+      "commit": "fc24971ab3d635d9061b132842607d46ae2551a2",
+      "ci_run_id": 41969845880,
+      "ci_conclusion": "success",
+      "scope": "Exact Git blob authentic public PC NSC Susanoo and Partner 0x20 parameter samples, SHA256 proof and full CI"
     }
   ]
 }

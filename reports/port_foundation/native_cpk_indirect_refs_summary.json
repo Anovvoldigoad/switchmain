@@ -1,0 +1,28 @@
+{
+  "status": "PASS_STATIC_ONLY",
+  "native_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "first_failed_run": {
+    "id": 41968568148,
+    "reason": "Ordinary repeated dynamic tags rejected; fixed"
+  },
+  "verified_run_id": 41969481009,
+  "conclusion": "success",
+  "total_relocation_records": 288312,
+  "anchor_count": 10,
+  "supported_exact_anchor_reference_hits": 0,
+  "methods": [
+    "R_AARCH64_RELATIVE exact addend",
+    "ADR exact code address",
+    "immediately adjacent ADRP+ADD",
+    "LDR from matched relocation slot"
+  ],
+  "bounded_negative_evidence_only": true,
+  "neighbors_not_searched": true,
+  "indirect_vtable_dispatch_not_resolved": true,
+  "abi_verified": false,
+  "async_completion_verified": false,
+  "unbind_verified": false,
+  "archive_precedence_verified": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}
