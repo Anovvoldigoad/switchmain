@@ -83,6 +83,8 @@ jobs:
         run: python tests/test_pc_param_remaining.py --output proof-work
       - name: Build unified nine-family PC-only source manifest with unresolved effect/audio identifiers
         run: python tests/test_pc_api_manifest.py --output proof-work
+      - name: Validate hash-pinned PC audio and effect literal names against CPK TOC on synthetic archives
+        run: python tests/test_pc_cpk_resource_audit.py --output proof-work
       - name: Verify multi-CPK global condition batch component
         run: python tests/test_condition_batch.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --module exlaunch/deploy/subsdk9 --output proof-work
       - name: Execute native condition lookups and descriptor consumers
