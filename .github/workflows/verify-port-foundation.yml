@@ -83,10 +83,14 @@ jobs:
         run: python tests/test_native_fileopen_branch_dependencies.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Resolve bounded native FileOpen callee targets and branch flag/register producer sources
         run: python tests/test_native_fileopen_callees.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Verify original FileOpen PLT GOT import relocation and exported symbol identity
+        run: python tests/test_native_fileopen_import.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Trace pinned FileLoad X20 object and X22 guard register origins
         run: python tests/test_native_fileload_object_regs.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Execute actual pinned ARM64 FileLoad status helper 3/5 guards with lock services modeled
         run: python tests/test_native_fileload_status_slice.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Match public original NSC Mod Manager PC condition manager512 by Git blob and SHA256
+        run: python tests/test_pc_public_baseline.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Validate PC condition descriptors and Android packaging
         run: python tests/test_condition_profile.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --module exlaunch/deploy/subsdk9 --output proof-work
       - name: Validate raw condition companion identity and rejection
