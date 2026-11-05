@@ -1,57 +1,56 @@
-LANJUTKAN FULL PORT PC MODDINGAPI KE NARUTO STORM CONNECTIONS SWITCH v1.70
-Repo Anovvoldigoad/switchmain | branch port/full-api-v170
-VERIFIED CODE SHA ef738a5eba5738f40d9f8ca2384912496210e148
-CODE CI Actions 41973202913 SUCCESS, 41972748025 SUCCESS (not gameplay).
-Document HEAD is newer; ALWAYS fetch actual HEAD before modification.
+LANJUTKAN FULL PC MODDINGAPI -> NARUTO STORM CONNECTIONS SWITCH v1.70
+Repository Anovvoldigoad/switchmain | branch port/full-api-v170
+LAST VERIFIED CODE SHA 9dfbf05bfebbab38f93b1a66812e8c76c2aa7a36
+CI Actions 41977060825,41976417627,41976177875 all SUCCESS.
+Latest documentation HEAD will be newer. VERIFY ACTUAL HEAD before writes.
+Storm Modding Lab checkpoint e864bb82-5156-413c-9cdf-6d7177e0da61.
 
-READ FIRST: handoff/checkpoint.json, PORT_STATUS.json, end of
-PORTING_PROGRESS.md, workflow verify-port-foundation.yml,
-NSC_FULL_API_CONTINUE_CHAT.md and reports/port_foundation/*.
+READ FIRST handoff/checkpoint.json, PORT_STATUS.json, last PORTING_PROGRESS.md,
+.github/workflows/verify-port-foundation.yml and source proof reports:
+reports/port_foundation/native_cpk_blr_structure_summary.json,
+reports/port_foundation/pc_remaining_four_summary.json.
 
-DO NOT REPEAT: existing CPK profile/condition/Event236 marker 0x4E53,
-raw176 audit, CPK pair audit, overlap audit, batch assembler, SHA-pinned
-native B/BL exact-address and RELA/ADR indirect reference audits,
-and PC Susanoo/Partner raw32 parsers. New this turn:
-4702118 PC Ougi/Gudo uint32 and CharRelation count-prefixed stream readers,
-3 original public fixtures with verified exact Git SHA and input SHA256;
-native near-target B/BL/BR/BLR/relo scan around 5 CPK/fileload anchors.
-ef738a5 native executable-target R_AARCH64_RELATIVE adjacent-slot
-cluster analysis. All code CI PASS. No new runtime hooks were installed.
+DO NOT REPEAT completed components: multi-CPK, Event236 0x4E53 ownership,
+raw176, CPK overlap, condition descriptor, existing direct/indirect pointer
+audits, 9 source-grounded PC raw reader formats and Capstone windows.
+New commits: ef0bd858 four PC readers 55 TUJ/1 BGM/4 Interaction/2 Guard
+original public sample SHA/Git blob PASS; 14 malformed tests rejected.
+90be754 SHA-guarded 9 Capstone native CPK windows PASS; 9dfbf05 7
+word-exact BLR register-chain witnesses and function/callsite correction.
+Everything is PC RAW FORMAT or STATIC NATIVE PROOF ONLY, not gameplay.
 
-CRITICAL NATIVE EVIDENCE (actual pinned Switch 1.70 main):
-Main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
-0x106ED9C and 0x106EDD0 are BLR sites in fileload_process vicinity.
-0x212B5F0->0x106EDB8, 0x212B5F8->0x106EDC4,
-0x212B600->0x106EDE0, 0x212B608->0x106EDE8 are
-byte-reproducible RELATIVE relocated pointer slots. Eight adjacent
-code-pointer clusters near this area; several have 13 slots. Their
-vtable/object ownership, exact function entries, method index, ABI,
-completion/unbind semantics remain UNKNOWN. No guesswork.
+KEY REVERSE ENGINEERING CORRECTION:
+Original pinned main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
+0x106F404 is BL -> 0xFFF6A0, NOT proven fileload_process entrypoint.
+R_AARCH64_RELATIVE at slot 0x215C478 -> 0x106F394, code starts
+SUB SP,SP,#0x40; candidate entry only. Native callsite and function
+identity need proof, no guessed lifetime or signatures.
+0x106ED90 LDR X8,[X20]; 0x106ED98 LDR X8,[X8,#0x20];
+0x106ED9C BLR X8. 0x106EDC8 LDR X8,[X0];
+0x106EDCC LDR X8,[X8,#0x10]; 0x106EDD0 BLR X8.
+Older 8 adjacent relocated code-pointer clusters remain candidate tables;
+vtable ownership/method ABI/lifecycle not proven. No hooks installed.
 
-NEXT INDEPENDENT ACTIONS:
-1. Locate authentic unmodified Switch 1.70 stock CPK and original merged
-PC manager517. Verify both byte SHA256 and provenance; run real
-tools/audit_condition_cpk_pair.py and multi-CPK overlap audit.
-Files named common.cpk/romfs.zip alone do NOT prove stock; local runtime
-was unavailable. Do not place copyrighted game archives in public repo.
-2. Disassemble actual ARM64 pointer-method target code at 0x106EDB8,
-0x106EDC4, 0x106EDE0 and 0x106EDE8, indirect BLR callers at 0x106ED9C/
-0x106EDD0 and tables around 0x212B5F0/0x212B728/0x212B7A0.
-Find reader/object owner, status transitions and error branches first;
-prove CRI async completion, bind/unbind, priority winner before hooks.
-3. Port four still missing PC parameter-family reader formats:
-pairSpSkillManager, bgmManager, specialInteractionManager, guardEffect.
-Then map all five existing PC-only readers to native Switch ONLY after
-ABI/factory/lifetime proof. Continue MovesetPlus, 53 factory placeholders,
-compressed PRMs, effect/audio resource lifetime and condition full behavior.
-4. Add native ARM64 stub regression only when signature, function bounds,
-ABI and status are verified. Run CI and inspect logs. Commit code, report,
-PORT_STATUS.json, checkpoint and NEW prompt after each verified stage.
+NEXT WORK WITHOUT ASKING APPROVAL:
+1. Identify genuine unchanged Switch v1.70 stock common.cpk AND original
+merged PC 517-record conditionprmManager with SHA256/provenance; run real
+raw176 audit. Library common.cpk (363755660 bytes) and romfs.zip
+(59806528 bytes) were materialized but container/Python hit ClientError.
+Do not claim bytes authenticated from filename, size or materialization.
+2. Determine native object layout and dispatch owner for X8 BLR chains
+and possible entry 0x106F394; analyze async completion, CRI bind state,
+unbind/destructor/manager replacement and archive lookup precedence.
+Use exact SHA, ABI/prolog/reg preservation/failure-path tests BEFORE hooks.
+3. All nine PC raw family formats now validated; ZERO native Switch
+reader/factory/actor integrations proven. Map factory selectors, ID,
+resource lifetime and BGM CRC/stage before attempting native integration.
+Continue full MovesetPlus opcode coverage, 53 factory placeholder cases,
+compressed PRM, effect and audio resources and support logic.
+4. Add tests and CI for each change, inspect full Actions logs. Commit
+status, reports, checkpoint and prompt on same branch; avoid duplicate work.
 
-PROTECT exact main SHA guard, Sakura AWAKE_1SKR aura107, Event236 0x4E53
-at record+0x2A; unmarked Event236 keeps native semantics.
-Never claim GAME_TESTED from static, host or Unicorn emulated/stub tests.
-Status remains IMPLEMENTATION_INCOMPLETE, full_moddingapi=false,
-ready_for_gameplay_test=false, emulator_tested=false.
-Always end with actual HEAD SHA, exact Actions result, blockers and
-standalone prompt ready for normal ChatGPT chat.
+INVARIANTS: exact main SHA guard, Sakura AWAKE_1SKR aura107,
+Event236 0x4E53 at +0x2A. Unmarked Event236 preserves native semantics.
+Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false
+until exact Uzuy gameplay evidence. CI/Unicorn/static != GAME_TESTED.
+Always end with actual HEAD, CI result, blockers, independent chat prompt.

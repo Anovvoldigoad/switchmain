@@ -705,3 +705,46 @@ PC readers are not wired to Switch; lifecycle, actor/resource ownership,
 MovsetPlus, 53 factory placeholders and compressed PRMs remain incomplete.
 full_moddingapi=false; ready_for_gameplay_test=false;
 emulator_tested=false; GAMEPLAY_UNVERIFIED.
+
+## 2026-11-05 — Four remaining PC readers, pinned ARM64 register disassembly correction
+
+Starting GitHub HEAD 747e4c17725c5a53fad9d9d9afed255984ac7f9e verified against Actions 41973648462 SUCCESS.
+Commit ef0bd858ef7d1f139ddce5672066957bae591866 (Actions 41976177875 SUCCESS)
+adds `tools/portlib/pc_param_remaining.py`, CLI and 4 public exact-Git-blob fixtures.
+Source format derives from pinned TheLeonX/UltimateStormAPI PC C++ at
+a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc; raw samples from
+TheLeonX/NSC-ModManager 276116ebf5ba398a867793cb02ee6c33c0927645.
+PC raw reader record counts: pairSpSkillManager 55x0x18, BGM 1x0x68,
+SpecialInteraction 4 variable records, GuardEffect 2x0xF8; exact public
+input SHA256 and Git blob SHA verified in CI. 14 invalid cases rejected.
+All nine PC raw parameter formats have source-grounded readers but are
+NOT connected to native Switch game loader or actor lifecycle.
+
+Commit 90be75437ecfc6a7e67a0a6d82eade3db8ee8131 (Actions 41976417627 SUCCESS)
+adds 9 bounded Capstone AArch64 disassembly windows; verified exact
+pinned v1.70 NSO main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
+The historical `fileload_process 0x106F404` label was imprecise:
+0x106F404 is an actual BL to 0xFFF6A0, NOT a verified function entry.
+Two BLR instructions at 0x106ED9C and 0x106EDD0 are preceded by
+loads from [X20] then [X8,#0x20] and [X0] then [X8,#0x10] respectively.
+
+Commit 9dfbf05bfebbab38f93b1a66812e8c76c2aa7a36
+(Actions 41977060825 SUCCESS) adds seven exact instruction-word register
+witness assertions. A RELATIVE pointer 0x215C478 -> 0x106F394 reaches
+code beginning SUB SP,SP,#0x40, but function identity and extent are NOT
+verified. Runtime class/vtable ownership, correct native calling ABI, CRI
+async completion, archive lookup priority, unbind/destructor and engine
+resources all remain unknown. Do not install ABI-guess hooks.
+
+Library `common.cpk` 363755660 bytes and `romfs.zip` 59806528 bytes
+were materialized to runtime in this turn, but container and Python
+binary execution both raised ClientError. No actual game CPK SHA256
+or untouched-stock provenance established; no authentic manager517
+found; no real stock/raw176 comparison performed. Do not conflate
+materialization or file size with stock proof.
+
+Storm Modding Lab immutable checkpoint ID e864bb82-5156-413c-9cdf-6d7177e0da61.
+Full API remains INCOMPLETE; full_moddingapi=false,
+ready_for_gameplay_test=false, emulator_tested=false. No new native
+hooks/PC DLL emulation/gameplay package; no game playback tested.
+

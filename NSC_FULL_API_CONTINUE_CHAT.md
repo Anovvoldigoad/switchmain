@@ -1,3 +1,5 @@
+2026-11-05 update: ef0bd858 (4 remaining source-authenticated PC raw readers) CI41976177875 SUCCESS; 90be754 (nine pinned Capstone ARM64 windows) CI41976417627 SUCCESS; 9dfbf05 (seven BLR register-chain witnesses and correction of 0x106F404 to BL callsite) CI41977060825 SUCCESS. All nine PC raw formats now validated, ZERO native Switch loader integrations. Full API and Uzuy gameplay not proved. Storm Lab checkpoint e864bb82-5156-413c-9cdf-6d7177e0da61. Authoritative next prompt: handoff/CONTINUE_PROMPT.txt.
+
 # NSC Full ModdingAPI Switch — checkpoint dan prompt lanjutan
 
 2026-11-05 native code-pointer progress: ef738a5 CI 41973202913 PASS (8 adjacent reloc table candidates near 0x106F404), 4702118 CI 41972748025 PASS (Ougi/Gudo/CharRelation public PC raw readers, 5/9 PC formats now partially covered). No runtime hook or gameplay proof. Authoritative handoff: handoff/CONTINUE_PROMPT.txt.

@@ -6,7 +6,7 @@
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
   "documentation_commit": "Resolve actual branch HEAD: documentation commit follows verified code be2a86c",
-  "prior_storm_checkpoint_id": "c7ca5be9-1c45-47c1-84d2-312b33f0bf4f",
+  "prior_storm_checkpoint_id": "e864bb82-5156-413c-9cdf-6d7177e0da61",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
     "full_moddingapi": false,
@@ -44,7 +44,9 @@
       "SHA-pinned native NSO RELA/ADR/adjacent ADRP address-materialization audit for 10 CPK/fileloader anchors; CI verified 288312 relocation records, no exact-anchor address candidates in the supported patterns; indirect callbacks and function boundaries still unknown",
       "PC ModdingAPI raw32 parameter payload readers for susanooCondParam and partnerSlotParam grounded in pinned upstream C++ source; validated exact public upstream 160-byte/256-byte NSC templates with matching Git blob SHA and observed SHA256; no native Switch reader or factory binding implemented",
       "Three more PC source-verified raw parameter stream readers, with byte-authenticated public NSC Ougi (1 uint32), GudoBall (2 uint32) and CharRelation (30 variable-length records); CI PASS only, no native Switch integration",
-      "Pinned original v1.70 main static nearby file-load CPK B/BL/BR/BLR neighborhood census and adjacent R_AARCH64_RELATIVE executable-target relocation cluster grouping; 8 candidate adjacent tables, four witnessed slots reproducible; no vtable/async/unbind claim"
+      "Pinned original v1.70 main static nearby file-load CPK B/BL/BR/BLR neighborhood census and adjacent R_AARCH64_RELATIVE executable-target relocation cluster grouping; 8 candidate adjacent tables, four witnessed slots reproducible; no vtable/async/unbind claim",
+      "All nine previously uncovered PC ModdingAPI parameter families now have source-pinned read-only format readers, validated with exact public raw samples; newest four: TUJ pairSpSkill (55x0x18), BGM (1x0x68), SpecialInteraction (4 count-prefixed records), GuardEffect (2x0xF8). 14 invalid inputs rejected. No Switch ABI/hook proof.",
+      "Exact SHA-pinned Switch 1.70 ARM64 Capstone code-window transcript (9 windows); 7 word-exact register/BLR witnesses, candidate 0x106F394 prolog from relocation, corrected former fileload_process 0x106F404 to mid-code BL to 0xFFF6A0. No CRI lifecycle proven."
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -58,10 +60,10 @@
       "multi-CPK raw conditionprm path collisions detected statically but runtime archive winner, async completion, unbind and global condition source order are not verified",
       "multi-CPK batch component packaging now available, but existing preloaded CPK entry content is not accessible to overlap analysis, global runtime condition source order and actual CRI async archive completion remain unverified",
       "Native call-edge scan finds zero direct B/BL inbound to fileload_process 0x106F404; indirect/callback dispatch not traced. CPK async completion, manager unbind/teardown and archive precedence remain unresolved.",
-      "Of the nine previously pending parameter families, SusanooCond and PartnerSlot now have PC payload-format readers only; four remain completely pending and neither PC reader is wired into Switch runtime. PC public templates do not supply stock Switch data.",
       "No address references to any of ten exact CPK/fileload anchor offsets were identified via pinned RELATIVE relocation, ADR or adjacent ADRP+ADD / load-of-relocation-slot patterns. This narrow negative result does NOT resolve indirect callbacks, vtables, unbind, priority or function starts.",
-      "Five of nine parameter families now have PC raw format readers only (Susanoo, PartnerSlot, Ougi, Gudo, CharRelation). Four others remain completely pending; none of the five is bound to verified Switch runtime readers or actor lifecycle.",
-      "Eight adjacent executable-target RELATIVE relocation clusters were found around 0x106F404, including 4 reproducible slots at 0x212B5F0..0x212B608. Cannot identify their native class/vtable ownership, async status, unbind semantics, or archive lookup precedence from static relocation grouping."
+      "Eight adjacent executable-target RELATIVE relocation clusters were found around 0x106F404, including 4 reproducible slots at 0x212B5F0..0x212B608. Cannot identify their native class/vtable ownership, async status, unbind semantics, or archive lookup precedence from static relocation grouping.",
+      "All nine source-grounded PC raw parameter family readers are validated, but ZERO of the nine is proven bound to native Switch 1.70 factories/actors; x64 PC calls, CRC32/BGM, effect data and audio lifecycle remain unported.",
+      "Original 0x106F404 is verified AArch64 BL to 0xFFF6A0, not a function entry. 0x106F394 has a pointer relocation/prolog but class/function ownership unknown. Indirect BLR X8 chains at 0x106ED9C and 0x106EDD0 have observed offsets 0x20 and 0x10, not proven vtable method indices."
     ],
     "proofs": [
       "reports/port_foundation/bootstrap.json",
@@ -92,20 +94,22 @@
       "reports/port_foundation/native_cpk_indirect_refs_summary.json",
       "reports/port_foundation/pc_param_rows.json",
       "reports/port_foundation/pc_param_streams.json",
-      "reports/port_foundation/native_cpk_pointer_candidates_summary.json"
+      "reports/port_foundation/native_cpk_pointer_candidates_summary.json",
+      "reports/port_foundation/pc_remaining_four_summary.json",
+      "reports/port_foundation/native_cpk_blr_structure_summary.json"
     ],
     "parameter_family_coverage": {
       "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
       "specialCondParam.xfbin": "PARTIAL: 228 class selectors; 53 placeholders and full construction/resource lifecycle pending",
-      "pairSpSkillManagerParam.xfbin": "PENDING",
-      "bgmManagerParam.xfbin": "PENDING",
+      "pairSpSkillManagerParam.xfbin": "PARTIAL_PC_READER_ONLY: authentic public raw PC 55x0x18 records (0x10-byte name, int32 unlock, int32 reserved); one optional PC terminal byte; Switch TUJ array ABI/ownership unverified",
+      "bgmManagerParam.xfbin": "PARTIAL_PC_READER_ONLY: authentic public raw PC 1x0x68 record (stage/sound 0x30 each, int32 BGM ID, int32 unknown); CRC/array lifetime and Switch BGM routing unverified",
       "susanooCondParam.xfbin": "PARTIAL_PC_READER_ONLY: authenticated 5x0x20-byte NSC PC template and source-grounded 24-byte type/16-bit ID at +0x18; no Switch native loader, Susanoo hook ABI or actor lifetime",
-      "specialInteractionManager.xfbin": "PENDING",
+      "specialInteractionManager.xfbin": "PARTIAL_PC_READER_ONLY: authentic public raw PC four variable count-prefixed entries, signed 32-bit main/trigger IDs; zero trigger semantics represented; Switch actor/trigger ABI unverified",
       "partnerSlotParam.xfbin": "PARTIAL_PC_READER_ONLY: authenticated 8x0x20-byte NSC PC template and source-grounded 24-byte type/16-bit ID at +0x18; no Switch native partner factory/ABI",
       "charRelationParam.xfbin": "PARTIAL_PC_READER_ONLY: authentic public NSC template 30 count-prefixed uint32 ID-list records; native Switch table lifecycle and bounds unverified",
       "gudoBallParam.xfbin": "PARTIAL_PC_READER_ONLY: authentic public NSC template two uint32 little-endian character IDs; native hook/actor effect and excluded vanilla IDs not validated",
       "ougiAwakeningParam.xfbin": "PARTIAL_PC_READER_ONLY: authentic public NSC template one uint32 little-endian character ID; no Switch ARM64 awakening/ultimate hook or UJ latch runtime proof",
-      "guardEffectParam.xfbin": "PENDING"
+      "guardEffectParam.xfbin": "PARTIAL_PC_READER_ONLY: authentic public raw PC 2x0xF8 rows; uint32 character/mode, five 0x30-byte strings; Switch effect allocator/bank/actor state not verified"
     },
     "condition_raw_value_audit": {
       "tool": "tools/audit_condition_raw_values.py",
@@ -331,14 +335,79 @@
       "async_completion_verified": false,
       "unbind_verified": false,
       "gameplay_verified": false
+    },
+    "pc_remaining_four": {
+      "source_pc_api": "TheLeonX/UltimateStormAPI@a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+      "original_pc_templates": "TheLeonX/NSC-ModManager@276116ebf5ba398a867793cb02ee6c33c0927645",
+      "reader_commit": "ef0bd858ef7d1f139ddce5672066957bae591866",
+      "ci_id": 41976177875,
+      "conclusion": "success",
+      "families": {
+        "pairSpSkillManagerParam": {
+          "records": 55,
+          "bytes": 1320,
+          "sha256": "45f753590ea2dd0a187b19baa672965dcb7ef6a7a40cca4c8dfb7d020a907d1a",
+          "git_blob": "a5505c2fee7d48fc13f96e69873151502d51a082"
+        },
+        "bgmManagerParam": {
+          "records": 1,
+          "bytes": 104,
+          "sha256": "37624a482fe4a7e3b110ef897337ba1013ca2ecd2fb049d41debd1e83ff2ab04",
+          "git_blob": "b2b5439891eb6fc9ab89d3839be3e344df7cf18d"
+        },
+        "specialInteractionManager": {
+          "records": 4,
+          "bytes": 200,
+          "sha256": "bc567cf4b536d48012d55937dc094dee1e086837fb5cde0d6925b7a345b1e367",
+          "git_blob": "07a5c0691ddf57dfa8d40177948b8c40ea9e27ae"
+        },
+        "guardEffectParam": {
+          "records": 2,
+          "bytes": 496,
+          "sha256": "f6c7b12e849f4c23a295d8c3fb968223845b53ea57ec7e8c6e3bb7de4899f958",
+          "git_blob": "cad85b19e411c800ce8ad930f622c2fb7b9fc42b"
+        }
+      },
+      "malformed_inputs_rejected": 14,
+      "native_hook_integrated": false,
+      "gameplay_tested": false
+    },
+    "native_cpk_disassembly": {
+      "code_commit": "90be75437ecfc6a7e67a0a6d82eade3db8ee8131",
+      "ci_id": 41976417627,
+      "conclusion": "success",
+      "pinned_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "bounded_windows": 9,
+      "corrected_0x106f404": "BL to 0xFFF6A0; not function entrypoint",
+      "sites": [
+        "0x106ed9c BLR X8",
+        "0x106edd0 BLR X8"
+      ],
+      "native_abi_verified": false,
+      "lifecycle_proven": false
+    },
+    "native_cpk_blr_structure": {
+      "code_commit": "9dfbf05bfebbab38f93b1a66812e8c76c2aa7a36",
+      "ci_id": 41977060825,
+      "conclusion": "success",
+      "witnesses": 7,
+      "candidate_entry": "RELATIVE at 0x215C478 -> 0x106F394, SUB SP,SP,#0x40; not function boundary evidence",
+      "blr_chains": [
+        "0x106ED90 LDR X8,[X20]; 0x106ED98 LDR X8,[X8,#0x20]; 0x106ED9C BLR X8",
+        "0x106EDC8 LDR X8,[X0]; 0x106EDCC LDR X8,[X8,#0x10]; 0x106EDD0 BLR X8"
+      ],
+      "vtable_owner_known": false,
+      "async_verified": false,
+      "unbind_verified": false,
+      "archive_precedence_verified": false
     }
   },
   "ci": {
-    "run_id": 41973202913,
+    "run_id": 41977060825,
     "status": "completed",
     "conclusion": "success",
-    "head_sha": "ef738a5eba5738f40d9f8ca2384912496210e148",
-    "scope": "exact pinned main static code-pointer relocation grouping and existing compiled ARM64 native-component tests; source-authenticated public PC payload templates; no real CRI IO or Uzuy gameplay"
+    "head_sha": "9dfbf05bfebbab38f93b1a66812e8c76c2aa7a36",
+    "scope": "build AArch64 plus pinned main Capstone 9-window / 7-register-witness static proofs, 9 PC source-grounded raw family readers; no stock CPK gameplay verification"
   },
   "provenance": {
     "manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
@@ -369,15 +438,15 @@
     }
   ],
   "next_mvp": {
-    "name": "Verify genuine Switch CPK/PC manager517 and resolve nearby CPK relocation table ownership + ARM64 ABI",
-    "status": "PENDING_REAL_INPUT_AND_NATIVE_LIFECYCLE",
+    "name": "Native verified CPK class/async lifecycle and real stock raw176; reader integration only after ABI evidence",
+    "status": "PENDING_NATIVE_LIFECYCLE_AND_AUTHENTIC_INPUTS",
     "spec": "handoff/CONTINUE_PROMPT.txt",
     "acceptance": [
-      "Authenticate original Switch 1.70 common CPK and true merged PC manager517 at byte level; run actual raw176 comparison with SHA pins. No private game assets in public repo.",
-      "Use reports/port_foundation/native_cpk_pointer_candidates_summary.json and complete Actions artifact native_cpk_pointer_candidates.json; disassemble code at witnessed 0x106EDB8, 0x106EDC4, 0x106EDE0, 0x106EDE8 plus dispatch sites 0x106ED9C and 0x106EDD0, identify table/object ownership before hook.",
-      "Prove native async binding completion, lookup precedence and unbind, and actor/resource lifetime through native ARM64 slices with exact guards before runtime modification.",
-      "Complete four missing PC parameter family readers and integrate five existing PC-only readers into native Switch after ABI proof; continue MovesetPlus, 53 factory unknowns and compressed PRM.",
-      "Keep full_moddingapi, ready_for_gameplay_test and emulator_tested false until concrete Uzuy gameplay proof."
+      "Establish unmodified stock Switch common.cpk and original merged PC manager517 SHA256/provenance and compare raw176 values with actual input bytes; Library common CPK was materialized but container/Python failed.",
+      "Derive class/object/vtable ownership of 0x106ED9C/0x106EDD0 LDR/BLR chains and nearby 0x106F394 relocated candidate function; correct erroneous prior 0x106F404 function-entry assumption.",
+      "Native-ABI-proven async completion/priority/unbind/teardown before adding hooks and tests. NO guessed trampolines or return values.",
+      "Wire all nine PC-only raw parameter readers only where Switch factory/actor/resource lifetime is established; continue MovesetPlus, 53 missing factory constructors, compressed PRM, effect/audio.",
+      "Do not advance gameplay/full_moddingapi/ready/emulator flags without real Uzuy evidence."
     ]
   },
   "continuation": {
@@ -400,7 +469,7 @@
       "Continue authorized work without repeated permission prompts; preserve honest evidence labels."
     ]
   },
-  "verified_component_commit": "ef738a5eba5738f40d9f8ca2384912496210e148",
+  "verified_component_commit": "9dfbf05bfebbab38f93b1a66812e8c76c2aa7a36",
   "progress_since_previous_handoff": [
     {
       "commit": "40eab530d7d90811250cea085d941ca26b929651",
@@ -479,6 +548,24 @@
       "ci_run_id": 41973202913,
       "ci_conclusion": "success",
       "scope": "Eight adjacent executable-target RELATIVE relocation slot clusters near fileload_process with actual pinned main original code witnesses; no vtable ABI, async or unbind proof"
+    },
+    {
+      "commit": "ef0bd858ef7d1f139ddce5672066957bae591866",
+      "ci_run_id": 41976177875,
+      "ci_conclusion": "success",
+      "scope": "Last four PC parameter raw readers with exact public source fixtures (55 TUJ, 1 BGM, 4 interaction, 2 Guard) and 14 negative-format cases"
+    },
+    {
+      "commit": "90be75437ecfc6a7e67a0a6d82eade3db8ee8131",
+      "ci_run_id": 41976417627,
+      "ci_conclusion": "success",
+      "scope": "Capstone 9 bounded pinned ARM64 instruction transcripts from known CPK FileLoad indirect/direct sites"
+    },
+    {
+      "commit": "9dfbf05bfebbab38f93b1a66812e8c76c2aa7a36",
+      "ci_run_id": 41977060825,
+      "ci_conclusion": "success",
+      "scope": "7 register/BLR structural witnesses; 0x106F404 corrected to BL callsite, relocated 0x106F394 candidate entry; lifecycle still unknown"
     }
   ]
 }
