@@ -5,6 +5,7 @@
 #include "nsc_condition_storage.hpp"
 #include "nsc_factory.hpp"
 #include "nsc_controls.hpp"
+#include "nsc_pc_raw.hpp"
 #include "nsc_cpk_profile.hpp"
 #include "nsc_condition_profile.hpp"
 #include "lib.hpp"
@@ -20,6 +21,11 @@ bool Initialize() {
         return false;
     }
     Logging.Log("[NSC:PORT] IMAGE_VERIFIED profile=%u", static_cast<unsigned>(profile));
+    // Keep the standalone PC raw readers linked in the ARM64 module without
+    // patching any original parameter consumer or taking ownership of buffers.
+    const auto* pc_raw=nsc_pc_raw_get_api();
+    Logging.Log("[NSC:PORT] PC_RAW_SOURCE_READERS api=%u families=%u engine_consumers=0 gameplay_verified=0",
+                pc_raw->version,pc_raw->family_count);
     if (!nsc::factory::LoadEmbeddedProfile()) {
         Logging.Log("[NSC:PORT] INIT_REJECT reason=invalid_factory_profile game_writes=0");
         return false;
