@@ -102,6 +102,7 @@ def run(main,out):
         expected_count=sum(x["record_count"] for x in manifest["families"])
         assert good and (summary.mask,summary.sources,summary.bytes,summary.records)==(
             0x1ff,9,len(blob),expected_count)
+        negatives=0
         # The native reader must reject metadata output aliases to the
         # caller-owned source pack, including partial boundary overlaps.
         for api_name,offset,output_type in (
@@ -129,7 +130,6 @@ def run(main,out):
                 ok,_,read=inspect(blob,k,ordinal)
                 assert ok and read==(1,_meta_python(k,entries[ordinal]))
                 positives+=1
-        negatives=0
         def invalid(data):
             nonlocal negatives
             valid,summary,_=inspect(data)

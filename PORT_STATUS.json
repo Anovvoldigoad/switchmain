@@ -1042,5 +1042,12 @@
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
     "baseline_sha": "c3bd15727e17e03415a332d25c962eb62e7552a3"
+  },
+  "latest_ci_harness_fix": {
+    "prior_commit": "42d064bde2509899950146f83da08518022715b8",
+    "failed_actions_run": 42278736419,
+    "failed_job": 128101803373,
+    "reason": "test_pc_native_pack.py negatives counter referenced before assignment",
+    "new_commit_ci": "PENDING"
   }
 }
