@@ -995,8 +995,18 @@
     "engine_consumer_connected": false
   },
   "latest_offline_row_copy_regression": {
-    "state": "pending_ci",
-    "scope": "host offline only; no native engine ABI",
-    "note": "2026-11-06: Added byte-exact offline copy_row regression (family-relative source offset), sentinel preservation, and fail-closed destination/length integrity checks; NO engine consumer ABI or Uzuy proof. Await GitHub Actions COMPLETED SUCCESS and original job logs before PASS."
+    "state": "ci_verified",
+    "code_sha": "1029358a5296500d0c4fd2e645dc785879c15775",
+    "run_id": 42181003271,
+    "job_id": 127770356486,
+    "marker": "PC_PACK_STAGING_LEASE_PASS 33 NO_ENGINE_ABI",
+    "original_logs_checked": true,
+    "scope": "offline only; no engine ABI or Uzuy"
+  },
+  "pc_pack_copy_length_alias_guard": {
+    "status": "pending_ci",
+    "description": "Reject copy_row length-output pointer aliasing pack arena or destination; fail-closed without mutation",
+    "native_consumer_proven": false,
+    "gameplay_verified": false
   }
 }

@@ -878,3 +878,8 @@ Original GitHub Actions run 42143523682 completed FAILURE, job 127649363979 orig
 ## Offline PC pack row copy integrity regression (CI pending)
 
 2026-11-06: Added byte-exact offline copy_row regression (family-relative source offset), sentinel preservation, and fail-closed destination/length integrity checks; NO engine consumer ABI or Uzuy proof. Await GitHub Actions COMPLETED SUCCESS and original job logs before PASS.
+
+
+## 2026-11-06 — Offline copy_row length-output alias safety (pending CI)
+
+Verified prior HEAD 1029358a Actions 42181003271 COMPLETED SUCCESS, job 127770356486 original logs checked, staging lease 33 assertions PASS. New guard rejects `copied` length pointer overlapping staging arena or consumer output buffer, before any writes; host regressions assert no mutation on rejection. No engine ABI or gameplay claims. CI for this new change pending; all release flags false.

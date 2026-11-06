@@ -81,8 +81,17 @@ int main(int argc,char** argv) {
     assert(copied==0xBADu && consumer==consumer_before);
     assert(!lease.copy_row(0,0,arena.data(),arena.size(),&copied));
     assert(copied==0xBADu && consumer==consumer_before);
+    // Metadata pointer aliasing the validated pack or output must fail closed.
+    auto* length_in_arena=reinterpret_cast<std::size_t*>(arena.data()+lease.length);
+    const auto arena_before=arena;
+    assert(!lease.copy_row(0,0,consumer.data(),consumer.size(),length_in_arena));
+    assert(arena==arena_before && consumer==consumer_before);
+    auto* length_in_output=reinterpret_cast<std::size_t*>(consumer.data()+2048);
+    assert(!lease.copy_row(0,0,consumer.data(),consumer.size(),length_in_output));
+    assert(arena==arena_before && consumer==consumer_before);
+    assert(copied==0xBADu);
     lease.unbind();
-    std::puts("PC_PACK_STAGING_LEASE_PASS 33 NO_ENGINE_ABI");
+    std::puts("PC_PACK_STAGING_LEASE_PASS 37 NO_ENGINE_ABI");
 }
 """
 def run(main,out):

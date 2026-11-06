@@ -83,6 +83,13 @@ struct NSCPcPackLease {
         if (a > UINTPTR_MAX - capacity ||
             d > UINTPTR_MAX - destination_capacity) return false;
         if (a < d + destination_capacity && d < a + capacity) return false;
+        // The output-length pointer is caller-owned metadata, not an arena or
+        // destination alias. Reject before either payload or metadata writes.
+        const auto c = reinterpret_cast<std::uintptr_t>(copied);
+        if (c > UINTPTR_MAX - sizeof(*copied) ||
+            (a < c + sizeof(*copied) && c < a + capacity) ||
+            (d < c + sizeof(*copied) && c < d + destination_capacity))
+            return false;
         std::memcpy(destination, arena + base + record.offset, record.length);
         *copied = record.length;
         return true;
