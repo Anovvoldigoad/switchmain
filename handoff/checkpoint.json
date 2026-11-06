@@ -1398,5 +1398,10 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Verify CI and raw logs for offline copy_row destination/lease overlap guard (expected marker 53); no native engine ABI or Uzuy proof."
+  "next_action": "Verify CI and raw logs for offline copy_row destination/lease overlap guard (expected marker 53); no native engine ABI or Uzuy proof.",
+  "latest_offline_pack_alias_guard": {
+    "status": "PENDING_CI",
+    "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
+    "baseline_sha": "c3bd15727e17e03415a332d25c962eb62e7552a3"
+  }
 }

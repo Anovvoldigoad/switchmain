@@ -904,3 +904,8 @@ Prior 0f1a4077f8d743c5750da4b0d1db70cbf9e0feca Actions 42224723618 COMPLETED SUC
 ## Offline staging lease guard (CI pending)
 
 `copy_row` now rejects destination spans overlapping the lease control object, including partial overlap, before copying payload. Regression verifies rejected writes preserve lease state and output. This is an offline consumer-owned buffer safety improvement only; it does not establish native engine ABI, lifecycle, CRI callbacks, archive precedence, or Uzuy gameplay.
+
+
+## 2026-11-07 — Native pack metadata-output alias rejection (pending CI)
+
+2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.

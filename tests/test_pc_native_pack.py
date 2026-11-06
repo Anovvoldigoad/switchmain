@@ -102,6 +102,23 @@ def run(main,out):
         expected_count=sum(x["record_count"] for x in manifest["families"])
         assert good and (summary.mask,summary.sources,summary.bytes,summary.records)==(
             0x1ff,9,len(blob),expected_count)
+        # The native reader must reject metadata output aliases to the
+        # caller-owned source pack, including partial boundary overlaps.
+        for api_name,offset,output_type in (
+            ("validate",0,PackSummary),
+            ("validate",len(blob)-1,PackSummary),
+            ("row",0,Row),
+            ("row",len(blob)-1,Row),
+        ):
+            buf=ctypes.create_string_buffer(blob,len(blob)+64)
+            original=bytes(buf.raw)
+            output=ctypes.cast(ctypes.byref(buf,offset),ctypes.POINTER(output_type))
+            if api_name=="validate":
+                accepted=lib.nsc_pc_pack_validate(buf,len(blob),output)
+            else:
+                accepted=lib.nsc_pc_pack_row_at(buf,len(blob),0,0,output)
+            assert accepted==0 and buf.raw==original
+            negatives+=1
         positives=1
         for k,family in enumerate(FAMILIES):
             raw=sources[family][1]

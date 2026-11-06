@@ -31,6 +31,15 @@ bool Digest(const std::uint8_t* src,std::size_t size) {
     for (std::size_t i=0;i<32;++i) difference|=digest[i]^src[32+i];
     return difference==0;
 }
+// Never publish metadata into the caller-owned source pack. The pack may
+// be memory-mapped read-only, and an overlapping output would invalidate its
+// digest after validation. Integer address arithmetic avoids pointer UB.
+bool Overlaps(const void* a,std::size_t an,const void* b,std::size_t bn) {
+    if (!a || !b || !an || !bn) return false;
+    const auto x=reinterpret_cast<std::uintptr_t>(a);
+    const auto y=reinterpret_cast<std::uintptr_t>(b);
+    return x<=y ? y-x<an : x-y<bn;
+}
 bool Check(const void* ptr,std::size_t n,NSCPcPackSummary& report) {
     if (!ptr || n<kPayloadStart || n>kMaxPack || n>0xffffffffu) return false;
     const auto* b=static_cast<const std::uint8_t*>(ptr);
@@ -76,7 +85,7 @@ bool Check(const void* ptr,std::size_t n,NSCPcPackSummary& report) {
 
 extern "C" int nsc_pc_pack_validate(const void* data,std::size_t size,
                                      NSCPcPackSummary* out) {
-    if (!out) return 0;
+    if (!out || Overlaps(data,size,out,sizeof(*out))) return 0;
     NSCPcPackSummary valid{};
     if (!Check(data,size,valid)) return 0;
     *out=valid;
@@ -84,7 +93,7 @@ extern "C" int nsc_pc_pack_validate(const void* data,std::size_t size,
 }
 extern "C" int nsc_pc_pack_row_at(const void* data,std::size_t size,
              std::uint32_t family,std::uint32_t row,NSCPcRawRow* out) {
-    if (!out || family>=9u) return 0;
+    if (!out || family>=9u || Overlaps(data,size,out,sizeof(*out))) return 0;
     NSCPcPackSummary valid{};
     if (!Check(data,size,valid) || !(valid.present_mask & (1u<<family))) return 0;
     const auto* b=static_cast<const std::uint8_t*>(data);
