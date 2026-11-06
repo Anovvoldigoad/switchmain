@@ -13,8 +13,13 @@ CPP=r"""
 #include <cstdio>
 #include <fstream>
 #include <iterator>
+#include <type_traits>
 #include <vector>
 int main(int argc,char** argv) {
+    static_assert(!std::is_copy_constructible<NSCPcPackLease>::value);
+    static_assert(!std::is_copy_assignable<NSCPcPackLease>::value);
+    static_assert(!std::is_move_constructible<NSCPcPackLease>::value);
+    static_assert(!std::is_move_assignable<NSCPcPackLease>::value);
     assert(argc==2);
     std::ifstream in(argv[1],std::ios::binary);
     std::vector<char> src((std::istreambuf_iterator<char>(in)),{});
@@ -53,7 +58,7 @@ int main(int argc,char** argv) {
     assert(lease.bind(arena.data(),arena.size(),src.data(),src.size()));
     assert(lease.row(0,0,&row));
     lease.unbind();
-    std::puts("PC_PACK_STAGING_LEASE_PASS 17 NO_ENGINE_ABI");
+    std::puts("PC_PACK_STAGING_LEASE_PASS 21 NO_ENGINE_ABI");
 }
 """
 def run(main,out):

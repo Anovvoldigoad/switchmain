@@ -979,5 +979,14 @@
     "fix": "newline and marker correction plus overlap regression",
     "new_ci": "pending",
     "gameplay_proof": false
+  },
+  "latest_lease_handle_guard": {
+    "status": "pending_ci",
+    "description": "Deleted implicit copy and move operations on offline caller-owned staging lease; four compile-time regressions",
+    "previous_ci_run": 42149995458,
+    "previous_ci_job": 127670617607,
+    "previous_ci_conclusion": "success",
+    "engine_abi_proven": false,
+    "gameplay_proof": false
   }
 }

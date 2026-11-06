@@ -868,3 +868,8 @@ Fix NSCPcPackLease::bind to reject source intersection with the entire destinati
 ## 2026-11-06 — Staging lease CI harness failure diagnosed and repaired (pending new CI)
 
 Original GitHub Actions run 42143523682 completed FAILURE, job 127649363979 original logs inspected: generated lease_test.cpp used literal backslash-n between #include directives; compiler -Werror rejected extra tokens. Also corrected stale expected PASS marker from 15 to 17 and added explicit source-inside-unused-arena-tail rejection regression. No original main changes or game hook. Pending new CI; no PASS claim; release flags false.
+
+
+## Offline lease handle ownership (CI pending)
+
+2026-11-06: Actions 42149995458 for c220690b COMPLETED SUCCESS, job 127670617607 original log inspected (68 successful steps, PC_PACK_STAGING_LEASE_PASS 17 NO_ENGINE_ABI). New change: delete copy/move on NSCPcPackLease; four compile-time regressions guard against aliasing caller-owned arena. Await CI for this new commit. No engine hook or gameplay proof.

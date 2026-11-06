@@ -8,6 +8,13 @@
 // Owner supplies stable writable arena for the entire bound lifetime.
 // Single-threaded; external synchronization is mandatory. No CRI callbacks.
 struct NSCPcPackLease {
+    NSCPcPackLease() = default;
+    // A lease cannot be duplicated or transferred implicitly: doing so would
+    // create two independently bound handles to the same caller-owned arena.
+    NSCPcPackLease(const NSCPcPackLease&) = delete;
+    NSCPcPackLease& operator=(const NSCPcPackLease&) = delete;
+    NSCPcPackLease(NSCPcPackLease&&) = delete;
+    NSCPcPackLease& operator=(NSCPcPackLease&&) = delete;
     std::uint8_t* arena = nullptr;
     std::size_t capacity = 0;
     std::size_t length = 0;
