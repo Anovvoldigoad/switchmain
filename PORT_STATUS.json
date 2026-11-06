@@ -1007,6 +1007,11 @@
     "status": "pending_ci",
     "description": "Reject copy_row length-output pointer aliasing pack arena or destination; fail-closed without mutation",
     "native_consumer_proven": false,
-    "gameplay_verified": false
+    "gameplay_verified": false,
+    "previous_failed_run": 42202487601,
+    "previous_failed_job": 127840924176,
+    "previous_failure": "Harness expected 33 but compiled C++ prints 37; original log inspected",
+    "fix": "Align harness expected output to 37, retaining alias guards",
+    "engine_abi_proven": false
   }
 }

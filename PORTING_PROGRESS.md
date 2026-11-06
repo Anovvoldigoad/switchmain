@@ -883,3 +883,7 @@ Original GitHub Actions run 42143523682 completed FAILURE, job 127649363979 orig
 ## 2026-11-06 — Offline copy_row length-output alias safety (pending CI)
 
 Verified prior HEAD 1029358a Actions 42181003271 COMPLETED SUCCESS, job 127770356486 original logs checked, staging lease 33 assertions PASS. New guard rejects `copied` length pointer overlapping staging arena or consumer output buffer, before any writes; host regressions assert no mutation on rejection. No engine ABI or gameplay claims. CI for this new change pending; all release flags false.
+
+## 2026-11-06 — CI harness marker correction for copy_row metadata alias guard (pending CI)
+
+GitHub Actions 42202487601 for f95de8be completed FAILURE; original job 127840924176 logs inspected. Native test printed 37 while Python harness asserted 33; failure was an AssertionError at tests/test_pc_pack_staging_lease.py:113, not evidence of a native gameplay failure. Updated harness to expect 37 while retaining the metadata alias regression. Await new CI and original logs; no engine ABI, Uzuy, or release claim. All release flags false.
