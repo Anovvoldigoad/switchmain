@@ -8,7 +8,8 @@ ROOT=Path(__file__).resolve().parents[1]
 CPP=r"""
 #include "nsc_pc_pack_lease.hpp"
 #include <cassert>
-#include <cstdint>\n#include <cstring>
+#include <cstdint>
+#include <cstring>
 #include <cstdio>
 #include <fstream>
 #include <iterator>
@@ -25,6 +26,12 @@ int main(int argc,char** argv) {
     assert(!lease.bind(arena.data(),src.size()-1,src.data(),src.size()));
     assert(!lease.bound && arena[0]==0x5A);
     assert(!lease.bind(src.data(),src.size(),src.data(),src.size()));
+    assert(!lease.bound);
+    // Source located in the unused tail of the destination arena must fail.
+    std::vector<std::uint8_t> overlapping(src.size()*2+64,0x5A);
+    std::memcpy(overlapping.data()+src.size()+8,src.data(),src.size());
+    assert(!lease.bind(overlapping.data(),overlapping.size(),
+                       overlapping.data()+src.size()+8,src.size()));
     assert(!lease.bound);
     std::vector<char> corrupted=src;
     corrupted.back()^=1;
@@ -65,7 +72,7 @@ def run(main,out):
             str(source/"nsc_pc_raw.cpp"),str(obj),"-o",str(binary)],check=True)
         cp=subprocess.run([str(binary),str(candidate/"pc_native_sources.pack")],
             text=True,capture_output=True,check=True)
-        assert "PC_PACK_STAGING_LEASE_PASS 15 NO_ENGINE_ABI" in cp.stdout
+        assert "PC_PACK_STAGING_LEASE_PASS 17 NO_ENGINE_ABI" in cp.stdout
         out.mkdir(parents=True,exist_ok=True)
         (out/"pc_pack_staging_lease.txt").write_text(cp.stdout)
         print(cp.stdout,end="")

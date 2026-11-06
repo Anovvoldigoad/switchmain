@@ -864,3 +864,7 @@ Initial code 8fb8a1f1cbc3e04de73d07d45fe93fb81dcbe542 CI42064991061 SUCCESS but 
 ## 2026-11-06 — Offline staging lease full-arena overlap guard (CI pending)
 
 Fix NSCPcPackLease::bind to reject source intersection with the entire destination storage_size, not only copied source_size. Reject pointer-end overflow using full destination capacity. Regression covers source inside unused arena tail and adjacent non-overlap. No engine hook or gameplay proof; all release flags false. Await full GitHub Actions logs before PASS.
+
+## 2026-11-06 — Staging lease CI harness failure diagnosed and repaired (pending new CI)
+
+Original GitHub Actions run 42143523682 completed FAILURE, job 127649363979 original logs inspected: generated lease_test.cpp used literal backslash-n between #include directives; compiler -Werror rejected extra tokens. Also corrected stale expected PASS marker from 15 to 17 and added explicit source-inside-unused-arena-tail rejection regression. No original main changes or game hook. Pending new CI; no PASS claim; release flags false.

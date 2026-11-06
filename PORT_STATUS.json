@@ -970,5 +970,14 @@
     "status": "pending_ci",
     "description": "Reject source intersecting entire caller-owned arena capacity; add adjacent-range regression",
     "engine_abi_proven": false
+  },
+  "latest_staging_lease_ci": {
+    "previous_run": 42143523682,
+    "previous_conclusion": "failure",
+    "previous_job": 127649363979,
+    "reason": "generated C++ include contained literal backslash-n",
+    "fix": "newline and marker correction plus overlap regression",
+    "new_ci": "pending",
+    "gameplay_proof": false
   }
 }

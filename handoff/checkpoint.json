@@ -65,7 +65,8 @@
       "2026-11-05 372cfa1a GitHub Actions 42050734300 COMPLETED SUCCESS 63 steps: Original FileOpen two indirect dispatch corridors: 0x116B718 LDR X8,[X0], 0x116B71C LDR X1,[X8,#0xC0], 0x116B724 BR X1; 0x116B41C LDR X8,[X0], 0x116B424 LDR X2,[X8,#0x58], 0x116B430 BR X2. Original exact main SHA pinned, no runtime ABI/ownership.",
       "2026-11-05 912ef384 GitHub Actions 42055285084 COMPLETED SUCCESS: Compiles 9 bounded PC raw formats into ARM64 module with AArch64-only registration and matches 123 actual/synthetic PC row views with 38 invalids rejected; job 127341886598, 64 steps.",
       "2026-11-05 9af5c535 GitHub Actions 42057187119 COMPLETED SUCCESS: Exact symbol lookup fixed; original ELF AArch64 9-family reader calls pass Unicorn: 30 positive API calls, 19 negative cases, host C++ 123 matching PC rows and 39 negatives; 65 steps, job 127348672877 log inspected.",
-      "2026-11-05 4ecbeeae Actions 42065894664 COMPLETED SUCCESS 67 steps job 127379739873 actual logs verified: new source-authenticated ZIP PC raw pack binary and AArch64 native reader (host 24 positive/26 rejected; ARM64 22 positive/12 rejected). No game consumer hooks, no Uzuy gameplay."
+      "2026-11-05 4ecbeeae Actions 42065894664 COMPLETED SUCCESS 67 steps job 127379739873 actual logs verified: new source-authenticated ZIP PC raw pack binary and AArch64 native reader (host 24 positive/26 rejected; ARM64 22 positive/12 rejected). No game consumer hooks, no Uzuy gameplay.",
+      "2026-11-06 CI failure 42143523682 original job 127649363979: generated C++ #include had literal escaped newline; fixed include and stale PASS marker 15->17, added unused-arena-tail overlap regression. New CI pending; no engine ABI."
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
