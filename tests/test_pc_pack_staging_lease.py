@@ -39,7 +39,7 @@ int main(int argc,char** argv) {
     auto saved=row;
     arena[lease.length-1]^=1;
     assert(!lease.row(0,0,&row));
-    assert(row.offset==saved.offset && row.size==saved.size);
+    assert(row.offset==saved.offset && row.length==saved.length);
     lease.unbind();
     assert(!lease.bound && lease.arena==nullptr && lease.length==0);
     assert(!lease.row(0,0,&row));
