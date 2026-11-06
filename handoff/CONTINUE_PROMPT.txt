@@ -1,3 +1,5 @@
+LATEST VERIFIED OFFLINE STAGING LEASE: code 70b67190, Actions 42135636935 SUCCESS, job 127622929798 original logs inspected. PC source pack caller-owned staging bind/row/unbind passed 15 assertions; NO original Switch parameter consumer ABI, CRI allocator/callback/rollback/destructor/locks/async or Uzuy gameplay proof. See reports/port_foundation/pc_pack_staging_lease_summary.json. NEXT: prove actual native engine consumer object acquisition and ownership/lifecycle before hook; then 53 factories, MovesetPlus, compressed PRM, models/effects/audio/SFX/Japanese voice/new-slot. Preserve original SHA guard, Sakura aura107, Event236, all release flags FALSE. Inspect fresh HEAD, non-force fast-forward only, new tests + CI full logs for new commits.
+
 LANJUTKAN FULL PC MODDINGAPI -> NARUTO STORM CONNECTIONS SWITCH v1.70
 Repo Anovvoldigoad/switchmain; branch port/full-api-v170.
 LATEST VERIFIED CODE HEAD 4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4. GitHub Actions 42065894664 COMPLETED SUCCESS, 67 steps, original job 127379739873 logs checked.

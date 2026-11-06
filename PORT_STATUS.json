@@ -56,7 +56,8 @@
     "2026-11-05 372cfa1a GitHub Actions 42050734300 COMPLETED SUCCESS 63 steps job 127325814383 inspected: Original FileOpen two indirect dispatch corridors: 0x116B718 LDR X8,[X0], 0x116B71C LDR X1,[X8,#0xC0], 0x116B724 BR X1; 0x116B41C LDR X8,[X0], 0x116B424 LDR X2,[X8,#0x58], 0x116B430 BR X2. Original exact main SHA pinned, no runtime ABI/ownership.",
     "2026-11-05 912ef384 GitHub Actions 42055285084 COMPLETED SUCCESS: Compiles 9 bounded PC raw formats into ARM64 module with AArch64-only registration and matches 123 actual/synthetic PC row views with 38 invalids rejected; job 127341886598, 64 steps.",
     "2026-11-05 9af5c535 GitHub Actions 42057187119 COMPLETED SUCCESS: Exact symbol lookup fixed; original ELF AArch64 9-family reader calls pass Unicorn: 30 positive API calls, 19 negative cases, host C++ 123 matching PC rows and 39 negatives; 65 steps, job 127348672877 log inspected.",
-    "2026-11-05 4ecbeeae Actions 42065894664 COMPLETED SUCCESS 67 steps job 127379739873 actual logs verified: new source-authenticated ZIP PC raw pack binary and AArch64 native reader (host 24 positive/26 rejected; ARM64 22 positive/12 rejected). No game consumer hooks, no Uzuy gameplay."
+    "2026-11-05 4ecbeeae Actions 42065894664 COMPLETED SUCCESS 67 steps job 127379739873 actual logs verified: new source-authenticated ZIP PC raw pack binary and AArch64 native reader (host 24 positive/26 rejected; ARM64 22 positive/12 rejected). No game consumer hooks, no Uzuy gameplay.",
+    "2026-11-06 code 70b67190 Actions 42135636935 COMPLETED SUCCESS job 127622929798 original logs inspected: source-pack offline caller-owned staging lease, 15 assertions; no original Switch game parameter consumer ABI or CRI lifecycle proven."
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -131,7 +132,8 @@
     "reports/port_foundation/native_fileload_zero_return_summary.json",
     "reports/port_foundation/native_fileload_result_flow_summary.json",
     "reports/port_foundation/native_fileopen_returns_summary.json",
-    "reports/port_foundation/native_fileload_entry_register_summary.json"
+    "reports/port_foundation/native_fileload_entry_register_summary.json",
+    "reports/port_foundation/pc_pack_staging_lease_summary.json"
   ],
   "parameter_family_coverage": {
     "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",

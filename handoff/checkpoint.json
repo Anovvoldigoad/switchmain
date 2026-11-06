@@ -1324,5 +1324,13 @@
     "ready_for_gameplay_test": false,
     "emulator_tested": false,
     "gameplay_verified": false
+  },
+  "latest_verified_staging_lease": {
+    "code_sha": "70b67190f937c0090eba3afa774cad1d203a24d2",
+    "run_id": 42135636935,
+    "job_id": 127622929798,
+    "ci": "COMPLETED_SUCCESS_LOG_VERIFIED",
+    "report": "reports/port_foundation/pc_pack_staging_lease_summary.json",
+    "real_engine_consumer_proven": false
   }
 }
