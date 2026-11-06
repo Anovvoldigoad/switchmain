@@ -1339,12 +1339,20 @@
     "engine_abi_proven": false
   },
   "latest_lease_handle_guard": {
-    "status": "pending_ci",
+    "status": "ci_verified",
     "description": "Deleted implicit copy and move operations on offline caller-owned staging lease; four compile-time regressions",
     "previous_ci_run": 42149995458,
     "previous_ci_job": 127670617607,
     "previous_ci_conclusion": "success",
     "engine_abi_proven": false,
-    "gameplay_proof": false
+    "gameplay_proof": false,
+    "code_sha": "c05e2fb23435eb3f4a65b91d9a98c2a1b0768358",
+    "ci_run": 42162289717,
+    "ci_job": 127710548290,
+    "ci": "COMPLETED_SUCCESS_LOG_VERIFIED"
+  },
+  "pc_pack_offline_row_copy": {
+    "status": "pending_ci",
+    "engine_abi_proven": false
   }
 }

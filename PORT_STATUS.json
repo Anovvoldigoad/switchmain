@@ -988,5 +988,10 @@
     "previous_ci_conclusion": "success",
     "engine_abi_proven": false,
     "gameplay_proof": false
+  },
+  "pc_pack_offline_row_copy": {
+    "status": "pending_ci",
+    "description": "Validated row copied into disjoint caller-owned consumer buffer, no pointer retention or engine ABI",
+    "engine_consumer_connected": false
   }
 }

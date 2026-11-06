@@ -55,6 +55,39 @@ struct NSCPcPackLease {
         return true;
     }
 
+
+    // Offline consumer boundary: copy a validated raw row into caller storage.
+    // Never expose a borrowed arena pointer; no game allocator or hook.
+    // Destination must not alias any part of the staging arena.
+    bool copy_row(std::uint32_t family, std::uint32_t ordinal,
+                  void* destination, std::size_t destination_capacity,
+                  std::size_t* copied) const {
+        if (!bound || !arena || !destination || !copied ||
+            family >= 9u || destination_capacity == 0u) return false;
+        NSCPcRawRow record{};
+        if (!row(family, ordinal, &record)) return false;
+        const std::size_t dir = 64u + 48u * family;
+        if (length < dir + 48u) return false;
+        const auto read32 = [](const std::uint8_t* p) -> std::uint32_t {
+            return std::uint32_t(p[0]) | (std::uint32_t(p[1]) << 8) |
+                   (std::uint32_t(p[2]) << 16) | (std::uint32_t(p[3]) << 24);
+        };
+        const std::size_t base = read32(arena + dir);
+        const std::size_t size = read32(arena + dir + 4u);
+        if (record.offset > size || record.length > size - record.offset ||
+            base > length || size > length - base ||
+            record.length == 0u || record.length > destination_capacity)
+            return false;
+        const auto a = reinterpret_cast<std::uintptr_t>(arena);
+        const auto d = reinterpret_cast<std::uintptr_t>(destination);
+        if (a > UINTPTR_MAX - capacity ||
+            d > UINTPTR_MAX - destination_capacity) return false;
+        if (a < d + destination_capacity && d < a + capacity) return false;
+        std::memcpy(destination, arena + base + record.offset, record.length);
+        *copied = record.length;
+        return true;
+    }
+
     // Does not dereference arena: owner may retire storage before unbind,
     // provided no concurrent row operation is running. No destructor hook.
     void unbind() {

@@ -57,8 +57,16 @@ int main(int argc,char** argv) {
     assert(!lease.row(0,0,&row));
     assert(lease.bind(arena.data(),arena.size(),src.data(),src.size()));
     assert(lease.row(0,0,&row));
+    // Copy a validated row to a disjoint consumer-owned output buffer.
+    std::vector<std::uint8_t> consumer(4096,0xA5);
+    std::size_t copied=999;
+    assert(lease.copy_row(0,0,consumer.data(),consumer.size(),&copied));
+    assert(copied==row.length && copied>0);
+    assert(!lease.copy_row(9,0,consumer.data(),consumer.size(),&copied));
+    assert(!lease.copy_row(0,0,consumer.data(),1,&copied));
+    assert(!lease.copy_row(0,0,arena.data(),arena.size(),&copied));
     lease.unbind();
-    std::puts("PC_PACK_STAGING_LEASE_PASS 21 NO_ENGINE_ABI");
+    std::puts("PC_PACK_STAGING_LEASE_PASS 25 NO_ENGINE_ABI");
 }
 """
 def run(main,out):
@@ -77,7 +85,7 @@ def run(main,out):
             str(source/"nsc_pc_raw.cpp"),str(obj),"-o",str(binary)],check=True)
         cp=subprocess.run([str(binary),str(candidate/"pc_native_sources.pack")],
             text=True,capture_output=True,check=True)
-        assert "PC_PACK_STAGING_LEASE_PASS 21 NO_ENGINE_ABI" in cp.stdout
+        assert "PC_PACK_STAGING_LEASE_PASS 25 NO_ENGINE_ABI" in cp.stdout
         out.mkdir(parents=True,exist_ok=True)
         (out/"pc_pack_staging_lease.txt").write_text(cp.stdout)
         print(cp.stdout,end="")
