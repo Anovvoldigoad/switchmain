@@ -1397,5 +1397,6 @@
   },
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
-  "emulator_tested": false
+  "emulator_tested": false,
+  "next_action": "Verify CI and raw logs for offline copy_row destination/lease overlap guard (expected marker 53); no native engine ABI or Uzuy proof."
 }

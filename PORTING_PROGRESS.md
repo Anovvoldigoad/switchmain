@@ -899,3 +899,8 @@ GitHub Actions 42202487601 for f95de8be completed FAILURE; original job 12784092
 Prior 0f1a4077f8d743c5750da4b0d1db70cbf9e0feca Actions 42224723618 COMPLETED SUCCESS, original job 127915210617 log inspected: PC_PACK_STAGING_LEASE_PASS 41 NO_ENGINE_ABI, release guard 26. Added bind() reject-before-copy for destination arena overlapping lease control fields (full and partial), with regression and source/state integrity checks. New CI pending. No engine ABI or Uzuy proof; release flags false.
 
 - 2026-11-06: Actions 42234005102 for ac115effca12c1f61f18181fc57e5b19388fdb70 COMPLETED SUCCESS; original job 127946790864 log inspected, PC_PACK_STAGING_LEASE_PASS 45 NO_ENGINE_ABI and RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF. Added offline row() metadata alias rejection for arena/lease object with regression; new commit pending CI. No engine ABI or Uzuy proof.
+
+
+## Offline staging lease guard (CI pending)
+
+`copy_row` now rejects destination spans overlapping the lease control object, including partial overlap, before copying payload. Regression verifies rejected writes preserve lease state and output. This is an offline consumer-owned buffer safety improvement only; it does not establish native engine ABI, lifecycle, CRI callbacks, archive precedence, or Uzuy gameplay.

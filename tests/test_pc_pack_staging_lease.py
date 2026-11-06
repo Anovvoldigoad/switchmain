@@ -114,8 +114,16 @@ int main(int argc,char** argv) {
     assert(!lease.copy_row(0,0,consumer.data(),consumer.size(),&lease.capacity));
     assert(lease.capacity==arena.size() && consumer==consumer_before);
     assert(copied==0xBADu);
+    // Payload destination may not overwrite the lease control object.
+    // Both exact and partial overlaps must preserve the bound state.
+    const auto before_copy=consumer;
+    assert(!lease.copy_row(0,0,&lease,sizeof(lease),&copied));
+    auto* partial_dest=reinterpret_cast<std::uint8_t*>(&lease)+sizeof(lease)-1;
+    assert(!lease.copy_row(0,0,partial_dest,consumer.size(),&copied));
+    assert(lease.bound && lease.arena==arena.data() && lease.length==src.size());
+    assert(consumer==before_copy && copied==0xBADu);
     lease.unbind();
-    std::puts("PC_PACK_STAGING_LEASE_PASS 49 NO_ENGINE_ABI");
+    std::puts("PC_PACK_STAGING_LEASE_PASS 53 NO_ENGINE_ABI");
 }
 """
 def run(main,out):
@@ -134,7 +142,7 @@ def run(main,out):
             str(source/"nsc_pc_raw.cpp"),str(obj),"-o",str(binary)],check=True)
         cp=subprocess.run([str(binary),str(candidate/"pc_native_sources.pack")],
             text=True,capture_output=True,check=True)
-        assert "PC_PACK_STAGING_LEASE_PASS 49 NO_ENGINE_ABI" in cp.stdout
+        assert "PC_PACK_STAGING_LEASE_PASS 53 NO_ENGINE_ABI" in cp.stdout
         out.mkdir(parents=True,exist_ok=True)
         (out/"pc_pack_staging_lease.txt").write_text(cp.stdout)
         print(cp.stdout,end="")

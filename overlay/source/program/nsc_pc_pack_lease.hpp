@@ -100,12 +100,15 @@ struct NSCPcPackLease {
         if (a > UINTPTR_MAX - capacity ||
             d > UINTPTR_MAX - destination_capacity) return false;
         if (a < d + destination_capacity && d < a + capacity) return false;
+        // Reject payload writes over the lease control object itself.
+        const auto self = reinterpret_cast<std::uintptr_t>(this);
+        if (self > UINTPTR_MAX - sizeof(*this) ||
+            (self < d + destination_capacity && d < self + sizeof(*this)))
+            return false;
         // The output-length pointer is caller-owned metadata, not an arena or
         // destination alias. Reject before either payload or metadata writes.
         const auto c = reinterpret_cast<std::uintptr_t>(copied);
-        const auto self = reinterpret_cast<std::uintptr_t>(this);
-        if (self > UINTPTR_MAX - sizeof(*this) ||
-            c > UINTPTR_MAX - sizeof(*copied) ||
+        if (c > UINTPTR_MAX - sizeof(*copied) ||
             (self < c + sizeof(*copied) && c < self + sizeof(*this)) ||
             (a < c + sizeof(*copied) && c < a + capacity) ||
             (d < c + sizeof(*copied) && c < d + destination_capacity))
