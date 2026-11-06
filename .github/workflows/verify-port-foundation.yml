@@ -103,6 +103,8 @@ jobs:
         run: python tests/test_native_pc_raw_arm64.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
       - name: Validate nine-family PC original ZIP source pack with native host C++ and source precedence rejection
         run: python tests/test_pc_native_pack.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Test offline PC pack caller-owned staging lease (no engine ABI)
+        run: python tests/test_pc_pack_staging_lease.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Execute actual AArch64 PC raw source-pack reader against nine source-pinned upstream templates
         run: python tests/test_pc_native_pack_arm64.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
       - name: Match public original NSC Mod Manager PC condition manager512 by Git blob and SHA256
