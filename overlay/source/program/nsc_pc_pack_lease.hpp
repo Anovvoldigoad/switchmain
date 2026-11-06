@@ -86,7 +86,10 @@ struct NSCPcPackLease {
         // The output-length pointer is caller-owned metadata, not an arena or
         // destination alias. Reject before either payload or metadata writes.
         const auto c = reinterpret_cast<std::uintptr_t>(copied);
-        if (c > UINTPTR_MAX - sizeof(*copied) ||
+        const auto self = reinterpret_cast<std::uintptr_t>(this);
+        if (self > UINTPTR_MAX - sizeof(*this) ||
+            c > UINTPTR_MAX - sizeof(*copied) ||
+            (self < c + sizeof(*copied) && c < self + sizeof(*this)) ||
             (a < c + sizeof(*copied) && c < a + capacity) ||
             (d < c + sizeof(*copied) && c < d + destination_capacity))
             return false;

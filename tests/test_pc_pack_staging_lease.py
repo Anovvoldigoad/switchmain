@@ -90,8 +90,15 @@ int main(int argc,char** argv) {
     assert(!lease.copy_row(0,0,consumer.data(),consumer.size(),length_in_output));
     assert(arena==arena_before && consumer==consumer_before);
     assert(copied==0xBADu);
+    // Reject metadata aliases to the lease's own control fields, including
+    // pointers to capacity/length: otherwise a successful copy corrupts state.
+    assert(!lease.copy_row(0,0,consumer.data(),consumer.size(),&lease.length));
+    assert(lease.bound && lease.length==src.size());
+    assert(!lease.copy_row(0,0,consumer.data(),consumer.size(),&lease.capacity));
+    assert(lease.capacity==arena.size() && consumer==consumer_before);
+    assert(copied==0xBADu);
     lease.unbind();
-    std::puts("PC_PACK_STAGING_LEASE_PASS 37 NO_ENGINE_ABI");
+    std::puts("PC_PACK_STAGING_LEASE_PASS 41 NO_ENGINE_ABI");
 }
 """
 def run(main,out):
@@ -110,7 +117,7 @@ def run(main,out):
             str(source/"nsc_pc_raw.cpp"),str(obj),"-o",str(binary)],check=True)
         cp=subprocess.run([str(binary),str(candidate/"pc_native_sources.pack")],
             text=True,capture_output=True,check=True)
-        assert "PC_PACK_STAGING_LEASE_PASS 37 NO_ENGINE_ABI" in cp.stdout
+        assert "PC_PACK_STAGING_LEASE_PASS 41 NO_ENGINE_ABI" in cp.stdout
         out.mkdir(parents=True,exist_ok=True)
         (out/"pc_pack_staging_lease.txt").write_text(cp.stdout)
         print(cp.stdout,end="")

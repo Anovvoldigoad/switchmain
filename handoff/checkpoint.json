@@ -1374,5 +1374,8 @@
     "previous_failure": "Harness expected 33 but compiled C++ prints 37; original log inspected",
     "fix": "Align harness expected output to 37, retaining alias guards",
     "engine_abi_proven": false
-  }
+  },
+  "implemented_this_change": [
+    "2026-11-06: CI 42209580169 for 5d771838 COMPLETED SUCCESS, original job 127864601452 logs inspected: PC_PACK_STAGING_LEASE_PASS 37 NO_ENGINE_ABI; release guard 26. New offline copy_row metadata self-alias rejection (lease capacity/length) with fail-closed regression; pending CI for this commit. NO engine ABI or Uzuy proof."
+  ]
 }

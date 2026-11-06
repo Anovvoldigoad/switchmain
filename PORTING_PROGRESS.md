@@ -887,3 +887,8 @@ Verified prior HEAD 1029358a Actions 42181003271 COMPLETED SUCCESS, job 12777035
 ## 2026-11-06 — CI harness marker correction for copy_row metadata alias guard (pending CI)
 
 GitHub Actions 42202487601 for f95de8be completed FAILURE; original job 127840924176 logs inspected. Native test printed 37 while Python harness asserted 33; failure was an AssertionError at tests/test_pc_pack_staging_lease.py:113, not evidence of a native gameplay failure. Updated harness to expect 37 while retaining the metadata alias regression. Await new CI and original logs; no engine ABI, Uzuy, or release claim. All release flags false.
+
+
+## 2026-11-06 — Offline copy_row lease self-metadata alias guard (pending CI)
+
+2026-11-06: CI 42209580169 for 5d771838 COMPLETED SUCCESS, original job 127864601452 logs inspected: PC_PACK_STAGING_LEASE_PASS 37 NO_ENGINE_ABI; release guard 26. New offline copy_row metadata self-alias rejection (lease capacity/length) with fail-closed regression; pending CI for this commit. NO engine ABI or Uzuy proof.
