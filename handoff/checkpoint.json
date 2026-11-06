@@ -1379,9 +1379,23 @@
     "2026-11-06: Actions 42224723618 for 0f1a4077f8d743c5750da4b0d1db70cbf9e0feca COMPLETED SUCCESS; original job 127915210617 log inspected: PC_PACK_STAGING_LEASE_PASS 41 NO_ENGINE_ABI; release guard 26. New bind() self-overlap rejection with regressions, pending CI. No native engine ABI/Uzuy proof."
   ],
   "pc_pack_bind_self_overlap_guard": {
-    "status": "pending_ci",
+    "status": "ci_verified",
     "description": "Reject bind caller storage overlapping lease control object, including partial overlap; preserve state and source",
     "native_consumer_proven": false,
+    "gameplay_verified": false,
+    "code_sha": "ac115effca12c1f61f18181fc57e5b19388fdb70",
+    "run_id": 42234005102,
+    "job_id": 127946790864,
+    "marker": "PC_PACK_STAGING_LEASE_PASS 45 NO_ENGINE_ABI",
+    "original_logs_checked": true
+  },
+  "pc_pack_row_metadata_alias_guard": {
+    "status": "pending_ci",
+    "description": "Reject offline row metadata output aliases to staging arena or lease control object",
+    "engine_abi_proven": false,
     "gameplay_verified": false
-  }
+  },
+  "full_moddingapi": false,
+  "ready_for_gameplay_test": false,
+  "emulator_tested": false
 }

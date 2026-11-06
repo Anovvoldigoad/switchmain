@@ -52,6 +52,17 @@ struct NSCPcPackLease {
     bool row(std::uint32_t family, std::uint32_t ordinal,
              NSCPcRawRow* out) const {
         if (!bound || !arena || !out) return false;
+        // Never write row metadata over the source arena or this lease.
+        // A caller must supply a separate writable output object.
+        const auto a = reinterpret_cast<std::uintptr_t>(arena);
+        const auto o = reinterpret_cast<std::uintptr_t>(out);
+        const auto self = reinterpret_cast<std::uintptr_t>(this);
+        if (a > UINTPTR_MAX - capacity ||
+            o > UINTPTR_MAX - sizeof(*out) ||
+            self > UINTPTR_MAX - sizeof(*this) ||
+            (a < o + sizeof(*out) && o < a + capacity) ||
+            (self < o + sizeof(*out) && o < self + sizeof(*this)))
+            return false;
         // Revalidate every read to reject mutable-arena corruption.
         // Only scalar row metadata is returned; never an arena pointer.
         NSCPcRawRow temporary{};

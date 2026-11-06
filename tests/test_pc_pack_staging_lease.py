@@ -65,6 +65,15 @@ int main(int argc,char** argv) {
     assert(!lease.row(0,0,&row));
     assert(lease.bind(arena.data(),arena.size(),src.data(),src.size()));
     assert(lease.row(0,0,&row));
+    // Row metadata must never overwrite the lease object or staging arena.
+    const auto row_before=row;
+    const auto arena_before_row=arena;
+    auto* row_over_lease=reinterpret_cast<NSCPcRawRow*>(&lease);
+    assert(!lease.row(0,0,row_over_lease));
+    assert(lease.bound && lease.length==src.size());
+    auto* row_over_arena=reinterpret_cast<NSCPcRawRow*>(arena.data());
+    assert(!lease.row(0,0,row_over_arena));
+    assert(arena==arena_before_row && row.offset==row_before.offset);
     // Copy a validated row to a disjoint consumer-owned output buffer.
     std::vector<std::uint8_t> consumer(4096,0xA5);
     std::size_t copied=999;
@@ -106,7 +115,7 @@ int main(int argc,char** argv) {
     assert(lease.capacity==arena.size() && consumer==consumer_before);
     assert(copied==0xBADu);
     lease.unbind();
-    std::puts("PC_PACK_STAGING_LEASE_PASS 45 NO_ENGINE_ABI");
+    std::puts("PC_PACK_STAGING_LEASE_PASS 49 NO_ENGINE_ABI");
 }
 """
 def run(main,out):
@@ -125,7 +134,7 @@ def run(main,out):
             str(source/"nsc_pc_raw.cpp"),str(obj),"-o",str(binary)],check=True)
         cp=subprocess.run([str(binary),str(candidate/"pc_native_sources.pack")],
             text=True,capture_output=True,check=True)
-        assert "PC_PACK_STAGING_LEASE_PASS 45 NO_ENGINE_ABI" in cp.stdout
+        assert "PC_PACK_STAGING_LEASE_PASS 49 NO_ENGINE_ABI" in cp.stdout
         out.mkdir(parents=True,exist_ok=True)
         (out/"pc_pack_staging_lease.txt").write_text(cp.stdout)
         print(cp.stdout,end="")
