@@ -874,3 +874,7 @@ Original GitHub Actions run 42143523682 completed FAILURE, job 127649363979 orig
 
 2026-11-06: Actions 42149995458 for c220690b COMPLETED SUCCESS, job 127670617607 original log inspected (68 successful steps, PC_PACK_STAGING_LEASE_PASS 17 NO_ENGINE_ABI). New change: delete copy/move on NSCPcPackLease; four compile-time regressions guard against aliasing caller-owned arena. Await CI for this new commit. No engine hook or gameplay proof.
 \n## 2026-11-06 — Offline native row copy boundary (pending CI)\n\nPrior c05e2fb Actions 42162289717 COMPLETED SUCCESS, original job 127710548290 log inspected: lease 21 and release guard 26. Added NSCPcPackLease::copy_row to copy validated raw source row bytes into disjoint caller-owned output, rejecting invalid family, insufficient output, arena alias and bounds. Four host assertions added. No engine consumer ABI or gameplay proof; release flags false. Pending CI.\n
+
+## Offline PC pack row copy integrity regression (CI pending)
+
+2026-11-06: Added byte-exact offline copy_row regression (family-relative source offset), sentinel preservation, and fail-closed destination/length integrity checks; NO engine consumer ABI or Uzuy proof. Await GitHub Actions COMPLETED SUCCESS and original job logs before PASS.

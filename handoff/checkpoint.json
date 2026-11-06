@@ -1354,5 +1354,10 @@
   "pc_pack_offline_row_copy": {
     "status": "pending_ci",
     "engine_abi_proven": false
+  },
+  "latest_offline_row_copy_regression": {
+    "state": "pending_ci",
+    "scope": "host offline copy_row byte equality and rejected-copy nonmutation",
+    "note": "2026-11-06: Added byte-exact offline copy_row regression (family-relative source offset), sentinel preservation, and fail-closed destination/length integrity checks; NO engine consumer ABI or Uzuy proof. Await GitHub Actions COMPLETED SUCCESS and original job logs before PASS."
   }
 }

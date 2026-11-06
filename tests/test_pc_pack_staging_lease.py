@@ -62,11 +62,27 @@ int main(int argc,char** argv) {
     std::size_t copied=999;
     assert(lease.copy_row(0,0,consumer.data(),consumer.size(),&copied));
     assert(copied==row.length && copied>0);
+    // The row view is family-relative; compare the actual copied payload.
+    const std::size_t family_dir=64u;
+    const auto read32=[](const std::uint8_t* p) -> std::uint32_t {
+        return std::uint32_t(p[0]) | (std::uint32_t(p[1])<<8) |
+               (std::uint32_t(p[2])<<16) | (std::uint32_t(p[3])<<24);
+    };
+    const std::size_t family_base=read32(arena.data()+family_dir);
+    assert(family_base<=lease.length && row.offset<=lease.length-family_base);
+    assert(row.length<=lease.length-family_base-row.offset);
+    assert(std::memcmp(consumer.data(),arena.data()+family_base+row.offset,copied)==0);
+    assert(consumer[copied]==0xA5);
+    const auto consumer_before=consumer;
+    copied=0xBADu;
     assert(!lease.copy_row(9,0,consumer.data(),consumer.size(),&copied));
+    assert(copied==0xBADu && consumer==consumer_before);
     assert(!lease.copy_row(0,0,consumer.data(),1,&copied));
+    assert(copied==0xBADu && consumer==consumer_before);
     assert(!lease.copy_row(0,0,arena.data(),arena.size(),&copied));
+    assert(copied==0xBADu && consumer==consumer_before);
     lease.unbind();
-    std::puts("PC_PACK_STAGING_LEASE_PASS 25 NO_ENGINE_ABI");
+    std::puts("PC_PACK_STAGING_LEASE_PASS 33 NO_ENGINE_ABI");
 }
 """
 def run(main,out):
@@ -85,7 +101,7 @@ def run(main,out):
             str(source/"nsc_pc_raw.cpp"),str(obj),"-o",str(binary)],check=True)
         cp=subprocess.run([str(binary),str(candidate/"pc_native_sources.pack")],
             text=True,capture_output=True,check=True)
-        assert "PC_PACK_STAGING_LEASE_PASS 25 NO_ENGINE_ABI" in cp.stdout
+        assert "PC_PACK_STAGING_LEASE_PASS 33 NO_ENGINE_ABI" in cp.stdout
         out.mkdir(parents=True,exist_ok=True)
         (out/"pc_pack_staging_lease.txt").write_text(cp.stdout)
         print(cp.stdout,end="")
