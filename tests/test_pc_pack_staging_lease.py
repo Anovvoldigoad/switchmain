@@ -8,7 +8,7 @@ ROOT=Path(__file__).resolve().parents[1]
 CPP=r"""
 #include "nsc_pc_pack_lease.hpp"
 #include <cassert>
-#include <cstdint>
+#include <cstdint>\n#include <cstring>
 #include <cstdio>
 #include <fstream>
 #include <iterator>
@@ -46,7 +46,7 @@ int main(int argc,char** argv) {
     assert(lease.bind(arena.data(),arena.size(),src.data(),src.size()));
     assert(lease.row(0,0,&row));
     lease.unbind();
-    std::puts("PC_PACK_STAGING_LEASE_PASS 15 NO_ENGINE_ABI");
+    std::puts("PC_PACK_STAGING_LEASE_PASS 17 NO_ENGINE_ABI");
 }
 """
 def run(main,out):

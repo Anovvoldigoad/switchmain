@@ -25,9 +25,9 @@ struct NSCPcPackLease {
         // destination MUST NOT overlap, including identity.
         const auto a = reinterpret_cast<std::uintptr_t>(storage);
         const auto s = reinterpret_cast<std::uintptr_t>(source);
-        if (a > UINTPTR_MAX - source_size || s > UINTPTR_MAX - source_size)
+        if (a > UINTPTR_MAX - storage_size || s > UINTPTR_MAX - source_size)
             return false;
-        if (a < s + source_size && s < a + source_size) return false;
+        if (a < s + source_size && s < a + storage_size) return false;
         std::memcpy(storage, source, source_size);
         arena = static_cast<std::uint8_t*>(storage);
         capacity = storage_size;

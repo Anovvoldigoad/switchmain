@@ -965,5 +965,10 @@
     "ready_for_gameplay_test": false,
     "emulator_tested": false,
     "gameplay_verified": false
+  },
+  "pc_pack_lease_overlap_fix": {
+    "status": "pending_ci",
+    "description": "Reject source intersecting entire caller-owned arena capacity; add adjacent-range regression",
+    "engine_abi_proven": false
   }
 }

@@ -1332,5 +1332,9 @@
     "ci": "COMPLETED_SUCCESS_LOG_VERIFIED",
     "report": "reports/port_foundation/pc_pack_staging_lease_summary.json",
     "real_engine_consumer_proven": false
+  },
+  "pc_pack_lease_overlap_fix": {
+    "status": "pending_ci",
+    "engine_abi_proven": false
   }
 }
