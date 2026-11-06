@@ -1,0 +1,43 @@
+{
+  "stage": "OFFLINE_PC_PACK_STAGING_LEASE_VERIFIED_NOT_ENGINE_CONSUMER",
+  "code_commit": "70b67190f937c0090eba3afa774cad1d203a24d2",
+  "verified_ci_run": 42135636935,
+  "verified_ci_job": 127622929798,
+  "ci_status": "completed",
+  "ci_conclusion": "success",
+  "job_log_read": true,
+  "log_markers": [
+    "PC_PACK_STAGING_LEASE_PASS 15 NO_ENGINE_ABI",
+    "PC_NSC_NATIVE_PACK_AARCH64_PASS 22 12 NOT_NATIVE_ENGINE_OR_UZUY",
+    "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF"
+  ],
+  "changes": [
+    "overlay/source/program/nsc_pc_pack_lease.hpp",
+    "tests/test_pc_pack_staging_lease.py",
+    ".github/workflows/verify-port-foundation.yml"
+  ],
+  "proven": [
+    "explicit single-threaded caller-owned staging buffer bind/unbind",
+    "source SHA and format validated before arena copy",
+    "rebind and overlap fail closed",
+    "row output remains unchanged on invalid request",
+    "stored arena hash revalidated per row; changed bytes rejected",
+    "unbind makes subsequent reads fail"
+  ],
+  "not_proven": [
+    "native Switch parameter consumer ABI",
+    "game object ownership and allocator identity",
+    "CRI async callbacks, lock/rollback, unbind and teardown",
+    "53 factory mappings",
+    "MovesetPlus compressed PRM models effects audio/SFX Japanese voice new-slot",
+    "real Uzuy gameplay"
+  ],
+  "release_flags": {
+    "full_moddingapi": false,
+    "ready_for_gameplay_test": false,
+    "emulator_tested": false
+  },
+  "original_main_modified": false,
+  "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "sakura_aura107_and_event236_unchanged": true
+}
