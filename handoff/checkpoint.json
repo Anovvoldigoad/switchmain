@@ -1376,6 +1376,12 @@
     "engine_abi_proven": false
   },
   "implemented_this_change": [
-    "2026-11-06: CI 42209580169 for 5d771838 COMPLETED SUCCESS, original job 127864601452 logs inspected: PC_PACK_STAGING_LEASE_PASS 37 NO_ENGINE_ABI; release guard 26. New offline copy_row metadata self-alias rejection (lease capacity/length) with fail-closed regression; pending CI for this commit. NO engine ABI or Uzuy proof."
-  ]
+    "2026-11-06: Actions 42224723618 for 0f1a4077f8d743c5750da4b0d1db70cbf9e0feca COMPLETED SUCCESS; original job 127915210617 log inspected: PC_PACK_STAGING_LEASE_PASS 41 NO_ENGINE_ABI; release guard 26. New bind() self-overlap rejection with regressions, pending CI. No native engine ABI/Uzuy proof."
+  ],
+  "pc_pack_bind_self_overlap_guard": {
+    "status": "pending_ci",
+    "description": "Reject bind caller storage overlapping lease control object, including partial overlap; preserve state and source",
+    "native_consumer_proven": false,
+    "gameplay_verified": false
+  }
 }

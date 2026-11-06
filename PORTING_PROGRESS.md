@@ -892,3 +892,8 @@ GitHub Actions 42202487601 for f95de8be completed FAILURE; original job 12784092
 ## 2026-11-06 — Offline copy_row lease self-metadata alias guard (pending CI)
 
 2026-11-06: CI 42209580169 for 5d771838 COMPLETED SUCCESS, original job 127864601452 logs inspected: PC_PACK_STAGING_LEASE_PASS 37 NO_ENGINE_ABI; release guard 26. New offline copy_row metadata self-alias rejection (lease capacity/length) with fail-closed regression; pending CI for this commit. NO engine ABI or Uzuy proof.
+
+
+## 2026-11-06 — Offline bind lease-self storage overlap rejection (pending CI)
+
+Prior 0f1a4077f8d743c5750da4b0d1db70cbf9e0feca Actions 42224723618 COMPLETED SUCCESS, original job 127915210617 log inspected: PC_PACK_STAGING_LEASE_PASS 41 NO_ENGINE_ABI, release guard 26. Added bind() reject-before-copy for destination arena overlapping lease control fields (full and partial), with regression and source/state integrity checks. New CI pending. No engine ABI or Uzuy proof; release flags false.

@@ -1005,7 +1005,7 @@
     "scope": "offline only; no engine ABI or Uzuy"
   },
   "pc_pack_copy_length_alias_guard": {
-    "status": "pending_ci",
+    "status": "ci_verified",
     "description": "Reject copy_row length-output pointer aliasing pack arena or destination; fail-closed without mutation",
     "native_consumer_proven": false,
     "gameplay_verified": false,
@@ -1013,6 +1013,18 @@
     "previous_failed_job": 127840924176,
     "previous_failure": "Harness expected 33 but compiled C++ prints 37; original log inspected",
     "fix": "Align harness expected output to 37, retaining alias guards",
-    "engine_abi_proven": false
+    "engine_abi_proven": false,
+    "code_sha": "0f1a4077f8d743c5750da4b0d1db70cbf9e0feca",
+    "run_id": 42224723618,
+    "job_id": 127915210617,
+    "marker": "PC_PACK_STAGING_LEASE_PASS 41 NO_ENGINE_ABI",
+    "original_logs_checked": true,
+    "scope": "offline only; no engine ABI or Uzuy"
+  },
+  "pc_pack_bind_self_overlap_guard": {
+    "status": "pending_ci",
+    "description": "Reject bind caller storage overlapping lease control object, including partial overlap; preserve state and source",
+    "native_consumer_proven": false,
+    "gameplay_verified": false
   }
 }

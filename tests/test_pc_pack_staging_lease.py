@@ -30,6 +30,14 @@ int main(int argc,char** argv) {
     assert(!lease.row(0,0,&row) && row.offset==77);
     assert(!lease.bind(arena.data(),src.size()-1,src.data(),src.size()));
     assert(!lease.bound && arena[0]==0x5A);
+    // Reject caller storage that overlaps lease control state, including
+    // partial overlaps, without changing the object or the source pack.
+    const auto source_before=src;
+    assert(!lease.bind(&lease,sizeof(lease)+src.size(),src.data(),src.size()));
+    assert(!lease.bound && lease.arena==nullptr && lease.capacity==0);
+    auto* overlapping_lease_storage=reinterpret_cast<std::uint8_t*>(&lease)+sizeof(lease)-1;
+    assert(!lease.bind(overlapping_lease_storage,src.size(),src.data(),src.size()));
+    assert(!lease.bound && lease.length==0 && src==source_before);
     assert(!lease.bind(src.data(),src.size(),src.data(),src.size()));
     assert(!lease.bound);
     // Source located in the unused tail of the destination arena must fail.
@@ -98,7 +106,7 @@ int main(int argc,char** argv) {
     assert(lease.capacity==arena.size() && consumer==consumer_before);
     assert(copied==0xBADu);
     lease.unbind();
-    std::puts("PC_PACK_STAGING_LEASE_PASS 41 NO_ENGINE_ABI");
+    std::puts("PC_PACK_STAGING_LEASE_PASS 45 NO_ENGINE_ABI");
 }
 """
 def run(main,out):
@@ -117,7 +125,7 @@ def run(main,out):
             str(source/"nsc_pc_raw.cpp"),str(obj),"-o",str(binary)],check=True)
         cp=subprocess.run([str(binary),str(candidate/"pc_native_sources.pack")],
             text=True,capture_output=True,check=True)
-        assert "PC_PACK_STAGING_LEASE_PASS 41 NO_ENGINE_ABI" in cp.stdout
+        assert "PC_PACK_STAGING_LEASE_PASS 45 NO_ENGINE_ABI" in cp.stdout
         out.mkdir(parents=True,exist_ok=True)
         (out/"pc_pack_staging_lease.txt").write_text(cp.stdout)
         print(cp.stdout,end="")

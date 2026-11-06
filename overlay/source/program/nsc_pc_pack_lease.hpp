@@ -35,6 +35,12 @@ struct NSCPcPackLease {
         if (a > UINTPTR_MAX - storage_size || s > UINTPTR_MAX - source_size)
             return false;
         if (a < s + source_size && s < a + storage_size) return false;
+        // A caller-owned arena may not be placed over this lease object.
+        // Otherwise memcpy overwrites control fields before bind publishes state.
+        const auto self = reinterpret_cast<std::uintptr_t>(this);
+        if (self > UINTPTR_MAX - sizeof(*this) ||
+            (a < self + sizeof(*this) && self < a + storage_size))
+            return false;
         std::memcpy(storage, source, source_size);
         arena = static_cast<std::uint8_t*>(storage);
         capacity = storage_size;
