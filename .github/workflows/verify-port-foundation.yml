@@ -101,6 +101,8 @@ jobs:
         run: python tests/test_native_pc_raw_nine.py --output proof-work
       - name: Execute compiled ARM64 native PC raw readers against nine authentic upstream templates
         run: python tests/test_native_pc_raw_arm64.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Reject multi-mod PC source path ownership collisions (offline only)
+        run: python -m unittest discover -s tests -p test_pc_multi_mod_path_ownership.py -v
       - name: Validate nine-family PC original ZIP source pack with native host C++ and source precedence rejection
         run: python tests/test_pc_native_pack.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Test offline PC pack caller-owned staging lease (no engine ABI)
