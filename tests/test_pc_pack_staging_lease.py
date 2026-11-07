@@ -147,7 +147,7 @@ def run(main,out):
             str(source/"nsc_pc_raw.cpp"),str(obj),"-o",str(binary)],check=True)
         cp=subprocess.run([str(binary),str(candidate/"pc_native_sources.pack")],
             text=True,capture_output=True,check=True)
-        assert "PC_PACK_STAGING_LEASE_PASS 53 NO_ENGINE_ABI" in cp.stdout
+        assert "PC_PACK_STAGING_LEASE_PASS 55 NO_ENGINE_ABI" in cp.stdout
         out.mkdir(parents=True,exist_ok=True)
         (out/"pc_pack_staging_lease.txt").write_text(cp.stdout)
         print(cp.stdout,end="")
