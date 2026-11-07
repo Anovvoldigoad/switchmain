@@ -33,6 +33,11 @@ int main(int argc,char** argv) {
     // Reject caller storage that overlaps lease control state, including
     // partial overlaps, without changing the object or the source pack.
     const auto source_before=src;
+    // Source aliasing lease control must be rejected before pack parsing.
+    assert(!lease.bind(arena.data(),arena.size(),&lease,src.size()));
+    auto* partial_source=reinterpret_cast<std::uint8_t*>(&lease)+sizeof(lease)-1;
+    assert(!lease.bind(arena.data(),arena.size(),partial_source,src.size()));
+    assert(!lease.bound && lease.arena==nullptr && arena[0]==0x5A);
     assert(!lease.bind(&lease,sizeof(lease)+src.size(),src.data(),src.size()));
     assert(!lease.bound && lease.arena==nullptr && lease.capacity==0);
     auto* overlapping_lease_storage=reinterpret_cast<std::uint8_t*>(&lease)+sizeof(lease)-1;
@@ -123,7 +128,7 @@ int main(int argc,char** argv) {
     assert(lease.bound && lease.arena==arena.data() && lease.length==src.size());
     assert(consumer==before_copy && copied==0xBADu);
     lease.unbind();
-    std::puts("PC_PACK_STAGING_LEASE_PASS 53 NO_ENGINE_ABI");
+    std::puts("PC_PACK_STAGING_LEASE_PASS 55 NO_ENGINE_ABI");
 }
 """
 def run(main,out):

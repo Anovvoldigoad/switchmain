@@ -26,18 +26,23 @@ struct NSCPcPackLease {
               const void* source, std::size_t source_size) {
         if (bound || !storage || !source || !source_size ||
             source_size > storage_size) return false;
+        // Reject a source view into this control object before parsing any bytes.
+        // A malformed caller must not cause pack validation to read past lease state.
+        const auto self = reinterpret_cast<std::uintptr_t>(this);
+        const auto s = reinterpret_cast<std::uintptr_t>(source);
+        if (self > UINTPTR_MAX - sizeof(*this) ||
+            s > UINTPTR_MAX - source_size ||
+            (self < s + source_size && s < self + sizeof(*this))) return false;
         NSCPcPackSummary summary{};
         if (!nsc_pc_pack_validate(source, source_size, &summary)) return false;
         // Validate source before touching the caller's arena. Source and
         // destination MUST NOT overlap, including identity.
         const auto a = reinterpret_cast<std::uintptr_t>(storage);
-        const auto s = reinterpret_cast<std::uintptr_t>(source);
         if (a > UINTPTR_MAX - storage_size || s > UINTPTR_MAX - source_size)
             return false;
         if (a < s + source_size && s < a + storage_size) return false;
         // A caller-owned arena may not be placed over this lease object.
         // Otherwise memcpy overwrites control fields before bind publishes state.
-        const auto self = reinterpret_cast<std::uintptr_t>(this);
         if (self > UINTPTR_MAX - sizeof(*this) ||
             (a < self + sizeof(*this) && self < a + storage_size))
             return false;
