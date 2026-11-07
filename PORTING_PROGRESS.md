@@ -913,3 +913,5 @@ Prior 0f1a4077f8d743c5750da4b0d1db70cbf9e0feca Actions 42224723618 COMPLETED SUC
 ## 2026-11-07 PC native pack host CI harness repair
 
 Actions 42278736419 for 42d064bde2509899950146f83da08518022715b8 FAILED. Original job 128101803373 log showed `UnboundLocalError` at test_pc_native_pack.py:121: four newly added negative metadata-output alias tests incremented `negatives` before it was initialized. Counter initialization moved before these cases, preserving all four regression assertions and the other negative cases. Fix awaits new CI; this does not establish native game consumer ABI or gameplay.
+
+2026-11-07: Offline PC pack staging lease now rejects source pointers overlapping the lease control object before invoking the pack validator, including partial overlap. Added two fail-closed host regressions (expected lease marker 55). Code bffe2fde7a4987fb125eb55583f0b7ed4206b590; CI PENDING, no original engine consumer ABI or Uzuy proof. Original main, Sakura aura107 and Event236 untouched; release flags remain false.
