@@ -42,7 +42,7 @@ def _input_spec(spec):
     mods=spec["mods"]
     if type(mods)!=list or not 1<=len(mods)<=MAX_MODS:
         raise ValueError("Expected one to 16 source mods")
-    names=set();families=set()
+    names=set();families=set();resource_paths=set()
     for mod in mods:
         if type(mod)!=dict or set(mod)!={"mod_id","staged_path","original_archive","source_sha256","resources"}:
             raise ValueError("Explicit staged ZIP source and resources required")
@@ -59,6 +59,12 @@ def _input_spec(spec):
             name_raw,is_dir=_safe_name(item["source_path"])
             if is_dir:
                 raise ValueError("PC raw source cannot be directory")
+            # A PC archive path cannot have two independent family owners, even
+            # when the families differ. Never guess source-path precedence.
+            canonical_path=name_raw.casefold()
+            if canonical_path in resource_paths:
+                raise ValueError("Duplicate or casefold-colliding PC source path across mods")
+            resource_paths.add(canonical_path)
             if item["family"] not in FAMILIES or item["family"] in families:
                 raise ValueError("Unknown or conflicting PC raw family: refuse precedence guess")
             families.add(item["family"])

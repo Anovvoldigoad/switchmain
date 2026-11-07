@@ -664,7 +664,8 @@
       "native_patch_installed": false,
       "gameplay_verified": false,
       "full_moddingapi": false
-    }
+    },
+    "multi_mod_pc_source_path_ownership_guard": "OFFLINE_ONLY_PENDING_CI"
   },
   "ci": {
     "run_id": 42065894664,
