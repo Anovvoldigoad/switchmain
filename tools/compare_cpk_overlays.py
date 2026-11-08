@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 """Compare source-pinned CPK overlays without guessing native archive precedence."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
+from inspect_cpk_payloads import _verified_archive
+from portlib.cpk_events import entries, read_payload
+
 from inspect_cpk_payloads import inventory
 
+MAX_DECODED_COMPARE = 64 * 1024 * 1024
 
-def compare(sources, suffix=None):
+
+def compare(sources, suffix=None, *, decoded=False, max_decoded_bytes=MAX_DECODED_COMPARE):
+    if type(decoded) is not bool or type(max_decoded_bytes) is not int or not 0 < max_decoded_bytes <= MAX_DECODED_COMPARE:
+        raise ValueError('Invalid decoded comparison limit')
     if not 2 <= len(sources) <= 16:
         raise ValueError("Compare two to sixteen distinct CPK sources")
     reports = []
@@ -42,6 +50,33 @@ def compare(sources, suffix=None):
             "decoded_payloads_identical": None,
             "native_winner": None
         })
+    if decoded and conflicts:
+        # Only overlapping entries are decoded. Keep all results in memory
+        # temporarily, under a global cap, and never write source archives.
+        budget = max_decoded_bytes
+        hashes = {}
+        for i, (path, sha) in enumerate(sources):
+            requested = [(j, occurrence) for j, conflict in enumerate(conflicts)
+                         for occurrence in conflict["occurrences"]
+                         if occurrence["archive_index"] == i]
+            if not requested:
+                continue
+            with _verified_archive(Path(path), sha) as (archive, _):
+                index = entries(archive)
+                for j, occurrence in requested:
+                    name = occurrence["entry"]
+                    info = index.get(name)
+                    if info is None or info["size"] > budget:
+                        raise ValueError("Decoded overlap exceeds budget or TOC changed")
+                    payload = read_payload(archive, name, limit=budget, index=index)
+                    budget -= len(payload)
+                    hashes[(j, i)] = hashlib.sha256(payload).hexdigest()
+        for j, conflict in enumerate(conflicts):
+            for occurrence in conflict["occurrences"]:
+                occurrence["decoded_sha256"] = hashes[(j, occurrence["archive_index"])]
+            conflict["decoded_payloads_identical"] = len({
+                occurrence["decoded_sha256"] for occurrence in conflict["occurrences"]
+            }) == 1
     return {
         "status": "STATIC_CPK_OVERLAP_EVIDENCE_NO_NATIVE_PRECEDENCE",
         "archives": [{
@@ -64,9 +99,12 @@ def main():
                         metavar=("CPK_PATH", "SHA256"), required=True,
                         help="Repeat for each original CPK; order is input order, NOT native priority")
     parser.add_argument("--suffix", help="Optional case-insensitive filename suffix")
+    parser.add_argument("--compare-decoded", action="store_true", help="Decode overlapping payloads under aggregate cap; still no native winner")
+    parser.add_argument("--max-decoded-bytes", type=int, default=MAX_DECODED_COMPARE)
     args = parser.parse_args()
     try:
-        result = compare(args.archive, suffix=args.suffix)
+        result = compare(args.archive, suffix=args.suffix, decoded=args.compare_decoded,
+                         max_decoded_bytes=args.max_decoded_bytes)
     except (ValueError, OSError, UnicodeError) as error:
         parser.error(str(error))
     print(json.dumps(result, indent=2))

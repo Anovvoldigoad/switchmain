@@ -1435,5 +1435,21 @@
     "failed_run": 42504646489,
     "failed_job": 128804531513,
     "fix": "Unordered Path.iterdir() test expectation replaced with set equality"
+  },
+  "cpk_decoded_overlap_evidence": {
+    "status": "pending_ci",
+    "scope": "read_only_source_pinned_static_decoded_overlap",
+    "parent_sha": "60ff29de50dcc383aaef62ab71e455559e84f328",
+    "synthetic_tests": [
+      "compressed_vs_plain_equal_decoded",
+      "different_decoded_payload",
+      "corrupt_stream_rejected",
+      "aggregate_budget",
+      "CLI_JSON",
+      "source_integrity"
+    ],
+    "native_archive_precedence_verified": false,
+    "engine_consumer_abi_verified": false,
+    "uzuy_tested": false
   }
 }
