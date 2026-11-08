@@ -149,6 +149,8 @@ jobs:
         run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_cpk_source_evidence.py -v
       - name: Source-pinned multi-CPK overlap evidence (synthetic, no precedence claim)
         run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_cpk_overlap_evidence.py -v
+      - name: Verify source-pinned PC MovesetPlus index catalog and strict editor lookup
+        run: PYTHONPATH=tools python -m unittest discover -s tests -p test_pc_moveset_function_names.py -v
       - name: Reject untested gameplay release flags in project status and handoff
         run: python tests/test_release_flags.py --status PORT_STATUS.json --checkpoint handoff/checkpoint.json --output proof-work
       - uses: actions/upload-artifact@v4

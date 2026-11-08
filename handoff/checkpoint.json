@@ -1451,5 +1451,11 @@
     "native_archive_precedence_verified": false,
     "engine_consumer_abi_verified": false,
     "uzuy_tested": false
+  },
+  "pc_moveset_function_catalog": {
+    "status": "PENDING_CI",
+    "parent_sha": "819b398a32f85a62c453905cdf5911ce7413bb22",
+    "source_blob": "9d5f3e0dfa4ed51cf7924b503081a87b12146f64",
+    "next": "Verify new HEAD CI and authentic raw logs, then inspect newest upstream compiled function implementation or native source for projectile-target/deflect IDs; never invent Switch ABI."
   }
 }

@@ -1092,5 +1092,17 @@
     "native_archive_precedence_verified": false,
     "engine_consumer_abi_verified": false,
     "uzuy_tested": false
+  },
+  "pc_moveset_function_catalog": {
+    "status": "PENDING_CI_SOURCE_GROUNDED_PC_EDITOR_INDEX_ONLY",
+    "upstream": "TheLeonX/NSC-Toolbox@6f780cb6814f07e03c16b3e78d97dde4e4368983",
+    "source_git_blob": "9d5f3e0dfa4ed51cf7924b503081a87b12146f64",
+    "ns4_count": 289,
+    "nsc_count": 300,
+    "shared_identical_index_count": 289,
+    "nsc_only_count": 11,
+    "projectiles_target_function_index_verified": false,
+    "deflect_function_index_verified": false,
+    "switch_engine_abi_verified": false
   }
 }
