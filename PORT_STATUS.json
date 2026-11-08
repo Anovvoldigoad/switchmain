@@ -1067,11 +1067,14 @@
     "gameplay_verified": false
   },
   "cpk_overlay_overlap_evidence": {
-    "status": "pending_ci",
+    "status": "pending_ci_harness_fix",
     "scope": "source-pinned static comparison only",
     "native_archive_precedence_verified": false,
     "engine_consumer_abi_verified": false,
     "uzuy_tested": false,
-    "parent_sha": "00e070e4b722f534434a66121f079ab52b4fb7bf"
+    "parent_sha": "00e070e4b722f534434a66121f079ab52b4fb7bf",
+    "failed_run": 42504646489,
+    "failed_job": 128804531513,
+    "fix": "Use set equality for unordered directory iteration; preserve exact two-file integrity assertion"
   }
 }

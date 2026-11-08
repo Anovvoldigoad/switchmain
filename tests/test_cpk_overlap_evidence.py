@@ -54,7 +54,7 @@ class CPKOverlapEvidence(unittest.TestCase):
                 with self.subTest(rows=len(rows)), self.assertRaises(ValueError):
                     compare(rows)
             self.assertEqual(compare([pin_a, pin_b])["overlapping_paths"], 1)
-            self.assertEqual(list(root.iterdir()), [a, b])
+            self.assertEqual(set(root.iterdir()), {a, b})
 
 
 if __name__ == "__main__":
