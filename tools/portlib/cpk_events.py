@@ -115,6 +115,25 @@ def entries(data):
     return result
 
 
+
+def read_payload(data, path, *, limit=256 * 1024 * 1024):
+    """Read a validated CPK entry, optionally decoding CRILAYLA without rewriting it."""
+    path = canonical(path)
+    entry = entries(data).get(path)
+    if entry is None:
+        raise ValueError('CPK path absent: ' + path)
+    start = entry['offset']
+    stored = data[start:start + entry['stored_size']]
+    if stored.startswith(b'CRILAYLA'):
+        from .crilayla import decompress
+        decoded = decompress(stored, limit=limit)
+        if len(decoded) != entry['size']:
+            raise ValueError('CPK decoded size mismatch')
+        return decoded
+    if entry['stored_size'] != entry['size'] or len(stored) > limit:
+        raise ValueError('Unsupported CPK payload encoding or size')
+    return stored
+
 def mark(data,paths):
     selected=[canonical(p) for p in paths]
     if not selected or len(set(selected))!=len(selected):

@@ -143,6 +143,8 @@ jobs:
         run: python tests/test_pc_nsc_cpk_candidates.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Validate read-only CRILAYLA decoder on synthetic bounded fixtures (not a game repacker)
         run: PYTHONPATH=tools python -m unittest discover -s tests -p test_crilayla_readonly.py -v
+      - name: Verify read-only CPK payload extraction with bounded CRILAYLA decode
+        run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_cpk_read_payload.py -v
       - name: Reject untested gameplay release flags in project status and handoff
         run: python tests/test_release_flags.py --status PORT_STATUS.json --checkpoint handoff/checkpoint.json --output proof-work
       - uses: actions/upload-artifact@v4
