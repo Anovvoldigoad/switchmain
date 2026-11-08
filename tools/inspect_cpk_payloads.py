@@ -17,6 +17,40 @@ MAX_TOTAL_BYTES = 256 * 1024 * 1024
 MAX_ENTRIES = 16
 
 
+def inventory(cpk_path, expected_sha256, *, suffix=None):
+    """Enumerate exact TOC paths before selecting payloads; never writes game data."""
+    if not isinstance(expected_sha256, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", expected_sha256):
+        raise ValueError("Expected a full CPK SHA256 pin")
+    if suffix is not None and (not isinstance(suffix, str) or not suffix or "/" in suffix or "\\" in suffix):
+        raise ValueError("Invalid inventory suffix")
+    source = Path(cpk_path)
+    archive = source.read_bytes()
+    digest = hashlib.sha256(archive).hexdigest()
+    if digest != expected_sha256.lower():
+        raise ValueError("CPK source SHA256 mismatch")
+    index = entries(archive)
+    rows = []
+    for name, item in sorted(index.items()):
+        if suffix is not None and not name.casefold().endswith(suffix.casefold()):
+            continue
+        start = item["offset"]
+        stored = archive[start:start + item["stored_size"]]
+        rows.append({
+            "entry": name, "id": item["id"], "offset": start,
+            "stored_bytes": len(stored), "extract_bytes": item["size"],
+            "stored_sha256": hashlib.sha256(stored).hexdigest(),
+            "encoding": "CRILAYLA" if stored.startswith(b"CRILAYLA") else
+                        ("identity" if len(stored) == item["size"] else "unknown")
+        })
+    return {
+        "status": "CPK_READ_ONLY_INVENTORY_NO_CONSUMER_ABI",
+        "cpk_filename": source.name, "cpk_sha256": digest,
+        "cpk_bytes": len(archive), "indexed_entries": len(index),
+        "selected_entries": len(rows), "entries": rows,
+        "native_engine_abi_verified": False, "uzuy_tested": False
+    }
+
+
 def capture(cpk_path, expected_sha256, selected, out_dir, *, max_total_bytes=MAX_TOTAL_BYTES):
     if not isinstance(expected_sha256, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", expected_sha256):
         raise ValueError("Expected a full CPK SHA256 pin")
@@ -89,10 +123,23 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cpk", required=True, type=Path)
     parser.add_argument("--expected-sha256", required=True)
-    parser.add_argument("--entry", action="append", required=True, help="Exact CPK TOC path; repeat as needed")
-    parser.add_argument("--out-dir", required=True, type=Path, help="New output directory, never overwrites existing files")
+    parser.add_argument("--entry", action="append", help="Exact CPK TOC path; repeat as needed")
+    parser.add_argument("--inventory", action="store_true", help="Print source-pinned TOC inventory as JSON; no output files")
+    parser.add_argument("--suffix", help="Optional case-insensitive filename suffix for inventory only")
+    parser.add_argument("--out-dir", type=Path, help="New output directory, never overwrites existing files")
     parser.add_argument("--max-total-bytes", type=int, default=MAX_TOTAL_BYTES)
     args = parser.parse_args()
+    if args.inventory:
+        if args.entry or args.out_dir or args.suffix is not None and not args.suffix:
+            parser.error("--inventory accepts --suffix but not --entry or --out-dir")
+        try:
+            result = inventory(args.cpk, args.expected_sha256, suffix=args.suffix)
+        except (ValueError, OSError, UnicodeError) as error:
+            parser.error(str(error))
+        print(json.dumps(result, indent=2))
+        return
+    if not args.entry or args.suffix is not None or not args.out_dir:
+        parser.error("Payload extraction requires --entry and --out-dir; --suffix is inventory-only")
     try:
         result = capture(args.cpk, args.expected_sha256, args.entry, args.out_dir,
                          max_total_bytes=args.max_total_bytes)

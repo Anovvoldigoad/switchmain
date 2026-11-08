@@ -112,5 +112,44 @@ class CPKEvidenceIntake(unittest.TestCase):
             self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), sha)
 
 
+    def test_inventory_exact_index_hashes_and_suffix_cli(self):
+        from inspect_cpk_payloads import inventory
+        from portlib.cpk_events import entries
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            source = root / "stock.cpk"
+            raw = archive_fixture()
+            source.write_bytes(raw)
+            sha = hashlib.sha256(raw).hexdigest()
+            index = entries(raw)
+            report = inventory(source, sha, suffix=".bin.xfbin")
+            self.assertEqual(report["indexed_entries"], 2)
+            self.assertEqual(report["selected_entries"], 2)
+            self.assertEqual([r["entry"] for r in report["entries"]], sorted(index))
+            for row in report["entries"]:
+                item = index[row["entry"]]
+                payload = raw[item["offset"]:item["offset"] + item["stored_size"]]
+                self.assertEqual(row["stored_sha256"], hashlib.sha256(payload).hexdigest())
+            self.assertEqual(inventory(source, sha, suffix=".notfound")["entries"], [])
+            cmd = [sys.executable, str(ROOT / "tools" / "inspect_cpk_payloads.py"),
+                   "--cpk", str(source), "--expected-sha256", sha,
+                   "--inventory", "--suffix", ".xfbin"]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout), report)
+            self.assertEqual(sorted(root.iterdir()), [source])
+            for wrong in (
+                cmd + ["--entry", PLAIN],
+                cmd + ["--out-dir", str(root / "bad")],
+                cmd[:-1] + ["../invalid"],
+            ):
+                failed = subprocess.run(wrong, capture_output=True, text=True)
+                self.assertNotEqual(failed.returncode, 0)
+            with self.assertRaises(ValueError):
+                inventory(source, "0" * 64)
+            self.assertEqual(source.read_bytes(), raw)
+
+
+
 if __name__ == "__main__":
     unittest.main()

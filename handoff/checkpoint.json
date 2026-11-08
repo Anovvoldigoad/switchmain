@@ -68,7 +68,8 @@
       "2026-11-05 4ecbeeae Actions 42065894664 COMPLETED SUCCESS 67 steps job 127379739873 actual logs verified: new source-authenticated ZIP PC raw pack binary and AArch64 native reader (host 24 positive/26 rejected; ARM64 22 positive/12 rejected). No game consumer hooks, no Uzuy gameplay.",
       "2026-11-06 CI failure 42143523682 original job 127649363979: generated C++ #include had literal escaped newline; fixed include and stale PASS marker 15->17, added unused-arena-tail overlap regression. New CI pending; no engine ABI.",
       "2026-11-08 offline multi-mod source path file/directory prefix conflict rejection, including casefold and reverse ordering; 3 regression cases added; pending GitHub Actions CI; no engine archive precedence or native ABI proof.",
-      "2026-11-08 pending CI: source-pinned read-only CPK payload evidence collector; synthetic tests; no engine ABI, real CPK or gameplay proof."
+      "2026-11-08 pending CI: source-pinned read-only CPK payload evidence collector; synthetic tests; no engine ABI, real CPK or gameplay proof.",
+      "2026-11-08 pending CI: source-pinned CPK inventory CLI, exact stored payload hash and suffix filtering. No runtime ABI or Uzuy proof."
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
