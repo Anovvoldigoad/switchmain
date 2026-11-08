@@ -1065,5 +1065,13 @@
     "description": "Limit now bounds full decoded payload including 256-byte CRILAYLA prefix; boundary/negative tests added",
     "engine_abi_proven": false,
     "gameplay_verified": false
+  },
+  "cpk_overlay_overlap_evidence": {
+    "status": "pending_ci",
+    "scope": "source-pinned static comparison only",
+    "native_archive_precedence_verified": false,
+    "engine_consumer_abi_verified": false,
+    "uzuy_tested": false,
+    "parent_sha": "00e070e4b722f534434a66121f079ab52b4fb7bf"
   }
 }

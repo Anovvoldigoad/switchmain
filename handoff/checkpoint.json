@@ -1424,5 +1424,13 @@
     "parent_sha": "e4e08cc748b18d9ae8576862d1cd509a27f684b0",
     "next": "Inspect HEAD Actions raw job logs before CI PASS; test real authenticated CPK only when available",
     "runtime_proven": false
+  },
+  "cpk_overlay_overlap_evidence": {
+    "status": "pending_ci",
+    "scope": "source-pinned static comparison only",
+    "native_archive_precedence_verified": false,
+    "engine_consumer_abi_verified": false,
+    "uzuy_tested": false,
+    "parent_sha": "00e070e4b722f534434a66121f079ab52b4fb7bf"
   }
 }
