@@ -58,7 +58,8 @@
     "2026-11-05 9af5c535 GitHub Actions 42057187119 COMPLETED SUCCESS: Exact symbol lookup fixed; original ELF AArch64 9-family reader calls pass Unicorn: 30 positive API calls, 19 negative cases, host C++ 123 matching PC rows and 39 negatives; 65 steps, job 127348672877 log inspected.",
     "2026-11-05 4ecbeeae Actions 42065894664 COMPLETED SUCCESS 67 steps job 127379739873 actual logs verified: new source-authenticated ZIP PC raw pack binary and AArch64 native reader (host 24 positive/26 rejected; ARM64 22 positive/12 rejected). No game consumer hooks, no Uzuy gameplay.",
     "2026-11-06 code 70b67190 Actions 42135636935 COMPLETED SUCCESS job 127622929798 original logs inspected: source-pack offline caller-owned staging lease, 15 assertions; no original Switch game parameter consumer ABI or CRI lifecycle proven.",
-    "2026-11-06: CI 42209580169 for 5d771838 COMPLETED SUCCESS, original job 127864601452 logs inspected: PC_PACK_STAGING_LEASE_PASS 37 NO_ENGINE_ABI; release guard 26. New offline copy_row metadata self-alias rejection (lease capacity/length) with fail-closed regression; pending CI for this commit. NO engine ABI or Uzuy proof."
+    "2026-11-06: CI 42209580169 for 5d771838 COMPLETED SUCCESS, original job 127864601452 logs inspected: PC_PACK_STAGING_LEASE_PASS 37 NO_ENGINE_ABI; release guard 26. New offline copy_row metadata self-alias rejection (lease capacity/length) with fail-closed regression; pending CI for this commit. NO engine ABI or Uzuy proof.",
+    "2026-11-08 offline PC multi-mod source file/directory prefix collision fail-closed validation; 3 regression cases, pending CI; no game runtime proof."
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",

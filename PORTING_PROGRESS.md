@@ -1,3 +1,8 @@
+
+## 2026-11-08 — Offline PC multi-mod file/directory namespace collision guard (CI pending)
+
+Added fail-closed source path prefix collision detection across mods and families, including casefold and both file/child ordering directions. Three regression cases cover forward/reverse collision and non-conflicting siblings. This does not prove engine archive precedence, consumer ABI, or Uzuy runtime. Original main and gameplay hooks unchanged. Release flags remain false.
+
 # Port ModdingAPI Switch: implementation checkpoint
 
 **Belum full ModdingAPI dan belum siap uji gameplay.** Binary berhasil dikompilasi;

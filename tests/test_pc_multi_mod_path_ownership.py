@@ -31,6 +31,18 @@ class MultiModOwnership(unittest.TestCase):
         m["resources"].append({"family":FAMILIES[1],"source_path":"A/one.bin"})
         with self.assertRaisesRegex(ValueError,"source path"):
             _input_spec(spec([m]))
+    def test_cross_mod_file_directory_prefix_collision(self):
+        with self.assertRaisesRegex(ValueError,"source path"):
+            _input_spec(spec([mod("a",FAMILIES[0],"A/data"),
+                              mod("b",FAMILIES[1],"a/DATA/child.bin")]))
+    def test_reverse_prefix_collision(self):
+        with self.assertRaisesRegex(ValueError,"source path"):
+            _input_spec(spec([mod("a",FAMILIES[0],"A/data/child.bin"),
+                              mod("b",FAMILIES[1],"a/DATA")]))
+    def test_sibling_paths_are_distinct(self):
+        self.assertEqual(_input_spec(spec([mod("a",FAMILIES[0],"A/data.bin"),
+                                           mod("b",FAMILIES[1],"a/data.bin.extra")])),
+                         {FAMILIES[0],FAMILIES[1]})
     def test_family_collision_with_distinct_paths(self):
         with self.assertRaisesRegex(ValueError,"family"):
             _input_spec(spec([mod("a",FAMILIES[0],"A/one.bin"),

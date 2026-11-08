@@ -62,8 +62,11 @@ def _input_spec(spec):
             # A PC archive path cannot have two independent family owners, even
             # when the families differ. Never guess source-path precedence.
             canonical_path=name_raw.casefold()
-            if canonical_path in resource_paths:
-                raise ValueError("Duplicate or casefold-colliding PC source path across mods")
+            if canonical_path in resource_paths or any(
+                canonical_path.startswith(existing+"/") or existing.startswith(canonical_path+"/")
+                for existing in resource_paths
+            ):
+                raise ValueError("Duplicate, casefold-colliding or file/directory PC source path across mods")
             resource_paths.add(canonical_path)
             if item["family"] not in FAMILIES or item["family"] in families:
                 raise ValueError("Unknown or conflicting PC raw family: refuse precedence guess")
