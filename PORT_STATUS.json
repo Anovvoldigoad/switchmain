@@ -64,7 +64,8 @@
     "2026-11-08 pending CI: source-SHA-pinned read-only CPK TOC inventory with per-entry stored-byte SHA256, suffix filter and CLI tests. Enables selecting authentic payload paths before evidence extraction; no game source fixture or native ABI proven.",
     "2026-11-08 PENDING_CI: source-pinned CPK inventory/capture now use read-only mmap + streamed SHA256 instead of loading full ~364MB archive; synthetic 4MiB padded archive tests prove no Path.read_bytes source access. No original CPK, native ABI, or Uzuy proof.",
     "2026-11-08 PENDING CI: CPK batch capture now parses source TOC once, reuses validated index for each selected entry; per-entry size and offset guards; synthetic positive, negative and count regression. Not native engine ABI or original CPK proof.",
-    "2026-11-09 pending CI: PC MovesetPlus explicit event index manifest preflight with pinned Toolbox 2.1.2.1 catalog, NS4/NSC correspondence, strict unknown rejection, SHA-pinned CLI. No raw binary rewrite or Switch ABI."
+    "2026-11-09 pending CI: PC MovesetPlus explicit event index manifest preflight with pinned Toolbox 2.1.2.1 catalog, NS4/NSC correspondence, strict unknown rejection, SHA-pinned CLI. No raw binary rewrite or Switch ABI.",
+    "2026-11-09 pending CI: original-main SHA-pinned nine-PC-family literal and adjacent ARM64 ADRP/ADD reference census; exact main segment hashes, negative results scoped, no consumer ABI inference."
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
