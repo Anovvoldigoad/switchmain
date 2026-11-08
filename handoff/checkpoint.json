@@ -69,7 +69,8 @@
       "2026-11-06 CI failure 42143523682 original job 127649363979: generated C++ #include had literal escaped newline; fixed include and stale PASS marker 15->17, added unused-arena-tail overlap regression. New CI pending; no engine ABI.",
       "2026-11-08 offline multi-mod source path file/directory prefix conflict rejection, including casefold and reverse ordering; 3 regression cases added; pending GitHub Actions CI; no engine archive precedence or native ABI proof.",
       "2026-11-08 pending CI: source-pinned read-only CPK payload evidence collector; synthetic tests; no engine ABI, real CPK or gameplay proof.",
-      "2026-11-08 pending CI: source-pinned CPK inventory CLI, exact stored payload hash and suffix filtering. No runtime ABI or Uzuy proof."
+      "2026-11-08 pending CI: source-pinned CPK inventory CLI, exact stored payload hash and suffix filtering. No runtime ABI or Uzuy proof.",
+      "2026-11-08 PENDING_CI: memory-mapped read-only CPK source intake, streamed SHA256, 4MiB padded synthetic regression; original archive proof unresolved."
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -1402,7 +1403,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Verify CI and raw logs for offline copy_row destination/lease overlap guard (expected marker 53); no native engine ABI or Uzuy proof.",
+  "next_action": "Verify HEAD CI completed success and raw logs for mmap-backed CPK evidence intake; then run against authentic stock CPK and record SHA/path/extraction evidence; no gameplay hook.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",

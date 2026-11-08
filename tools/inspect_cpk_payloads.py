@@ -7,14 +7,29 @@ compatibility with Uzuy. All selected payloads must validate before output.
 import argparse
 import hashlib
 import json
+import mmap
 import re
 import shutil
+from contextlib import contextmanager
 from pathlib import Path
 
 from portlib.cpk_events import canonical, entries, read_payload
 
 MAX_TOTAL_BYTES = 256 * 1024 * 1024
 MAX_ENTRIES = 16
+
+
+@contextmanager
+def _verified_archive(source, expected_sha256):
+    """Hash source by streaming, then map it read-only instead of copying the CPK."""
+    with source.open("rb") as handle:
+        digest = hashlib.file_digest(handle, "sha256").hexdigest()
+        if digest != expected_sha256.lower():
+            raise ValueError("CPK source SHA256 mismatch")
+        if handle.seek(0, 2) == 0:
+            raise ValueError("Empty CPK source")
+        with mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as archive:
+            yield archive, digest
 
 
 def inventory(cpk_path, expected_sha256, *, suffix=None):
@@ -24,24 +39,21 @@ def inventory(cpk_path, expected_sha256, *, suffix=None):
     if suffix is not None and (not isinstance(suffix, str) or not suffix or "/" in suffix or "\\" in suffix):
         raise ValueError("Invalid inventory suffix")
     source = Path(cpk_path)
-    archive = source.read_bytes()
-    digest = hashlib.sha256(archive).hexdigest()
-    if digest != expected_sha256.lower():
-        raise ValueError("CPK source SHA256 mismatch")
-    index = entries(archive)
-    rows = []
-    for name, item in sorted(index.items()):
-        if suffix is not None and not name.casefold().endswith(suffix.casefold()):
-            continue
-        start = item["offset"]
-        stored = archive[start:start + item["stored_size"]]
-        rows.append({
-            "entry": name, "id": item["id"], "offset": start,
-            "stored_bytes": len(stored), "extract_bytes": item["size"],
-            "stored_sha256": hashlib.sha256(stored).hexdigest(),
-            "encoding": "CRILAYLA" if stored.startswith(b"CRILAYLA") else
-                        ("identity" if len(stored) == item["size"] else "unknown")
-        })
+    with _verified_archive(source, expected_sha256) as (archive, digest):
+        index = entries(archive)
+        rows = []
+        for name, item in sorted(index.items()):
+            if suffix is not None and not name.casefold().endswith(suffix.casefold()):
+                continue
+            start = item["offset"]
+            stored_bytes = item["stored_size"]
+            rows.append({
+                "entry": name, "id": item["id"], "offset": start,
+                "stored_bytes": stored_bytes, "extract_bytes": item["size"],
+                "stored_sha256": hashlib.sha256(memoryview(archive)[start:start + stored_bytes]).hexdigest(),
+                "encoding": "CRILAYLA" if archive[start:start + 8] == b"CRILAYLA" else
+                            ("identity" if stored_bytes == item["size"] else "unknown")
+            })
     return {
         "status": "CPK_READ_ONLY_INVENTORY_NO_CONSUMER_ABI",
         "cpk_filename": source.name, "cpk_sha256": digest,
@@ -64,37 +76,33 @@ def capture(cpk_path, expected_sha256, selected, out_dir, *, max_total_bytes=MAX
 
     source = Path(cpk_path)
     destination = Path(out_dir)
-    archive = source.read_bytes()
-    actual_sha256 = hashlib.sha256(archive).hexdigest()
-    if actual_sha256 != expected_sha256.lower():
-        raise ValueError("CPK source SHA256 mismatch")
-
-    index = entries(archive)
-    outputs = []
-    metadata = []
-    total = 0
-    for number, name in enumerate(paths):
-        info = index.get(name)
-        if info is None:
-            raise ValueError("CPK entry absent: " + name)
-        remaining = max_total_bytes - total
-        if info["size"] > remaining:
-            raise ValueError("Selected CPK decoded payloads exceed aggregate limit")
-        payload = read_payload(archive, name, limit=remaining)
-        if len(payload) != info["size"]:
-            raise ValueError("CPK output size mismatch")
-        start = info["offset"]
-        compressed = archive[start:start + info["stored_size"]].startswith(b"CRILAYLA")
-        filename = f"{number:04d}.bin"
-        outputs.append((filename, payload))
-        metadata.append({
-            "entry": name, "id": info["id"], "offset": start,
-            "stored_bytes": info["stored_size"], "decoded_bytes": len(payload),
-            "encoding": "CRILAYLA" if compressed else "identity",
-            "sha256": hashlib.sha256(payload).hexdigest(),
-            "output": filename
-        })
-        total += len(payload)
+    with _verified_archive(source, expected_sha256) as (archive, actual_sha256):
+        index = entries(archive)
+        outputs = []
+        metadata = []
+        total = 0
+        for number, name in enumerate(paths):
+            info = index.get(name)
+            if info is None:
+                raise ValueError("CPK entry absent: " + name)
+            remaining = max_total_bytes - total
+            if info["size"] > remaining:
+                raise ValueError("Selected CPK decoded payloads exceed aggregate limit")
+            payload = read_payload(archive, name, limit=remaining)
+            if len(payload) != info["size"]:
+                raise ValueError("CPK output size mismatch")
+            start = info["offset"]
+            compressed = archive[start:start + 8] == b"CRILAYLA"
+            filename = f"{number:04d}.bin"
+            outputs.append((filename, payload))
+            metadata.append({
+                "entry": name, "id": info["id"], "offset": start,
+                "stored_bytes": info["stored_size"], "decoded_bytes": len(payload),
+                "encoding": "CRILAYLA" if compressed else "identity",
+                "sha256": hashlib.sha256(payload).hexdigest(),
+                "output": filename
+            })
+            total += len(payload)
 
     manifest = {
         "status": "SOURCE_PINNED_CPK_PAYLOAD_EVIDENCE_READ_ONLY_NOT_GAMEPLAY",

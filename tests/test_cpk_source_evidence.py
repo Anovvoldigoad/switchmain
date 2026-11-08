@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from test_cpk_events import cpk
@@ -149,6 +150,27 @@ class CPKEvidenceIntake(unittest.TestCase):
                 inventory(source, "0" * 64)
             self.assertEqual(source.read_bytes(), raw)
 
+
+
+    def test_large_archive_input_uses_readonly_mmap_not_full_read_bytes(self):
+        from inspect_cpk_payloads import inventory
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            source = root / "stock.cpk"
+            original = archive_fixture()
+            # Padding mimics a much larger original archive without altering
+            # the CPK header, TOC, payload offsets, or expected decoded bytes.
+            source.write_bytes(original + b"\x00" * (4 * 1024 * 1024))
+            sha = hashlib.sha256(source.read_bytes()).hexdigest()
+            with patch.object(Path, "read_bytes", side_effect=AssertionError("full archive read forbidden")):
+                index = inventory(source, sha, suffix=".xfbin")
+                result = capture(source, sha, [PLAIN, PACKED], root / "out")
+            self.assertEqual(index["cpk_bytes"], len(original) + 4 * 1024 * 1024)
+            self.assertEqual(result["total_decoded_bytes"], 267)
+            self.assertEqual((root / "out" / "0000.bin").read_bytes(), b"\x00ABC\xff")
+            self.assertEqual((root / "out" / "0001.bin").read_bytes(),
+                             bytes(range(256)) + b"ABCABC")
+            self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), sha)
 
 
 if __name__ == "__main__":
