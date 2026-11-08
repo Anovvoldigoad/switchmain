@@ -1414,5 +1414,11 @@
     "ci": "PENDING"
   },
   "latest_pending_code_commit": "bffe2fde7a4987fb125eb55583f0b7ed4206b590",
-  "latest_pending_ci": "PENDING_CI; offline source-vs-lease self-alias validation"
+  "latest_pending_ci": "PENDING_CI; offline source-vs-lease self-alias validation",
+  "crilayla_total_output_limit": {
+    "status": "pending_ci",
+    "parent_sha": "e4e08cc748b18d9ae8576862d1cd509a27f684b0",
+    "next": "Inspect HEAD Actions raw job logs before CI PASS; test real authenticated CPK only when available",
+    "runtime_proven": false
+  }
 }

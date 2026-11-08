@@ -1053,5 +1053,13 @@
   },
   "latest_pending_code_commit": "bffe2fde7a4987fb125eb55583f0b7ed4206b590",
   "latest_pending_ci": "PENDING_CI; offline source-vs-lease self-alias validation",
-  "multi_mod_pc_source_path_ownership_guard": "OFFLINE_ONLY_PENDING_CI_NO_ENGINE_ARCHIVE_PRECEDENCE"
+  "multi_mod_pc_source_path_ownership_guard": "OFFLINE_ONLY_PENDING_CI_NO_ENGINE_ARCHIVE_PRECEDENCE",
+  "crilayla_total_output_limit": {
+    "status": "pending_ci",
+    "parent_sha": "e4e08cc748b18d9ae8576862d1cd509a27f684b0",
+    "scope": "read_only_synthetic",
+    "description": "Limit now bounds full decoded payload including 256-byte CRILAYLA prefix; boundary/negative tests added",
+    "engine_abi_proven": false,
+    "gameplay_verified": false
+  }
 }

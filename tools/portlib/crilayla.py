@@ -8,7 +8,7 @@ def decompress(data, *, limit=MAX_DECODED):
     if len(data) < 0x110 or data[:8] != b'CRILAYLA':
         raise ValueError('Not a complete CRILAYLA stream')
     decoded_size, compressed_size = struct.unpack_from('<II', data, 8)
-    if decoded_size > limit or compressed_size > len(data) - 0x110:
+    if not isinstance(limit, int) or limit < 0x100 or decoded_size > limit - 0x100 or compressed_size > len(data) - 0x110:
         raise ValueError('CRILAYLA size exceeds bounds')
     end = 0x10 + compressed_size
     if end + 0x100 != len(data):

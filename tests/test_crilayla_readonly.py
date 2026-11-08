@@ -42,6 +42,13 @@ class ReadOnlyCRILAYLA(unittest.TestCase):
         with self.assertRaises(ValueError):
             decompress(stream(7))
 
+    def test_total_output_limit_includes_prefix(self):
+        stream = fixture(b'ABC')
+        self.assertEqual(len(decompress(stream, limit=259)), 259)
+        for limit in (258, 255, 0, -1):
+            with self.subTest(limit=limit), self.assertRaises(ValueError):
+                decompress(stream, limit=limit)
+
     def test_invalid(self):
         valid = fixture(b'ABC')
         cases = [b'', valid[:-1], valid + b'X',
