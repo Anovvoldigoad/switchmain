@@ -90,7 +90,7 @@ def capture(cpk_path, expected_sha256, selected, out_dir, *, max_total_bytes=MAX
             remaining = max_total_bytes - total
             if info["size"] > remaining:
                 raise ValueError("Selected CPK decoded payloads exceed aggregate limit")
-            payload = read_payload(archive, name, limit=remaining)
+            payload = read_payload(archive, name, limit=remaining, index=index)
             if len(payload) != info["size"]:
                 raise ValueError("CPK output size mismatch")
             start = info["offset"]

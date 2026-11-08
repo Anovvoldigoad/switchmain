@@ -70,7 +70,8 @@
       "2026-11-08 offline multi-mod source path file/directory prefix conflict rejection, including casefold and reverse ordering; 3 regression cases added; pending GitHub Actions CI; no engine archive precedence or native ABI proof.",
       "2026-11-08 pending CI: source-pinned read-only CPK payload evidence collector; synthetic tests; no engine ABI, real CPK or gameplay proof.",
       "2026-11-08 pending CI: source-pinned CPK inventory CLI, exact stored payload hash and suffix filtering. No runtime ABI or Uzuy proof.",
-      "2026-11-08 PENDING_CI: memory-mapped read-only CPK source intake, streamed SHA256, 4MiB padded synthetic regression; original archive proof unresolved."
+      "2026-11-08 PENDING_CI: memory-mapped read-only CPK source intake, streamed SHA256, 4MiB padded synthetic regression; original archive proof unresolved.",
+      "2026-11-08 pending CI: single-TOC-parse batched CPK capture and bounded indexed decode; synthetic tests only."
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -1403,7 +1404,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Verify HEAD CI completed success and raw logs for mmap-backed CPK evidence intake; then run against authentic stock CPK and record SHA/path/extraction evidence; no gameplay hook.",
+  "next_action": "Verify CI and raw job logs for indexed multi-entry CPK intake; next acquire authentic original CPK and run source-pinned inventory, then analyze native consumer evidence. All release flags false.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",

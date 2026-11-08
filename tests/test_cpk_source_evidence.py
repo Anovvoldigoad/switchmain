@@ -25,6 +25,43 @@ def archive_fixture(compressed= None):
 
 
 class CPKEvidenceIntake(unittest.TestCase):
+    def test_multi_entry_capture_parses_toc_once(self):
+        from unittest.mock import patch
+        from inspect_cpk_payloads import inventory
+        from portlib import cpk_events
+        raw = archive_fixture()
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            source = root / "stock.cpk"
+            source.write_bytes(raw)
+            sha = hashlib.sha256(raw).hexdigest()
+            original = cpk_events.entries
+            with patch("inspect_cpk_payloads.entries", wraps=original) as scan:
+                with patch("portlib.cpk_events.entries", side_effect=AssertionError(
+                    "Do not reparse CPK for each selected payload")):
+                    report = capture(source, sha, [PLAIN, PACKED], root / "out")
+                self.assertEqual(scan.call_count, 1)
+            self.assertEqual(report["total_decoded_bytes"], 267)
+            self.assertEqual((root / "out" / "0001.bin").read_bytes(),
+                             bytes(range(256)) + b"ABCABC")
+            self.assertEqual(inventory(source, sha)["indexed_entries"], 2)
+
+    def test_indexed_reader_preserves_size_and_bounds_guards(self):
+        from portlib.cpk_events import entries, read_payload
+        raw = archive_fixture()
+        index = entries(raw)
+        self.assertEqual(read_payload(raw, PLAIN, index=index, limit=5), b"\x00ABC\xff")
+        self.assertEqual(read_payload(raw, PACKED, index=index, limit=262),
+                         bytes(range(256)) + b"ABCABC")
+        with self.assertRaises(ValueError):
+            read_payload(raw, PACKED, index=index, limit=261)
+        with self.assertRaises(ValueError):
+            read_payload(raw, PLAIN, index=index, limit=4)
+        tampered = {key: dict(value) for key, value in index.items()}
+        tampered[PLAIN]["offset"] = len(raw) - 1
+        with self.assertRaises(ValueError):
+            read_payload(raw, PLAIN, index=tampered)
+
     def test_source_pins_exact_output_manifest_and_no_source_change(self):
         archive = archive_fixture()
         with tempfile.TemporaryDirectory() as folder:
