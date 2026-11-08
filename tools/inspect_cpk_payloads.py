@@ -40,6 +40,7 @@ def inventory(cpk_path, expected_sha256, *, suffix=None):
         raise ValueError("Invalid inventory suffix")
     source = Path(cpk_path)
     with _verified_archive(source, expected_sha256) as (archive, digest):
+        archive_size = len(archive)
         index = entries(archive)
         rows = []
         for name, item in sorted(index.items()):
@@ -57,7 +58,7 @@ def inventory(cpk_path, expected_sha256, *, suffix=None):
     return {
         "status": "CPK_READ_ONLY_INVENTORY_NO_CONSUMER_ABI",
         "cpk_filename": source.name, "cpk_sha256": digest,
-        "cpk_bytes": len(archive), "indexed_entries": len(index),
+        "cpk_bytes": archive_size, "indexed_entries": len(index),
         "selected_entries": len(rows), "entries": rows,
         "native_engine_abi_verified": False, "uzuy_tested": False
     }
@@ -77,6 +78,7 @@ def capture(cpk_path, expected_sha256, selected, out_dir, *, max_total_bytes=MAX
     source = Path(cpk_path)
     destination = Path(out_dir)
     with _verified_archive(source, expected_sha256) as (archive, actual_sha256):
+        archive_size = len(archive)
         index = entries(archive)
         outputs = []
         metadata = []
@@ -107,7 +109,7 @@ def capture(cpk_path, expected_sha256, selected, out_dir, *, max_total_bytes=MAX
     manifest = {
         "status": "SOURCE_PINNED_CPK_PAYLOAD_EVIDENCE_READ_ONLY_NOT_GAMEPLAY",
         "cpk_filename": source.name, "cpk_sha256": actual_sha256,
-        "cpk_bytes": len(archive), "total_decoded_bytes": total,
+        "cpk_bytes": archive_size, "total_decoded_bytes": total,
         "entries": metadata, "native_engine_abi_verified": False,
         "archive_precedence_verified": False, "uzuy_tested": False
     }
