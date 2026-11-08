@@ -145,6 +145,8 @@ jobs:
         run: PYTHONPATH=tools python -m unittest discover -s tests -p test_crilayla_readonly.py -v
       - name: Verify read-only CPK payload extraction with bounded CRILAYLA decode
         run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_cpk_read_payload.py -v
+      - name: SHA-pinned read-only CPK payload evidence extraction (synthetic CPK only)
+        run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_cpk_source_evidence.py -v
       - name: Reject untested gameplay release flags in project status and handoff
         run: python tests/test_release_flags.py --status PORT_STATUS.json --checkpoint handoff/checkpoint.json --output proof-work
       - uses: actions/upload-artifact@v4
