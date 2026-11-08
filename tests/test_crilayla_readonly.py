@@ -22,6 +22,26 @@ class ReadOnlyCRILAYLA(unittest.TestCase):
             self.assertEqual(decompress(stream), bytes(range(256)) + raw)
             self.assertEqual(stream, before)
 
+    def test_backward_overlap_copy_and_corrupt_distance(self):
+        # CRILAYLA decodes from the end: literal C,B,A, then a 3-byte
+        # backreference at distance 3 must reconstruct ABCABC.
+        def packed(tokens):
+            bits = []
+            for value, width in tokens:
+                bits.extend((value >> shift) & 1 for shift in range(width - 1, -1, -1))
+            bits.extend([0] * ((-len(bits)) % 8))
+            return bytes(sum(bits[j + k] << (7 - k) for k in range(8))
+                         for j in range(0, len(bits), 8))[::-1]
+        literals = [(0, 1), (ord('C'), 8), (0, 1), (ord('B'), 8),
+                    (0, 1), (ord('A'), 8)]
+        def stream(distance):
+            encoded = packed(literals + [(1, 1), (distance - 3, 13), (0, 2)])
+            return (b'CRILAYLA' + (6).to_bytes(4, 'little') +
+                    len(encoded).to_bytes(4, 'little') + encoded + bytes(range(256)))
+        self.assertEqual(decompress(stream(3)), bytes(range(256)) + b'ABCABC')
+        with self.assertRaises(ValueError):
+            decompress(stream(7))
+
     def test_invalid(self):
         valid = fixture(b'ABC')
         cases = [b'', valid[:-1], valid + b'X',
