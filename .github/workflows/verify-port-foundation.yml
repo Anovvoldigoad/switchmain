@@ -155,6 +155,8 @@ jobs:
         run: PYTHONPATH=tools python -m unittest discover -s tests -p test_pc_moveset_event_preflight.py -v
       - name: Census exact nine-family literals and adjacent ARM64 address references in original pinned main
         run: python tests/test_native_pc_family_xrefs.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Trace bounded nonadjacent ADRP/ADD PC family references in original main
+        run: python tests/test_native_pc_nonadjacent_xrefs.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Reject untested gameplay release flags in project status and handoff
         run: python tests/test_release_flags.py --status PORT_STATUS.json --checkpoint handoff/checkpoint.json --output proof-work
       - uses: actions/upload-artifact@v4

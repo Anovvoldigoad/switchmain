@@ -1,3 +1,7 @@
+## 2026-11-09 — Bounded nonadjacent ARM64 PC-family reference evidence (PENDING_CI)
+
+Primary sources: original Switch v1.70 main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; TheLeonX/NSC-Toolbox Properties/Program.cs commit 6f780cb6814f07e03c16b3e78d97dde4e4368983 blob 9d5f3e0dfa4ed51cf7924b503081a87b12146f64; NSC-ModManager commit 276116ebf5ba398a867793cb02ee6c33c0927645; CRI reference cpktools eff288cf9c5b844269b215a920fe36e198aee4c9. Previous adjacent-only census returned zero candidates. New bounded read-only scanner searches nonadjacent ADRP/ADD, stopping on clobbers and control transfers; synthetic regressions and SHA-pinned original-main CI pending. No consumer ABI, lifecycle, archive precedence, runtime or Uzuy claims. Original main, Sakura aura107, Event236 and three false flags unchanged.
+
 
 ## 2026-11-08 — Offline PC multi-mod file/directory namespace collision guard (CI pending)
 
