@@ -1125,5 +1125,15 @@
     "feature": "FileOpen BR memory operand address forms",
     "status": "pending_ci",
     "engine_consumer_abi_verified": false
+  },
+  "fileopen_direct_cfg_edge_census": {
+    "status": "PENDING_CI",
+    "parent_sha": "026fcc22153d314ebf85873ca3769491c17c6a7d",
+    "scope": "pinned_original_main_read_only_bounded_direct_edges",
+    "feature": "B/BL, B.cond, CBZ, TBZ edge census and in-window merge evidence",
+    "external_predecessors_unknown": true,
+    "complete_cfg_proven": false,
+    "engine_consumer_abi_verified": false,
+    "gameplay_verified": false
   }
 }

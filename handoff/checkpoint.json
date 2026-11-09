@@ -1406,7 +1406,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Inspect authentic CI run/job logs for pinned FileOpen BR provenance, then trace indirect memory loads and register path merges; do not install hooks.",
+  "next_action": "Inspect new HEAD Actions run/job original logs; if green, extend conservative predecessor reachability with byte-pinned evidence, without claiming consumer ABI.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -1479,5 +1479,15 @@
     "feature": "FileOpen BR memory operand base/index/displacement evidence",
     "verification": "pending_ci",
     "consumer_abi_verified": false
+  },
+  "fileopen_direct_cfg_edge_census": {
+    "status": "PENDING_CI",
+    "parent_sha": "026fcc22153d314ebf85873ca3769491c17c6a7d",
+    "scope": "pinned_original_main_read_only_bounded_direct_edges",
+    "feature": "B/BL, B.cond, CBZ, TBZ edge census and in-window merge evidence",
+    "external_predecessors_unknown": true,
+    "complete_cfg_proven": false,
+    "engine_consumer_abi_verified": false,
+    "gameplay_verified": false
   }
 }

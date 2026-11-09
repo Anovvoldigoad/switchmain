@@ -53,3 +53,4 @@ HIGH-PRIORITY REAL IMPLEMENTATION:
 6. full_moddingapi=false; ready_for_gameplay_test=false; emulator_tested=false until matching installable artifact truly passes Uzuy. Do not call Unicorn/CI/source template a gameplay release.
 
 Continue independently, report actual new HEAD, verified CI, unresolved blockers, and copy-ready next prompt. FINAL GOAL FULL PC MODDINGAPI SWITCH v1.70, not parsers and staging alone.
+2026-11-10 candidate (pending CI): bounded ARM64 FileOpen direct-edge census, branch/merge evidence for pinned original main. Tests in tests/test_native_fileopen_cfg_edges.py; original-byte SHA pin. Check push Actions run/job raw logs for next HEAD. External predecessor paths, memory dereference, native consumer ABI, lifecycle, archive precedence remain unresolved; no hooks or Uzuy. Keep release flags false.
