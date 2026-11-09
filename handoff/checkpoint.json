@@ -1406,7 +1406,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Verify CI and raw job logs for indexed multi-entry CPK intake; next acquire authentic original CPK and run source-pinned inventory, then analyze native consumer evidence. All release flags false.",
+  "next_action": "Inspect authentic CI run/job logs for pinned FileOpen BR provenance, then trace indirect memory loads and register path merges; do not install hooks.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -1459,5 +1459,19 @@
     "parent_sha": "819b398a32f85a62c453905cdf5911ce7413bb22",
     "source_blob": "9d5f3e0dfa4ed51cf7924b503081a87b12146f64",
     "next": "Verify new HEAD CI and authentic raw logs, then inspect newest upstream compiled function implementation or native source for projectile-target/deflect IDs; never invent Switch ABI."
+  },
+  "fileopen_br_register_provenance": {
+    "status": "PENDING_CI",
+    "parent_sha": "2e7814d5eb692f02884dbbabcecabd49f752d49b",
+    "scope": "read_only_pinned_original_main",
+    "sites": [
+      "0x116B724 BR X1",
+      "0x116B430 BR X2"
+    ],
+    "report": "proof-work/native_fileopen_br_provenance.json",
+    "memory_pointer_values_proven": false,
+    "ownership_lifecycle_proven": false,
+    "engine_abi_proven": false,
+    "gameplay_verified": false
   }
 }

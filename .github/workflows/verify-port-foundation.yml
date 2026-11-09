@@ -157,7 +157,7 @@ jobs:
         run: python tests/test_native_pc_family_xrefs.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Trace bounded nonadjacent ADRP/ADD PC family references in original main
         run: python tests/test_native_pc_nonadjacent_xrefs.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
-      - name: Reject untested gameplay release flags in project status and handoff
+      - name: Trace pinned FileOpen indirect branch register definitions\n        run: python tests/test_native_fileopen_br_provenance.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work\n      - name: Reject untested gameplay release flags in project status and handoff
         run: python tests/test_release_flags.py --status PORT_STATUS.json --checkpoint handoff/checkpoint.json --output proof-work
       - uses: actions/upload-artifact@v4
         with:

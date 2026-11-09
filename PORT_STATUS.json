@@ -1106,5 +1106,19 @@
     "projectiles_target_function_index_verified": false,
     "deflect_function_index_verified": false,
     "switch_engine_abi_verified": false
+  },
+  "fileopen_br_register_provenance": {
+    "status": "PENDING_CI",
+    "parent_sha": "2e7814d5eb692f02884dbbabcecabd49f752d49b",
+    "scope": "read_only_pinned_original_main",
+    "sites": [
+      "0x116B724 BR X1",
+      "0x116B430 BR X2"
+    ],
+    "report": "proof-work/native_fileopen_br_provenance.json",
+    "memory_pointer_values_proven": false,
+    "ownership_lifecycle_proven": false,
+    "engine_abi_proven": false,
+    "gameplay_verified": false
   }
 }
