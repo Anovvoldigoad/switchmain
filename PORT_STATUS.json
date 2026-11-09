@@ -1120,5 +1120,10 @@
     "ownership_lifecycle_proven": false,
     "engine_abi_proven": false,
     "gameplay_verified": false
+  },
+  "latest_candidate": {
+    "feature": "FileOpen BR memory operand address forms",
+    "status": "pending_ci",
+    "engine_consumer_abi_verified": false
   }
 }

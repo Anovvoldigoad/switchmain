@@ -1473,5 +1473,11 @@
     "ownership_lifecycle_proven": false,
     "engine_abi_proven": false,
     "gameplay_verified": false
+  },
+  "latest_candidate": {
+    "parent": "a6f943e7f1c5cb4bd2a32ec4ec87c394b49deb8c",
+    "feature": "FileOpen BR memory operand base/index/displacement evidence",
+    "verification": "pending_ci",
+    "consumer_abi_verified": false
   }
 }

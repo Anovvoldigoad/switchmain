@@ -17,6 +17,12 @@ def check(main, output):
     got = slice_site(code, 0, 4, "x1")
     assert got["definitions_reverse_order"][0]["mnemonic"] == "ldr"
     assert "x0" in got["unresolved_registers"]
+    assert got["definitions_reverse_order"][0]["memory_operands"] == [
+        {"base": "x0", "index": None, "displacement": 0,
+         "value": "unknown_runtime_memory"}]
+    offset = slice_site(pack(0xf9400c01, 0xd61f0020), 0, 4, "x1")
+    assert offset["definitions_reverse_order"][0]["memory_operands"][0]["displacement"] == 24
+    assert not offset["memory_dereferences_resolved"]
     assert not got["memory_dereferences_resolved"]
     barrier = slice_site(pack(ret, nop, 0xd61f0020), 0, 8, "x1")
     assert barrier["stop_reason"] == "control_flow_barrier"

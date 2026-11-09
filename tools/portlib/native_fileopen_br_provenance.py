@@ -5,6 +5,7 @@ This is a bounded *syntactic* def-use slice, not an interprocedural proof.
 import hashlib
 import struct
 from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM, CS_GRP_JUMP, CS_GRP_CALL
+from capstone.arm64 import ARM64_OP_MEM, ARM64_OP_REG
 from .native_cpk_graph import MAIN_SHA256
 from .nso_profile import segments
 
@@ -40,12 +41,20 @@ def slice_site(code, base, site, expected_reg, limit=48):
         matched = wanted.intersection(writes)
         if not matched:
             continue
+        loads = []
+        for op in i.operands:
+            if op.type == ARM64_OP_MEM:
+                loads.append({"base": md.reg_name(op.mem.base) if op.mem.base else None,
+                              "index": md.reg_name(op.mem.index) if op.mem.index else None,
+                              "displacement": op.mem.disp,
+                              "value": "unknown_runtime_memory"})
         definitions.append({"address": hex(i.address), "bytes_le": i.bytes.hex(),
                             "mnemonic": i.mnemonic, "operands": i.op_str,
                             "writes_required_register": True,
                             "reads": [md.reg_name(r) for r in reads],
                             "writes": [md.reg_name(r) for r in writes],
-                            "memory_value_resolved": False})
+                            "memory_value_resolved": False,
+                            "memory_operands": loads})
         wanted.difference_update(matched)
         wanted.update(reads)
         if not wanted:
@@ -56,6 +65,7 @@ def slice_site(code, base, site, expected_reg, limit=48):
             "unresolved_registers": sorted(md.reg_name(r) for r in wanted),
             "stop_reason": boundary, "bounded_instructions": limit,
             "memory_dereferences_resolved": False,
+            "memory_address_forms_recorded": True,
             "cross_basic_block_proven": False,
             "engine_consumer_abi_verified": False}
 
