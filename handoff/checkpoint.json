@@ -1495,12 +1495,24 @@
   "latest_candidate_scope": "hypothetical entry reaching writer correction, synthetic regression only",
   "native_fileopen_copy_origins": {
     "parent_sha": "39739a567646a6619d461e79aae8c00eff838b2c",
-    "status": "PENDING_HEAD_CI_AND_RAW_JOB_LOG",
+    "status": "PASS_STATIC_CI_ONLY",
     "implementation": "tools/portlib/native_fileopen_cfg_edges.py:trace_copy_origins",
     "regression": "tests/test_native_fileopen_cfg_edges.py",
     "pointer_values_proven": false,
     "native_consumer_abi_verified": false,
     "external_predecessors_proven": false,
-    "next": "Inspect new push run actual job log. After PASS inspect exact native writer chain and prove callee/stack ownership; no hook."
+    "next": "Inspect new push run actual job log. After PASS inspect exact native writer chain and prove callee/stack ownership; no hook.",
+    "ci_run": 42829761016,
+    "ci_job": 129876430933,
+    "original_job_log_inspected": true
+  },
+  "native_fileopen_external_inbound": {
+    "parent_sha": "e24bde771b7ad2884ab450eb75f3d1519f3a5b51",
+    "status": "PENDING_HEAD_CI_AND_ORIGINAL_LOG",
+    "code": "tools/portlib/native_fileopen_external_edges.py",
+    "test": "tests/test_native_fileopen_external_edges.py",
+    "report": "proof-work/native_fileopen_external_edges.json",
+    "next": "Inspect new push CI original job log and exact inbound source addresses/bytes, investigate actual callee/stack/owner proof; never assume syntactic branch executes",
+    "consumer_abi_proven": false
   }
 }

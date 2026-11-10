@@ -1137,12 +1137,27 @@
     "gameplay_verified": false
   },
   "native_fileopen_copy_origins": {
-    "status": "PENDING_CI_SOURCE_ONLY",
+    "status": "PASS_STATIC_CI_ONLY",
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
     "scope": "bounded hypothetical-entry path-sensitive register MOV provenance through CFG merges, opaque call/memory/computed values",
     "test": "tests/test_native_fileopen_cfg_edges.py",
     "native_consumer_abi_proven": false,
     "runtime_pointer_values_proven": false,
+    "emulator_tested": false,
+    "ci_run": 42829761016,
+    "ci_job": 129876430933,
+    "original_job_log_inspected": true
+  },
+  "native_fileopen_external_inbound": {
+    "status": "PENDING_HEAD_CI",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "scope": "all-text syntactic direct inbound branch census for two BR windows",
+    "source": "tools/portlib/native_fileopen_external_edges.py",
+    "test": "tests/test_native_fileopen_external_edges.py",
+    "external_indirect_predecessors_unresolved": true,
+    "source_reachability_proven": false,
+    "consumer_abi_proven": false,
+    "ownership_verified": false,
     "emulator_tested": false
   }
 }
