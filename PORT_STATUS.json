@@ -1176,5 +1176,6 @@
     "path_feasibility_proven": false,
     "consumer_abi_proven": false,
     "emulator_tested": false
-  }
+  },
+  "pending_ci_note": "Byte-witnessed FileOpen BR local shortest-path evidence; pending HEAD CI; no ABI or runtime proof"
 }

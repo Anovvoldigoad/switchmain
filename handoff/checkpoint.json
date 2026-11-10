@@ -1406,7 +1406,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Inspect new HEAD Actions run/job original logs; if green, extend conservative predecessor reachability with byte-pinned evidence, without claiming consumer ABI.",
+  "next_action": "Verify byte-witnessed shortest FileOpen BR path CI/log; investigate real target call effects without runtime hooks",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -1527,5 +1527,7 @@
     "status": "PENDING_CI",
     "proof": "proof-work/native_fileopen_external_edges.json",
     "next": "Inspect real unique external target path summaries, choose semantically likely caller/callee provenance; no hook until ABI and lifecycle proven."
-  }
+  },
+  "pending_ci": true,
+  "last_parent_sha": "1de606ab3597ae4f7430c3c75f585cd6d0eedcea"
 }

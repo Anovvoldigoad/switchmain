@@ -68,27 +68,43 @@ def inbound_census(code, base, sites, window=128):
 
 
 def _window_path(code, base, window_start, origin, site):
-    """Syntactic reachability only, with no assumed indirect branch targets.
+    """Shortest byte-witnessed local path, not a feasible runtime trace.
 
-    A BL falls through in this model, but whether its callee returns or
-    modifies runtime state is not verified.
+    Calls are modeled as fallthrough with unknown side effects. No indirect
+    destination or out-of-window predecessor is invented.
     """
-    pending = [origin]
+    from collections import deque
+    pending = deque([origin])
+    parents = {origin: None}
     visited = set()
     while pending:
-        pc = pending.pop()
+        pc = pending.popleft()
         if pc in visited:
             continue
         visited.add(pc)
         if pc == site:
-            continue
+            break
         word = struct.unpack_from("<I", code, pc-base)[0]
         kind, target, fallthrough = decode_edge(word, pc)
+        successors = []
         if target is not None and kind != "call" and window_start <= target <= site:
-            pending.append(target)
+            successors.append(target)
         if fallthrough and pc < site:
-            pending.append(pc + 4)
-    return site in visited, len(visited)
+            successors.append(pc + 4)
+        for successor in successors:
+            if successor not in parents:
+                parents[successor] = pc
+                pending.append(successor)
+    if site not in visited:
+        return False, len(visited), []
+    path = []
+    cursor = site
+    while cursor is not None:
+        word = struct.unpack_from("<I", code, cursor-base)[0]
+        path.append({"pc": hex(cursor), "bytes_le": word.to_bytes(4, "little").hex()})
+        cursor = parents[cursor]
+    path.reverse()
+    return True, len(visited), path
 
 
 def summarize_external_entries(code, base, entry):
@@ -109,9 +125,11 @@ def summarize_external_entries(code, base, entry):
         group[row["kind"] + "_edges"] += 1
     summary = []
     for target, group in sorted(groups.items()):
-        reachable, visited_count = _window_path(code, base, start, target, site)
+        reachable, visited_count, witness = _window_path(code, base, start, target, site)
         group["syntactic_path_from_target_to_br"] = reachable
         group["window_words_visited"] = visited_count
+        group["shortest_local_path"] = witness
+        group["path_call_side_effects_resolved"] = False
         group["source_reachability_verified"] = False
         group["path_feasibility_verified"] = False
         summary.append(group)

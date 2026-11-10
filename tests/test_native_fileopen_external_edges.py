@@ -45,6 +45,9 @@ def check(main, output):
     assert [(x["target"], x["incoming_edges"]) for x in summary] == [
         ("0x10", 1), ("0x14", 2), ("0x18", 1)]
     assert all(x["syntactic_path_from_target_to_br"] for x in summary)
+    assert [[int(y["pc"], 16) for y in x["shortest_local_path"]] for x in summary] == [
+        [16, 20, 24], [20, 24], [24]]
+    assert all(not x["path_call_side_effects_resolved"] for x in summary)
     assert all(not x["path_feasibility_verified"] and
                not x["source_reachability_verified"] for x in summary)
     # External jump to a RET before the BR does not reach the BR.
@@ -54,6 +57,7 @@ def check(main, output):
         "target": "0x4", "incoming_edges": 1, "call_edges": 0,
         "jump_edges": 1, "conditional_edges": 0,
         "syntactic_path_from_target_to_br": False, "window_words_visited": 1,
+        "shortest_local_path": [], "path_call_side_effects_resolved": False,
         "source_reachability_verified": False, "path_feasibility_verified": False}]
     # A cycle must terminate and remain unreachable.
     cycle = inbound_census(pack(nop, 0x14000000, 0xd61f0020, 0x17fffffe),
@@ -95,6 +99,22 @@ def check(main, output):
         groups = entry["external_entry_path_summary"]
         assert sum(x["incoming_edges"] for x in groups) == entry["direct_inbound_count"]
         assert len({x["target"] for x in groups}) == len(groups)
+        for group in groups:
+            witness = group["shortest_local_path"]
+            assert bool(witness) == group["syntactic_path_from_target_to_br"]
+            assert not group["path_call_side_effects_resolved"]
+            if not witness:
+                continue
+            assert witness[0]["pc"] == group["target"] and witness[-1]["pc"] == hex(site)
+            assert len(witness) <= group["window_words_visited"]
+            for idx, step in enumerate(witness):
+                pc = int(step["pc"], 16)
+                raw = text[pc-base:pc-base+4]
+                assert len(raw) == 4 and raw.hex() == step["bytes_le"]
+                if idx+1 < len(witness):
+                    nxt = int(witness[idx+1]["pc"], 16)
+                    kind, destination, fallthrough = decode_edge(struct.unpack("<I", raw)[0], pc)
+                    assert (destination == nxt and kind != "call") or (fallthrough and nxt == pc+4)
         assert all(not x["source_reachability_verified"] and
                    not x["path_feasibility_verified"] for x in groups)
         assert all(int(entry["window_start"], 16) <= int(x["target"], 16) <= site
