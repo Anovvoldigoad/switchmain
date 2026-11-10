@@ -18,6 +18,13 @@ def check(main, output):
     assert got["site_in_window_predecessors"] == ["0x8", "0xc"]
     assert any(x["address"] == "0x8" for x in got["in_window_merges"])
     assert any(x["kind"] == "conditional" and x["to"] == "0x8" for x in got["direct_edges"])
+    assert got["site_reachable_from_window_start"]
+    assert got["window_entry_reachable_instructions"] == 4
+    assert got["window_entry_reachable_merges"] == ["0x8"]
+    dead = census(pack(0x14000002, 0xd503201f, 0xd61f0020), 0, 8)
+    assert dead["window_entry_reachable_instructions"] == 2
+    assert dead["site_reachable_from_window_start"]
+    assert dead["window_entry_reachable_merges"] == []
     assert not got["complete_cfg_proven"] and not got["memory_values_proven"]
     assert decode_edge(0x14000000, 4) == ("jump", 4, False)
     assert decode_edge(0x17ffffff, 4) == ("jump", 0, False)

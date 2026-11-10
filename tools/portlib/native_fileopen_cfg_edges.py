@@ -51,10 +51,35 @@ def census(code, base, site, window=128):
                 unresolved.append(row)
         if fallthrough and pc < site:
             incoming.setdefault(pc + 4, []).append(pc)
+    # Window start is only a hypothetical entry, not a proven function entry.
+    successors = {}
+    for pc in range(start, site + 4, 4):
+        word = struct.unpack_from("<I", code, pc - base)[0]
+        kind, target, fallthrough = decode_edge(word, pc)
+        next_pc = []
+        if target is not None and start <= target <= site and kind != "call":
+            next_pc.append(target)
+        if fallthrough and pc < site:
+            next_pc.append(pc + 4)
+        successors[pc] = next_pc
+    reachable = set()
+    pending = [start]
+    while pending:
+        pc = pending.pop()
+        if pc in reachable:
+            continue
+        reachable.add(pc)
+        pending.extend(x for x in successors[pc] if x not in reachable)
+    reachable_merges = [hex(pc) for pc, preds in sorted(incoming.items())
+                        if pc in reachable and len({p for p in preds
+                        if p in reachable and pc in successors[p]}) > 1]
     merges = [{"address": hex(pc), "predecessors": sorted(hex(x) for x in set(pred))}
               for pc, pred in sorted(incoming.items())
               if len(set(pred)) > 1]
     return {"site": hex(site), "window_start": hex(start),
+            "window_entry_reachable_instructions": len(reachable),
+            "site_reachable_from_window_start": site in reachable,
+            "window_entry_reachable_merges": reachable_merges,
             "window_instruction_count": (site - start) // 4 + 1,
             "direct_edges": edges, "out_of_window_edges": unresolved,
             "in_window_merges": merges,
