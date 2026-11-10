@@ -31,6 +31,12 @@ def check(main, output):
     assert decode_edge(0x94000001, 4) == ("call", 8, True)
     assert decode_edge(0xd61f0020, 16) == ("indirect_or_return", None, False)
     assert decode_edge(0xd63f0020, 16) == ("indirect_call", None, True)
+    for authenticated_return in (0xd65f0bff, 0xd65f0fff):
+        assert decode_edge(authenticated_return, 0) == ("indirect_or_return", None, False)
+        terminal = census(pack(authenticated_return, 0xaa0203e1, 0xd61f0020), 0, 8)
+        assert not terminal["site_reachable_from_window_start"]
+        assert terminal["window_entry_reachable_instructions"] == 1
+        assert reaching_writers(pack(authenticated_return, 0xaa0203e1, 0xd61f0020), 0, 8, "x1")["writers"] == []
     indirect = pack(0xd63f0020, 0xd61f0020)  # blr x1; br x1
     indirect_graph = census(indirect, 0, 4)
     assert indirect_graph["indirect_calls_unknown"] == ["0x0"]
