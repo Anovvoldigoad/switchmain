@@ -6,7 +6,7 @@ import struct
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from portlib.native_fileopen_cfg_edges import analyze, census, decode_edge
+from portlib.native_fileopen_cfg_edges import analyze, census, decode_edge, reaching_writers
 from portlib.native_cpk_graph import MAIN_SHA256
 
 
@@ -40,6 +40,18 @@ def check(main, output):
             pass
         else:
             raise AssertionError("Invalid CFG window accepted")
+    # Two reachable paths have distinct final x1 writers; no runtime value is inferred.
+    diamond = pack(0xaa0203e1, 0xb4000040, 0xaa0303e1, 0xd61f0020)
+    writers = reaching_writers(diamond, 0, 12, "x1")
+    assert [x["address"] for x in writers["writers"]] == ["0x0", "0x8"]
+    assert not writers["abi_verified"] and writers["external_predecessors_unknown"]
+    assert reaching_writers(pack(0xd503201f, 0xd61f0020), 0, 4, "x1")["unknown_paths"] == ["hypothetical_window_entry"]
+    try:
+        reaching_writers(diamond, 0, 12, "x2")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Wrong indirect register accepted")
     original = main.read_bytes()
     assert hashlib.sha256(original).hexdigest() == MAIN_SHA256
     report = analyze(original)
