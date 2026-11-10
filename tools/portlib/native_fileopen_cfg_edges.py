@@ -26,6 +26,8 @@ def decode_edge(word, pc):
         return ("conditional", pc + (_signed((word >> 5) & 0x7ffff, 19) << 2), True)
     if word & 0x7e000000 == 0x36000000:  # TBZ / TBNZ
         return ("conditional", pc + (_signed((word >> 5) & 0x3fff, 14) << 2), True)
+    if word & 0xfffffc1f == 0xd63f0000:  # BLR: opaque indirect callee, returns syntactically
+        return ("indirect_call", None, True)
     if word & 0xfffffc1f in (0xd61f0000, 0xd65f0000, 0xd69f0000):
         return ("indirect_or_return", None, False)
     return ("linear_or_unclassified", None, True)
@@ -37,10 +39,13 @@ def census(code, base, site, window=128):
     start = max(base, site - 4 * window)
     edges = []
     unresolved = []
+    indirect_calls = []
     incoming = {}
     for pc in range(start, site + 4, 4):
         word = struct.unpack_from("<I", code, pc - base)[0]
         kind, target, fallthrough = decode_edge(word, pc)
+        if kind == "indirect_call":
+            indirect_calls.append(hex(pc))
         if target is not None:
             row = {"from": hex(pc), "to": hex(target), "kind": kind,
                    "within_window": start <= target <= site}
@@ -81,7 +86,8 @@ def census(code, base, site, window=128):
             "site_reachable_from_window_start": site in reachable,
             "window_entry_reachable_merges": reachable_merges,
             "window_instruction_count": (site - start) // 4 + 1,
-            "direct_edges": edges, "out_of_window_edges": unresolved,
+            "direct_edges": edges, "indirect_calls_unknown": indirect_calls,
+            "out_of_window_edges": unresolved,
             "in_window_merges": merges,
             "site_in_window_predecessors": sorted(hex(x) for x in set(incoming.get(site, []))),
             "external_predecessors_unknown": True,
