@@ -70,7 +70,7 @@ def inbound_census(code, base, sites, window=128):
 def _window_path(code, base, window_start, origin, site, forbid_calls=False):
     """Shortest byte-witnessed local path, not a feasible runtime trace.
 
-    Calls are modeled as fallthrough with unknown side effects. No indirect
+    Direct and indirect calls are opaque fallthroughs unless forbidden. No indirect
     destination or out-of-window predecessor is invented.
     """
     from collections import deque
@@ -86,7 +86,7 @@ def _window_path(code, base, window_start, origin, site, forbid_calls=False):
             break
         word = struct.unpack_from("<I", code, pc-base)[0]
         kind, target, fallthrough = decode_edge(word, pc)
-        if forbid_calls and kind == "call":
+        if forbid_calls and kind in ("call", "indirect_call"):
             continue
         successors = []
         if target is not None and kind != "call" and window_start <= target <= site:

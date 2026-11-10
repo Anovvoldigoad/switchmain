@@ -73,7 +73,8 @@
       "2026-11-08 PENDING_CI: memory-mapped read-only CPK source intake, streamed SHA256, 4MiB padded synthetic regression; original archive proof unresolved.",
       "2026-11-08 pending CI: single-TOC-parse batched CPK capture and bounded indexed decode; synthetic tests only.",
       "2026-11-09 pending CI: source-pinned PC editor event-index preflight; explicit JSON only; native ABI and gameplay unresolved.",
-      "2026-11-09 pending CI: original-main SHA-pinned nine-PC-family literal and adjacent ARM64 ADRP/ADD reference census; exact main segment hashes, negative results scoped, no consumer ABI inference."
+      "2026-11-09 pending CI: original-main SHA-pinned nine-PC-family literal and adjacent ARM64 ADRP/ADD reference census; exact main segment hashes, negative results scoped, no consumer ABI inference.",
+      "2026-11-11: FileOpen call-free witness rejects opaque BLR as well as BL; synthetic negative and pinned main regression; pending HEAD CI, no native consumer ABI."
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
