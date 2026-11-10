@@ -117,6 +117,20 @@ def reaching_writers(code, base, site, register, window=128):
             predecessors[target].add(pc)
         if fallthrough and pc < site:
             predecessors[pc+4].add(pc)
+    # Ignore syntactic predecessors unreachable from the hypothetical entry.
+    successors = {pc: set() for pc in predecessors}
+    for pc, preds in predecessors.items():
+        for predecessor in preds:
+            successors[predecessor].add(pc)
+    reachable = set()
+    todo = [start]
+    while todo:
+        pc = todo.pop()
+        if pc in reachable:
+            continue
+        reachable.add(pc)
+        todo.extend(successors[pc] - reachable)
+    predecessors = {pc: preds & reachable for pc, preds in predecessors.items()}
     target_reg = md.reg_name(instructions[site].operands[0].reg)
     if target_reg != register or instructions[site].mnemonic != "br":
         raise ValueError("Pinned branch register mismatch")
