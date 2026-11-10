@@ -65,3 +65,5 @@ HIGH-PRIORITY REAL IMPLEMENTATION:
 
 Continue independently, report actual new HEAD, verified CI, unresolved blockers, and copy-ready next prompt. FINAL GOAL FULL PC MODDINGAPI SWITCH v1.70, not parsers and staging alone.
 2026-11-10 candidate (pending CI): bounded ARM64 FileOpen direct-edge census, branch/merge evidence for pinned original main. Tests in tests/test_native_fileopen_cfg_edges.py; original-byte SHA pin. Check push Actions run/job raw logs for next HEAD. External predecessor paths, memory dereference, native consumer ABI, lifecycle, archive precedence remain unresolved; no hooks or Uzuy. Keep release flags false.
+
+2026-11-11: non-call inbound BR candidate separation, code 1b8b9f317a8e281844e721398eecc2b057ec66f9; jump/conditional inbound distinguished from high-fanout BL; call-free local paths remain syntactic. Synthetic regressions and pinned original-main replay updated. CI PENDING; ABI/ownership/archive precedence/Uzuy UNPROVEN; all release flags false.

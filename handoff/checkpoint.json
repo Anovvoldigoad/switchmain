@@ -1536,5 +1536,17 @@
     "parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
     "proof": "proof-work/native_fileopen_external_edges.json",
     "next": "Verify HEAD push run, inspect authentic raw log, then inspect call-free candidate targets and actual source call effects/ownership."
+  },
+  "native_fileopen_noncall_candidates": {
+    "status": "PENDING_CI",
+    "code_commit": "1b8b9f317a8e281844e721398eecc2b057ec66f9",
+    "scope": "original_main_sha_pinned_static_only",
+    "feature": "distinguish noncall external jump/conditional BR-window candidates from BL call fanout",
+    "test": "tests/test_native_fileopen_external_edges.py",
+    "consumer_abi_verified": false,
+    "ownership_verified": false,
+    "archive_precedence_verified": false,
+    "emulator_tested": false,
+    "next": "Obtain push Actions run for HEAD and inspect original job log; analyze actual noncall candidate witness bytes and native lifecycle."
   }
 }
