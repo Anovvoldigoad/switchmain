@@ -144,7 +144,14 @@ def reaching_writers(code, base, site, register, window=128):
             continue
         visited.add((pc, wanted))
         if pc == start:
-            unknown.add("hypothetical_window_entry")
+            # Include the first instruction as a possible reaching definition.
+            ins = instructions[pc]
+            if ins.group(CS_GRP_CALL):
+                unknown.add("call_clobber_or_side_effect")
+            elif wanted in {md.reg_name(x) for x in ins.regs_access()[1]}:
+                writers.add((pc, ins.bytes.hex(), ins.mnemonic, ins.op_str))
+            else:
+                unknown.add("hypothetical_window_entry")
         for predecessor in predecessors[pc]:
             ins = instructions[predecessor]
             if ins.group(CS_GRP_CALL):

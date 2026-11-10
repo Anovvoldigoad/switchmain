@@ -44,6 +44,12 @@ def check(main, output):
     diamond = pack(0xaa0203e1, 0xb4000040, 0xaa0303e1, 0xd61f0020)
     writers = reaching_writers(diamond, 0, 12, "x1")
     assert [x["address"] for x in writers["writers"]] == ["0x0", "0x8"]
+    entry_writer = reaching_writers(pack(0xaa0203e1, 0xd61f0020), 0, 4, "x1")
+    assert [x["address"] for x in entry_writer["writers"]] == ["0x0"]
+    assert entry_writer["external_predecessors_unknown"] and not entry_writer["abi_verified"]
+    entry_unknown = reaching_writers(pack(0xd503201f, 0xd61f0020), 0, 4, "x1")
+    assert entry_unknown["writers"] == []
+    assert entry_unknown["unknown_paths"] == ["hypothetical_window_entry"]
     assert not writers["abi_verified"] and writers["external_predecessors_unknown"]
     assert reaching_writers(pack(0xd503201f, 0xd61f0020), 0, 4, "x1")["unknown_paths"] == ["hypothetical_window_entry"]
     # Unreachable mov x1,x3 must not become a candidate writer.
