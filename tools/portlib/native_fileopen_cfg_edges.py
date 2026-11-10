@@ -89,6 +89,66 @@ def census(code, base, site, window=128):
             "engine_consumer_abi_verified": False}
 
 
+
+def reaching_writers(code, base, site, register, window=128):
+    """Enumerate path-sensitive last writers from a hypothetical window entry.
+
+    Any path entering from outside the window, a call, or an unsupported
+    instruction leaves the register's runtime value unresolved.
+    """
+    from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM, CS_GRP_CALL
+    from capstone.arm64 import ARM64_OP_REG
+    graph = census(code, base, site, window)
+    start = int(graph["window_start"], 16)
+    if not graph["site_reachable_from_window_start"]:
+        return {"writers": [], "unknown_paths": ["site_not_reachable_from_window_entry"],
+                "external_predecessors_unknown": True, "abi_verified": False}
+    md = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
+    md.detail = True
+    instructions = {}
+    predecessors = {pc: set() for pc in range(start, site + 4, 4)}
+    for pc in predecessors:
+        ins = list(md.disasm(code[pc-base:pc-base+4], pc))
+        if len(ins) != 1 or ins[0].address != pc or ins[0].size != 4:
+            raise ValueError("Unrecognized instruction in bounded window")
+        instructions[pc] = ins[0]
+        kind, target, fallthrough = decode_edge(struct.unpack_from("<I", code, pc-base)[0], pc)
+        if target is not None and kind != "call" and target in predecessors:
+            predecessors[target].add(pc)
+        if fallthrough and pc < site:
+            predecessors[pc+4].add(pc)
+    target_reg = md.reg_name(instructions[site].operands[0].reg)
+    if target_reg != register or instructions[site].mnemonic != "br":
+        raise ValueError("Pinned branch register mismatch")
+    writers = set()
+    unknown = set()
+    pending = [(site, register)]
+    visited = set()
+    while pending:
+        pc, wanted = pending.pop()
+        if (pc, wanted) in visited:
+            continue
+        visited.add((pc, wanted))
+        if pc == start:
+            unknown.add("hypothetical_window_entry")
+        for predecessor in predecessors[pc]:
+            ins = instructions[predecessor]
+            if ins.group(CS_GRP_CALL):
+                unknown.add("call_clobber_or_side_effect")
+                continue
+            reads, writes = ins.regs_access()
+            written = {md.reg_name(x) for x in writes}
+            if wanted in written:
+                writers.add((predecessor, ins.bytes.hex(), ins.mnemonic, ins.op_str))
+            else:
+                pending.append((predecessor, wanted))
+    return {"writers": [{"address": hex(pc), "bytes_le": raw,
+                         "mnemonic": mnemonic, "operands": operands}
+                        for pc, raw, mnemonic, operands in sorted(writers)],
+            "unknown_paths": sorted(unknown),
+            "external_predecessors_unknown": True,
+            "memory_values_proven": False, "abi_verified": False}
+
 def analyze(nso):
     digest = hashlib.sha256(nso).hexdigest()
     if digest != MAIN_SHA256:
