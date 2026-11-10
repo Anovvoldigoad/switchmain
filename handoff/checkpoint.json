@@ -1406,7 +1406,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Verify byte-witnessed shortest FileOpen BR path CI/log; investigate real target call effects without runtime hooks",
+  "next_action": "2026-11-11: Call-free bounded BR witness classification added: shortest syntactic paths which do not traverse opaque BL/BLR, with positive, call-only negative, bypass, and authentic main byte replay regressions. This is NOT actual call feasibility, consumer ABI, ownership, archive precedence or Uzuy. Parent 91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb; CI PENDING. Upstream ModManager release 2.1.2.1; Toolbox 6f780cb; REA b2f3dc81; cpktools eff288cf9. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; three release flags false.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -1529,5 +1529,11 @@
     "next": "Inspect real unique external target path summaries, choose semantically likely caller/callee provenance; no hook until ABI and lifecycle proven."
   },
   "pending_ci": true,
-  "last_parent_sha": "1de606ab3597ae4f7430c3c75f585cd6d0eedcea"
+  "last_parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
+  "native_fileopen_call_free_witness": {
+    "status": "PENDING_CI",
+    "parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
+    "proof": "proof-work/native_fileopen_external_edges.json",
+    "next": "Verify HEAD push run, inspect authentic raw log, then inspect call-free candidate targets and actual source call effects/ownership."
+  }
 }

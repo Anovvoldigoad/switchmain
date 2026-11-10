@@ -47,6 +47,9 @@ def check(main, output):
     assert all(x["syntactic_path_from_target_to_br"] for x in summary)
     assert [[int(y["pc"], 16) for y in x["shortest_local_path"]] for x in summary] == [
         [16, 20, 24], [20, 24], [24]]
+    assert all(x["call_free_syntactic_path_to_br"] for x in summary)
+    assert [[int(y["pc"], 16) for y in x["shortest_call_free_path"]]
+            for x in summary] == [[16, 20, 24], [20, 24], [24]]
     assert all(not x["path_call_side_effects_resolved"] for x in summary)
     assert all(not x["path_feasibility_verified"] and
                not x["source_reachability_verified"] for x in summary)
@@ -57,8 +60,26 @@ def check(main, output):
         "target": "0x4", "incoming_edges": 1, "call_edges": 0,
         "jump_edges": 1, "conditional_edges": 0,
         "syntactic_path_from_target_to_br": False, "window_words_visited": 1,
-        "shortest_local_path": [], "path_call_side_effects_resolved": False,
+        "shortest_local_path": [], "call_free_syntactic_path_to_br": False,
+        "call_free_window_words_visited": 1, "shortest_call_free_path": [],
+        "path_call_side_effects_resolved": False,
         "source_reachability_verified": False, "path_feasibility_verified": False}]
+    # A BL followed by BR is syntactically reachable only by assuming
+    # the opaque call returns; never label that witness call-free.
+    call_only = inbound_census(pack(nop, 0x94000001, 0xd61f0020,
+                                    0x17fffffe), 0, {"site": (8, "x1")}, 2)
+    call_group = call_only["sites"]["site"]["external_entry_path_summary"][0]
+    assert call_group["syntactic_path_from_target_to_br"]
+    assert not call_group["call_free_syntactic_path_to_br"]
+    assert call_group["shortest_call_free_path"] == []
+    # A conditional branch can bypass a BL; shortest call-free witness
+    # must use the bypass rather than an opaque call fallthrough.
+    bypass = inbound_census(pack(nop, 0x54000040, 0x94000001,
+                                 0xd61f0020, 0x17fffffd),
+                            0, {"site": (12, "x1")}, 3)
+    bypass_group = bypass["sites"]["site"]["external_entry_path_summary"][0]
+    assert bypass_group["call_free_syntactic_path_to_br"]
+    assert [int(s["pc"], 16) for s in bypass_group["shortest_call_free_path"]] == [4, 12]
     # A cycle must terminate and remain unreachable.
     cycle = inbound_census(pack(nop, 0x14000000, 0xd61f0020, 0x17fffffe),
                            0, {"site": (8, "x1")}, 2)
@@ -101,6 +122,14 @@ def check(main, output):
         assert len({x["target"] for x in groups}) == len(groups)
         for group in groups:
             witness = group["shortest_local_path"]
+            call_free = group["shortest_call_free_path"]
+            assert bool(call_free) == group["call_free_syntactic_path_to_br"]
+            assert not call_free or bool(witness)
+            for step in call_free[:-1]:
+                pc = int(step["pc"], 16)
+                raw = text[pc-base:pc-base+4]
+                assert raw.hex() == step["bytes_le"]
+                assert decode_edge(struct.unpack("<I", raw)[0], pc)[0] != "call"
             assert bool(witness) == group["syntactic_path_from_target_to_br"]
             assert not group["path_call_side_effects_resolved"]
             if not witness:

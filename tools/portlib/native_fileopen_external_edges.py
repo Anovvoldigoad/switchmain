@@ -67,7 +67,7 @@ def inbound_census(code, base, sites, window=128):
 
 
 
-def _window_path(code, base, window_start, origin, site):
+def _window_path(code, base, window_start, origin, site, forbid_calls=False):
     """Shortest byte-witnessed local path, not a feasible runtime trace.
 
     Calls are modeled as fallthrough with unknown side effects. No indirect
@@ -86,6 +86,8 @@ def _window_path(code, base, window_start, origin, site):
             break
         word = struct.unpack_from("<I", code, pc-base)[0]
         kind, target, fallthrough = decode_edge(word, pc)
+        if forbid_calls and kind == "call":
+            continue
         successors = []
         if target is not None and kind != "call" and window_start <= target <= site:
             successors.append(target)
@@ -126,6 +128,11 @@ def summarize_external_entries(code, base, entry):
     summary = []
     for target, group in sorted(groups.items()):
         reachable, visited_count, witness = _window_path(code, base, start, target, site)
+        call_free, call_free_visited, call_free_witness = _window_path(
+            code, base, start, target, site, forbid_calls=True)
+        group["call_free_syntactic_path_to_br"] = call_free
+        group["call_free_window_words_visited"] = call_free_visited
+        group["shortest_call_free_path"] = call_free_witness
         group["syntactic_path_from_target_to_br"] = reachable
         group["window_words_visited"] = visited_count
         group["shortest_local_path"] = witness
