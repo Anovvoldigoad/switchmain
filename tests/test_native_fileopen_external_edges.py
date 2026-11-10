@@ -47,6 +47,11 @@ def check(main, output):
     assert all(x["syntactic_path_from_target_to_br"] for x in summary)
     assert [[int(y["pc"], 16) for y in x["shortest_local_path"]] for x in summary] == [
         [16, 20, 24], [20, 24], [24]]
+    assert [(x["noncall_inbound_edges"],
+             x["noncall_inbound_call_free_candidate"]) for x in summary] == [
+                 (1, True), (2, True), (0, False)]
+    assert all(not x["noncall_inbound_candidate_runtime_verified"]
+               for x in summary)
     assert all(x["call_free_syntactic_path_to_br"] for x in summary)
     assert [[int(y["pc"], 16) for y in x["shortest_call_free_path"]]
             for x in summary] == [[16, 20, 24], [20, 24], [24]]
@@ -63,7 +68,10 @@ def check(main, output):
         "shortest_local_path": [], "call_free_syntactic_path_to_br": False,
         "call_free_window_words_visited": 1, "shortest_call_free_path": [],
         "path_call_side_effects_resolved": False,
-        "source_reachability_verified": False, "path_feasibility_verified": False}]
+        "source_reachability_verified": False, "path_feasibility_verified": False,
+        "noncall_inbound_edges": 1,
+        "noncall_inbound_call_free_candidate": False,
+        "noncall_inbound_candidate_runtime_verified": False}]
     # A BL followed by BR is syntactically reachable only by assuming
     # the opaque call returns; never label that witness call-free.
     call_only = inbound_census(pack(nop, 0x94000001, 0xd61f0020,
@@ -126,6 +134,13 @@ def check(main, output):
         assert entry["direct_inbound_count"] == len(entry["direct_inbound_from_outside_window"])
         groups = entry["external_entry_path_summary"]
         assert sum(x["incoming_edges"] for x in groups) == entry["direct_inbound_count"]
+        assert all(x["noncall_inbound_edges"] == x["jump_edges"] +
+                   x["conditional_edges"] for x in groups)
+        assert all(x["noncall_inbound_call_free_candidate"] ==
+                   bool(x["noncall_inbound_edges"] and
+                        x["call_free_syntactic_path_to_br"]) for x in groups)
+        assert all(not x["noncall_inbound_candidate_runtime_verified"]
+                   for x in groups)
         assert len({x["target"] for x in groups}) == len(groups)
         for group in groups:
             witness = group["shortest_local_path"]

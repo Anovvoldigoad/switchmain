@@ -125,11 +125,19 @@ def summarize_external_entries(code, base, entry):
                                            "conditional_edges": 0})
         group["incoming_edges"] += 1
         group[row["kind"] + "_edges"] += 1
+    # Separate true non-call transfers from BL callers: a BL to an
+    # unrelated local function is not evidence of a BR-chain predecessor.
+    # These are syntactic candidates only, never confirmed runtime edges.
     summary = []
     for target, group in sorted(groups.items()):
         reachable, visited_count, witness = _window_path(code, base, start, target, site)
         call_free, call_free_visited, call_free_witness = _window_path(
             code, base, start, target, site, forbid_calls=True)
+        group["noncall_inbound_edges"] = (
+            group["jump_edges"] + group["conditional_edges"])
+        group["noncall_inbound_call_free_candidate"] = bool(
+            group["noncall_inbound_edges"] and call_free)
+        group["noncall_inbound_candidate_runtime_verified"] = False
         group["call_free_syntactic_path_to_br"] = call_free
         group["call_free_window_words_visited"] = call_free_visited
         group["shortest_call_free_path"] = call_free_witness
