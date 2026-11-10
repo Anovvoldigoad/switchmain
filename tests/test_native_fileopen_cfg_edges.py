@@ -82,6 +82,14 @@ def check(main, output):
     report = analyze(original)
     assert len(report["sites"]) == 2
     assert all(not x["complete_cfg_proven"] for x in report["sites"].values())
+    for name, (site, register) in __import__("portlib.native_fileopen_br_provenance", fromlist=["SITES"]).SITES.items():
+        evidence = report["sites"][name]["reaching_register_writers"]
+        assert evidence["external_predecessors_unknown"] and not evidence["abi_verified"]
+        assert not evidence["memory_values_proven"]
+        assert all(int(row["address"], 16) <= site and len(bytes.fromhex(row["bytes_le"])) == 4
+                   for row in evidence["writers"])
+        assert evidence == reaching_writers(__import__("portlib.nso_profile", fromlist=["segments"]).segments(original)[0][1],
+                                            __import__("portlib.nso_profile", fromlist=["segments"]).segments(original)[0][0], site, register)
     altered = bytearray(original)
     altered[-1] ^= 1
     try:

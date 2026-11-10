@@ -183,8 +183,13 @@ def analyze(nso):
     if digest != MAIN_SHA256:
         raise ValueError("Original main SHA mismatch")
     base, code, _ = segments(nso)[0]
+    sites = {}
+    for name, (site, register) in SITES.items():
+        evidence = census(code, base, site)
+        evidence["reaching_register_writers"] = reaching_writers(code, base, site, register)
+        sites[name] = evidence
     return {"main_sha256": digest, "text_sha256": hashlib.sha256(code).hexdigest(),
-            "sites": {name: census(code, base, site) for name, (site, _) in SITES.items()},
+            "sites": sites,
             "scope": "bounded syntactic direct-edge census; external predecessors unknown",
             "ownership_verified": False, "archive_precedence_verified": False,
             "gameplay_verified": False}
