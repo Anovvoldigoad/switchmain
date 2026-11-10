@@ -1508,11 +1508,24 @@
   },
   "native_fileopen_external_inbound": {
     "parent_sha": "e24bde771b7ad2884ab450eb75f3d1519f3a5b51",
-    "status": "PENDING_HEAD_CI_AND_ORIGINAL_LOG",
+    "status": "PASS_STATIC_CI_ONLY",
     "code": "tools/portlib/native_fileopen_external_edges.py",
     "test": "tests/test_native_fileopen_external_edges.py",
     "report": "proof-work/native_fileopen_external_edges.json",
     "next": "Inspect new push CI original job log and exact inbound source addresses/bytes, investigate actual callee/stack/owner proof; never assume syntactic branch executes",
-    "consumer_abi_proven": false
+    "consumer_abi_proven": false,
+    "ci_run": 42833466211,
+    "ci_job": 129889325820,
+    "raw_log_inspected": true,
+    "counts": {
+      "fileopen_br_x1": 16672,
+      "fileopen_br_x2": 7901
+    }
+  },
+  "native_fileopen_external_entry_paths": {
+    "parent_sha": "4603dbb13dbed1dc76cbeb76ce26ace06bd65c8a",
+    "status": "PENDING_CI",
+    "proof": "proof-work/native_fileopen_external_edges.json",
+    "next": "Inspect real unique external target path summaries, choose semantically likely caller/callee provenance; no hook until ABI and lifecycle proven."
   }
 }

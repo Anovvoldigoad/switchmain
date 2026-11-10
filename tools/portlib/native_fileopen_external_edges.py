@@ -55,6 +55,7 @@ def inbound_census(code, base, sites, window=128):
                 })
     for entry in found.values():
         entry["direct_inbound_count"] = len(entry["direct_inbound_from_outside_window"])
+        entry["external_entry_path_summary"] = summarize_external_entries(code, base, entry)
     return {
         "text_sha256": hashlib.sha256(code).hexdigest(),
         "text_base": hex(base), "text_bytes": len(code),
@@ -63,6 +64,58 @@ def inbound_census(code, base, sites, window=128):
         "sites": found, "complete_cfg_proven": False,
         "native_consumer_abi_verified": False,
     }
+
+
+
+def _window_path(code, base, window_start, origin, site):
+    """Syntactic reachability only, with no assumed indirect branch targets.
+
+    A BL falls through in this model, but whether its callee returns or
+    modifies runtime state is not verified.
+    """
+    pending = [origin]
+    visited = set()
+    while pending:
+        pc = pending.pop()
+        if pc in visited:
+            continue
+        visited.add(pc)
+        if pc == site:
+            continue
+        word = struct.unpack_from("<I", code, pc-base)[0]
+        kind, target, fallthrough = decode_edge(word, pc)
+        if target is not None and kind != "call" and window_start <= target <= site:
+            pending.append(target)
+        if fallthrough and pc < site:
+            pending.append(pc + 4)
+    return site in visited, len(visited)
+
+
+def summarize_external_entries(code, base, entry):
+    """Group observed inbound target addresses and bound their local paths.
+
+    The source of each incoming branch and the paths' runtime feasibility
+    are deliberately NOT considered proven.
+    """
+    start = int(entry["window_start"], 16)
+    site = int(entry["site"], 16)
+    groups = {}
+    for row in entry["direct_inbound_from_outside_window"]:
+        target = int(row["to"], 16)
+        group = groups.setdefault(target, {"target": hex(target), "incoming_edges": 0,
+                                           "call_edges": 0, "jump_edges": 0,
+                                           "conditional_edges": 0})
+        group["incoming_edges"] += 1
+        group[row["kind"] + "_edges"] += 1
+    summary = []
+    for target, group in sorted(groups.items()):
+        reachable, visited_count = _window_path(code, base, start, target, site)
+        group["syntactic_path_from_target_to_br"] = reachable
+        group["window_words_visited"] = visited_count
+        group["source_reachability_verified"] = False
+        group["path_feasibility_verified"] = False
+        summary.append(group)
+    return summary
 
 
 def analyze(nso):

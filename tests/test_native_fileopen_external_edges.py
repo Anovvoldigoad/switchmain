@@ -39,6 +39,28 @@ def check(main, output):
                               0, {"site": (8, "x1")}, 2)
     assert [(r["from"], r["to"]) for r in backward["sites"]["site"][
         "direct_inbound_from_outside_window"]] == [("0xc", "0x0")]
+    # Group repeated external call sites by actual target and ask whether
+    # any syntactic path from that target can reach BR (not whether it runs).
+    summary = report["sites"]["target"]["external_entry_path_summary"]
+    assert [(x["target"], x["incoming_edges"]) for x in summary] == [
+        ("0x10", 1), ("0x14", 2), ("0x18", 1)]
+    assert all(x["syntactic_path_from_target_to_br"] for x in summary)
+    assert all(not x["path_feasibility_verified"] and
+               not x["source_reachability_verified"] for x in summary)
+    # External jump to a RET before the BR does not reach the BR.
+    terminal = inbound_census(pack(nop, 0xd65f03c0, 0xd61f0020, 0x17fffffe),
+                              0, {"site": (8, "x1")}, 2)
+    assert terminal["sites"]["site"]["external_entry_path_summary"] == [{
+        "target": "0x4", "incoming_edges": 1, "call_edges": 0,
+        "jump_edges": 1, "conditional_edges": 0,
+        "syntactic_path_from_target_to_br": False, "window_words_visited": 1,
+        "source_reachability_verified": False, "path_feasibility_verified": False}]
+    # A cycle must terminate and remain unreachable.
+    cycle = inbound_census(pack(nop, 0x14000000, 0xd61f0020, 0x17fffffe),
+                           0, {"site": (8, "x1")}, 2)
+    assert not cycle["sites"]["site"]["external_entry_path_summary"][0][
+        "syntactic_path_from_target_to_br"]
+    assert cycle["sites"]["site"]["external_entry_path_summary"][0]["window_words_visited"] == 1
     for payload, base, sites, window in [
         (code, 0, {}, 2), (code, 0, {"s": (24, "x1")}, 0),
         (code, 0, {"s": (24, "x1")}, 513),
@@ -70,6 +92,14 @@ def check(main, output):
         assert not entry["indirect_predecessors_resolved"]
         assert not entry["outside_text_predecessors_resolved"]
         assert entry["direct_inbound_count"] == len(entry["direct_inbound_from_outside_window"])
+        groups = entry["external_entry_path_summary"]
+        assert sum(x["incoming_edges"] for x in groups) == entry["direct_inbound_count"]
+        assert len({x["target"] for x in groups}) == len(groups)
+        assert all(not x["source_reachability_verified"] and
+                   not x["path_feasibility_verified"] for x in groups)
+        assert all(int(entry["window_start"], 16) <= int(x["target"], 16) <= site
+                   for x in groups)
+
         start = int(entry["window_start"], 16)
         for row in entry["direct_inbound_from_outside_window"]:
             pc, target = int(row["from"], 16), int(row["to"], 16)

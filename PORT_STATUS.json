@@ -1149,7 +1149,7 @@
     "original_job_log_inspected": true
   },
   "native_fileopen_external_inbound": {
-    "status": "PENDING_HEAD_CI",
+    "status": "PASS_STATIC_CI_ONLY",
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
     "scope": "all-text syntactic direct inbound branch census for two BR windows",
     "source": "tools/portlib/native_fileopen_external_edges.py",
@@ -1158,6 +1158,23 @@
     "source_reachability_proven": false,
     "consumer_abi_proven": false,
     "ownership_verified": false,
+    "emulator_tested": false,
+    "ci_run": 42833466211,
+    "ci_job": 129889325820,
+    "original_job_log_inspected": true,
+    "original_main_direct_inbound_counts": {
+      "fileopen_br_x1": 16672,
+      "fileopen_br_x2": 7901
+    },
+    "candidate_paths_runtime_verified": false
+  },
+  "native_fileopen_external_entry_paths": {
+    "status": "PENDING_CI",
+    "source": "tools/portlib/native_fileopen_external_edges.py:summarize_external_entries",
+    "candidate_call_targets_static_only": true,
+    "callee_returns_proven": false,
+    "path_feasibility_proven": false,
+    "consumer_abi_proven": false,
     "emulator_tested": false
   }
 }
