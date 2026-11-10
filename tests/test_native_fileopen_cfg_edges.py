@@ -46,6 +46,10 @@ def check(main, output):
     assert [x["address"] for x in writers["writers"]] == ["0x0", "0x8"]
     assert not writers["abi_verified"] and writers["external_predecessors_unknown"]
     assert reaching_writers(pack(0xd503201f, 0xd61f0020), 0, 4, "x1")["unknown_paths"] == ["hypothetical_window_entry"]
+    # Unreachable mov x1,x3 must not become a candidate writer.
+    dead_writer = reaching_writers(pack(0x14000002, 0xaa0303e1, 0xd61f0020), 0, 8, "x1")
+    assert dead_writer["writers"] == []
+    assert "hypothetical_window_entry" in dead_writer["unknown_paths"]
     try:
         reaching_writers(diamond, 0, 12, "x2")
     except ValueError:
