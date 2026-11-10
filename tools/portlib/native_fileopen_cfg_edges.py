@@ -28,6 +28,8 @@ def decode_edge(word, pc):
         return ("conditional", pc + (_signed((word >> 5) & 0x3fff, 14) << 2), True)
     if word & 0xfffffc1f == 0xd63f0000:  # BLR: opaque indirect callee, returns syntactically
         return ("indirect_call", None, True)
+    if word in (0xd65f0bff, 0xd65f0fff):  # RETAA / RETAB (authenticated returns)
+        return ("indirect_or_return", None, False)
     if word & 0xfffffc1f in (0xd61f0000, 0xd65f0000, 0xd69f0000):
         return ("indirect_or_return", None, False)
     return ("linear_or_unclassified", None, True)
