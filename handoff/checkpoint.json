@@ -1489,5 +1489,8 @@
     "complete_cfg_proven": false,
     "engine_consumer_abi_verified": false,
     "gameplay_verified": false
-  }
+  },
+  "latest_candidate_commit": "8d635163a6ab7f0c632db795293ffac1f73ca051",
+  "latest_candidate_ci": "PENDING_CI",
+  "latest_candidate_scope": "hypothetical entry reaching writer correction, synthetic regression only"
 }
