@@ -36,7 +36,10 @@ def check(main, output):
         terminal = census(pack(authenticated_return, 0xaa0203e1, 0xd61f0020), 0, 8)
         assert not terminal["site_reachable_from_window_start"]
         assert terminal["window_entry_reachable_instructions"] == 1
-        assert reaching_writers(pack(authenticated_return, 0xaa0203e1, 0xd61f0020), 0, 8, "x1")["writers"] == []
+        unreachable = reaching_writers(pack(authenticated_return, 0xaa0203e1, 0xd61f0020), 0, 8, "x1")
+        assert unreachable["writers"] == []
+        assert unreachable["unknown_paths"] == ["site_not_reachable_from_window_entry"]
+        assert not unreachable["memory_values_proven"] and not unreachable["abi_verified"]
     indirect = pack(0xd63f0020, 0xd61f0020)  # blr x1; br x1
     indirect_graph = census(indirect, 0, 4)
     assert indirect_graph["indirect_calls_unknown"] == ["0x0"]
