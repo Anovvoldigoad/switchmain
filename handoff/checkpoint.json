@@ -1492,5 +1492,15 @@
   },
   "latest_candidate_commit": "8d635163a6ab7f0c632db795293ffac1f73ca051",
   "latest_candidate_ci": "PENDING_CI",
-  "latest_candidate_scope": "hypothetical entry reaching writer correction, synthetic regression only"
+  "latest_candidate_scope": "hypothetical entry reaching writer correction, synthetic regression only",
+  "native_fileopen_copy_origins": {
+    "parent_sha": "39739a567646a6619d461e79aae8c00eff838b2c",
+    "status": "PENDING_HEAD_CI_AND_RAW_JOB_LOG",
+    "implementation": "tools/portlib/native_fileopen_cfg_edges.py:trace_copy_origins",
+    "regression": "tests/test_native_fileopen_cfg_edges.py",
+    "pointer_values_proven": false,
+    "native_consumer_abi_verified": false,
+    "external_predecessors_proven": false,
+    "next": "Inspect new push run actual job log. After PASS inspect exact native writer chain and prove callee/stack ownership; no hook."
+  }
 }

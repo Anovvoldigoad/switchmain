@@ -6,7 +6,7 @@ import struct
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from portlib.native_fileopen_cfg_edges import analyze, census, decode_edge, reaching_writers
+from portlib.native_fileopen_cfg_edges import analyze, census, decode_edge, reaching_writers, trace_copy_origins
 from portlib.native_cpk_graph import MAIN_SHA256
 
 
@@ -80,6 +80,46 @@ def check(main, output):
         pass
     else:
         raise AssertionError("Wrong indirect register accepted")
+    # Source provenance is not the last writer alone: MOV x1<-x2<-x3<-x4
+    # must record three distinct possible register dependencies.
+    copy_chain = pack(0xaa0403e3, 0xaa0303e2, 0xaa0203e1, 0xd61f0020)
+    origins = trace_copy_origins(copy_chain, 0, 12, "x1")
+    assert [(node["address"], node["source_register"]) for node in origins["nodes"]] == [
+        ("0x0", "x4"), ("0x4", "x3"), ("0x8", "x2")]
+    assert all(node["kind"] == "register_copy" for node in origins["nodes"])
+    assert "hypothetical_window_entry" in origins["unknown_paths"]
+    assert origins["external_predecessors_unknown"]
+    assert not origins["runtime_values_proven"] and not origins["consumer_abi_verified"]
+    # Two reachable paths through a conditional merge have different x2
+    # producers; these are alternatives rather than a proven runtime value.
+    two_paths = pack(0xaa0403e2, 0xb4000040, 0xaa0303e2, 0xaa0203e1, 0xd61f0020)
+    alternatives = trace_copy_origins(two_paths, 0, 16, "x1")
+    assert {(node["address"], node.get("source_register")) for node in alternatives["nodes"]} == {
+        ("0x0", "x4"), ("0x8", "x3"), ("0xc", "x2")}
+    # A skipped writer and an opaque indirect call must never become evidence
+    # for the value reaching the terminal BR.
+    skipped = trace_copy_origins(pack(0x14000002, 0xaa0303e1, 0xd61f0020), 0, 8, "x1")
+    assert skipped["nodes"] == []
+    assert "hypothetical_window_entry" in skipped["unknown_paths"]
+    call = trace_copy_origins(pack(0xaa0203e1, 0xd63f0060, 0xd61f0020), 0, 8, "x1")
+    assert not call["nodes"] and "call_clobber_or_side_effect" in call["unknown_paths"]
+    # LDR x2,[x0,#24] is a memory address form, not a known pointer value.
+    memory = trace_copy_origins(pack(0xf9400c02, 0xaa0203e1, 0xd61f0020), 0, 8, "x1")
+    assert memory["nodes"][0]["memory_address_forms"] == [
+        {"base": "x0", "index": None, "displacement": 24}]
+    assert memory["nodes"][0]["kind"] == "runtime_memory_load_or_operation"
+    assert "runtime_memory_value_unknown" in memory["unknown_paths"]
+    assert not memory["runtime_values_proven"]
+    unreachable_origin = trace_copy_origins(pack(0xd65f0bff, 0xaa0203e1, 0xd61f0020),
+                                            0, 8, "x1")
+    assert unreachable_origin["nodes"] == []
+    assert unreachable_origin["unknown_paths"] == ["site_not_reachable_from_window_entry"]
+    try:
+        trace_copy_origins(copy_chain, 0, 12, "x2")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Copy-origin analysis accepted an incorrect BR register")
     original = main.read_bytes()
     assert hashlib.sha256(original).hexdigest() == MAIN_SHA256
     report = analyze(original)
@@ -87,6 +127,16 @@ def check(main, output):
     assert all(not x["complete_cfg_proven"] for x in report["sites"].values())
     for name, (site, register) in __import__("portlib.native_fileopen_br_provenance", fromlist=["SITES"]).SITES.items():
         evidence = report["sites"][name]["reaching_register_writers"]
+        origins = report["sites"][name]["register_copy_origins"]
+        assert origins["external_predecessors_unknown"]
+        assert not origins["runtime_values_proven"] and not origins["consumer_abi_verified"]
+        assert all(int(row["address"], 16) <= site and len(bytes.fromhex(row["bytes_le"])) == 4
+                   for row in origins["nodes"])
+        assert origins == trace_copy_origins(
+            __import__("portlib.nso_profile", fromlist=["segments"]).segments(original)[0][1],
+            __import__("portlib.nso_profile", fromlist=["segments"]).segments(original)[0][0],
+            site, register)
+
         assert evidence["external_predecessors_unknown"] and not evidence["abi_verified"]
         assert not evidence["memory_values_proven"]
         assert all(int(row["address"], 16) <= site and len(bytes.fromhex(row["bytes_le"])) == 4

@@ -179,6 +179,120 @@ def reaching_writers(code, base, site, register, window=128):
             "external_predecessors_unknown": True,
             "memory_values_proven": False, "abi_verified": False}
 
+
+def trace_copy_origins(code, base, site, register, window=128):
+    """Trace MOV-register dependencies through bounded reachable CFG paths.
+
+    This is a union of *possible* static origins from a hypothetical entry.
+    A call, memory load, computation, CFG merge, or outside predecessor cannot
+    establish a native object pointer or an engine consumer ABI.
+    """
+    from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM, CS_GRP_CALL
+    from capstone.arm64 import ARM64_OP_MEM, ARM64_OP_REG
+
+    graph = census(code, base, site, window)
+    empty = {"nodes": [], "unknown_paths": ["site_not_reachable_from_window_entry"],
+             "external_predecessors_unknown": True, "runtime_values_proven": False,
+             "consumer_abi_verified": False}
+    if not graph["site_reachable_from_window_start"]:
+        return empty
+
+    start = int(graph["window_start"], 16)
+    md = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
+    md.detail = True
+    instructions = {}
+    predecessors = {pc: set() for pc in range(start, site + 4, 4)}
+    successors = {pc: set() for pc in predecessors}
+    for pc in predecessors:
+        decoded = list(md.disasm(code[pc-base:pc-base+4], pc))
+        if len(decoded) != 1 or decoded[0].address != pc or decoded[0].size != 4:
+            raise ValueError("Unrecognized instruction in bounded origin window")
+        instructions[pc] = decoded[0]
+        kind, target, fallthrough = decode_edge(struct.unpack_from("<I", code, pc-base)[0], pc)
+        if target in predecessors and kind != "call":
+            successors[pc].add(target)
+        if fallthrough and pc < site:
+            successors[pc].add(pc + 4)
+    reachable = set()
+    pending = [start]
+    while pending:
+        pc = pending.pop()
+        if pc in reachable:
+            continue
+        reachable.add(pc)
+        pending.extend(successors[pc] - reachable)
+    for pc in reachable:
+        for successor in successors[pc]:
+            predecessors[successor].add(pc)
+
+    branch = instructions[site]
+    if branch.mnemonic != "br" or md.reg_name(branch.operands[0].reg) != register:
+        raise ValueError("Pinned branch register mismatch")
+
+    nodes = {}
+    unknown = set()
+    pending = [(site, register)]
+    visited = set()
+    while pending:
+        pc, wanted = pending.pop()
+        if (pc, wanted) in visited:
+            continue
+        visited.add((pc, wanted))
+        # The entry instruction may itself be a definition. All other states
+        # inspect predecessors because the state describes values BEFORE pc.
+        candidates = [start] if pc == start else sorted(predecessors[pc] & reachable)
+        if not candidates:
+            unknown.add("hypothetical_window_entry")
+        for predecessor in candidates:
+            ins = instructions[predecessor]
+            if ins.group(CS_GRP_CALL):
+                unknown.add("call_clobber_or_side_effect")
+                continue
+            reads, writes = ins.regs_access()
+            names_written = {md.reg_name(reg) for reg in writes}
+            if wanted not in names_written:
+                if predecessor == start:
+                    unknown.add("hypothetical_window_entry")
+                else:
+                    pending.append((predecessor, wanted))
+                continue
+            node = {"address": hex(predecessor), "register": wanted,
+                    "bytes_le": ins.bytes.hex(), "mnemonic": ins.mnemonic,
+                    "operands": ins.op_str}
+            if (ins.mnemonic == "mov" and len(ins.operands) == 2
+                    and all(op.type == ARM64_OP_REG for op in ins.operands)
+                    and md.reg_name(ins.operands[0].reg) == wanted):
+                source = md.reg_name(ins.operands[1].reg)
+                node.update(kind="register_copy", source_register=source)
+                if source == wanted:
+                    # A self-move does not define a new source of information.
+                    if predecessor == start:
+                        unknown.add("hypothetical_window_entry")
+                    else:
+                        pending.append((predecessor, wanted))
+                else:
+                    pending.append((predecessor, source))
+            else:
+                memory = [{"base": md.reg_name(op.mem.base) if op.mem.base else None,
+                           "index": md.reg_name(op.mem.index) if op.mem.index else None,
+                           "displacement": op.mem.disp}
+                          for op in ins.operands if op.type == ARM64_OP_MEM]
+                if memory:
+                    node.update(kind="runtime_memory_load_or_operation",
+                                memory_address_forms=memory)
+                    unknown.add("runtime_memory_value_unknown")
+                else:
+                    node.update(kind="computed_or_unclassified_writer")
+                    unknown.add("computed_register_value_unknown")
+            nodes[(predecessor, wanted)] = node
+    # Reachability from the artificial window entry is only an under-approximation
+    # of possible *real* function entries. Never use it to exclude unknown callers.
+    return {"nodes": [nodes[key] for key in sorted(nodes)],
+            "unknown_paths": sorted(unknown),
+            "external_predecessors_unknown": True,
+            "runtime_values_proven": False,
+            "consumer_abi_verified": False}
+
 def analyze(nso):
     digest = hashlib.sha256(nso).hexdigest()
     if digest != MAIN_SHA256:
@@ -188,6 +302,7 @@ def analyze(nso):
     for name, (site, register) in SITES.items():
         evidence = census(code, base, site)
         evidence["reaching_register_writers"] = reaching_writers(code, base, site, register)
+        evidence["register_copy_origins"] = trace_copy_origins(code, base, site, register)
         sites[name] = evidence
     return {"main_sha256": digest, "text_sha256": hashlib.sha256(code).hexdigest(),
             "sites": sites,
