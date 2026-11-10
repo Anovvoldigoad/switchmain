@@ -72,7 +72,14 @@ def check(main, output):
     assert call_group["syntactic_path_from_target_to_br"]
     assert not call_group["call_free_syntactic_path_to_br"]
     assert call_group["shortest_call_free_path"] == []
-    # BLR also has opaque call effects and must not be labeled call-free.\n    indirect_only = inbound_census(pack(nop, 0xd63f0020, 0xd61f0020,\n                                        0x17fffffe), 0, {"site": (8, "x1")}, 2)\n    indirect_group = indirect_only["sites"]["site"]["external_entry_path_summary"][0]\n    assert indirect_group["syntactic_path_from_target_to_br"]\n    assert not indirect_group["call_free_syntactic_path_to_br"]\n    assert indirect_group["shortest_call_free_path"] == []\n    # A conditional branch can bypass a BL; shortest call-free witness
+    # BLR also has opaque call effects and must not be labeled call-free.
+    indirect_only = inbound_census(pack(nop, 0xd63f0020, 0xd61f0020,
+                                        0x17fffffe), 0, {"site": (8, "x1")}, 2)
+    indirect_group = indirect_only["sites"]["site"]["external_entry_path_summary"][0]
+    assert indirect_group["syntactic_path_from_target_to_br"]
+    assert not indirect_group["call_free_syntactic_path_to_br"]
+    assert indirect_group["shortest_call_free_path"] == []
+    # A conditional branch can bypass a BL; shortest call-free witness
     # must use the bypass rather than an opaque call fallthrough.
     bypass = inbound_census(pack(nop, 0x54000040, 0x94000001,
                                  0xd61f0020, 0x17fffffd),
