@@ -110,7 +110,8 @@ def reaching_writers(code, base, site, register, window=128):
     start = int(graph["window_start"], 16)
     if not graph["site_reachable_from_window_start"]:
         return {"writers": [], "unknown_paths": ["site_not_reachable_from_window_entry"],
-                "external_predecessors_unknown": True, "abi_verified": False}
+                "external_predecessors_unknown": True,
+                "memory_values_proven": False, "abi_verified": False}
     md = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
     md.detail = True
     instructions = {}
