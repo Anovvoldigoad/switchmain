@@ -30,6 +30,15 @@ def check(main, output):
     assert decode_edge(0x17ffffff, 4) == ("jump", 0, False)
     assert decode_edge(0x94000001, 4) == ("call", 8, True)
     assert decode_edge(0xd61f0020, 16) == ("indirect_or_return", None, False)
+    assert decode_edge(0xd63f0020, 16) == ("indirect_call", None, True)
+    indirect = pack(0xd63f0020, 0xd61f0020)  # blr x1; br x1
+    indirect_graph = census(indirect, 0, 4)
+    assert indirect_graph["indirect_calls_unknown"] == ["0x0"]
+    assert indirect_graph["site_reachable_from_window_start"]
+    assert not indirect_graph["engine_consumer_abi_verified"]
+    opaque = reaching_writers(indirect, 0, 4, "x1")
+    assert "call_clobber_or_side_effect" in opaque["unknown_paths"]
+    assert not opaque["writers"] and not opaque["abi_verified"]
     assert census(pack(0x14000020, 0xd61f0020), 0, 4)["out_of_window_edges"]
     for data, base, site, window in ((code, 0, 16, 0), (code, 0, 16, 513),
                                     (code, 0, 3, 4), (code, 2, 16, 4),
