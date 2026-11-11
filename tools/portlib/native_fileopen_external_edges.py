@@ -180,6 +180,7 @@ def witness_register_dependencies(effects, register):
 
     pending = {alias(register)}
     evidence = []
+    unresolved_memory_sources = []
     for effect in reversed(effects[:-1]):
         writes = {alias(r) for r in effect["register_writes"]}
         touched = sorted(pending & writes)
@@ -191,10 +192,20 @@ def witness_register_dependencies(effects, register):
             "defined_registers": touched, "source_registers": reads,
             "memory_operand_present": effect["memory_operand_present"],
         })
+        # A register loaded from memory has an unknown value even when the
+        # address registers can be traced. Never call its pointer provenance
+        # resolved merely because its base register has a local definition.
+        if effect["memory_operand_present"]:
+            unresolved_memory_sources.append({
+                "pc": effect["pc"], "defined_registers": touched,
+                "address_register_dependencies": reads,
+                "loaded_value_verified": False,
+            })
         pending.difference_update(touched)
         pending.update(reads)
     return {
         "definitions_reverse_order": evidence,
+        "unresolved_memory_sources": unresolved_memory_sources,
         "unresolved_entry_registers": sorted(pending),
         "runtime_values_verified": False,
         "ownership_verified": False,
