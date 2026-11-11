@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from portlib.native_cpk_graph import MAIN_SHA256
-from portlib.native_fileopen_external_edges import analyze, inbound_census, witness_branch_register_origin
+from portlib.native_fileopen_external_edges import analyze, inbound_census, witness_branch_register_origin, witness_register_dependencies
 from portlib.native_fileopen_cfg_edges import decode_edge
 from portlib.native_fileopen_br_provenance import SITES
 from portlib.nso_profile import segments
@@ -117,6 +117,38 @@ def check(main, output):
     load_origin = load["sites"]["site"]["external_entry_path_summary"][0]["call_free_branch_register_origin"]
     assert load_origin["writer_pc"] == "0x4" and load_origin["writer_memory_operand"]
     assert not load_origin["register_value_verified"]
+    # Transitive def-use, without interpreting memory or pointer ownership.
+    chain = inbound_census(pack(nop, 0xf9400042, 0xaa0203e1,
+                                0xd61f0020, 0x17fffffd),
+                           0, {"site": (12, "x1")}, 3)
+    dep = chain["sites"]["site"]["external_entry_path_summary"][0][
+        "call_free_register_dependencies"]
+    assert [x["pc"] for x in dep["definitions_reverse_order"]] == ["0x8", "0x4"]
+    assert dep["definitions_reverse_order"][1]["memory_operand_present"]
+    assert dep["unresolved_entry_registers"] == ["x2"]
+    assert not dep["ownership_verified"] and not dep["runtime_values_verified"]
+    # W1 is an architectural zero-extending writer of X1, not an
+    # unrelated register. The source W2 remains unresolved.
+    wcopy = inbound_census(pack(nop, 0x2a0203e1, 0xd61f0020, 0x17fffffe),
+                           0, {"site": (8, "x1")}, 2)
+    wdep = wcopy["sites"]["site"]["external_entry_path_summary"][0][
+        "call_free_register_dependencies"]
+    assert wdep["definitions_reverse_order"][0]["pc"] == "0x4"
+    assert wdep["unresolved_entry_registers"] == ["x2"]
+    # A later overwrite kills an earlier definition.
+    overwrite = witness_register_dependencies([
+        {"pc": "0x0", "bytes_le": pack(0xaa0303e1).hex(),
+         "register_reads": ["x3"], "register_writes": ["x1"],
+         "memory_operand_present": False},
+        {"pc": "0x4", "bytes_le": pack(0xaa0203e1).hex(),
+         "register_reads": ["x2"], "register_writes": ["x1"],
+         "memory_operand_present": False},
+        {"pc": "0x8", "bytes_le": pack(0xd61f0020).hex(),
+         "register_reads": ["x1"], "register_writes": [],
+         "memory_operand_present": False},
+    ], "x1")
+    assert [x["pc"] for x in overwrite["definitions_reverse_order"]] == ["0x4"]
+    assert overwrite["unresolved_entry_registers"] == ["x2"]
     # A cycle must terminate and remain unreachable.
     cycle = inbound_census(pack(nop, 0x14000000, 0xd61f0020, 0x17fffffe),
                            0, {"site": (8, "x1")}, 2)
