@@ -189,6 +189,7 @@ def witness_register_dependencies(effects, register):
     pending = {alias(register)}
     evidence = []
     unresolved_memory_sources = []
+    address_registers_at_load = set()
     for effect in reversed(effects[:-1]):
         writes = {alias(r) for r in effect["register_writes"]}
         touched = sorted(pending & writes)
@@ -210,10 +211,16 @@ def witness_register_dependencies(effects, register):
                 "loaded_value_verified": False,
             })
         pending.difference_update(touched)
-        pending.update(reads)
+        if effect.get("memory_value_read", effect["memory_operand_present"]):
+            # The address is evidence about WHERE the value came from, not
+            # the value itself. Do not turn address writers into value origins.
+            address_registers_at_load.update(reads)
+        else:
+            pending.update(reads)
     return {
         "definitions_reverse_order": evidence,
         "unresolved_memory_sources": unresolved_memory_sources,
+        "address_registers_at_load": sorted(address_registers_at_load),
         "unresolved_entry_registers": sorted(pending),
         "runtime_values_verified": False,
         "ownership_verified": False,

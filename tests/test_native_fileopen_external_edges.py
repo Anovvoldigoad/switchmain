@@ -140,7 +140,8 @@ def check(main, output):
         "call_free_register_dependencies"]
     assert [x["pc"] for x in dep["definitions_reverse_order"]] == ["0x8", "0x4"]
     assert dep["definitions_reverse_order"][1]["memory_operand_present"]
-    assert dep["unresolved_entry_registers"] == ["x2"]
+    assert dep["unresolved_entry_registers"] == []
+    assert dep["address_registers_at_load"] == ["x2"]
     assert dep["unresolved_memory_sources"] == [{
         "pc": "0x4", "defined_registers": ["x2"],
         "address_register_dependencies": ["x2"],
@@ -148,6 +149,33 @@ def check(main, output):
     }]
     assert not dep["ownership_verified"] and not dep["runtime_values_verified"]
 
+    # A loaded branch value is NOT derived from its address base's value.
+    # MOV X2,X3 before LDR X1,[X2] must not make X3 a BR value origin.
+    address_only = inbound_census(pack(0xaa0303e2, 0xf9400041,
+                                      0xd61f0020, 0x17fffffe),
+                                  0, {"site": (8, "x1")}, 2)
+    a = address_only["sites"]["site"]["external_entry_path_summary"][0][
+        "call_free_register_dependencies"]
+    assert [row["pc"] for row in a["definitions_reverse_order"]] == ["0x4"]
+    assert a["unresolved_entry_registers"] == []
+    assert a["address_registers_at_load"] == ["x2"]
+    assert len(a["unresolved_memory_sources"]) == 1
+    assert not a["runtime_values_verified"] and not a["ownership_verified"]
+    # An ordinary register copy still propagates value dependencies.
+    copied = witness_register_dependencies([
+        {"pc": "0x0", "bytes_le": pack(0xaa0303e2).hex(),
+         "register_reads": ["x3"], "register_writes": ["x2"],
+         "memory_operand_present": False},
+        {"pc": "0x4", "bytes_le": pack(0xaa0203e1).hex(),
+         "register_reads": ["x2"], "register_writes": ["x1"],
+         "memory_operand_present": False},
+        {"pc": "0x8", "bytes_le": pack(0xd61f0020).hex(),
+         "register_reads": ["x1"], "register_writes": [],
+         "memory_operand_present": False},
+    ], "x1")
+    assert [row["pc"] for row in copied["definitions_reverse_order"]] == ["0x4", "0x0"]
+    assert copied["unresolved_entry_registers"] == ["x3"]
+    assert copied["address_registers_at_load"] == []
     # W1 is an architectural zero-extending writer of X1, not an
     # unrelated register. The source W2 remains unresolved.
     wcopy = inbound_census(pack(nop, 0x2a0203e1, 0xd61f0020, 0x17fffffe),
@@ -156,6 +184,7 @@ def check(main, output):
         "call_free_register_dependencies"]
     assert wdep["definitions_reverse_order"][0]["pc"] == "0x4"
     assert wdep["unresolved_entry_registers"] == ["x2"]
+    assert wdep["address_registers_at_load"] == []
     assert wdep["unresolved_memory_sources"] == []
     # A later overwrite kills an earlier definition.
     overwrite = witness_register_dependencies([

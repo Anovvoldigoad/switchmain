@@ -1202,5 +1202,6 @@
     "archive_precedence_verified": false,
     "emulator_tested": false,
     "next": "Obtain push Actions run for HEAD and inspect original job log; analyze actual noncall candidate witness bytes and native lifecycle."
-  }
+  },
+  "pending_fileopen_value_provenance": "Address-base registers are not loaded-value origins; pending CI; no consumer ABI or gameplay claim"
 }

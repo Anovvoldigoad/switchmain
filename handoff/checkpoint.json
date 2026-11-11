@@ -1564,5 +1564,21 @@
     "archive_precedence_verified": false,
     "emulator_tested": false,
     "next": "Obtain new HEAD push run and raw log; inspect actual origin writer and trace transitive memory ownership only if bytes support it."
+  },
+  "latest_pending_slice": {
+    "parent_sha": "5e506b6da1f1ca5488c73e9f888090641fc92bc4",
+    "change": "FileOpen read-only load-value provenance separates address base from value dependencies",
+    "prior_ci": {
+      "run_id": 43077934240,
+      "job_id": 130722597543,
+      "status": "COMPLETED_SUCCESS",
+      "authentic_log_read": true,
+      "markers": [
+        "PINNED_FILEOPEN_EXTERNAL_EDGES_PASS 2 FULL_TEXT_NO_ABI",
+        "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF"
+      ]
+    },
+    "new_ci": "PENDING",
+    "runtime_abi_verified": false
   }
 }
