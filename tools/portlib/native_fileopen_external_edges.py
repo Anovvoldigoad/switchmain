@@ -130,10 +130,14 @@ def witness_register_effects(witness):
             "register_reads": sorted({md.reg_name(x) for x in reads}),
             "register_writes": sorted({md.reg_name(x) for x in writes}),
             "memory_operand_present": any(o.type == ARM64_OP_MEM for o in ins.operands),
-            "memory_value_read": any(o.type == ARM64_OP_MEM and bool(o.access & CS_AC_READ)
-                                     for o in ins.operands),
-            "memory_value_written": any(o.type == ARM64_OP_MEM and bool(o.access & CS_AC_WRITE)
-                                        for o in ins.operands),
+            # Capstone memory-operand READ can mean address calculation for STR;
+            # it does not establish that a value was loaded from memory.
+            "memory_value_read": (False if ins.mnemonic in ("str", "strb", "strh", "stur", "sturb", "sturh", "stp", "stnp", "sttr", "sttrb", "sttrh")
+                                  else any(o.type == ARM64_OP_MEM and bool(o.access & CS_AC_READ)
+                                           for o in ins.operands)),
+            "memory_value_written": (True if ins.mnemonic in ("str", "strb", "strh", "stur", "sturb", "sturh", "stp", "stnp", "sttr", "sttrb", "sttrh")
+                                     else any(o.type == ARM64_OP_MEM and bool(o.access & CS_AC_WRITE)
+                                              for o in ins.operands)),
             "runtime_register_values_verified": False,
             "memory_ownership_verified": False,
         })

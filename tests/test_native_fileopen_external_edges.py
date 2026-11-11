@@ -127,6 +127,11 @@ def check(main, output):
     assert not str_effect["memory_value_read"]
     assert ldr_effect["memory_operand_present"] and ldr_effect["memory_value_read"]
     assert not ldr_effect["memory_value_written"]
+    # STUR X1,[X2] and STP X1,X3,[X2] also write memory values.
+    for word in (0xf8000041, 0xa9000c41):
+        effect = witness_register_effects([{"pc": "0x4", "bytes_le": pack(word).hex()}])[0]
+        assert effect["memory_value_written"] and not effect["memory_value_read"]
+
     # Transitive def-use, without interpreting memory or pointer ownership.
     chain = inbound_census(pack(nop, 0xf9400042, 0xaa0203e1,
                                 0xd61f0020, 0x17fffffd),
