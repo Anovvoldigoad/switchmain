@@ -111,7 +111,7 @@ def _window_path(code, base, window_start, origin, site, forbid_calls=False):
 
 def witness_register_effects(witness):
     """Byte-backed per-instruction effects; no path feasibility or object proof."""
-    from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM
+    from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM, CS_AC_READ, CS_AC_WRITE
     from capstone.arm64 import ARM64_OP_MEM
     md = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
     md.detail = True
@@ -130,6 +130,10 @@ def witness_register_effects(witness):
             "register_reads": sorted({md.reg_name(x) for x in reads}),
             "register_writes": sorted({md.reg_name(x) for x in writes}),
             "memory_operand_present": any(o.type == ARM64_OP_MEM for o in ins.operands),
+            "memory_value_read": any(o.type == ARM64_OP_MEM and bool(o.access & CS_AC_READ)
+                                     for o in ins.operands),
+            "memory_value_written": any(o.type == ARM64_OP_MEM and bool(o.access & CS_AC_WRITE)
+                                        for o in ins.operands),
             "runtime_register_values_verified": False,
             "memory_ownership_verified": False,
         })
@@ -195,7 +199,7 @@ def witness_register_dependencies(effects, register):
         # A register loaded from memory has an unknown value even when the
         # address registers can be traced. Never call its pointer provenance
         # resolved merely because its base register has a local definition.
-        if effect["memory_operand_present"]:
+        if effect.get("memory_value_read", effect["memory_operand_present"]):
             unresolved_memory_sources.append({
                 "pc": effect["pc"], "defined_registers": touched,
                 "address_register_dependencies": reads,
