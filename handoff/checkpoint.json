@@ -1548,5 +1548,21 @@
     "archive_precedence_verified": false,
     "emulator_tested": false,
     "next": "Obtain push Actions run for HEAD and inspect original job log; analyze actual noncall candidate witness bytes and native lifecycle."
+  },
+  "native_fileopen_branch_register_origin": {
+    "status": "PENDING_CI",
+    "code_commit": "ea8dd5476d836d6401ee012d272d83b74178c861",
+    "parent_sha": "13531c019bc8c5ddeb8bcc66e56d0aaf79ccb903",
+    "scope": "read_only_original_main_static",
+    "proof": "proof-work/native_fileopen_external_edges.json",
+    "tests": "tests/test_native_fileopen_external_edges.py",
+    "prior_run": 42965602532,
+    "prior_job": 130341975871,
+    "prior_job_log_inspected": true,
+    "consumer_abi_verified": false,
+    "ownership_verified": false,
+    "archive_precedence_verified": false,
+    "emulator_tested": false,
+    "next": "Obtain new HEAD push run and raw log; inspect actual origin writer and trace transitive memory ownership only if bytes support it."
   }
 }
