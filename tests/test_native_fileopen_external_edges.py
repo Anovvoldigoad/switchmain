@@ -118,6 +118,15 @@ def check(main, output):
     load_origin = load["sites"]["site"]["external_entry_path_summary"][0]["call_free_branch_register_origin"]
     assert load_origin["writer_pc"] == "0x4" and load_origin["writer_memory_operand"]
     assert not load_origin["register_value_verified"]
+    # Memory access direction must not confuse a store with a loaded pointer.
+    # STR X1,[X2] has a memory WRITE but no loaded register value.
+    from portlib.native_fileopen_external_edges import witness_register_effects
+    str_effect = witness_register_effects([{"pc": "0x4", "bytes_le": pack(0xf9000041).hex()}])[0]
+    ldr_effect = witness_register_effects([{"pc": "0x4", "bytes_le": pack(0xf9400041).hex()}])[0]
+    assert str_effect["memory_operand_present"] and str_effect["memory_value_written"]
+    assert not str_effect["memory_value_read"]
+    assert ldr_effect["memory_operand_present"] and ldr_effect["memory_value_read"]
+    assert not ldr_effect["memory_value_written"]
     # Transitive def-use, without interpreting memory or pointer ownership.
     chain = inbound_census(pack(nop, 0xf9400042, 0xaa0203e1,
                                 0xd61f0020, 0x17fffffd),
