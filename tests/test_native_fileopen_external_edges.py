@@ -126,7 +126,13 @@ def check(main, output):
     assert [x["pc"] for x in dep["definitions_reverse_order"]] == ["0x8", "0x4"]
     assert dep["definitions_reverse_order"][1]["memory_operand_present"]
     assert dep["unresolved_entry_registers"] == ["x2"]
+    assert dep["unresolved_memory_sources"] == [{
+        "pc": "0x4", "defined_registers": ["x2"],
+        "address_register_dependencies": ["x2"],
+        "loaded_value_verified": False,
+    }]
     assert not dep["ownership_verified"] and not dep["runtime_values_verified"]
+
     # W1 is an architectural zero-extending writer of X1, not an
     # unrelated register. The source W2 remains unresolved.
     wcopy = inbound_census(pack(nop, 0x2a0203e1, 0xd61f0020, 0x17fffffe),
@@ -135,6 +141,7 @@ def check(main, output):
         "call_free_register_dependencies"]
     assert wdep["definitions_reverse_order"][0]["pc"] == "0x4"
     assert wdep["unresolved_entry_registers"] == ["x2"]
+    assert wdep["unresolved_memory_sources"] == []
     # A later overwrite kills an earlier definition.
     overwrite = witness_register_dependencies([
         {"pc": "0x0", "bytes_le": pack(0xaa0303e1).hex(),
