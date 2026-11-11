@@ -56,6 +56,7 @@ def check(main, output):
     assert [[int(y["pc"], 16) for y in x["shortest_call_free_path"]]
             for x in summary] == [[16, 20, 24], [20, 24], [24]]
     assert all(not x["path_call_side_effects_resolved"] for x in summary)
+    assert all(len(x["call_free_register_effects"]) == len(x["shortest_call_free_path"]) for x in summary)
     assert all(not x["path_feasibility_verified"] and
                not x["source_reachability_verified"] for x in summary)
     # External jump to a RET before the BR does not reach the BR.
@@ -66,7 +67,7 @@ def check(main, output):
         "jump_edges": 1, "conditional_edges": 0,
         "syntactic_path_from_target_to_br": False, "window_words_visited": 1,
         "shortest_local_path": [], "call_free_syntactic_path_to_br": False,
-        "call_free_window_words_visited": 1, "shortest_call_free_path": [],
+        "call_free_window_words_visited": 1, "shortest_call_free_path": [], "call_free_register_effects": [],
         "path_call_side_effects_resolved": False,
         "source_reachability_verified": False, "path_feasibility_verified": False,
         "noncall_inbound_edges": 1,
@@ -80,6 +81,7 @@ def check(main, output):
     assert call_group["syntactic_path_from_target_to_br"]
     assert not call_group["call_free_syntactic_path_to_br"]
     assert call_group["shortest_call_free_path"] == []
+    assert call_group["call_free_register_effects"] == []
     # BLR also has opaque call effects and must not be labeled call-free.
     indirect_only = inbound_census(pack(nop, 0xd63f0020, 0xd61f0020,
                                         0x17fffffe), 0, {"site": (8, "x1")}, 2)
@@ -87,6 +89,7 @@ def check(main, output):
     assert indirect_group["syntactic_path_from_target_to_br"]
     assert not indirect_group["call_free_syntactic_path_to_br"]
     assert indirect_group["shortest_call_free_path"] == []
+    assert indirect_group["call_free_register_effects"] == []
     # A conditional branch can bypass a BL; shortest call-free witness
     # must use the bypass rather than an opaque call fallthrough.
     bypass = inbound_census(pack(nop, 0x54000040, 0x94000001,
@@ -95,6 +98,13 @@ def check(main, output):
     bypass_group = bypass["sites"]["site"]["external_entry_path_summary"][0]
     assert bypass_group["call_free_syntactic_path_to_br"]
     assert [int(s["pc"], 16) for s in bypass_group["shortest_call_free_path"]] == [4, 12]
+    # Exact ARM64 MOV X1,X2 before BR X1: preserve register effects without ABI inference.
+    mov = inbound_census(pack(nop, 0xaa0203e1, 0xd61f0020, 0x17fffffe),
+                         0, {"site": (8, "x1")}, 2)
+    effects = mov["sites"]["site"]["external_entry_path_summary"][0]["call_free_register_effects"]
+    assert effects[0]["bytes_le"] == pack(0xaa0203e1).hex()
+    assert "x2" in effects[0]["register_reads"] and "x1" in effects[0]["register_writes"]
+    assert not effects[0]["memory_operand_present"]
     # A cycle must terminate and remain unreachable.
     cycle = inbound_census(pack(nop, 0x14000000, 0xd61f0020, 0x17fffffe),
                            0, {"site": (8, "x1")}, 2)
@@ -146,6 +156,9 @@ def check(main, output):
             witness = group["shortest_local_path"]
             call_free = group["shortest_call_free_path"]
             assert bool(call_free) == group["call_free_syntactic_path_to_br"]
+            assert len(group["call_free_register_effects"]) == len(call_free)
+            assert all(not e["runtime_register_values_verified"] and
+                       not e["memory_ownership_verified"] for e in group["call_free_register_effects"])
             assert not call_free or bool(witness)
             for step in call_free[:-1]:
                 pc = int(step["pc"], 16)

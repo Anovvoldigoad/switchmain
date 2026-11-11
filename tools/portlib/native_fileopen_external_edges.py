@@ -109,6 +109,33 @@ def _window_path(code, base, window_start, origin, site, forbid_calls=False):
     return True, len(visited), path
 
 
+def witness_register_effects(witness):
+    """Byte-backed per-instruction effects; no path feasibility or object proof."""
+    from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM
+    from capstone.arm64 import ARM64_OP_MEM
+    md = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
+    md.detail = True
+    effects = []
+    for step in witness:
+        pc = int(step["pc"], 16)
+        raw = bytes.fromhex(step["bytes_le"])
+        decoded = list(md.disasm(raw, pc))
+        if len(raw) != 4 or len(decoded) != 1 or decoded[0].size != 4:
+            raise ValueError("Unrecognized witness instruction")
+        ins = decoded[0]
+        reads, writes = ins.regs_access()
+        effects.append({
+            "pc": step["pc"], "bytes_le": step["bytes_le"],
+            "mnemonic": ins.mnemonic,
+            "register_reads": sorted({md.reg_name(x) for x in reads}),
+            "register_writes": sorted({md.reg_name(x) for x in writes}),
+            "memory_operand_present": any(o.type == ARM64_OP_MEM for o in ins.operands),
+            "runtime_register_values_verified": False,
+            "memory_ownership_verified": False,
+        })
+    return effects
+
+
 def summarize_external_entries(code, base, entry):
     """Group observed inbound target addresses and bound their local paths.
 
@@ -141,6 +168,7 @@ def summarize_external_entries(code, base, entry):
         group["call_free_syntactic_path_to_br"] = call_free
         group["call_free_window_words_visited"] = call_free_visited
         group["shortest_call_free_path"] = call_free_witness
+        group["call_free_register_effects"] = witness_register_effects(call_free_witness)
         group["syntactic_path_from_target_to_br"] = reachable
         group["window_words_visited"] = visited_count
         group["shortest_local_path"] = witness
