@@ -69,6 +69,7 @@ def check(main, output):
         "shortest_local_path": [], "call_free_syntactic_path_to_br": False,
         "call_free_window_words_visited": 1, "shortest_call_free_path": [], "call_free_register_effects": [],
         "call_free_branch_register_origin": witness_branch_register_origin([], "x1"),
+        "call_free_register_dependencies": witness_register_dependencies([], "x1"),
         "path_call_side_effects_resolved": False,
         "source_reachability_verified": False, "path_feasibility_verified": False,
         "noncall_inbound_edges": 1,
