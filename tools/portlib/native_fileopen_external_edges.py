@@ -136,6 +136,33 @@ def witness_register_effects(witness):
     return effects
 
 
+def witness_branch_register_origin(effects, register):
+    """Backward register dependency over ONE syntactic path, not an ABI proof.
+
+    Memory loads and partial/implicit writes are not treated as pointer origins.
+    Return the first encountered writer and its input registers; this is only
+    a local def-use boundary, not a transitive value or ownership claim.
+    """
+    for effect in reversed(effects[:-1]):
+        if register not in effect["register_writes"]:
+            continue
+        return {
+            "writer_pc": effect["pc"],
+            "writer_bytes_le": effect["bytes_le"],
+            "writer_mnemonic": effect["mnemonic"],
+            "writer_reads": effect["register_reads"],
+            "writer_memory_operand": effect["memory_operand_present"],
+            "register_value_verified": False,
+            "ownership_verified": False,
+        }
+    return {
+        "writer_pc": None, "writer_bytes_le": None,
+        "writer_mnemonic": None, "writer_reads": [],
+        "writer_memory_operand": False,
+        "register_value_verified": False, "ownership_verified": False,
+    }
+
+
 def summarize_external_entries(code, base, entry):
     """Group observed inbound target addresses and bound their local paths.
 
@@ -169,6 +196,8 @@ def summarize_external_entries(code, base, entry):
         group["call_free_window_words_visited"] = call_free_visited
         group["shortest_call_free_path"] = call_free_witness
         group["call_free_register_effects"] = witness_register_effects(call_free_witness)
+        group["call_free_branch_register_origin"] = witness_branch_register_origin(
+            group["call_free_register_effects"], entry["register"])
         group["syntactic_path_from_target_to_br"] = reachable
         group["window_words_visited"] = visited_count
         group["shortest_local_path"] = witness

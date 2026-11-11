@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from portlib.native_cpk_graph import MAIN_SHA256
-from portlib.native_fileopen_external_edges import analyze, inbound_census
+from portlib.native_fileopen_external_edges import analyze, inbound_census, witness_branch_register_origin
 from portlib.native_fileopen_cfg_edges import decode_edge
 from portlib.native_fileopen_br_provenance import SITES
 from portlib.nso_profile import segments
@@ -68,6 +68,7 @@ def check(main, output):
         "syntactic_path_from_target_to_br": False, "window_words_visited": 1,
         "shortest_local_path": [], "call_free_syntactic_path_to_br": False,
         "call_free_window_words_visited": 1, "shortest_call_free_path": [], "call_free_register_effects": [],
+        "call_free_branch_register_origin": witness_branch_register_origin([], "x1"),
         "path_call_side_effects_resolved": False,
         "source_reachability_verified": False, "path_feasibility_verified": False,
         "noncall_inbound_edges": 1,
@@ -105,6 +106,17 @@ def check(main, output):
     assert effects[0]["bytes_le"] == pack(0xaa0203e1).hex()
     assert "x2" in effects[0]["register_reads"] and "x1" in effects[0]["register_writes"]
     assert not effects[0]["memory_operand_present"]
+    origin = mov["sites"]["site"]["external_entry_path_summary"][0]["call_free_branch_register_origin"]
+    assert origin["writer_pc"] == "0x4" and origin["writer_reads"] == ["x2"]
+    assert not origin["ownership_verified"] and not origin["register_value_verified"]
+    # No writer means an external unknown input, never an inferred ABI value.
+    assert witness_branch_register_origin([], "x1")["writer_pc"] is None
+    # A load writer is reported but cannot prove its memory value or ownership.
+    load = inbound_census(pack(nop, 0xf9400041, 0xd61f0020, 0x17fffffe),
+                          0, {"site": (8, "x1")}, 2)
+    load_origin = load["sites"]["site"]["external_entry_path_summary"][0]["call_free_branch_register_origin"]
+    assert load_origin["writer_pc"] == "0x4" and load_origin["writer_memory_operand"]
+    assert not load_origin["register_value_verified"]
     # A cycle must terminate and remain unreachable.
     cycle = inbound_census(pack(nop, 0x14000000, 0xd61f0020, 0x17fffffe),
                            0, {"site": (8, "x1")}, 2)
@@ -157,6 +169,10 @@ def check(main, output):
             call_free = group["shortest_call_free_path"]
             assert bool(call_free) == group["call_free_syntactic_path_to_br"]
             assert len(group["call_free_register_effects"]) == len(call_free)
+            origin = group["call_free_branch_register_origin"]
+            assert not origin["register_value_verified"] and not origin["ownership_verified"]
+            if origin["writer_pc"] is not None:
+                assert origin["writer_pc"] in [s["pc"] for s in call_free[:-1]]
             assert all(not e["runtime_register_values_verified"] and
                        not e["memory_ownership_verified"] for e in group["call_free_register_effects"])
             assert not call_free or bool(witness)
