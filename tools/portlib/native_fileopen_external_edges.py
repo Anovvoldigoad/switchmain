@@ -163,6 +163,45 @@ def witness_branch_register_origin(effects, register):
     }
 
 
+
+def witness_register_dependencies(effects, register):
+    """Conservative backward def-use frontier for one call-free syntactic path.
+
+    Wn writes zero-extend into Xn; a Wn read consumes only low 32 bits.
+    Other partial writes, memory values, branch feasibility and ownership
+    are deliberately unresolved. The result is NOT an engine ABI.
+    """
+    def alias(name):
+        if len(name) > 1 and name[0] in ("w", "x") and name[1:].isdigit():
+            index = int(name[1:])
+            if index <= 30:
+                return "x" + str(index)
+        return name
+
+    pending = {alias(register)}
+    evidence = []
+    for effect in reversed(effects[:-1]):
+        writes = {alias(r) for r in effect["register_writes"]}
+        touched = sorted(pending & writes)
+        if not touched:
+            continue
+        reads = sorted({alias(r) for r in effect["register_reads"]})
+        evidence.append({
+            "pc": effect["pc"], "bytes_le": effect["bytes_le"],
+            "defined_registers": touched, "source_registers": reads,
+            "memory_operand_present": effect["memory_operand_present"],
+        })
+        pending.difference_update(touched)
+        pending.update(reads)
+    return {
+        "definitions_reverse_order": evidence,
+        "unresolved_entry_registers": sorted(pending),
+        "runtime_values_verified": False,
+        "ownership_verified": False,
+        "path_feasibility_verified": False,
+    }
+
+
 def summarize_external_entries(code, base, entry):
     """Group observed inbound target addresses and bound their local paths.
 
@@ -197,6 +236,8 @@ def summarize_external_entries(code, base, entry):
         group["shortest_call_free_path"] = call_free_witness
         group["call_free_register_effects"] = witness_register_effects(call_free_witness)
         group["call_free_branch_register_origin"] = witness_branch_register_origin(
+            group["call_free_register_effects"], entry["register"])
+        group["call_free_register_dependencies"] = witness_register_dependencies(
             group["call_free_register_effects"], entry["register"])
         group["syntactic_path_from_target_to_br"] = reachable
         group["window_words_visited"] = visited_count
