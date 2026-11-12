@@ -4,6 +4,7 @@ import importlib.util
 import pathlib
 import tempfile
 from unittest.mock import patch
+from portlib import compressed_prm_events
 import unittest
 from portlib.crilayla import decompress
 from test_cpk_events import cpk
@@ -39,6 +40,17 @@ class CompressedCandidate(unittest.TestCase):
         self.assertFalse(report["output_is_installable"])
         self.assertFalse(report["compressed_archive_repacked"])
         self.assertEqual(self.archive.read_bytes(), self.source)
+
+    def test_single_decode_and_mark_per_export(self):
+        original_read = compressed_prm_events.read_payload
+        original_mark = compressed_prm_events.mark
+        with patch.object(compressed_prm_events, 'read_payload', wraps=original_read) as reader, \
+             patch.object(compressed_prm_events, 'mark', wraps=original_mark) as marker:
+            report = module.export(self.archive, self.member, self.sha, self.output)
+        self.assertEqual(reader.call_count, 1)
+        self.assertEqual(marker.call_count, 1)
+        self.assertEqual(report['marked_records'], 2)
+        self.assertEqual(decompress(self.output.read_bytes()).__len__(), len(self.decoded))
 
     def test_mapped_archive_never_calls_read_bytes(self):
         with patch.object(pathlib.Path, 'read_bytes', side_effect=AssertionError('full archive read')):

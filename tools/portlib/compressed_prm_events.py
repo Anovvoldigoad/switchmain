@@ -12,7 +12,7 @@ from .prm_events import mark, records, MARKER
 SHA = re.compile(r"[0-9a-f]{64}\Z")
 
 
-def inspect(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
+def _inspect_with_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
     if not isinstance(data, (bytes, mmap.mmap)) or not isinstance(expected_sha256, str) or not SHA.fullmatch(expected_sha256):
         raise ValueError("Exact CPK source SHA256 required")
     if hashlib.sha256(data).hexdigest() != expected_sha256:
@@ -52,7 +52,7 @@ def inspect(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
             or sum(r["classification"] == "already_marked" for r in provenance) != report["already_marked"]
             or sum(r["classification"] == "native_preserved" for r in provenance) != report["native_event236_preserved"]):
         raise ValueError("Event236 provenance mismatch")
-    return {
+    report = {
         "status": "COMPRESSED_PRM_DECODED_MARKER_FEASIBILITY_ONLY",
         "archive_sha256": expected_sha256,
         "path": path,
@@ -72,6 +72,11 @@ def inspect(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
         "gameplay_verified": False,
         "full_moddingapi": False,
     }
+    return candidate, report
+
+
+def inspect(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
+    return _inspect_with_candidate(data, path, expected_sha256, decoded_limit=decoded_limit)[1]
 
 
 def extract_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
@@ -80,10 +85,7 @@ def extract_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 *
     The candidate is produced only after the same source-integrity and mutation
     checks as inspect(). The source archive remains caller-owned and unchanged.
     """
-    report = inspect(data, path, expected_sha256, decoded_limit=decoded_limit)
-    index = entries(data)
-    decoded = read_payload(data, report["path"], limit=decoded_limit, index=index)
-    candidate, _ = mark(decoded)
+    candidate, report = _inspect_with_candidate(data, path, expected_sha256, decoded_limit=decoded_limit)
     if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
         raise ValueError("Decoded candidate integrity mismatch")
     return candidate, report
