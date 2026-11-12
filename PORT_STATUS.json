@@ -1261,12 +1261,16 @@
   },
   "crilayla_literal_offline_encoder": {
     "status": "PENDING_CI_SYNTHETIC_ONLY",
-    "capability": "Deterministic literal-only CRILAYLA encoder with exact decoded roundtrip; prerequisite only, no CPK repack",
+    "capability": "Direct packed-bit literal CRILAYLA encoder, bounded O(encoded bytes) output allocation rather than nine Python integers per input byte; independent exact-byte reference and decoder regressions",
     "source": "tools/portlib/crilayla_literal.py",
     "test": "tests/test_crilayla_literal.py",
     "archive_repacked": false,
     "authentic_compressed_prm_tested": false,
     "native_consumer_abi_proven": false,
-    "uzuy_tested": false
+    "uzuy_tested": false,
+    "source_commit": "a56661acf3ad10eae435c1b19516b00c80a95000",
+    "test_commit": "b224852e3e75a73b97a31363e78ec2eb3eb7bea9",
+    "host_reference_boundary_check": "PASS_LOCAL_10_SIZES",
+    "github_actions_head_verified": false
   }
 }
