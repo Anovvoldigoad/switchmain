@@ -1645,5 +1645,14 @@
     "consumer_abi_verified": false,
     "archive_repacked": false,
     "emulator_tested": false
+  },
+  "latest_encoder_packed_bits": {
+    "status": "PENDING_CI",
+    "source_commit": "a56661acf3ad10eae435c1b19516b00c80a95000",
+    "regression_commit": "b224852e3e75a73b97a31363e78ec2eb3eb7bea9",
+    "local_reference_exact_bytes": "PASS_10_BOUNDARY_LENGTHS",
+    "github_actions_log_verified": false,
+    "game_runtime_tested": false,
+    "next": "Verify actual HEAD push-run job logs; repair failure before marking PASS. Obtain authentic compressed PRM fixture."
   }
 }
