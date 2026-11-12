@@ -1224,5 +1224,18 @@
     "compressed_archive_repacked": false,
     "uzuy_tested": false,
     "next": "Verify final HEAD push Actions completed success and raw job logs; authenticate real compressed game PRM before repacking"
+  },
+  "decoded_prm_cli_export": {
+    "status": "PENDING_CI_OFFLINE_SYNTHETIC_ONLY",
+    "parent_sha": "b9b302f15b9924dfd4eda4f4e30d5d099edda8ec",
+    "code_commit": "1b441a5c5789ae99f68d782e8108d32428484fcc",
+    "test_commit": "98257931b67510c31df499fcfc2161c3c6f85ffc",
+    "source": "tools/export_decoded_prm.py",
+    "test": "tests/test_export_decoded_prm.py",
+    "capability": "SHA-pinned decoded-only PRM file export with exclusive output creation and integrity evidence; not CPK or installable",
+    "native_consumer_abi_proven": false,
+    "compressed_archive_repacked": false,
+    "uzuy_tested": false,
+    "next": "Verify HEAD Actions push run and original job logs, repair failures; obtain authentic compressed game PRM fixture"
   }
 }
