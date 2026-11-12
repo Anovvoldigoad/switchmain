@@ -61,6 +61,41 @@ class CompressedPRMFeasibility(unittest.TestCase):
         with self.assertRaises(ValueError):
             extract_candidate(archive, "data/spc/missing", digest(archive))
 
+    def test_event236_record_provenance_and_replay(self):
+        import struct
+        raw = fixture([event(14), event(0), event(15)])
+        path = "data/spc/provenance.bin.xfbin"
+        archive = cpk([(path, literal_stream(raw))],
+                      lambda rows: rows[0].update({"ExtractSize": len(raw)}))
+        candidate, report = extract_candidate(archive, path, digest(archive))
+        rows = report["event236_provenance"]
+        self.assertEqual([r["classification"] for r in rows],
+                         ["newly_marked", "native_preserved", "newly_marked"])
+        self.assertEqual([r["opcode"] for r in rows], [14, 0, 15])
+        self.assertEqual([r["marker_before"] for r in rows], [0, 0, 0])
+        self.assertEqual([r["marker_after"] for r in rows], [0x4e53, 0, 0x4e53])
+        for row in rows:
+            off = row["decoded_offset"]
+            self.assertEqual(struct.unpack_from("<H", candidate, off + 42)[0],
+                             row["marker_after"])
+        self.assertEqual(digest(archive), report["archive_sha256"])
+        self.assertEqual(digest(candidate), report["candidate_decoded_sha256"])
+        self.assertEqual(archive, cpk([(path, literal_stream(raw))],
+                         lambda entries: entries[0].update({"ExtractSize": len(raw)})))
+
+    def test_preexisting_marker_provenance(self):
+        from portlib.prm_events import mark
+        raw = fixture([event(14), event(0)])
+        marked, _ = mark(raw)
+        path = "data/spc/marked.bin.xfbin"
+        archive = cpk([(path, literal_stream(marked))],
+                      lambda rows: rows[0].update({"ExtractSize": len(marked)}))
+        candidate, report = extract_candidate(archive, path, digest(archive))
+        self.assertEqual(candidate, marked)
+        self.assertEqual([r["classification"] for r in report["event236_provenance"]],
+                         ["already_marked", "native_preserved"])
+        self.assertEqual(report["changed_decoded_offsets"], [])
+
     def test_fail_closed(self):
         raw = fixture([event(14)])
         path = "data/spc/testprm.bin.xfbin"

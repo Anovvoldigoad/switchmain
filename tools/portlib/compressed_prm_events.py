@@ -4,8 +4,9 @@ Decoded byte offsets are NOT compressed-stream offsets. Never writes an archive.
 """
 import hashlib
 import re
+import struct
 from .cpk_events import entries, read_payload, canonical
-from .prm_events import mark
+from .prm_events import mark, records, MARKER
 
 SHA = re.compile(r"[0-9a-f]{64}\Z")
 
@@ -29,6 +30,27 @@ def inspect(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
     expected = sorted(i for row in report["changes"] for i in (row["offset"] + 42, row["offset"] + 43))
     if len(candidate) != len(decoded) or changed != expected:
         raise ValueError("Unexpected decoded PRM mutation")
+    # Exact decoded record provenance: never interpret these as compressed offsets.
+    provenance = []
+    for row in records(decoded):
+        if row["event"] != 236:
+            continue
+        offset = row["offset"]
+        opcode = struct.unpack_from("<h", decoded, offset + 36)[0]
+        before = struct.unpack_from("<H", decoded, offset + 42)[0]
+        after = struct.unpack_from("<H", candidate, offset + 42)[0]
+        kind = ("native_preserved" if not 1 <= opcode <= 29 else
+                "already_marked" if before == MARKER else "newly_marked")
+        provenance.append({
+            "chunk": row["chunk"], "animation": row["animation"],
+            "function": row["function"], "decoded_offset": offset,
+            "opcode": opcode, "marker_before": before,
+            "marker_after": after, "classification": kind,
+        })
+    if (sum(r["classification"] == "newly_marked" for r in provenance) != report["marked_records"]
+            or sum(r["classification"] == "already_marked" for r in provenance) != report["already_marked"]
+            or sum(r["classification"] == "native_preserved" for r in provenance) != report["native_event236_preserved"]):
+        raise ValueError("Event236 provenance mismatch")
     return {
         "status": "COMPRESSED_PRM_DECODED_MARKER_FEASIBILITY_ONLY",
         "archive_sha256": expected_sha256,
@@ -39,6 +61,7 @@ def inspect(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
         "stored_bytes": len(stored),
         "decoded_bytes": len(decoded),
         "changed_decoded_offsets": changed,
+        "event236_provenance": provenance,
         "marked_records": report["marked_records"],
         "already_marked": report["already_marked"],
         "native_event236_preserved": report["native_event236_preserved"],

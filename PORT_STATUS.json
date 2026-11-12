@@ -1239,9 +1239,22 @@
     "next": "Verify HEAD Actions push run and original job logs, repair failures; obtain authentic compressed game PRM fixture"
   },
   "decoded_prm_batch_export": {
-    "status": "PENDING_CI_SYNTHETIC_ONLY",
+    "status": "VERIFIED_CI_SYNTHETIC_ONLY",
     "parent_sha": "48744a1b81f9016451fbdfa81d6fb2d6de3aecf7",
     "capability": "SHA-pinned multi-member decoded-only export with preflight conflict rejection and rollback; not installable",
+    "native_consumer_abi_proven": false,
+    "compressed_archive_repacked": false,
+    "uzuy_tested": false,
+    "run_id": 43190559263,
+    "job_id": 131088483249,
+    "authentic_log_verified": true
+  },
+  "compressed_prm_event236_provenance": {
+    "status": "PENDING_CI_SYNTHETIC_ONLY",
+    "parent_sha": "581eb15b1f720adab16c030bea9da0d23fa6d50a",
+    "source": "tools/portlib/compressed_prm_events.py",
+    "test": "tests/test_compressed_prm_events.py",
+    "capability": "Exact decoded Event236 record provenance, opcode, marker before/after and native/marked classification; no compressed offsets or runtime ABI",
     "native_consumer_abi_proven": false,
     "compressed_archive_repacked": false,
     "uzuy_tested": false
