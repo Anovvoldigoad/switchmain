@@ -48,3 +48,18 @@ def inspect(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
         "gameplay_verified": False,
         "full_moddingapi": False,
     }
+
+
+def extract_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
+    """Return a validated decoded PRM candidate, never a CPK or installable asset.
+
+    The candidate is produced only after the same source-integrity and mutation
+    checks as inspect(). The source archive remains caller-owned and unchanged.
+    """
+    report = inspect(data, path, expected_sha256, decoded_limit=decoded_limit)
+    index = entries(data)
+    decoded = read_payload(data, report["path"], limit=decoded_limit, index=index)
+    candidate, _ = mark(decoded)
+    if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
+        raise ValueError("Decoded candidate integrity mismatch")
+    return candidate, report
