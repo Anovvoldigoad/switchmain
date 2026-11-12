@@ -1632,5 +1632,18 @@
     "source": "tools/portlib/compressed_prm_events.py",
     "test": "tests/test_compressed_prm_events.py",
     "next": "Verify push-run for new HEAD and authentic job logs; test authentic compressed PRM, never infer runtime ABI"
+  },
+  "latest_literal_crilayla_encoder": {
+    "status": "PENDING_CI_SYNTHETIC_ONLY",
+    "parent_sha": "2d7c3b2057bceeb4186cc51bc7f8d379b9a825f7",
+    "prior_ci_run": 43217216938,
+    "prior_ci_job": 131179401384,
+    "prior_ci_raw_log_verified": true,
+    "source": "tools/portlib/crilayla_literal.py",
+    "test": "tests/test_crilayla_literal.py",
+    "next": "Verify new HEAD push run and authentic log; require authentic compressed game PRM before CPK repack",
+    "consumer_abi_verified": false,
+    "archive_repacked": false,
+    "emulator_tested": false
   }
 }
