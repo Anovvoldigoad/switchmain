@@ -29,5 +29,27 @@ class LiteralCRILAYLA(unittest.TestCase):
             decompress(good, limit=260)
 
 
+    def test_packed_output_matches_independent_reference(self):
+        # Reference bit-list implementation retained only for small test inputs.
+        import struct
+        def reference(raw):
+            bits = []
+            for byte in reversed(raw[256:]):
+                bits.append(0)
+                bits.extend((byte >> shift) & 1 for shift in range(7, -1, -1))
+            bits.extend([0] * (-len(bits) % 8))
+            payload = bytes(sum(bits[i + shift] << (7 - shift) for shift in range(8))
+                            for i in range(0, len(bits), 8))[::-1]
+            return b'CRILAYLA' + struct.pack('<II', len(raw)-256, len(payload)) + payload + raw[:256]
+
+        for size in (256, 257, 258, 259, 260, 263, 264, 265, 1024, 4096):
+            raw = bytes((i * 37 + size) % 256 for i in range(size))
+            with self.subTest(size=size):
+                packed = encode_literals(raw, limit=size)
+                self.assertEqual(packed, reference(raw))
+                self.assertEqual(decompress(packed), raw)
+                self.assertEqual(len(packed), 16 + (size-256)*9//8 +
+                                 (1 if (size-256)*9%8 else 0) + 256)
+
 if __name__ == '__main__':
     unittest.main()
