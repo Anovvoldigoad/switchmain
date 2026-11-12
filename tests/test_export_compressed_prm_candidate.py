@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 import pathlib
 import tempfile
+from unittest.mock import patch
 import unittest
 from portlib.crilayla import decompress
 from test_cpk_events import cpk
@@ -38,6 +39,12 @@ class CompressedCandidate(unittest.TestCase):
         self.assertFalse(report["output_is_installable"])
         self.assertFalse(report["compressed_archive_repacked"])
         self.assertEqual(self.archive.read_bytes(), self.source)
+
+    def test_mapped_archive_never_calls_read_bytes(self):
+        with patch.object(pathlib.Path, 'read_bytes', side_effect=AssertionError('full archive read')):
+            report = module.export(self.archive, self.member, self.sha, self.output)
+        self.assertEqual(report['archive_sha256'], self.sha)
+        self.assertTrue(self.output.is_file())
 
     def test_reject_before_output(self):
         for member, sha, limit in ((self.member, "0"*64, 100000),

@@ -3,6 +3,7 @@
 Decoded byte offsets are NOT compressed-stream offsets. Never writes an archive.
 """
 import hashlib
+import mmap
 import re
 import struct
 from .cpk_events import entries, read_payload, canonical
@@ -12,7 +13,7 @@ SHA = re.compile(r"[0-9a-f]{64}\Z")
 
 
 def inspect(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
-    if not isinstance(data, bytes) or not isinstance(expected_sha256, str) or not SHA.fullmatch(expected_sha256):
+    if not isinstance(data, (bytes, mmap.mmap)) or not isinstance(expected_sha256, str) or not SHA.fullmatch(expected_sha256):
         raise ValueError("Exact CPK source SHA256 required")
     if hashlib.sha256(data).hexdigest() != expected_sha256:
         raise ValueError("CPK source SHA256 mismatch")

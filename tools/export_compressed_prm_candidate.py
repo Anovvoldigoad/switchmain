@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import mmap
 import os
 from pathlib import Path
 from portlib.compressed_prm_events import extract_candidate
@@ -13,8 +14,10 @@ def export(archive, member, sha256, destination, *, limit=256 * 1024 * 1024):
     archive, destination = Path(archive), Path(destination)
     if destination.exists():
         raise ValueError("Destination already exists")
-    source = archive.read_bytes()
-    candidate, report = extract_candidate(source, member, sha256, decoded_limit=limit)
+    # Map the read-only source; never allocate the full CPK as a Python bytes copy.
+    with archive.open('rb') as source_file:
+        with mmap.mmap(source_file.fileno(), 0, access=mmap.ACCESS_READ) as source:
+            candidate, report = extract_candidate(source, member, sha256, decoded_limit=limit)
     if len(candidate) < 256:
         raise ValueError("Decoded candidate lacks CRILAYLA prefix")
     packed = encode_literals(candidate, limit=limit)
