@@ -3,7 +3,7 @@ import hashlib
 import unittest
 from test_cpk_events import cpk
 from test_prm_marker import fixture, event
-from portlib.compressed_prm_events import inspect
+from portlib.compressed_prm_events import inspect, extract_candidate
 
 
 def digest(data):
@@ -38,6 +38,28 @@ class CompressedPRMFeasibility(unittest.TestCase):
         self.assertFalse(report["compressed_archive_repacked"])
         self.assertEqual(archive, before)
         self.assertEqual(inspect(archive, path, digest(archive)), report)
+
+    def test_extract_decoded_candidate_byte_integrity(self):
+        raw = fixture([event(14), event(0), event(15)])
+        path = "data/spc/testprm.bin.xfbin"
+        archive = cpk([(path, literal_stream(raw))],
+                      lambda rows: rows[0].update({"ExtractSize": len(raw)}))
+        original = bytes(archive)
+        candidate, report = extract_candidate(archive, path, digest(archive))
+        self.assertEqual(len(candidate), len(raw))
+        self.assertEqual(digest(candidate), report["candidate_decoded_sha256"])
+        self.assertEqual([i for i, (a, b) in enumerate(zip(raw, candidate)) if a != b],
+                         report["changed_decoded_offsets"])
+        self.assertEqual(archive, original)
+        self.assertFalse(report["compressed_archive_repacked"])
+        self.assertEqual(extract_candidate(archive, path, digest(archive)),
+                         (candidate, report))
+        with self.assertRaises(ValueError):
+            extract_candidate(archive, path, "0" * 64)
+        with self.assertRaises(ValueError):
+            extract_candidate(archive, path, digest(archive), decoded_limit=len(raw)-1)
+        with self.assertRaises(ValueError):
+            extract_candidate(archive, "data/spc/missing", digest(archive))
 
     def test_fail_closed(self):
         raw = fixture([event(14)])
