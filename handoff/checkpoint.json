@@ -1601,5 +1601,18 @@
     "compressed_archive_repacked": false,
     "uzuy_tested": false,
     "next": "Verify final HEAD push Actions completed success and raw job logs; authenticate real compressed game PRM before repacking"
+  },
+  "latest_decoded_prm_cli": {
+    "status": "PENDING_CI_SYNTHETIC_ONLY",
+    "parent_sha": "b9b302f15b9924dfd4eda4f4e30d5d099edda8ec",
+    "source_commit": "1b441a5c5789ae99f68d782e8108d32428484fcc",
+    "test_commit": "98257931b67510c31df499fcfc2161c3c6f85ffc",
+    "head_before_checkpoint": "05c0e1ccec9b6d2f7fdb1505d0d66cfbbb02da35",
+    "run_id": null,
+    "job_id": null,
+    "authentic_log_verified": false,
+    "local_tests_run": false,
+    "capability": "SHA-pinned decoded-only CRILAYLA PRM candidate CLI, no archive repack",
+    "next": "Verify latest HEAD and push Actions job/log, fix CI failures, authenticate real compressed PRM"
   }
 }
