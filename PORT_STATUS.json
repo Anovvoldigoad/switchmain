@@ -1237,5 +1237,13 @@
     "compressed_archive_repacked": false,
     "uzuy_tested": false,
     "next": "Verify HEAD Actions push run and original job logs, repair failures; obtain authentic compressed game PRM fixture"
+  },
+  "decoded_prm_batch_export": {
+    "status": "PENDING_CI_SYNTHETIC_ONLY",
+    "parent_sha": "48744a1b81f9016451fbdfa81d6fb2d6de3aecf7",
+    "capability": "SHA-pinned multi-member decoded-only export with preflight conflict rejection and rollback; not installable",
+    "native_consumer_abi_proven": false,
+    "compressed_archive_repacked": false,
+    "uzuy_tested": false
   }
 }

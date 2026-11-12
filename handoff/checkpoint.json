@@ -1614,5 +1614,10 @@
     "local_tests_run": false,
     "capability": "SHA-pinned decoded-only CRILAYLA PRM candidate CLI, no archive repack",
     "next": "Verify latest HEAD and push Actions job/log, fix CI failures, authenticate real compressed PRM"
+  },
+  "decoded_prm_batch_export": {
+    "status": "PENDING_CI_SYNTHETIC_ONLY",
+    "parent_sha": "48744a1b81f9016451fbdfa81d6fb2d6de3aecf7",
+    "next": "Verify HEAD push-run job logs and synthetic batch tests; authentic compressed game PRM still required"
   }
 }
