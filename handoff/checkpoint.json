@@ -1580,5 +1580,14 @@
     },
     "new_ci": "PENDING",
     "runtime_abi_verified": false
+  },
+  "latest_compressed_prm_feasibility": {
+    "status": "PENDING_CI_SYNTHETIC_ONLY",
+    "parent_sha": "2ee0a9b9f004310822203dfc8f92d2c63b56334f",
+    "code": "tools/portlib/compressed_prm_events.py",
+    "test": "tests/test_compressed_prm_events.py",
+    "archive_repacked": false,
+    "gameplay_verified": false,
+    "notes": "2026-11-12: Added read-only compressed CRILAYLA CPK PRM Event236 decoded-byte feasibility report (tools/portlib/compressed_prm_events.py) with synthetic compressed NUCC PRM positive, negative SHA/path/size/corruption/uncompressed tests. No compressed repacking, native consumer, runtime ABI, ownership, archive precedence, or Uzuy proof. Parent 2ee0a9b9f004310822203dfc8f92d2c63b56334f; CI PENDING. Original main pinned SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 untouched; Sakura aura107, Event236 both forms, three release flags false. Source anchors: NSC-ModManager/NSC-Toolbox 2.1.2.1 released 2026-08-30; REA b2f3dc81fa503c2b9ff0d8625336ed2e74d1e829; cpktools eff288cf9c5b844269b215a920fe36e198aee4c9. Next verify Actions HEAD success and authentic logs; obtain real compressed game PRM fixture and confirm decoded marker positions before any repacker."
   }
 }

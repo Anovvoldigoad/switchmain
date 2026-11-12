@@ -147,6 +147,8 @@ jobs:
         run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_cpk_read_payload.py -v
       - name: SHA-pinned read-only CPK payload evidence extraction (synthetic CPK only)
         run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_cpk_source_evidence.py -v
+      - name: Inspect decoded CRILAYLA PRM Event236 edits without repacking (synthetic only)
+        run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_compressed_prm_events.py -v
       - name: Source-pinned multi-CPK overlap evidence (synthetic, no precedence claim)
         run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_cpk_overlap_evidence.py -v
       - name: Verify source-pinned PC MovesetPlus index catalog and strict editor lookup
