@@ -14,13 +14,17 @@ def encode_literals(decoded, *, limit=256 * 1024 * 1024):
     count = len(decoded) - 0x100
     if count > 0xffffffff:
         raise ValueError('CRILAYLA decoded length exceeds header')
-    bits = []
-    for byte in reversed(decoded[0x100:]):
-        bits.append(0)
-        bits.extend((byte >> shift) & 1 for shift in range(7, -1, -1))
-    bits.extend([0] * (-len(bits) % 8))
-    encoded = bytes(sum(bits[i + shift] << (7 - shift) for shift in range(8))
-                    for i in range(0, len(bits), 8))[::-1]
-    if len(encoded) > 0xffffffff:
+    encoded_len = (count * 9 + 7) // 8
+    if encoded_len > 0xffffffff:
         raise ValueError('CRILAYLA encoded length exceeds header')
-    return b'CRILAYLA' + struct.pack('<II', count, len(encoded)) + encoded + decoded[:0x100]
+    # Pack bits directly into the final reversed stream. Avoid a Python-int
+    # list of nine entries per input byte (multi-GB at the supported limit).
+    encoded = bytearray(encoded_len)
+    bit_index = 0
+    for value in reversed(decoded[0x100:]):
+        bit_index += 1  # zero literal selector
+        for shift in range(7, -1, -1):
+            if (value >> shift) & 1:
+                encoded[encoded_len - 1 - bit_index // 8] |= 1 << (7 - bit_index % 8)
+            bit_index += 1
+    return b'CRILAYLA' + struct.pack('<II', count, encoded_len) + encoded + decoded[:0x100]
