@@ -1296,5 +1296,19 @@
     "authentic_game_fixture": false,
     "native_consumer_abi": false,
     "emulator_tested": false
+  },
+  "compressed_prm_batch_shared_context": {
+    "status": "PENDING_CI_SYNTHETIC_ONLY",
+    "parent_sha": "0a1b83b1e81389abffc37f4cd319a7ff7bdf9de7",
+    "capability": "One SHA256 and TOC parse per compressed PRM batch; public API still independently verifies SHA",
+    "tests": [
+      "one_archive_validation_and_index_for_multiple_members",
+      "wrong_source_hash_rejects_before_index_or_output"
+    ],
+    "authentic_game_fixture": false,
+    "engine_consumer_abi_verified": false,
+    "uzuy_tested": false,
+    "ci_run": null,
+    "ci_job": null
   }
 }
