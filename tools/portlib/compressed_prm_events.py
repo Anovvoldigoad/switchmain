@@ -12,12 +12,15 @@ from .prm_events import mark, records, MARKER
 SHA = re.compile(r"[0-9a-f]{64}\Z")
 
 
-def _inspect_with_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
+def _inspect_with_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024, validated_index=None):
     if not isinstance(data, (bytes, mmap.mmap)) or not isinstance(expected_sha256, str) or not SHA.fullmatch(expected_sha256):
         raise ValueError("Exact CPK source SHA256 required")
-    if hashlib.sha256(data).hexdigest() != expected_sha256:
-        raise ValueError("CPK source SHA256 mismatch")
-    index = entries(data)
+    if validated_index is None:
+        if hashlib.sha256(data).hexdigest() != expected_sha256:
+            raise ValueError("CPK source SHA256 mismatch")
+        index = entries(data)
+    else:
+        index = validated_index
     path = canonical(path)
     if path not in index:
         raise ValueError("CPK entry not found")
@@ -79,13 +82,13 @@ def inspect(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
     return _inspect_with_candidate(data, path, expected_sha256, decoded_limit=decoded_limit)[1]
 
 
-def extract_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
+def extract_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024, validated_index=None):
     """Return a validated decoded PRM candidate, never a CPK or installable asset.
 
     The candidate is produced only after the same source-integrity and mutation
     checks as inspect(). The source archive remains caller-owned and unchanged.
     """
-    candidate, report = _inspect_with_candidate(data, path, expected_sha256, decoded_limit=decoded_limit)
+    candidate, report = _inspect_with_candidate(data, path, expected_sha256, decoded_limit=decoded_limit, validated_index=validated_index)
     if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
         raise ValueError("Decoded candidate integrity mismatch")
     return candidate, report
