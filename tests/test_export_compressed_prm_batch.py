@@ -73,17 +73,37 @@ class CompressedBatch(unittest.TestCase):
         self.assertEqual(len(list(self.out.iterdir())), 1)
 
     def test_rollback_on_second_write_failure(self):
-        original = module.os.open
+        original = module.os.link
         calls = [0]
         def fail_second(*args, **kwargs):
             calls[0] += 1
             if calls[0] == 2:
                 raise OSError("injected write failure")
             return original(*args, **kwargs)
-        with patch.object(module.os, "open", side_effect=fail_second):
+        with patch.object(module.os, "link", side_effect=fail_second):
             with self.assertRaises(OSError):
                 module.export_batch(self.archive, self.sha, self.manifest, self.out)
         self.assertEqual(list(self.out.iterdir()), [])
+
+    def test_stage_failure_leaves_no_output_or_scratch(self):
+        original = module.encode_literals
+        calls = [0]
+        def fail_second(*args, **kwargs):
+            calls[0] += 1
+            if calls[0] == 2:
+                raise ValueError("injected encode failure")
+            return original(*args, **kwargs)
+        with patch.object(module, "encode_literals", side_effect=fail_second):
+            with self.assertRaises(ValueError):
+                module.export_batch(self.archive, self.sha, self.manifest, self.out)
+        self.assertEqual(list(self.out.iterdir()), [])
+
+    def test_publish_is_exclusive_and_staging_removed(self):
+        with patch.object(module.os, "link", wraps=module.os.link) as publish:
+            module.export_batch(self.archive, self.sha, self.manifest, self.out)
+        self.assertEqual(publish.call_count, 2)
+        self.assertEqual(sorted(p.name for p in self.out.iterdir()),
+                         ["one.crilayla", "two.crilayla"])
 
     def test_no_full_archive_read(self):
         with patch.object(pathlib.Path, "read_bytes", side_effect=AssertionError("full read")):

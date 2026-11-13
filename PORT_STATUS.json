@@ -1286,5 +1286,15 @@
     "authentic_game_fixture": false,
     "native_consumer_abi": false,
     "emulator_tested": false
+  },
+  "compressed_prm_disk_staging": {
+    "status": "PENDING_CI_SYNTHETIC_ONLY",
+    "parent_sha": "4497049b202251f1b39b2f34061615c4a3dcc0cd",
+    "source": "tools/export_compressed_prm_batch.py",
+    "test": "tests/test_export_compressed_prm_batch.py",
+    "capability": "Per-member disk staging with same-filesystem exclusive hard-link publication and rollback; avoids retaining all 128 packed candidates in RAM",
+    "authentic_game_fixture": false,
+    "native_consumer_abi": false,
+    "emulator_tested": false
   }
 }

@@ -1664,5 +1664,19 @@
     "tests_passed": 5,
     "release_flags_unchanged": true,
     "next": "Authenticate original v1.70 compressed PRM bytes and verify actual Event236 marker locations; native consumer ABI/lifecycle still unproven."
+  },
+  "compressed_prm_disk_staging": {
+    "status": "PENDING_CI",
+    "parent_sha": "4497049b202251f1b39b2f34061615c4a3dcc0cd",
+    "feature": "Bound batch retained compressed payload to one candidate with disk staging; hard-link exclusive publish and rollback",
+    "new_tests": [
+      "stage_failure_cleanup",
+      "publish_link_count_and_cleanup"
+    ],
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "native_consumer_abi": false,
+    "uzuy": false,
+    "ci_run": null,
+    "ci_job": null
   }
 }

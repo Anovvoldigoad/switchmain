@@ -4,6 +4,7 @@ import hashlib
 import json
 import mmap
 import os
+import tempfile
 from pathlib import Path
 
 from portlib.compressed_prm_events import extract_candidate
@@ -37,35 +38,41 @@ def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 10
             raise ValueError("Destination exists")
         planned.append((path, destination))
 
+    # Disk staging bounds retained compressed bytes to one member, not 128.
     staged = []
-    with archive.open("rb") as handle:
-        with mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as source:
-            for path, destination in planned:
-                candidate, report = extract_candidate(source, path, sha256, decoded_limit=limit)
-                if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
-                    raise ValueError("Decoded candidate SHA mismatch")
-                packed = encode_literals(candidate, limit=limit)
-                if decompress(packed, limit=limit) != candidate:
-                    raise ValueError("Compressed roundtrip mismatch")
-                staged.append((destination, packed, {
-                    **report,
-                    "output": destination.name,
-                    "compressed_candidate_sha256": hashlib.sha256(packed).hexdigest(),
-                    "compressed_candidate_bytes": len(packed),
-                }))
     created = []
-    try:
-        for destination, packed, _ in staged:
-            fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            created.append(destination)
-            with os.fdopen(fd, "wb") as output:
-                output.write(packed)
-                output.flush()
-                os.fsync(output.fileno())
-    except BaseException:
-        for destination in created:
-            destination.unlink(missing_ok=True)
-        raise
+    with tempfile.TemporaryDirectory(prefix=".prm-stage-", dir=output_dir) as scratch:
+        scratch = Path(scratch)
+        with archive.open("rb") as handle:
+            with mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as source:
+                for index, (path, destination) in enumerate(planned):
+                    candidate, report = extract_candidate(source, path, sha256, decoded_limit=limit)
+                    if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
+                        raise ValueError("Decoded candidate SHA mismatch")
+                    packed = encode_literals(candidate, limit=limit)
+                    if decompress(packed, limit=limit) != candidate:
+                        raise ValueError("Compressed roundtrip mismatch")
+                    staged_path = scratch / str(index)
+                    with staged_path.open("xb") as output:
+                        output.write(packed)
+                        output.flush()
+                        os.fsync(output.fileno())
+                    staged.append((destination, staged_path, {
+                        **report,
+                        "output": destination.name,
+                        "compressed_candidate_sha256": hashlib.sha256(packed).hexdigest(),
+                        "compressed_candidate_bytes": len(packed),
+                    }))
+                    del candidate, packed
+        try:
+            for destination, staged_path, _ in staged:
+                # Same-filesystem hard-link publication rejects existing outputs.
+                os.link(staged_path, destination)
+                created.append(destination)
+        except BaseException:
+            for destination in created:
+                destination.unlink(missing_ok=True)
+            raise
     return {"source_sha256": sha256, "output_is_installable": False,
             "compressed_archive_repacked": False,
             "members": [report for _, _, report in staged]}
