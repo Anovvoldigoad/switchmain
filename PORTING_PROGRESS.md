@@ -1,4 +1,6 @@
 
+2026-11-14 — PENDING CI: SHA-pinned static ARM64 ADRP+LDR and literal-LDR code references to relocation-pair candidate bases; independently tested positive, negative, truncated and wrong-main cases. Original main untouched. This does not prove X8 runtime identity, ABI, ownership, async, unbind, destructor, archive precedence or Uzuy. Upstream: NSC-ModManager release 2.1.2.1 (2026-08-30), NSC-Toolbox 6f780cb6814f07e03c16b3e78d97dde4e4368983, REA da91bbd4eb417405895ff2621b2798e1f598d30e. Parent 84e2dd1d5255e0a12eedabfdb353bb8bc0c07535. New HEAD/run/log pending. Preserve Sakura aura107, Event236 marked/unmarked, all release flags false.
+
 2026-11-14 FOLLOW-UP: First exact-main relocation-pair census CI 43482768847 job 132083236699 COMPLETED SUCCESS, authentic 193725-character log inspected, candidate counts +0xC0=217495, +0x58=219222. These are syntactic pairs, NOT unique objects or resolved dispatch. Large exhaustive JSON was replaced with deterministic SHA256 of all pairs, count and first eight candidates; new bounded-report HEAD CI PENDING. No native ABI, lifecycle or Uzuy proof.
 
 ## 2026-11-14 — FileOpen indirect method relocation pair census (PENDING CI)

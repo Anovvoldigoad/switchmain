@@ -171,6 +171,8 @@ jobs:
         run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_export_decoded_prm_batch.py -v
       - name: Census exact original FileOpen indirect field relocation pairs (not ABI)
         run: python tests/test_native_fileopen_dispatch_relocations.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Native FileOpen candidate-base code cross-references
+        run: python tests/test_native_fileopen_dispatch_code_xrefs.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Reject untested gameplay release flags in project status and handoff
         run: python tests/test_release_flags.py --status PORT_STATUS.json --checkpoint handoff/checkpoint.json --output proof-work
       - uses: actions/upload-artifact@v4

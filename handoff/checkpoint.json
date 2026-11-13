@@ -5,7 +5,7 @@
   "repository": "https://github.com/Anovvoldigoad/switchmain",
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
-  "documentation_commit": "Resolve actual branch HEAD; this follow-up documentation plus origin-kind fix is a later commit than code c32b1d2",
+  "documentation_commit": "Pending new code xref HEAD CI; parent 84e2dd1d5255e0a12eedabfdb353bb8bc0c07535",
   "prior_storm_checkpoint_id": "80be5308-6dfa-44d8-91e9-71c92a4f00e2",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
@@ -74,7 +74,8 @@
       "2026-11-08 pending CI: single-TOC-parse batched CPK capture and bounded indexed decode; synthetic tests only.",
       "2026-11-09 pending CI: source-pinned PC editor event-index preflight; explicit JSON only; native ABI and gameplay unresolved.",
       "2026-11-09 pending CI: original-main SHA-pinned nine-PC-family literal and adjacent ARM64 ADRP/ADD reference census; exact main segment hashes, negative results scoped, no consumer ABI inference.",
-      "2026-11-11: FileOpen call-free witness rejects opaque BLR as well as BL; synthetic negative and pinned main regression; pending HEAD CI, no native consumer ABI."
+      "2026-11-11: FileOpen call-free witness rejects opaque BLR as well as BL; synthetic negative and pinned main regression; pending HEAD CI, no native consumer ABI.",
+      "PENDING CI: SHA-pinned static adjacent ADRP+LDR/literal LDR code-to-candidate-base references; no runtime X8 or ABI proof"
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",

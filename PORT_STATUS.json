@@ -67,7 +67,8 @@
     "2026-11-09 pending CI: PC MovesetPlus explicit event index manifest preflight with pinned Toolbox 2.1.2.1 catalog, NS4/NSC correspondence, strict unknown rejection, SHA-pinned CLI. No raw binary rewrite or Switch ABI.",
     "2026-11-09 pending CI: original-main SHA-pinned nine-PC-family literal and adjacent ARM64 ADRP/ADD reference census; exact main segment hashes, negative results scoped, no consumer ABI inference.",
     "2026-11-11: FileOpen external entry call-free path now rejects both direct BL and indirect BLR, with negative synthetic regression and pinned original main replay; pending HEAD CI, no native consumer ABI or runtime proof.",
-    "2026-11-11 byte-witnessed call-free FileOpen BR register immediate writer boundary, including unknown external input and memory-load nonownership; synthetic and pinned-main regressions; PENDING_CI; no native ABI proof"
+    "2026-11-11 byte-witnessed call-free FileOpen BR register immediate writer boundary, including unknown external input and memory-load nonownership; synthetic and pinned-main regressions; PENDING_CI; no native ABI proof",
+    "PENDING CI: SHA-pinned static adjacent ADRP+LDR/literal LDR code-to-candidate-base references; no runtime X8 or ABI proof"
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
