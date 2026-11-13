@@ -1310,5 +1310,11 @@
     "uzuy_tested": false,
     "ci_run": null,
     "ci_job": null
+  },
+  "native_fileopen_dispatch_relocation_pairs": {
+    "state": "pending_ci",
+    "proof": "Exact original main SHA256 and two indirect field offsets 0xc0/0x58; static RELATIVE relocation pair census only, not runtime X8, ABI or ownership",
+    "test": "tests/test_native_fileopen_dispatch_relocations.py",
+    "runtime_verified": false
   }
 }

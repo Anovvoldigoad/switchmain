@@ -1692,5 +1692,11 @@
     "uzuy_tested": false,
     "ci_run": null,
     "ci_job": null
+  },
+  "native_fileopen_dispatch_relocation_pairs": {
+    "state": "pending_ci",
+    "parent": "95335d5b88550925149730eb2da74e0e3964702b",
+    "evidence": "Static original-main relocation-pair candidate census for FileOpen X8 field offsets 0xc0 and 0x58; no runtime X8/vtable identity",
+    "next": "Inspect actual HEAD push-run raw job log; fix failures. Investigate original X8 materialization and object lifetime without hooks."
   }
 }
