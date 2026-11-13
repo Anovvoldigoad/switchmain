@@ -4,6 +4,7 @@ An executable RELATIVE relocation at base+offset is only a candidate
 function pointer; it does not authenticate the runtime X8 base or a vtable.
 """
 import hashlib
+import json
 from .native_cpk_graph import MAIN_SHA256
 from .native_cpk_indirect import _image_and_relocations, RELA_TYPE
 from .native_fileopen_dispatch_objects import DISPATCHES
@@ -47,10 +48,13 @@ def inspect(nso):
     for witness in DISPATCHES:
         offset = witness["offset"]
         matches = candidate_pairs(records, text_end, offset)
+        fingerprint = hashlib.sha256(json.dumps(matches,sort_keys=True,separators=(",",":")).encode()).hexdigest()
         dispatch.append({"original_load":hex(witness["load"]),
                          "original_branch":hex(witness["branch"]),
                          "observed_indirect_field_offset":offset,
-                         "static_relocation_pair_candidates":matches,
+                         "static_relocation_pair_candidates_sample":matches[:8],
+                         "all_candidate_pairs_sha256":fingerprint,
+                         "candidate_sample_truncated":len(matches)>8,
                          "candidate_count":len(matches),
                          "runtime_x8_base_matched_to_candidate":False})
     return {"status":"PINNED_FILEOPEN_DISPATCH_RELOCATION_PAIR_CENSUS",

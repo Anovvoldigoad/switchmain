@@ -1312,9 +1312,20 @@
     "ci_job": null
   },
   "native_fileopen_dispatch_relocation_pairs": {
-    "state": "pending_ci",
+    "state": "pending_ci_bounded_report",
     "proof": "Exact original main SHA256 and two indirect field offsets 0xc0/0x58; static RELATIVE relocation pair census only, not runtime X8, ABI or ownership",
     "test": "tests/test_native_fileopen_dispatch_relocations.py",
-    "runtime_verified": false
+    "runtime_verified": false,
+    "previous_ci": {
+      "run_id": 43482768847,
+      "job_id": 132083236699,
+      "conclusion": "success",
+      "authentic_log_read": true,
+      "counts": [
+        217495,
+        219222
+      ],
+      "note": "Previous exhaustive report too large; bounded sample+SHA is new candidate awaiting CI"
+    }
   }
 }
