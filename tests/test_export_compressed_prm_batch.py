@@ -105,6 +105,22 @@ class CompressedBatch(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in self.out.iterdir()),
                          ["one.crilayla", "two.crilayla"])
 
+    def test_one_archive_validation_and_index_for_multiple_members(self):
+        from portlib import cpk_events
+        with patch.object(module, "entries", wraps=cpk_events.entries) as index:
+            report = module.export_batch(self.archive, self.sha, self.manifest, self.out)
+        self.assertEqual(index.call_count, 1)
+        self.assertEqual(len(report["members"]), 2)
+        self.assertEqual([r["candidate_decoded_sha256"] for r in report["members"]],
+                         [hashlib.sha256(decompress((self.out / r["output"]).read_bytes())).hexdigest()
+                          for r in report["members"]])
+
+    def test_wrong_source_hash_rejects_before_index_or_output(self):
+        with patch.object(module, "entries", side_effect=AssertionError("parsed before hash")):
+            with self.assertRaisesRegex(ValueError, "SHA256 mismatch"):
+                module.export_batch(self.archive, "0" * 64, self.manifest, self.out)
+        self.assertEqual(list(self.out.iterdir()), [])
+
     def test_no_full_archive_read(self):
         with patch.object(pathlib.Path, "read_bytes", side_effect=AssertionError("full read")):
             module.export_batch(self.archive, self.sha, self.manifest, self.out)
