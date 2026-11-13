@@ -1272,5 +1272,19 @@
     "test_commit": "b224852e3e75a73b97a31363e78ec2eb3eb7bea9",
     "host_reference_boundary_check": "PASS_LOCAL_10_SIZES",
     "github_actions_head_verified": false
+  },
+  "compressed_prm_atomic_batch": {
+    "status": "VERIFIED_CI_SYNTHETIC_ONLY",
+    "code_commit": "3db467b683b996011a34b62e52105b7db6a4a4b0",
+    "ci_run": 43344801740,
+    "ci_job": 131621435819,
+    "authentic_log_inspected": true,
+    "tests_passed": 5,
+    "source": "tools/export_compressed_prm_batch.py",
+    "test": "tests/test_export_compressed_prm_batch.py",
+    "archive_repacked": false,
+    "authentic_game_fixture": false,
+    "native_consumer_abi": false,
+    "emulator_tested": false
   }
 }

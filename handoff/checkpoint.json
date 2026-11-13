@@ -1654,5 +1654,15 @@
     "github_actions_log_verified": false,
     "game_runtime_tested": false,
     "next": "Verify actual HEAD push-run job logs; repair failure before marking PASS. Obtain authentic compressed PRM fixture."
+  },
+  "compressed_prm_atomic_batch": {
+    "status": "VERIFIED_CI_SYNTHETIC_ONLY",
+    "code_commit": "3db467b683b996011a34b62e52105b7db6a4a4b0",
+    "ci_run": 43344801740,
+    "ci_job": 131621435819,
+    "original_job_log_inspected": true,
+    "tests_passed": 5,
+    "release_flags_unchanged": true,
+    "next": "Authenticate original v1.70 compressed PRM bytes and verify actual Event236 marker locations; native consumer ABI/lifecycle still unproven."
   }
 }

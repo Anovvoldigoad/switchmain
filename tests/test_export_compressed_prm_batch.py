@@ -41,6 +41,7 @@ class CompressedBatch(unittest.TestCase):
         before = self.archive.read_bytes()
         report = module.export_batch(self.archive, self.sha, self.manifest, self.out)
         self.assertEqual(len(report["members"]), 2)
+        self.assertEqual([row["marked_records"] for row in report["members"]], [1, 1])
         self.assertFalse(report["output_is_installable"])
         for row, decoded in zip(report["members"], self.decoded):
             packed = (self.out / row["output"]).read_bytes()
