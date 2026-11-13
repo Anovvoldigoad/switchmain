@@ -14,3 +14,5 @@ jobs:
       - run: python -m pip install -r tests/requirements.txt
       - name: Verify synthetic compressed candidate and source integrity
         run: PYTHONPATH=tools python -m unittest discover -s tests -p test_export_compressed_prm_candidate.py -v
+      - name: Verify atomic compressed batch candidates
+        run: PYTHONPATH=tools python -m unittest discover -s tests -p test_export_compressed_prm_batch.py -v
