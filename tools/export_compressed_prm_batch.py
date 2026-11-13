@@ -7,7 +7,8 @@ import os
 import tempfile
 from pathlib import Path
 
-from portlib.compressed_prm_events import extract_candidate
+from portlib.compressed_prm_events import extract_candidate, SHA
+from portlib.cpk_events import entries
 from portlib.crilayla import decompress
 from portlib.crilayla_literal import encode_literals
 
@@ -45,8 +46,15 @@ def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 10
         scratch = Path(scratch)
         with archive.open("rb") as handle:
             with mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as source:
+                if not isinstance(sha256, str) or not SHA.fullmatch(sha256):
+                    raise ValueError("Exact CPK source SHA256 required")
+                if hashlib.sha256(source).hexdigest() != sha256:
+                    raise ValueError("CPK source SHA256 mismatch")
+                validated_index = entries(source)
                 for index, (path, destination) in enumerate(planned):
-                    candidate, report = extract_candidate(source, path, sha256, decoded_limit=limit)
+                    candidate, report = extract_candidate(
+                        source, path, sha256, decoded_limit=limit,
+                        validated_index=validated_index)
                     if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
                         raise ValueError("Decoded candidate SHA mismatch")
                     packed = encode_literals(candidate, limit=limit)
