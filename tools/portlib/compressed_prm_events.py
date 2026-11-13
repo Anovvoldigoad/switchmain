@@ -82,13 +82,23 @@ def inspect(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
     return _inspect_with_candidate(data, path, expected_sha256, decoded_limit=decoded_limit)[1]
 
 
-def extract_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024, validated_index=None):
+def extract_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
     """Return a validated decoded PRM candidate, never a CPK or installable asset.
 
     The candidate is produced only after the same source-integrity and mutation
     checks as inspect(). The source archive remains caller-owned and unchanged.
     """
-    candidate, report = _inspect_with_candidate(data, path, expected_sha256, decoded_limit=decoded_limit, validated_index=validated_index)
+    candidate, report = _inspect_with_candidate(data, path, expected_sha256, decoded_limit=decoded_limit)
+    if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
+        raise ValueError("Decoded candidate integrity mismatch")
+    return candidate, report
+
+
+def _extract_validated_candidate(data, path, expected_sha256, validated_index, *, decoded_limit):
+    """Internal batch-only path: caller must SHA-verify data and parse index once."""
+    candidate, report = _inspect_with_candidate(
+        data, path, expected_sha256, decoded_limit=decoded_limit,
+        validated_index=validated_index)
     if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
         raise ValueError("Decoded candidate integrity mismatch")
     return candidate, report
