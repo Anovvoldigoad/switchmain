@@ -157,6 +157,8 @@ jobs:
         run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_cpk_overlap_evidence.py -v
       - name: Verify source-pinned PC MovesetPlus index catalog and strict editor lookup
         run: PYTHONPATH=tools python -m unittest discover -s tests -p test_pc_moveset_function_names.py -v
+      - name: Export source-pinned PC MovesetPlus NSC editor index manifest (not game ABI)
+        run: PYTHONPATH=tools python -m unittest discover -s tests -p test_export_pc_moveset_nsc_manifest.py -v
       - name: Preflight source-pinned PC MovesetPlus editor event indices (no binary conversion)
         run: PYTHONPATH=tools python -m unittest discover -s tests -p test_pc_moveset_event_preflight.py -v
       - name: Census exact nine-family literals and adjacent ARM64 address references in original pinned main

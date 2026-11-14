@@ -1361,5 +1361,15 @@
     "evidence": "Independent source-bound Event236 semantic replay, synthetic tests",
     "gameplay_verified": false,
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+  },
+  "pc_moveset_index_manifest_export_20261115": {
+    "status": "PENDING_CI_OFFLINE_PC_EDITOR_ONLY",
+    "source": "tools/export_pc_moveset_nsc_manifest.py",
+    "test": "tests/test_export_pc_moveset_nsc_manifest.py",
+    "scope": "source_hash_pinned_pc_editor_index_conversion",
+    "native_consumer_abi_verified": false,
+    "gameplay_verified": false,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "next": "Verify HEAD foundation CI authentic job logs; investigate real consumer ABI without hook"
   }
 }
