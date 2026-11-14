@@ -51,11 +51,11 @@ class MultiModIndexMerge(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Source converted SHA256"):
             split(payload, forged)
 
-    def test_empty_mod_ranges_and_unattributed_events(self):
-        a = source("empty", "nsc", [])
-        b = source("active", "nsc", [{"event_id": "b", "function_index": 0}])
+    def test_missing_source_ranges_and_unattributed_events(self):
+        a = source("first", "nsc", [{"event_id": "a", "function_index": 0}])
+        b = source("second", "nsc", [{"event_id": "b", "function_index": 0}])
         payload, proof = merge([a, b])
-        self.assertEqual([len(json.loads(raw)["events"]) for _, raw in split(payload, proof)], [0, 1])
+        self.assertEqual([len(json.loads(raw)["events"]) for _, raw in split(payload, proof)], [1, 1])
         forged = json.loads(json.dumps(proof))
         forged["sources"].pop()
         with self.assertRaisesRegex(ValueError, "Unattributed"):
