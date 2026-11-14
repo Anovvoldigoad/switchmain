@@ -16,3 +16,5 @@ jobs:
         run: PYTHONPATH=tools python -m unittest discover -s tests -p test_export_compressed_prm_candidate.py -v
       - name: Verify atomic compressed batch candidates
         run: PYTHONPATH=tools python -m unittest discover -s tests -p test_export_compressed_prm_batch.py -v
+      - name: Independently verify source-bound compressed candidates (synthetic)
+        run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_verify_compressed_prm_batch.py -v
