@@ -50,8 +50,10 @@ class CompressedBatch(unittest.TestCase):
         from portlib.crilayla_rle import encode_runs
         original = self.archive.read_bytes()
         report = module.export_batch(self.archive, self.sha, self.manifest, self.out, encoder="auto")
-        for row, decoded in zip(report["members"], self.decoded):
+        for row in report["members"]:
             packed = (self.out / row["output"]).read_bytes()
+            decoded = decompress(packed)
+            self.assertEqual(hashlib.sha256(decoded).hexdigest(), row["candidate_decoded_sha256"])
             literal = encode_literals(decoded)
             runs = encode_runs(decoded)
             expected = runs if len(runs) < len(literal) else literal
