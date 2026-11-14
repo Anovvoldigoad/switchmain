@@ -15,7 +15,7 @@ from portlib.crilayla_rle import encode_runs
 
 
 def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 1024, encoder="literal"):
-    if encoder not in ("literal", "runs"):
+    if encoder not in ("literal", "runs", "auto"):
         raise ValueError("Unsupported CRILAYLA encoder")
     archive, output_dir = Path(archive), Path(output_dir)
     if not output_dir.is_dir():
@@ -59,7 +59,12 @@ def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 10
                         source, path, sha256, validated_index, decoded_limit=limit)
                     if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
                         raise ValueError("Decoded candidate SHA mismatch")
-                    packed = (encode_runs if encoder == "runs" else encode_literals)(candidate, limit=limit)
+                    packed = encode_literals(candidate, limit=limit)
+                    selected = "literal"
+                    if encoder in ("runs", "auto"):
+                        run_packed = encode_runs(candidate, limit=limit)
+                        if encoder == "runs" or len(run_packed) < len(packed):
+                            packed, selected = run_packed, "runs"
                     if decompress(packed, limit=limit) != candidate:
                         raise ValueError("Compressed roundtrip mismatch")
                     staged_path = scratch / str(index)
@@ -72,7 +77,7 @@ def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 10
                         "output": destination.name,
                         "compressed_candidate_sha256": hashlib.sha256(packed).hexdigest(),
                         "compressed_candidate_bytes": len(packed),
-                        "encoder": encoder,
+                        "encoder": selected,
                     }))
                     del candidate, packed
         try:
@@ -94,7 +99,7 @@ def main():
     for name in ("archive", "sha256", "manifest", "output_dir"):
         parser.add_argument(name)
     parser.add_argument("--decoded-limit", type=int, default=256 * 1024 * 1024)
-    parser.add_argument("--encoder", choices=("literal", "runs"), default="literal")
+    parser.add_argument("--encoder", choices=("literal", "runs", "auto"), default="literal")
     args = parser.parse_args()
     if args.decoded_limit < 256:
         parser.error("decoded limit must be at least 256")

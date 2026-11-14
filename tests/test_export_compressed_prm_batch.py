@@ -45,6 +45,31 @@ class CompressedBatch(unittest.TestCase):
             self.assertEqual(hashlib.sha256(packed).hexdigest(), row["compressed_candidate_sha256"])
             self.assertEqual(hashlib.sha256(decompress(packed)).hexdigest(), row["candidate_decoded_sha256"])
 
+    def test_auto_selects_smallest_valid_candidate_and_keeps_source(self):
+        from portlib.crilayla_literal import encode_literals
+        from portlib.crilayla_rle import encode_runs
+        original = self.archive.read_bytes()
+        report = module.export_batch(self.archive, self.sha, self.manifest, self.out, encoder="auto")
+        for row, decoded in zip(report["members"], self.decoded):
+            packed = (self.out / row["output"]).read_bytes()
+            literal = encode_literals(decoded)
+            runs = encode_runs(decoded)
+            expected = runs if len(runs) < len(literal) else literal
+            self.assertEqual(packed, expected)
+            self.assertEqual(row["encoder"], "runs" if len(runs) < len(literal) else "literal")
+            self.assertEqual(decompress(packed), decoded)
+        self.assertEqual(self.archive.read_bytes(), original)
+
+    def test_auto_prefers_literal_for_nonrepeating_payload(self):
+        from portlib.crilayla_literal import encode_literals
+        from portlib.crilayla_rle import encode_runs
+        import random
+        rng = random.Random(170)
+        decoded = bytes(range(256)) + bytes(rng.randrange(256) for _ in range(2048))
+        literal, runs = encode_literals(decoded), encode_runs(decoded)
+        self.assertLessEqual(len(literal), len(runs))
+        self.assertEqual(decompress(literal), decoded)
+
     def test_unknown_encoder_rejected_before_output(self):
         with self.assertRaises(ValueError):
             module.export_batch(self.archive, self.sha, self.manifest, self.out, encoder="unknown")
