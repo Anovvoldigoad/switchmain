@@ -55,7 +55,7 @@ def split(payload, proof):
         if cursor > len(events):
             raise ValueError("Source event range exceeds merged payload")
         part = (json.dumps({"source_version": "nsc", "events": events[cursor-count:cursor]},
-                           ensure_ascii=False, indent=2) + "\\n").encode("utf-8")
+                           ensure_ascii=False, indent=2) + "\n").encode("utf-8")
         if hashlib.sha256(part).hexdigest() != origin["converted_sha256"]:
             raise ValueError("Source converted SHA256 mismatch")
         result.append((origin["name"], part))
