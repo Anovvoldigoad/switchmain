@@ -1328,5 +1328,17 @@
       ],
       "note": "Previous exhaustive report too large; bounded sample+SHA is new candidate awaiting CI"
     }
+  },
+  "decoded_prm_batch_disk_staging": {
+    "state": "pending_ci",
+    "parent": "94d7dd375e4cb3a5a67fa306a84410694fb2db77",
+    "code_commit": "db6275eb0d9f0ead9a1d1ffb04b3f7968bb54e10",
+    "tests": [
+      "test_single_index_parse_without_whole_archive_read_bytes",
+      "test_publish_failure_rolls_back"
+    ],
+    "evidence": "synthetic offline only; original CPK hash/TOC once; bounded disk staging and exclusive publication; no authentic PRM, native ABI or Uzuy",
+    "ci_run": null,
+    "ci_job": null
   }
 }
