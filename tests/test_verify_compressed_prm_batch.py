@@ -2,6 +2,7 @@
 import hashlib
 import importlib.util
 import pathlib
+from unittest.mock import patch
 import unittest
 from test_export_compressed_prm_batch import CompressedBatch, module as exporter
 
@@ -13,6 +14,20 @@ spec.loader.exec_module(verifier)
 class CandidateVerification(CompressedBatch):
     def _export(self):
         return exporter.export_batch(self.archive, self.sha, self.manifest, self.out, encoder="auto")
+
+    def test_verifier_does_not_trust_exporter_candidate_builder(self):
+        report = self._export()
+        with patch("portlib.compressed_prm_events._extract_validated_candidate",
+                   side_effect=AssertionError("exporter must not be called")):
+            result = verifier.verify_batch(self.archive, self.sha, report, self.out)
+        self.assertEqual(result["verified_members"], 2)
+
+    def test_forged_provenance_and_matching_candidate_digest_rejected(self):
+        report = self._export()
+        row = report["members"][0]
+        row["event236_provenance"] = []
+        with self.assertRaisesRegex(ValueError, "provenance"):
+            verifier.verify_batch(self.archive, self.sha, report, self.out)
 
     def test_source_bound_exact_match(self):
         report = self._export()

@@ -4,7 +4,10 @@ import hashlib
 import json
 import mmap
 from pathlib import Path
-from portlib.compressed_prm_events import _extract_validated_candidate, SHA
+from portlib.compressed_prm_events import SHA
+from portlib.cpk_events import read_payload
+from portlib.prm_events import records, MARKER
+import struct
 from portlib.cpk_events import entries
 from portlib.crilayla import decompress
 
@@ -38,8 +41,58 @@ def verify_batch(archive, sha256, report, output_dir, *, limit=256 * 1024 * 1024
             if name.casefold() in seen:
                 raise ValueError("Duplicate output")
             seen.add(name.casefold())
-            expected, original = _extract_validated_candidate(
-                source, row.get("path"), sha256, index, decoded_limit=limit)
+            # Independent semantic replay: do not invoke the candidate exporter.
+            # Derive the only permitted mutation directly from original PRM records.
+            member = row.get("path")
+            if not isinstance(member, str) or member not in index:
+                raise ValueError("Unknown source member")
+            entry = index[member]
+            stored = source[entry["offset"]:entry["offset"] + entry["stored_size"]]
+            if not stored.startswith(b"CRILAYLA"):
+                raise ValueError("Source member is not CRILAYLA")
+            decoded = read_payload(source, member, limit=limit, index=index)
+            expected = bytearray(decoded)
+            provenance, changed = [], []
+            marked = already = native = 0
+            for rec in records(decoded):
+                if rec["event"] != 236:
+                    continue
+                off = rec["offset"]
+                opcode = struct.unpack_from("<h", decoded, off + 36)[0]
+                before = struct.unpack_from("<H", decoded, off + 42)[0]
+                if not 1 <= opcode <= 29:
+                    if before == MARKER:
+                        raise ValueError("Invalid native marker")
+                    kind = "native_preserved"
+                    native += 1
+                elif before == MARKER:
+                    kind = "already_marked"
+                    already += 1
+                elif before == 0:
+                    kind = "newly_marked"
+                    struct.pack_into("<H", expected, off + 42, MARKER)
+                    changed.extend(i for i in (off + 42, off + 43)
+                                   if decoded[i] != expected[i])
+                    marked += 1
+                else:
+                    raise ValueError("Occupied Event236 marker")
+                provenance.append({
+                    "chunk": rec["chunk"], "animation": rec["animation"],
+                    "function": rec["function"], "decoded_offset": off,
+                    "opcode": opcode, "marker_before": before,
+                    "marker_after": struct.unpack_from("<H", expected, off + 42)[0],
+                    "classification": kind,
+                })
+            original = {
+                "path": member,
+                "stored_sha256": hashlib.sha256(stored).hexdigest(),
+                "decoded_sha256": hashlib.sha256(decoded).hexdigest(),
+                "candidate_decoded_sha256": hashlib.sha256(expected).hexdigest(),
+                "changed_decoded_offsets": sorted(changed),
+                "event236_provenance": provenance,
+                "marked_records": marked, "already_marked": already,
+                "native_event236_preserved": native,
+            }
             for field in ("path", "stored_sha256", "decoded_sha256",
                           "candidate_decoded_sha256", "changed_decoded_offsets",
                           "event236_provenance", "marked_records", "already_marked",
