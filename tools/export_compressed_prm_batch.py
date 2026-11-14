@@ -11,9 +11,12 @@ from portlib.compressed_prm_events import _extract_validated_candidate, SHA
 from portlib.cpk_events import entries
 from portlib.crilayla import decompress
 from portlib.crilayla_literal import encode_literals
+from portlib.crilayla_rle import encode_runs
 
 
-def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 1024):
+def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 1024, encoder="literal"):
+    if encoder not in ("literal", "runs"):
+        raise ValueError("Unsupported CRILAYLA encoder")
     archive, output_dir = Path(archive), Path(output_dir)
     if not output_dir.is_dir():
         raise ValueError("Existing output directory required")
@@ -56,7 +59,7 @@ def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 10
                         source, path, sha256, validated_index, decoded_limit=limit)
                     if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
                         raise ValueError("Decoded candidate SHA mismatch")
-                    packed = encode_literals(candidate, limit=limit)
+                    packed = (encode_runs if encoder == "runs" else encode_literals)(candidate, limit=limit)
                     if decompress(packed, limit=limit) != candidate:
                         raise ValueError("Compressed roundtrip mismatch")
                     staged_path = scratch / str(index)
@@ -69,6 +72,7 @@ def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 10
                         "output": destination.name,
                         "compressed_candidate_sha256": hashlib.sha256(packed).hexdigest(),
                         "compressed_candidate_bytes": len(packed),
+                        "encoder": encoder,
                     }))
                     del candidate, packed
         try:
@@ -90,12 +94,13 @@ def main():
     for name in ("archive", "sha256", "manifest", "output_dir"):
         parser.add_argument(name)
     parser.add_argument("--decoded-limit", type=int, default=256 * 1024 * 1024)
+    parser.add_argument("--encoder", choices=("literal", "runs"), default="literal")
     args = parser.parse_args()
     if args.decoded_limit < 256:
         parser.error("decoded limit must be at least 256")
     manifest = json.loads(Path(args.manifest).read_text())
     report = export_batch(args.archive, args.sha256, manifest, args.output_dir,
-                          limit=args.decoded_limit)
+                          limit=args.decoded_limit, encoder=args.encoder)
     print(json.dumps(report, indent=2, sort_keys=True))
 
 

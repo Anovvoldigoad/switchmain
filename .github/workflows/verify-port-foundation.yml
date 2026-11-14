@@ -35,6 +35,8 @@ jobs:
         run: python tests/test_native_factory.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
       - name: Validate explicit API event conversion
         run: python tests/test_prm_marker.py --output proof-work
+      - name: Verify offline distance-3 CRILAYLA run encoder and boundary roundtrips
+        run: PYTHONPATH=tools python -m unittest discover -s tests -p test_crilayla_rle.py -v
       - name: Verify offline literal-only CRILAYLA encoding roundtrip and bounds
         run: PYTHONPATH=tools python -m unittest discover -s tests -p test_crilayla_literal.py -v
       - name: Validate CPK event conversion and exact archive preservation

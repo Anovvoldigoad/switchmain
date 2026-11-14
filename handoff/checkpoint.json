@@ -1721,5 +1721,17 @@
     "evidence": "synthetic offline only; original CPK hash/TOC once; bounded disk staging and exclusive publication; no authentic PRM, native ABI or Uzuy",
     "ci_run": null,
     "ci_job": null
+  },
+  "compressed_prm_run_encoder": {
+    "state": "pending_ci",
+    "parent": "eb4dd9d85f7f30e399d7cd30095ac9e153fa7713",
+    "tests": [
+      "test_crilayla_rle.py",
+      "test_export_compressed_prm_batch.py"
+    ],
+    "runtime_abi_proven": false,
+    "gameplay_proven": false,
+    "ci_run": null,
+    "ci_job": null
   }
 }

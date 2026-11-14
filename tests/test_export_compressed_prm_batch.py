@@ -37,6 +37,19 @@ class CompressedBatch(unittest.TestCase):
             {"path": self.paths[0], "output": "one.crilayla"},
             {"path": self.paths[1], "output": "two.crilayla"}]}
 
+    def test_run_encoder_batch_roundtrip_and_integrity(self):
+        report = module.export_batch(self.archive, self.sha, self.manifest, self.out, encoder="runs")
+        self.assertEqual([r["encoder"] for r in report["members"]], ["runs", "runs"])
+        for row in report["members"]:
+            packed = (self.out / row["output"]).read_bytes()
+            self.assertEqual(hashlib.sha256(packed).hexdigest(), row["compressed_candidate_sha256"])
+            self.assertEqual(hashlib.sha256(decompress(packed)).hexdigest(), row["candidate_decoded_sha256"])
+
+    def test_unknown_encoder_rejected_before_output(self):
+        with self.assertRaises(ValueError):
+            module.export_batch(self.archive, self.sha, self.manifest, self.out, encoder="unknown")
+        self.assertEqual(list(self.out.iterdir()), [])
+
     def test_batch_roundtrip_source_preserved(self):
         before = self.archive.read_bytes()
         report = module.export_batch(self.archive, self.sha, self.manifest, self.out)

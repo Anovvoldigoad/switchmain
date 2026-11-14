@@ -1340,5 +1340,13 @@
     "evidence": "synthetic offline only; original CPK hash/TOC once; bounded disk staging and exclusive publication; no authentic PRM, native ABI or Uzuy",
     "ci_run": null,
     "ci_job": null
+  },
+  "compressed_prm_run_encoder": {
+    "state": "pending_ci",
+    "parent": "eb4dd9d85f7f30e399d7cd30095ac9e153fa7713",
+    "implementation": "optional distance-3 run backreference encoder for offline compressed PRM batch; default literal preserved",
+    "proof": "local synthetic roundtrip 3 tests; GitHub Actions pending; no authentic game PRM or CPK repack",
+    "ci_run": null,
+    "ci_job": null
   }
 }
