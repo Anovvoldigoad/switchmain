@@ -1738,5 +1738,22 @@
     "candidate_job": 132492505934,
     "authentic_logs_read": true,
     "test_evidence": "foundation: 3/3 RLE unit tests; compressed-candidate: 11/11 batch tests; release flags guard 26; original main/Uzuy not exercised for new feature"
+  },
+  "compressed_prm_source_bound_verifier": {
+    "status": "PENDING_HEAD_CI_SYNTHETIC_ONLY",
+    "parent_sha": "12086293d2959e0483422bb50ab8ef35b28831e6",
+    "code_commit": "5f7985a9f5247ab7a030b77d0e5a5092832085bc",
+    "compressed_run": 43626046959,
+    "compressed_job": 132541961625,
+    "compressed_completed_success": true,
+    "compressed_raw_log_inspected": true,
+    "compressed_tests": 30,
+    "foundation_run": 43626046905,
+    "foundation_status": "PENDING",
+    "source": "tools/verify_compressed_prm_batch.py",
+    "tests": "tests/test_verify_compressed_prm_batch.py",
+    "native_consumer_abi_proven": false,
+    "gameplay_verified": false,
+    "next": "Inspect final HEAD foundation push run/job original logs, then authenticate original compressed PRM game fixture; no CPK repack or hook."
   }
 }
