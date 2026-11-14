@@ -1755,5 +1755,12 @@
     "native_consumer_abi_proven": false,
     "gameplay_verified": false,
     "next": "Inspect final HEAD foundation push run/job original logs, then authenticate original compressed PRM game fixture; no CPK repack or hook."
+  },
+  "offline_independent_event236_verifier_20261115": {
+    "status": "pending_ci",
+    "code_commit": "53e049dacedb7f867fbe0f40b92a6c749259e34b",
+    "evidence": "Independent source-bound Event236 semantic replay, synthetic tests",
+    "gameplay_verified": false,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
   }
 }

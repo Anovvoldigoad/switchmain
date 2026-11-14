@@ -1354,5 +1354,12 @@
     "candidate_job": 132492505934,
     "authentic_logs_read": true,
     "test_evidence": "foundation: 3/3 RLE unit tests; compressed-candidate: 11/11 batch tests; release flags guard 26; original main/Uzuy not exercised for new feature"
+  },
+  "offline_independent_event236_verifier_20261115": {
+    "status": "pending_ci",
+    "code_commit": "53e049dacedb7f867fbe0f40b92a6c749259e34b",
+    "evidence": "Independent source-bound Event236 semantic replay, synthetic tests",
+    "gameplay_verified": false,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
   }
 }
