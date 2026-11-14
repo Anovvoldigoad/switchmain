@@ -75,7 +75,8 @@
       "2026-11-09 pending CI: source-pinned PC editor event-index preflight; explicit JSON only; native ABI and gameplay unresolved.",
       "2026-11-09 pending CI: original-main SHA-pinned nine-PC-family literal and adjacent ARM64 ADRP/ADD reference census; exact main segment hashes, negative results scoped, no consumer ABI inference.",
       "2026-11-11: FileOpen call-free witness rejects opaque BLR as well as BL; synthetic negative and pinned main regression; pending HEAD CI, no native consumer ABI.",
-      "PENDING CI: SHA-pinned static adjacent ADRP+LDR/literal LDR code-to-candidate-base references; no runtime X8 or ABI proof"
+      "PENDING CI: SHA-pinned static adjacent ADRP+LDR/literal LDR code-to-candidate-base references; no runtime X8 or ABI proof",
+      "2026-11-15 pending CI: PC MovesetPlus multi-mod index composition, SHA-pinned inputs, cross-mod collision rejection, provenance, synthetic tests; no Switch ABI"
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
