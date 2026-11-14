@@ -1330,7 +1330,7 @@
     }
   },
   "decoded_prm_batch_disk_staging": {
-    "state": "pending_ci",
+    "state": "ci_verified_synthetic_offline",
     "parent": "94d7dd375e4cb3a5a67fa306a84410694fb2db77",
     "code_commit": "db6275eb0d9f0ead9a1d1ffb04b3f7968bb54e10",
     "tests": [
@@ -1338,15 +1338,20 @@
       "test_publish_failure_rolls_back"
     ],
     "evidence": "synthetic offline only; original CPK hash/TOC once; bounded disk staging and exclusive publication; no authentic PRM, native ABI or Uzuy",
-    "ci_run": null,
-    "ci_job": null
+    "ci_run": 43571173349,
+    "ci_job": 132375700550
   },
   "compressed_prm_run_encoder": {
-    "state": "pending_ci",
+    "state": "ci_verified_synthetic_offline",
     "parent": "eb4dd9d85f7f30e399d7cd30095ac9e153fa7713",
     "implementation": "optional distance-3 run backreference encoder for offline compressed PRM batch; default literal preserved",
     "proof": "local synthetic roundtrip 3 tests; GitHub Actions pending; no authentic game PRM or CPK repack",
-    "ci_run": null,
-    "ci_job": null
+    "ci_run": 43609927148,
+    "ci_job": 132492505994,
+    "code_commit": "671d4647fc98dc358ea03c72a7cf0f6ebbbd4cf2",
+    "candidate_run": 43609927107,
+    "candidate_job": 132492505934,
+    "authentic_logs_read": true,
+    "test_evidence": "foundation: 3/3 RLE unit tests; compressed-candidate: 11/11 batch tests; release flags guard 26; original main/Uzuy not exercised for new feature"
   }
 }
