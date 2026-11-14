@@ -6,9 +6,12 @@ All members must belong to the same SHA-pinned archive. No output on validation 
 import argparse
 import hashlib
 import json
+import mmap
 import os
+import tempfile
 from pathlib import Path
-from portlib.compressed_prm_events import extract_candidate
+from portlib.compressed_prm_events import _extract_validated_candidate, SHA
+from portlib.cpk_events import entries
 
 
 def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 1024):
@@ -19,10 +22,7 @@ def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 10
         raise ValueError("Nonempty members array required")
     if len(manifest["members"]) > 128:
         raise ValueError("Too many members")
-    source = archive.read_bytes()
-    if hashlib.sha256(source).hexdigest() != sha256:
-        raise ValueError("Source SHA256 mismatch")
-    staged, seen_paths, seen_outputs = [], set(), set()
+    planned, seen_paths, seen_outputs = [], set(), set()
     for row in manifest["members"]:
         if not isinstance(row, dict) or set(row) != {"path", "output"}:
             raise ValueError("Each member requires path and output only")
@@ -37,23 +37,36 @@ def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 10
         dest = output_dir / name
         if dest.exists() or dest.is_symlink():
             raise ValueError("Output already exists")
-        candidate, report = extract_candidate(source, path, sha256, decoded_limit=limit)
-        if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
-            raise ValueError("Candidate integrity mismatch")
-        staged.append((dest, candidate, report))
-    created = []
-    try:
-        for dest, candidate, report in staged:
-            fd = os.open(dest, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-            created.append(dest)
-            with os.fdopen(fd, "wb") as stream:
-                stream.write(candidate)
-                stream.flush()
-                os.fsync(stream.fileno())
-    except BaseException:
-        for dest in created:
-            dest.unlink(missing_ok=True)
-        raise
+        planned.append((path, dest))
+    staged, created = [], []
+    with tempfile.TemporaryDirectory(prefix=".decoded-prm-stage-", dir=output_dir) as scratch:
+        with archive.open("rb") as handle:
+            with mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as source:
+                if not isinstance(sha256, str) or not SHA.fullmatch(sha256):
+                    raise ValueError("Exact source SHA256 required")
+                if hashlib.sha256(source).hexdigest() != sha256:
+                    raise ValueError("Source SHA256 mismatch")
+                index = entries(source)
+                for number, (path, dest) in enumerate(planned):
+                    candidate, report = _extract_validated_candidate(
+                        source, path, sha256, index, decoded_limit=limit)
+                    if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
+                        raise ValueError("Candidate integrity mismatch")
+                    temporary = Path(scratch) / str(number)
+                    with temporary.open("xb") as output:
+                        output.write(candidate)
+                        output.flush()
+                        os.fsync(output.fileno())
+                    staged.append((dest, temporary, report))
+                    del candidate
+        try:
+            for dest, temporary, _ in staged:
+                os.link(temporary, dest)
+                created.append(dest)
+        except BaseException:
+            for dest in created:
+                dest.unlink(missing_ok=True)
+            raise
     return {"source_sha256": sha256, "output_is_installable": False,
             "compressed_archive_repacked": False,
             "members": [{**report, "output": dest.name} for dest, _, report in staged]}

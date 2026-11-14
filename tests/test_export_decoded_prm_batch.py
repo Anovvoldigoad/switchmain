@@ -3,6 +3,7 @@ import hashlib
 import pathlib
 import tempfile
 import unittest
+from unittest.mock import patch
 from test_cpk_events import cpk
 from test_prm_marker import fixture, event
 from test_compressed_prm_events import literal_stream
@@ -27,6 +28,29 @@ class BatchDecodedExport(unittest.TestCase):
     def manifest(self):
         return {"members": [{"path": self.paths[0], "output": "one.bin"},
                             {"path": self.paths[1], "output": "two.bin"}]}
+
+    def test_single_index_parse_without_whole_archive_read_bytes(self):
+        from portlib.cpk_events import entries as real_entries
+        with patch.object(pathlib.Path, "read_bytes", side_effect=AssertionError("whole archive read")):
+            with patch("export_decoded_prm_batch.entries", wraps=real_entries) as indexed:
+                report = export_batch(self.archive, self.sha, self.manifest(), self.out)
+        self.assertEqual(indexed.call_count, 1)
+        self.assertEqual(len(report["members"]), 2)
+
+    def test_publish_failure_rolls_back(self):
+        import os
+        original = os.link
+        calls = 0
+        def fail_second(src, dst):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise OSError("simulated failure")
+            return original(src, dst)
+        with patch("export_decoded_prm_batch.os.link", side_effect=fail_second):
+            with self.assertRaises(OSError):
+                export_batch(self.archive, self.sha, self.manifest(), self.out)
+        self.assertEqual(list(self.out.iterdir()), [])
 
     def test_two_candidates_and_unchanged_source(self):
         report = export_batch(self.archive, self.sha, self.manifest(), self.out)
