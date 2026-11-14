@@ -5,7 +5,7 @@ import sys
 import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from merge_pc_moveset_nsc_manifests import merge
+from merge_pc_moveset_nsc_manifests import merge, split
 from pc_moveset_event_preflight import audit
 
 def source(name, version, rows):
@@ -33,6 +33,34 @@ class MultiModIndexMerge(unittest.TestCase):
             merge([("alpha", a[1], "0" * 64)])
         with self.assertRaises(ValueError):
             merge([source("bad", "ns4", [{"event_id": "x", "function_index": 289}])])
+    def test_reversible_provenance_and_tamper(self):
+        a = source("alpha", "ns4", [{"event_id": "a", "function_index": 288}])
+        b = source("beta", "nsc", [{"event_id": "b", "function_index": 299}])
+        payload, proof = merge([a, b])
+        parts = split(payload, proof)
+        self.assertEqual([name for name, _ in parts], ["alpha", "beta"])
+        self.assertEqual([json.loads(raw)["events"][0]["event_id"] for _, raw in parts], ["a", "b"])
+        with self.assertRaisesRegex(ValueError, "Merged payload SHA256"):
+            split(payload + b" ", proof)
+        forged = json.loads(json.dumps(proof))
+        forged["sources"][1]["start"] = 0
+        with self.assertRaisesRegex(ValueError, "source event range"):
+            split(payload, forged)
+        forged = json.loads(json.dumps(proof))
+        forged["sources"][0]["converted_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "Source converted SHA256"):
+            split(payload, forged)
+
+    def test_empty_mod_ranges_and_unattributed_events(self):
+        a = source("empty", "nsc", [])
+        b = source("active", "nsc", [{"event_id": "b", "function_index": 0}])
+        payload, proof = merge([a, b])
+        self.assertEqual([len(json.loads(raw)["events"]) for _, raw in split(payload, proof)], [0, 1])
+        forged = json.loads(json.dumps(proof))
+        forged["sources"].pop()
+        with self.assertRaisesRegex(ValueError, "Unattributed"):
+            split(payload, forged)
+
     def test_limits(self):
         with self.assertRaises(ValueError):
             merge([])

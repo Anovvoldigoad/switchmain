@@ -16,6 +16,7 @@
     "pc_mod_manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
     "pc_api_source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
     "implemented_this_change": [
+      "2026-11-15 pending CI: reversible source-range provenance for offline PC MovesetPlus multi-mod editor index composition; synthetic-only, no Switch ABI",
       "SHA256 gate for exact stock/R180 text before game writes",
       "33-word RAM patch with consistent 1024 PRM/spcload loop bounds",
       "raw condition lookup bounded by observed native allocation count",

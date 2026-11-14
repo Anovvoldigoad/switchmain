@@ -22,7 +22,9 @@ def merge(sources):
             seen_events.add(row["event_id"])
             events.append(row)
         origins.append({"name": name, "input_sha256": proof["input_sha256"],
-                        "source_version": proof["source_version"], "event_count": len(records)})
+                        "source_version": proof["source_version"], "event_count": len(records),
+                        "start": len(events) - len(records),
+                        "converted_sha256": hashlib.sha256(converted).hexdigest()})
     if len(events) > 65536:
         raise ValueError("Combined event count exceeds editor manifest limit")
     payload = (json.dumps({"source_version": "nsc", "events": events},
@@ -32,6 +34,34 @@ def merge(sources):
              "event_count": len(events), "binary_layout_verified": False,
              "native_switch_abi_verified": False, "gameplay_verified": False}
     return payload, proof
+
+def split(payload, proof):
+    """Reconstruct exact per-mod NSC editor manifests from a merged artifact."""
+    if hashlib.sha256(payload).hexdigest() != proof["output_sha256"]:
+        raise ValueError("Merged payload SHA256 mismatch")
+    doc = json.loads(payload)
+    if doc.get("source_version") != "nsc" or not isinstance(doc.get("events"), list):
+        raise ValueError("Invalid merged manifest")
+    events = doc["events"]
+    if len(events) != proof["event_count"]:
+        raise ValueError("Merged event count mismatch")
+    result = []
+    cursor = 0
+    for origin in proof["sources"]:
+        count = origin["event_count"]
+        if origin["start"] != cursor or not isinstance(count, int) or count < 0:
+            raise ValueError("Invalid source event range")
+        cursor += count
+        if cursor > len(events):
+            raise ValueError("Source event range exceeds merged payload")
+        part = (json.dumps({"source_version": "nsc", "events": events[cursor-count:cursor]},
+                           ensure_ascii=False, indent=2) + "\\n").encode("utf-8")
+        if hashlib.sha256(part).hexdigest() != origin["converted_sha256"]:
+            raise ValueError("Source converted SHA256 mismatch")
+        result.append((origin["name"], part))
+    if cursor != len(events):
+        raise ValueError("Unattributed merged events")
+    return result
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
