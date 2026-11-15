@@ -11,5 +11,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Verify multi-mod editor index composition
-        run: PYTHONPATH=tools python -m unittest discover -s tests -p test_merge_pc_moveset_nsc_manifests.py -v
+      - name: Verify multi-mod editor index composition and restoration
+        run: |
+          PYTHONPATH=tools python -m unittest discover -s tests -p test_merge_pc_moveset_nsc_manifests.py -v
+          PYTHONPATH=tools python -m unittest discover -s tests -p test_split_pc_moveset_nsc_manifests.py -v
