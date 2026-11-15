@@ -60,7 +60,7 @@ class SameSizeArchiveIntegration(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Stored-size mismatch"):
             replace_same_size(self.source, self.sha, PATH, self.new_packed + b"x")
         corrupt = bytearray(self.new_packed)
-        corrupt[8:12] = b"\\xff\\xff\\xff\\x7f"
+        corrupt[8:12] = bytes.fromhex("ffffff7f")
         with self.assertRaises(ValueError):
             replace_same_size(self.source, self.sha, PATH, bytes(corrupt), limit=1024 * 1024)
 
