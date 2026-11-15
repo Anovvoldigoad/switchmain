@@ -39,3 +39,52 @@ def replace_same_size(source, expected_sha256, path, packed, *, limit=256 * 1024
         "metadata_and_other_payloads_unchanged": True,
         "runtime_verified": False, "ready_for_gameplay_test": False,
     }
+
+
+def replace_many_same_size(source, expected_sha256, replacements, *, limit=256 * 1024 * 1024):
+    """Validate every source-bound edit before publishing a single new archive."""
+    if not isinstance(replacements, dict) or not replacements:
+        raise ValueError("Nonempty path-to-packed mapping required")
+    if not isinstance(source, bytes) or not isinstance(expected_sha256, str) or not SHA.fullmatch(expected_sha256):
+        raise ValueError("Immutable source and exact SHA256 required")
+    if hashlib.sha256(source).hexdigest() != expected_sha256:
+        raise ValueError("Source archive SHA256 mismatch")
+    index = entries(source)
+    canonical_paths = [canonical(path) for path in replacements]
+    if len(set(canonical_paths)) != len(canonical_paths):
+        raise ValueError("Duplicate CPK path")
+    changes = []
+    for path, packed in replacements.items():
+        if not isinstance(packed, bytes) or path not in index:
+            raise ValueError("Unknown member or non-bytes payload")
+        entry = index[path]
+        start, size = entry["offset"], entry["stored_size"]
+        if not source[start:start + size].startswith(b"CRILAYLA") or not packed.startswith(b"CRILAYLA"):
+            raise ValueError("Both streams must be CRILAYLA")
+        if len(packed) != size:
+            raise ValueError("Stored-size mismatch: relocation forbidden")
+        expected, _ = extract_candidate(source, path, expected_sha256, decoded_limit=limit)
+        if decompress(packed, limit=limit) != expected:
+            raise ValueError("Candidate does not match source-authenticated Event236 conversion")
+        changes.append((start, start + size, packed))
+    result = bytearray(source)
+    for start, end, packed in changes:
+        result[start:end] = packed
+    result = bytes(result)
+    if entries(result) != index:
+        raise ValueError("Archive metadata changed")
+    cursor = 0
+    for start, end, _ in sorted(changes):
+        if result[cursor:start] != source[cursor:start]:
+            raise ValueError("Nonselected bytes changed")
+        cursor = end
+    if result[cursor:] != source[cursor:]:
+        raise ValueError("Nonselected bytes changed")
+    return result, {
+        "source_sha256": expected_sha256,
+        "output_sha256": hashlib.sha256(result).hexdigest(),
+        "selected_paths": sorted(canonical_paths),
+        "metadata_and_other_payloads_unchanged": True,
+        "runtime_verified": False,
+        "ready_for_gameplay_test": False,
+    }

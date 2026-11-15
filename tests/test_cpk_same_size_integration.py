@@ -74,5 +74,45 @@ class SameSizeArchiveIntegration(unittest.TestCase):
             replace_same_size(guarded, hashlib.sha256(guarded).hexdigest(), PATH, self.new_packed)
 
 
+    def test_batch_two_members_and_unchanged_third(self):
+        from portlib.cpk_same_size import replace_many_same_size
+        second = "data/spc/second.bin.xfbin"
+        source = cpk(
+            [(PATH, self.old_packed), (second, self.old_packed), (OTHER, b"untouched bytes")],
+            lambda rows: [row.update({"ExtractSize": len(self.decoded)}) for row in rows[:2]],
+        )
+        sha = hashlib.sha256(source).hexdigest()
+        result, proof = replace_many_same_size(source, sha, {
+            PATH: self.new_packed, second: self.new_packed,
+        })
+        self.assertEqual(entries(source), entries(result))
+        self.assertEqual(read_payload(result, PATH), self.converted)
+        self.assertEqual(read_payload(result, second), self.converted)
+        self.assertEqual(read_payload(result, OTHER), b"untouched bytes")
+        self.assertEqual(proof["selected_paths"], sorted([PATH, second]))
+        self.assertFalse(proof["runtime_verified"])
+
+    def test_batch_rejects_one_bad_member_without_mutating_source(self):
+        from portlib.cpk_same_size import replace_many_same_size
+        second = "data/spc/second.bin.xfbin"
+        source = cpk(
+            [(PATH, self.old_packed), (second, self.old_packed)],
+            lambda rows: [row.update({"ExtractSize": len(self.decoded)}) for row in rows],
+        )
+        before = hashlib.sha256(source).hexdigest()
+        with self.assertRaisesRegex(ValueError, "source-authenticated"):
+            replace_many_same_size(source, before, {
+                PATH: self.new_packed, second: self.old_packed,
+            })
+        self.assertEqual(hashlib.sha256(source).hexdigest(), before)
+        with self.assertRaisesRegex(ValueError, "Stored-size mismatch"):
+            replace_many_same_size(source, before, {
+                PATH: self.new_packed, second: self.new_packed + b"x",
+            })
+        with self.assertRaises(ValueError):
+            replace_many_same_size(source, "0" * 64, {PATH: self.new_packed})
+        with self.assertRaises(ValueError):
+            replace_many_same_size(source, before, {})
+
 if __name__ == "__main__":
     unittest.main()
