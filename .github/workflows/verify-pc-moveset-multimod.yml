@@ -16,3 +16,4 @@ jobs:
           PYTHONPATH=tools python -m unittest discover -s tests -p test_merge_pc_moveset_nsc_manifests.py -v
           PYTHONPATH=tools python -m unittest discover -s tests -p test_split_pc_moveset_nsc_manifests.py -v
           PYTHONPATH=tools python -m unittest discover -s tests -p test_verify_pc_moveset_nsc_sources.py -v
+          PYTHONPATH=tools python -m unittest discover -s tests -p test_remove_pc_moveset_nsc_mod.py -v

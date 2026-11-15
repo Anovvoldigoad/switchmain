@@ -16,6 +16,7 @@
     "pc_mod_manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
     "pc_api_source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
     "implemented_this_change": [
+      "2026-11-15 PENDING_CI: offline per-mod editor removal with original-source replay, not native consumer",
       "2026-11-15 pending CI: original PC source replay verification of merged editor indices, offline only",
       "2026-11-15 pending CI: offline PC editor multi-mod restore CLI, no Switch ABI",
       "2026-11-15 pending CI: reversible source-range provenance for offline PC MovesetPlus multi-mod editor index composition; synthetic-only, no Switch ABI",
