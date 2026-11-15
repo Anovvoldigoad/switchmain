@@ -1376,5 +1376,13 @@
     "gameplay_verified": false,
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
     "next": "Verify HEAD foundation CI authentic job logs; investigate real consumer ABI without hook"
+  },
+  "pc_moveset_source_authenticated_removal_20261115": {
+    "status": "PENDING_CI_OFFLINE_PC_EDITOR_ONLY",
+    "source": "tools/remove_pc_moveset_nsc_mod.py",
+    "test": "tests/test_remove_pc_moveset_nsc_mod.py",
+    "native_consumer_abi_verified": false,
+    "emulator_tested": false,
+    "parent_sha": "65c0bbedda31523e2849a5e10a824a21d0730ad2"
   }
 }

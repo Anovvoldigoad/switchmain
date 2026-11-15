@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 from merge_pc_moveset_nsc_manifests import split
+from verify_pc_moveset_nsc_sources import verify
 
 
 def remove_mod(payload, proof, name):
@@ -44,19 +45,34 @@ def remove_mod(payload, proof, name):
     return result, evidence
 
 
+def remove_verified(payload, proof, name, sources):
+    """Authenticate original source bytes before and after removal."""
+    verify(payload, proof, sources)
+    result, evidence = remove_mod(payload, proof, name)
+    retained = [item for item in sources if item[0] != name]
+    verify(result, evidence, retained)
+    return result, evidence
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--merged", required=True, type=Path)
     p.add_argument("--evidence", required=True, type=Path)
     p.add_argument("--remove", required=True)
+    p.add_argument("--source", nargs=3, action="append", required=True,
+                   metavar=("NAME", "PATH", "SHA256"),
+                   help="All original PC editor sources in merge order")
     p.add_argument("--output", required=True, type=Path)
     p.add_argument("--output-evidence", required=True, type=Path)
     args = p.parse_args()
     try:
         if args.output == args.output_evidence or args.output.exists() or args.output_evidence.exists():
             raise ValueError("Outputs must be distinct and absent")
-        payload, proof = remove_mod(args.merged.read_bytes(),
-                                    json.loads(args.evidence.read_bytes()), args.remove)
+        sources = [(name, Path(path).read_bytes(), sha)
+                   for name, path, sha in args.source]
+        payload, proof = remove_verified(args.merged.read_bytes(),
+                                         json.loads(args.evidence.read_bytes()),
+                                         args.remove, sources)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output_evidence.parent.mkdir(parents=True, exist_ok=True)
         with args.output.open("xb") as out:
