@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "valid_counts": [
+    512,
+    513,
+    517,
+    1024
+  ],
+  "malformed_or_wrong_order_companions_rejected": 11,
+  "invalid_hashes_rejected": 4,
+  "cli_rejects_before_output": true,
+  "source_and_existing_output_preserved": true,
+  "copied_companion_byte_identical": true,
+  "gameplay_verified": false,
+  "raw_value_semantics_verified": false
+}

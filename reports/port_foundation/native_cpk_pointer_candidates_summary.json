@@ -1,0 +1,42 @@
+{
+  "status": "PASS_STATIC_PINNED_MAIN_ONLY",
+  "code_commits": [
+    "4702118dfaf574f252f79b4b6c19ded57fda831a",
+    "ef738a5eba5738f40d9f8ca2384912496210e148"
+  ],
+  "ci_runs": [
+    41972748025,
+    41973202913
+  ],
+  "ci_conclusion": "success",
+  "main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "focus_code_offset": "0x106f404",
+  "radius": 2048,
+  "adjacent_relocation_candidate_groups": 8,
+  "verified_relocation_slots": {
+    "0x212b5f0": "0x106edb8",
+    "0x212b5f8": "0x106edc4",
+    "0x212b600": "0x106ede0",
+    "0x212b608": "0x106ede8"
+  },
+  "sample_group_starts": [
+    "0x215c470",
+    "0x212b728",
+    "0x212b7a0",
+    "0x212b6b0",
+    "0x215c458",
+    "0x212b638"
+  ],
+  "observed_nearby_indirect_BLR_offsets": [
+    "0x106ed9c",
+    "0x106edd0"
+  ],
+  "original_full_report_in_actions_artifact": true,
+  "vtable_ownership_verified": false,
+  "function_entrypoints_verified": false,
+  "CRI_async_completion_verified": false,
+  "CRI_unbind_verified": false,
+  "archive_precedence_verified": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

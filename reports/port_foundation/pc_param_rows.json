@@ -1,0 +1,31 @@
+{
+  "status": "PASS_REAL_PUBLIC_PC_TEMPLATES_ONLY",
+  "ci_run_id": 41969845880,
+  "conclusion": "success",
+  "test_commit": "fc24971ab3d635d9061b132842607d46ae2551a2",
+  "pc_source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+  "template_origin_repo": "TheLeonX/NSC-ModManager",
+  "template_origin_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+  "susanoo": {
+    "sha256": "a0b1dabfa72634c71e601c1fb9cc938c9fb00820591e44972771aeee6c3aed7c",
+    "git_blob": "d983860d4bbaa58440ea1b3ba2b6e6e33fa48b17",
+    "bytes": 160,
+    "rows": 5
+  },
+  "partner": {
+    "sha256": "f7190ee92bbcca9e157ecfc7aa497a699e32b858bb865e9012e9df40e5103055",
+    "git_blob": "8155d1e0a76add995051b45fe68d27f19cca49dc",
+    "bytes": 256,
+    "rows": 8
+  },
+  "raw_record_size": 32,
+  "pc_type_field_bytes": 24,
+  "pc_character_id_offset": 24,
+  "malformed_synthetic_cases_rejected": 10,
+  "actual_PC_source_templates_tested": true,
+  "raw_pc_template_not_nucc_xfbin": true,
+  "switch_native_loader_implemented": false,
+  "stock_switch_v170_values_verified": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

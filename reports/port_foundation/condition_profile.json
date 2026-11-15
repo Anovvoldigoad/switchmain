@@ -1,0 +1,48 @@
+{
+  "status": "PASS",
+  "corrupt_profiles_rejected": 41037,
+  "invalid_pc_tables_rejected": 9,
+  "capacity_cases": [
+    0,
+    1,
+    5,
+    511,
+    512
+  ],
+  "native_prefix_rows_verified": 512,
+  "pc_switch_baseline_differences": [
+    {
+      "index": 103,
+      "name": "AWAKE_1SKR",
+      "field": "aura",
+      "pc": 5,
+      "switch": 107,
+      "runtime": "preserve native"
+    }
+  ],
+  "three_profile_edit_orders_identical": 6,
+  "module_edit": {
+    "template_sha256": "d9d2c43d3270d413e71a4472fabbc8403a634ab37c2ec30381b1ff40595778ef",
+    "configured_sha256": "e16a3103f2db9a57836416301412c77d4ef46b52f58f9810a735e9da380db1bc",
+    "profile_sha256": "fe98610c168e87308e9ba48757565dbc66ced890b4d23718e01caeadf227c363",
+    "profile_data_offset": 48,
+    "text_rodata_unchanged": true,
+    "gameplay_verified": false,
+    "full_moddingapi": false,
+    "appended_descriptors": 2
+  },
+  "pc_input": {
+    "input_sha256": "16367834cde5eb2078ab5c8800d07437fd763b60a163bb89c26fdf0902143efb",
+    "pc_baseline_sha256": "fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5",
+    "native_prefix_preserved": 512,
+    "appended_descriptors": 2,
+    "raw_conditionprm_required_rows": 514,
+    "missing_reactions_native_zero_fallback": [],
+    "raw_conditionprm_packaged": false,
+    "gameplay_verified": false,
+    "full_moddingapi": false
+  },
+  "raw_conditionprm_integrated": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

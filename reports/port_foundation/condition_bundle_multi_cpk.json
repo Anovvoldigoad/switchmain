@@ -1,0 +1,22 @@
+{
+  "status": "PASS_COMPONENT",
+  "test": "tests/test_condition_bundle.py",
+  "commit": "40eab530d7d90811250cea085d941ca26b929651",
+  "ci_run_id": 41937948988,
+  "ci_conclusion": "success",
+  "test_cases": [
+    "append 1 existing to 2",
+    "exact idempotence",
+    "case-insensitive path collision rejection",
+    "priority collision rejection",
+    "31 to 32 capacity",
+    "33rd rejected",
+    "different pre-existing condition profile rejected",
+    "effective CLI cpk.profile equals configured NSO",
+    "same condition profile accepted"
+  ],
+  "archive_load_precedence_verified": false,
+  "asynchronous_completion_tested": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "invalid_archives_or_arguments_rejected": 11,
+  "exact_marker_diff_verified": true,
+  "archive_profile_identity_verified": true,
+  "no_conversion_preserves_archive": true,
+  "module_composition_and_conflict_checks": false,
+  "gameplay_verified": false
+}

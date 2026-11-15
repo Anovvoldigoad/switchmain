@@ -1,0 +1,38 @@
+{
+  "status": "PASS_PUBLIC_PC_RAW_TEMPLATE_FORMAT_ONLY",
+  "source_api_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+  "source_manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+  "commit": "ef0bd858ef7d1f139ddce5672066957bae591866",
+  "ci_id": 41976177875,
+  "conclusion": "success",
+  "families": {
+    "pairSpSkillManagerParam": {
+      "records": 55,
+      "bytes": 1320,
+      "sha256": "45f753590ea2dd0a187b19baa672965dcb7ef6a7a40cca4c8dfb7d020a907d1a",
+      "git_blob": "a5505c2fee7d48fc13f96e69873151502d51a082"
+    },
+    "bgmManagerParam": {
+      "records": 1,
+      "bytes": 104,
+      "sha256": "37624a482fe4a7e3b110ef897337ba1013ca2ecd2fb049d41debd1e83ff2ab04",
+      "git_blob": "b2b5439891eb6fc9ab89d3839be3e344df7cf18d"
+    },
+    "specialInteractionManager": {
+      "records": 4,
+      "bytes": 200,
+      "sha256": "bc567cf4b536d48012d55937dc094dee1e086837fb5cde0d6925b7a345b1e367",
+      "git_blob": "07a5c0691ddf57dfa8d40177948b8c40ea9e27ae"
+    },
+    "guardEffectParam": {
+      "records": 2,
+      "bytes": 496,
+      "sha256": "f6c7b12e849f4c23a295d8c3fb968223845b53ea57ec7e8c6e3bb7de4899f958",
+      "git_blob": "cad85b19e411c800ce8ad930f622c2fb7b9fc42b"
+    }
+  },
+  "invalid_cases_rejected": 14,
+  "native_switch_integrated": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

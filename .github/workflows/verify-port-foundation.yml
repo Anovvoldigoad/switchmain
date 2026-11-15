@@ -1,0 +1,186 @@
+name: Verify Switch port foundation (not a gameplay release)
+on:
+  workflow_dispatch:
+  push:
+    branches: [port/full-api-v170]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r tests/requirements.txt
+      - name: Build AArch64 module
+        run: |
+          git init -q exlaunch
+          git -C exlaunch fetch --depth 1 https://github.com/shadowninja108/exlaunch.git 229bbd659b4e8d14077baec53f3e43e1eb3c196a
+          git -C exlaunch checkout --detach FETCH_HEAD
+          bash prepare_exlaunch.sh exlaunch
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$GITHUB_WORKSPACE:/work" -w /work \
+            devkitpro/devkita64@sha256:82575ea78651b530b2e232bb3799cfd1fe331514e053d5f724bb4b28191fb79d \
+            bash -c '"$DEVKITPRO/devkitA64/bin/aarch64-none-elf-g++" --version; make -C exlaunch -j2'
+      - name: Decode audited test inputs
+        run: python tools/prepare_test_images.py --r180-main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Exercise production resolver and patch plan
+        run: python tests/test_bootstrap.py --stock-text proof-work/stock.text --r180-text proof-work/r180.text --output proof-work
+      - name: Execute compiled ARM64 callbacks and native engine slices
+        run: python tests/test_native_storage.py --text proof-work/patched.text --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Validate generic factory profile and Android packaging
+        run: python tests/test_factory_profile.py --module exlaunch/deploy/subsdk9 --output proof-work
+      - name: Execute native factory dispatch and roster identity slices
+        run: python tests/test_native_factory.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Validate explicit API event conversion
+        run: python tests/test_prm_marker.py --output proof-work
+      - name: Verify offline distance-3 CRILAYLA run encoder and boundary roundtrips
+        run: PYTHONPATH=tools python -m unittest discover -s tests -p test_crilayla_rle.py -v
+      - name: Verify offline literal-only CRILAYLA encoding roundtrip and bounds
+        run: PYTHONPATH=tools python -m unittest discover -s tests -p test_crilayla_literal.py -v
+      - name: Validate CPK event conversion and exact archive preservation
+        run: python tests/test_cpk_events.py --output proof-work
+      - name: Execute native PRM loading and event ownership
+        run: python tests/test_native_events.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Execute native control writes and permission consumers
+        run: python tests/test_native_controls.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Validate CPK profile and composed Android packaging
+        run: python tests/test_cpk_profile.py --module exlaunch/deploy/subsdk9 --output proof-work
+      - name: Audit inter-CPK path collisions without claiming precedence
+        run: python tests/test_cpk_overlaps.py --output proof-work
+      - name: Execute native CPK registration and retry branches
+        run: python tests/test_native_cpk.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Enumerate read-only native CPK and fileload call edges
+        run: python tests/test_native_cpk_graph.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Inspect pinned CPK indirect address references and RELA slots
+        run: python tests/test_native_cpk_indirect.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Inspect pinned CPK near-entrypoint and local indirect branches
+        run: python tests/test_native_cpk_neighborhood.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Verify authentic PC Ougi, Gudo, CharRelation raw parameter streams
+        run: python tests/test_pc_param_streams.py --output proof-work
+      - name: Audit pinned nearby code-pointer relocation clusters without vtable claims
+        run: python tests/test_native_cpk_pointer_tables.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Disassemble pinned ARM64 FileLoad BLR and relocation-target code with Capstone
+        run: python tests/test_native_cpk_disasm.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Verify pinned ARM64 BLR register chains and correct callsite/entrypoint distinction
+        run: python tests/test_native_cpk_blr_structure.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Trace pinned bounded CPK FileLoad candidate CFG and direct/RELA inbound evidence
+        run: python tests/test_native_cpk_cfg.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Resolve pinned CPK relocation data-slot source materializations without vtable claims
+        run: python tests/test_native_cpk_pointer_use.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Reject stale legacy fileload hook fingerprint and transcribe native failure corridor
+        run: python tests/test_native_fileload_failure.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Prove potential original FileLoad 0x100000-offset correction and named call/error branches
+        run: python tests/test_native_fileload_corrected_entry.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Trace verified native FileLoad status5 argument branches and actual setter code
+        run: python tests/test_native_fileload_status.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Trace corrected original FileLoad entry CFG to native FileOpen and status5 callsites
+        run: python tests/test_native_fileload_corridor_cfg.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Verify original FileOpen W0 zero-result branch into status5 static corridors
+        run: python tests/test_native_fileload_zero_return.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Verify pinned FileOpen-zero branch path and status setter argument registers
+        run: python tests/test_native_fileload_result_flow.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Enumerate exact SHA pinned FileOpen return W0 provenance on bounded original CFG
+        run: python tests/test_native_fileopen_returns.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Inspect original FileOpen branch predicates and call dependencies without assuming CRI semantics
+        run: python tests/test_native_fileopen_branch_dependencies.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Resolve bounded native FileOpen callee targets and branch flag/register producer sources
+        run: python tests/test_native_fileopen_callees.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Verify original FileOpen PLT GOT import relocation and exported symbol identity
+        run: python tests/test_native_fileopen_import.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Trace pinned FileLoad X20 object and X22 guard register origins
+        run: python tests/test_native_fileload_object_regs.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Execute actual pinned ARM64 FileLoad status helper 3/5 guards with lock services modeled
+        run: python tests/test_native_fileload_status_slice.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Trace original FileOpen native X0 plus 0x18 tail-target and W0 return compare
+        run: python tests/test_native_fileopen_tail.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Disassemble eight exact native FileOpen tail callees and W0 return provenance
+        run: python tests/test_native_fileopen_tail_callees.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Inspect original native FileOpen tail implicit-argument and indirect-branch register writers
+        run: python tests/test_native_fileopen_tail_abi_candidates.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Trace exact native FileOpen indirect BR X8 base origins without claiming runtime ABI
+        run: python tests/test_native_fileopen_dispatch_objects.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Compile native C++ nine PC raw reader families and verify row views against Python evidence
+        run: python tests/test_native_pc_raw_nine.py --output proof-work
+      - name: Execute compiled ARM64 native PC raw readers against nine authentic upstream templates
+        run: python tests/test_native_pc_raw_arm64.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Reject multi-mod PC source path ownership collisions (offline only)
+        run: python -m unittest discover -s tests -p test_pc_multi_mod_path_ownership.py -v
+      - name: Validate nine-family PC original ZIP source pack with native host C++ and source precedence rejection
+        run: python tests/test_pc_native_pack.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Test offline PC pack caller-owned staging lease (no engine ABI)
+        run: python tests/test_pc_pack_staging_lease.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Execute actual AArch64 PC raw source-pack reader against nine source-pinned upstream templates
+        run: python tests/test_pc_native_pack_arm64.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Match public original NSC Mod Manager PC condition manager512 by Git blob and SHA256
+        run: python tests/test_pc_public_baseline.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Validate PC condition descriptors and Android packaging
+        run: python tests/test_condition_profile.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --module exlaunch/deploy/subsdk9 --output proof-work
+      - name: Validate raw condition companion identity and rejection
+        run: python tests/test_condition_companion.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Validate actual CPK entry binding for stock/candidate raw176 audits
+        run: python tests/test_condition_archive_audit.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Compare raw176 condition values without inferred semantics
+        run: python tests/test_condition_raw_audit.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Validate SHA-streaming manager517 stock/candidate source intake on synthetic CPKs
+        run: python tests/test_real_condition_intake.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Validate condition CPK bundle and coupled module profiles
+        run: python tests/test_condition_bundle.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --module exlaunch/deploy/subsdk9 --output proof-work
+      - name: Verify pinned PC Susanoo and Partner raw32 parameter reader layouts
+        run: python tests/test_pc_param_rows.py --output proof-work
+      - name: Verify last four PC ModdingAPI source-grounded raw formats against public bytes
+        run: python tests/test_pc_param_remaining.py --output proof-work
+      - name: Build unified nine-family PC-only source manifest with unresolved effect/audio identifiers
+        run: python tests/test_pc_api_manifest.py --output proof-work
+      - name: Validate hash-pinned PC audio and effect literal names against CPK TOC on synthetic archives
+        run: python tests/test_pc_cpk_resource_audit.py --output proof-work
+      - name: Verify multi-CPK global condition batch component
+        run: python tests/test_condition_batch.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --module exlaunch/deploy/subsdk9 --output proof-work
+      - name: Execute native condition lookups and descriptor consumers
+        run: python tests/test_native_conditions.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
+      - name: Verify generated module
+        run: python tools/verify_binary.py --nso exlaunch/deploy/subsdk9 --elf exlaunch/runtime_r183.elf --output proof-work/binary.json
+      - name: Stage source-authenticated PC NSC ZIP mods for Android with traversal and overwrite rejection
+        run: python tests/test_pc_nsc_archive_stage.py --output proof-work
+      - name: Assemble source-pinned PC multi-mod CPK registration candidate with fail-closed TOC collisions
+        run: python tests/test_pc_nsc_cpk_candidates.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Validate read-only CRILAYLA decoder on synthetic bounded fixtures (not a game repacker)
+        run: PYTHONPATH=tools python -m unittest discover -s tests -p test_crilayla_readonly.py -v
+      - name: Verify read-only CPK payload extraction with bounded CRILAYLA decode
+        run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_cpk_read_payload.py -v
+      - name: SHA-pinned read-only CPK payload evidence extraction (synthetic CPK only)
+        run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_cpk_source_evidence.py -v
+      - name: Inspect decoded CRILAYLA PRM Event236 edits without repacking (synthetic only)
+        run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_compressed_prm_events.py -v
+      - name: Source-pinned multi-CPK overlap evidence (synthetic, no precedence claim)
+        run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_cpk_overlap_evidence.py -v
+      - name: Verify source-pinned PC MovesetPlus index catalog and strict editor lookup
+        run: PYTHONPATH=tools python -m unittest discover -s tests -p test_pc_moveset_function_names.py -v
+      - name: Export source-pinned PC MovesetPlus NSC editor index manifest (not game ABI)
+        run: PYTHONPATH=tools python -m unittest discover -s tests -p test_export_pc_moveset_nsc_manifest.py -v
+      - name: Preflight source-pinned PC MovesetPlus editor event indices (no binary conversion)
+        run: PYTHONPATH=tools python -m unittest discover -s tests -p test_pc_moveset_event_preflight.py -v
+      - name: Census exact nine-family literals and adjacent ARM64 address references in original pinned main
+        run: python tests/test_native_pc_family_xrefs.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Trace bounded nonadjacent ADRP/ADD PC family references in original main
+        run: python tests/test_native_pc_nonadjacent_xrefs.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Trace pinned FileOpen indirect branch register definitions
+        run: python tests/test_native_fileopen_br_provenance.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Census pinned FileOpen direct CFG edges and conservative merge boundaries
+        run: python tests/test_native_fileopen_cfg_edges.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Census and classify whole-text external direct entry paths to pinned FileOpen BR sites
+        run: python tests/test_native_fileopen_external_edges.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Verify offline multi-member decoded PRM export (synthetic only)
+        run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_export_decoded_prm_batch.py -v
+      - name: Census exact original FileOpen indirect field relocation pairs (not ABI)
+        run: python tests/test_native_fileopen_dispatch_relocations.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Native FileOpen candidate-base code cross-references
+        run: python tests/test_native_fileopen_dispatch_code_xrefs.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Reject untested gameplay release flags in project status and handoff
+        run: python tests/test_release_flags.py --status PORT_STATUS.json --checkpoint handoff/checkpoint.json --output proof-work
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PORT_FOUNDATION_PROOFS_NOT_A_GAMEPLAY_RELEASE
+          path: proof-work/*.json
+          if-no-files-found: error

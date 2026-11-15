@@ -1,0 +1,33 @@
+{
+  "status": "PASS_SOURCE_AUTHENTICATED_PC_STREAM_FORMAT_ONLY",
+  "commit": "4702118dfaf574f252f79b4b6c19ded57fda831a",
+  "ci_id": 41972748025,
+  "conclusion": "success",
+  "source_repo": "TheLeonX/NSC-ModManager",
+  "source_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+  "families": {
+    "ougiAwakeningParam": {
+      "records": 1,
+      "source_bytes": 4,
+      "git_blob": "091143ccde86ef2a8ecd0c33aa3485726f67f7ab",
+      "sha256": "aafe5c9d06106459ae1b56891f2cae5751596c24db3cf15898160499b7c88509"
+    },
+    "gudoBallParam": {
+      "records": 2,
+      "source_bytes": 8,
+      "git_blob": "934435c5a1e58a1040d62976ff32affd6383e239",
+      "sha256": "7516b57455c49ab9508b6fc12bc644aae797d96b5ef8253e2f809f0319df467f"
+    },
+    "charRelationParam": {
+      "records": 30,
+      "source_bytes": 548,
+      "git_blob": "6e680f5c919af3536cc38f8b14fe8138a601770f",
+      "sha256": "80edf5c8fcb60825fad9a2ff4c1c82864b6b5656ecb7775e5d4c77a3ca47ce2a"
+    }
+  },
+  "invalid_input_cases_rejected": 9,
+  "source_format_validated": true,
+  "real_gameplay": false,
+  "Switch_native_abi_verified": false,
+  "full_moddingapi": false
+}

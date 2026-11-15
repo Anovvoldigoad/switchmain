@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EXL="${1:-$ROOT/exlaunch}"
+if [[ ! -d "$EXL" ]]; then echo "[!] Missing exlaunch tree: $EXL"; exit 1; fi
+cp "$ROOT/overlay/source/program/main.cpp" "$EXL/source/program/main.cpp"
+cp "$ROOT/overlay/source/program/nsc_pc_raw.hpp" "$EXL/source/program/nsc_pc_raw.hpp"
+cp "$ROOT/overlay/source/program/nsc_pc_raw.cpp" "$EXL/source/program/nsc_pc_raw.cpp"
+cp "$ROOT/overlay/source/program/nsc_pc_pack.hpp" "$EXL/source/program/nsc_pc_pack.hpp"
+cp "$ROOT/overlay/source/program/nsc_pc_pack.cpp" "$EXL/source/program/nsc_pc_pack.cpp"
+cp "$ROOT/overlay/source/program/nsc_runtime_core.cpp" "$EXL/source/program/nsc_runtime_core.cpp"
+cp "$ROOT/overlay/source/program/nsc_runtime_core.hpp" "$EXL/source/program/nsc_runtime_core.hpp"
+cp "$ROOT/overlay/source/program/nsc_image_guard.cpp" "$EXL/source/program/nsc_image_guard.cpp"
+cp "$ROOT/overlay/source/program/nsc_image_guard.hpp" "$EXL/source/program/nsc_image_guard.hpp"
+cp "$ROOT/overlay/source/program/nsc_sha256.c" "$EXL/source/program/nsc_sha256.c"
+cp "$ROOT/overlay/source/program/nsc_sha256.h" "$EXL/source/program/nsc_sha256.h"
+cp "$ROOT/overlay/source/program/nsc_condition_storage.cpp" "$EXL/source/program/nsc_condition_storage.cpp"
+cp "$ROOT/overlay/source/program/nsc_condition_storage.hpp" "$EXL/source/program/nsc_condition_storage.hpp"
+cp "$ROOT/overlay/source/program/nsc_condition_hooks.cpp" "$EXL/source/program/nsc_condition_hooks.cpp"
+cp "$ROOT/overlay/source/program/nsc_event_ownership.hpp" "$EXL/source/program/nsc_event_ownership.hpp"
+cp "$ROOT/overlay/source/program/nsc_factory.hpp" "$EXL/source/program/nsc_factory.hpp"
+cp "$ROOT/overlay/source/program/nsc_factory.cpp" "$EXL/source/program/nsc_factory.cpp"
+cp "$ROOT/overlay/source/program/nsc_factory_hooks.cpp" "$EXL/source/program/nsc_factory_hooks.cpp"
+cp "$ROOT/overlay/source/program/nsc_factory_profile.cpp" "$EXL/source/program/nsc_factory_profile.cpp"
+cp "$ROOT/overlay/source/program/nsc_factory_catalog.hpp" "$EXL/source/program/nsc_factory_catalog.hpp"
+cp "$ROOT/overlay/source/program/nsc_cpk_bridge.cpp" "$EXL/source/program/nsc_cpk_bridge.cpp"
+cp "$ROOT/overlay/source/program/nsc_cpk_bridge.hpp" "$EXL/source/program/nsc_cpk_bridge.hpp"
+cp "$ROOT/overlay/source/program/nsc_runtime_v2.cpp" "$EXL/source/program/nsc_runtime_v2.cpp"
+cp "$ROOT/overlay/source/program/nsc_runtime_v2.hpp" "$EXL/source/program/nsc_runtime_v2.hpp"
+cp "$ROOT/overlay/source/program/p81_ougi_awake_ids.hpp" "$EXL/source/program/p81_ougi_awake_ids.hpp"
+cp "$ROOT/overlay/source/program/nsc_sfx_list_generated.hpp" "$EXL/source/program/nsc_sfx_list_generated.hpp"
+cp "$ROOT/overlay/source/program/nsc_controls.cpp" "$EXL/source/program/nsc_controls.cpp"
+cp "$ROOT/overlay/source/program/nsc_controls.hpp" "$EXL/source/program/nsc_controls.hpp"
+cp "$ROOT/overlay/source/program/nsc_cpk_profile.hpp" "$EXL/source/program/nsc_cpk_profile.hpp"
+cp "$ROOT/overlay/source/program/nsc_cpk_profile.cpp" "$EXL/source/program/nsc_cpk_profile.cpp"
+cp "$ROOT/overlay/source/program/nsc_condition_profile.cpp" "$EXL/source/program/nsc_condition_profile.cpp"
+cp "$ROOT/overlay/source/program/nsc_condition_profile.hpp" "$EXL/source/program/nsc_condition_profile.hpp"
+cp "$ROOT/overlay/source/program/nsc_condition_profile_data.cpp" "$EXL/source/program/nsc_condition_profile_data.cpp"
+cp "$ROOT/overlay/source/program/nsc_cpk_profile_data.cpp" "$EXL/source/program/nsc_cpk_profile_data.cpp"
+python3 - "$EXL/config.mk" <<'PY'
+from pathlib import Path
+import re, sys
+p=Path(sys.argv[1]); s=p.read_text()
+s,n1=re.subn(r'(?m)^LOAD_KIND\s*:=.*$', 'LOAD_KIND := Module', s, count=1)
+s,n2=re.subn(r'(?m)^PROGRAM_ID\s*:=.*$', 'PROGRAM_ID := 0100FA10190A0000', s, count=1)
+s,n3=re.subn(r'(?m)^CXX_FLAGS\s*:=.*$', 'CXX_FLAGS := -Wno-non-c-typedef-for-linkage', s, count=1)
+s,n4=re.subn(r'(?m)^ELF_EXTRACT\s*:=.*$', 'ELF_EXTRACT := $(PWD)/runtime_r183.elf', s, count=1)
+if (n1,n2,n3,n4)!=(1,1,1,1): raise SystemExit(f'config patch failed {(n1,n2,n3,n4)}')
+p.write_text(s)
+PY
+echo "[+] NSC R183 ModdingAPI compatibility hotfix overlay prepared"
+grep -E '^(LOAD_KIND|PROGRAM_ID|CXX_FLAGS|ELF_EXTRACT)[[:space:]]*:=' "$EXL/config.mk"
