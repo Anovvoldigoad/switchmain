@@ -7,6 +7,7 @@
   "pc_mod_manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
   "pc_api_source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
   "implemented_this_change": [
+    "2026-11-15 PENDING_CI: Added offline source-authenticated batch remove/replace for PC MovesetPlus editor indices (one replayed composition, conflict rejection, five synthetic regressions); no native consumer, CPK installation or Uzuy proof. Research: NSC-ModManager 2.1.2.1 README blob 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709 (Steam-only), NSC-Toolbox 6f780cb6814f07e03c16b3e78d97dde4e4368983 README blob 657f161390c4abe8afe10cea11a2b9a28e6bf6b0, REA README blob 056af5e87775520a72fd8609f88edd074a5e7498 (not game ABI). Pinned original main 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; Sakura aura107, Event236 marked/unmarked preserved; all release flags false. Next verify HEAD Actions logs, then authenticate consumer lifecycle and archive precedence.",
     "2026-11-15 PENDING_CI: Added SHA-pinned PC MovesetPlus editor source replacement (original source replay, full recomposition, collision rejection, 4 synthetic regressions); no binary consumer or Uzuy evidence.",
     "2026-11-15 PENDING_CI: source-replayable PC-only multi-mod editor removal; no binary/consumer/Uzuy proof",
     "2026-11-15 pending CI: original PC source replay verification of merged editor indices, offline only",
