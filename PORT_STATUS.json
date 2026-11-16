@@ -1440,5 +1440,6 @@
     "tests": 36,
     "authentic_cpk": false,
     "runtime_verified": false
-  }
+  },
+  "latest_automation_evidence": "2026-11-17 PENDING_CI: code d238ae7ca128f0cdcada84c9fae1407b76f46429 (parent 5004892d263b9721c1900fb608b59c39a5fb6382) extracts source-SHA/TOC/semantic validation into validate_many_same_size and streams CPK output in 1MiB chunks to fsynced staging, followed by independent on-disk verifier and exclusive hard-link publication. No full archive bytearray/bytes output allocation in publisher; in-memory replace_many_same_size remains for API compatibility. Synthetic publication regression added; local tests NOT executed (container GitHub DNS unavailable), HEAD push Actions run/job/log NOT verified. Prior synthetic CI successes do not cover this HEAD. Original game main/CPK consumer ABI, ownership, lifecycle, async, rollback, precedence and Uzuy remain unresolved. Preserve main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 marked/unmarked and all three release flags false. NEXT inspect HEAD Actions raw job log, repair failures, authenticate game bytes before native hooks."
 }
