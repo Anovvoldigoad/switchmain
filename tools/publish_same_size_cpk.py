@@ -5,6 +5,7 @@ No runtime hook or claim of compatibility with authentic Switch archives.
 import argparse
 import hashlib
 import json
+import mmap
 import os
 from pathlib import Path
 import tempfile
@@ -16,7 +17,6 @@ def publish(source_path, source_sha256, manifest_path, output_path):
     source_path, manifest_path, output_path = map(Path, (source_path, manifest_path, output_path))
     if output_path.exists() or output_path.is_symlink():
         raise FileExistsError(output_path)
-    source = source_path.read_bytes()
     def unique_members(pairs):
         result = {}
         seen = set()
@@ -36,7 +36,9 @@ def publish(source_path, source_sha256, manifest_path, output_path):
         if not isinstance(member, str) or not isinstance(candidate, str):
             raise ValueError("Manifest keys and values must be strings")
         replacements[member] = Path(candidate).read_bytes()
-    output, proof = replace_many_same_size(source, source_sha256, replacements)
+    with source_path.open("rb") as handle:
+        with mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as source:
+            output, proof = replace_many_same_size(source, source_sha256, replacements)
     # Never overwrite the source or another existing output. Stage in the target
     # directory and publish with an exclusive hard link, then remove staging.
     if output_path.resolve() == source_path.resolve():

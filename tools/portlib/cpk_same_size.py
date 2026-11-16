@@ -1,5 +1,6 @@
 """Fail-closed same-size CRILAYLA replacement; no relocation or runtime hook."""
 import hashlib
+import mmap
 from .cpk_events import entries, canonical
 from .compressed_prm_events import extract_candidate, _extract_validated_candidate, SHA
 from .crilayla import decompress
@@ -45,7 +46,7 @@ def replace_many_same_size(source, expected_sha256, replacements, *, limit=256 *
     """Validate every source-bound edit before publishing a single new archive."""
     if not isinstance(replacements, dict) or not replacements:
         raise ValueError("Nonempty path-to-packed mapping required")
-    if not isinstance(source, bytes) or not isinstance(expected_sha256, str) or not SHA.fullmatch(expected_sha256):
+    if not isinstance(source, (bytes, mmap.mmap)) or not isinstance(expected_sha256, str) or not SHA.fullmatch(expected_sha256):
         raise ValueError("Immutable source and exact SHA256 required")
     if hashlib.sha256(source).hexdigest() != expected_sha256:
         raise ValueError("Source archive SHA256 mismatch")

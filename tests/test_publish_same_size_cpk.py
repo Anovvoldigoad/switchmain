@@ -1,6 +1,7 @@
 """End-to-end exclusive CPK publication using real synthetic parsers."""
 import hashlib
 import json
+from unittest.mock import patch
 import tempfile
 import unittest
 from pathlib import Path
@@ -41,6 +42,15 @@ class PublishCPKTests(unittest.TestCase):
         self.assertEqual(read_payload(self.output.read_bytes(), "data/untouched"), b"original")
         self.assertEqual(proof["output_sha256"], hashlib.sha256(self.output.read_bytes()).hexdigest())
         self.assertFalse(proof["runtime_verified"])
+
+    def test_publisher_uses_readonly_mmap_not_full_source_read(self):
+        candidate_bytes = self.candidate.read_bytes()
+        with patch.object(Path, "read_bytes", autospec=True, side_effect=lambda path: (_ for _ in ()).throw(AssertionError("source read_bytes")) if path == self.source else candidate_bytes) as read:
+            # The candidate is read normally; the large source archive must be mapped.
+            proof = publish(self.source, self.sha, self.manifest, self.output)
+        self.assertEqual(proof["source_sha256"], self.sha)
+        self.assertEqual(read.call_count, 1)
+        self.assertTrue(self.output.exists())
 
     def test_existing_output_is_never_overwritten(self):
         self.output.write_bytes(b"keep")
