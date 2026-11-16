@@ -23,7 +23,7 @@ def verify_same_size_output(source, output, source_sha256, output_sha256, select
     if not isinstance(selected, (list, tuple)) or not selected:
         raise ValueError("Nonempty selected path list required")
     paths = [canonical(p) for p in selected]
-    if len(set(paths)) != len(paths):
+    if len({path.casefold() for path in paths}) != len(paths):
         raise ValueError("Duplicate selected path")
     original_index = entries(source)
     if entries(output) != original_index:
@@ -32,6 +32,8 @@ def verify_same_size_output(source, output, source_sha256, output_sha256, select
         raise ValueError("Unknown selected member")
     spans = sorted((row["offset"], row["offset"] + row["stored_size"], name)
                    for name, row in original_index.items())
+    if any(start < prior_end for (_, prior_end, _), (start, _, _) in zip(spans, spans[1:])):
+        raise ValueError("Overlapping CPK member storage ranges")
     cursor = 0
     selected_set = set(paths)
     for start, end, name in spans:

@@ -61,6 +61,20 @@ class IndependentVerificationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.verify(tampered, output_sha=hashlib.sha256(tampered).hexdigest())
 
+    def test_rejects_casefold_duplicate_selection(self):
+        with self.assertRaisesRegex(ValueError, "Duplicate selected path"):
+            self.verify(selected=[self.name, self.name.upper()])
+
+    def test_rejects_overlapping_toc_spans(self):
+        from unittest.mock import patch
+        from portlib.cpk_events import entries
+        original = entries(self.source)
+        overlap = {name: dict(row) for name, row in original.items()}
+        overlap["data/untouched"]["offset"] = overlap[self.name]["offset"] + 1
+        with patch("portlib.cpk_same_size_verify.entries", return_value=overlap):
+            with self.assertRaisesRegex(ValueError, "Overlapping CPK member"):
+                self.verify()
+
     def test_rejects_archive_length_change(self):
         longer = self.output + b"x"
         with self.assertRaisesRegex(ValueError, "Archive length"):
