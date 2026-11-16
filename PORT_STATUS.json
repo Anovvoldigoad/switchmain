@@ -1416,5 +1416,17 @@
     "authentic_game_archive_verified": false,
     "native_consumer_verified": false,
     "emulator_tested": false
+  },
+  "latest_offline_cpk_verifier": {
+    "status": "PENDING_CI",
+    "code_commit": "1d01038349fe735832dfeb3b5bba3ca127d73016",
+    "regression_commit": "5b0a7c75a454ee7e73f39f9c624f8938f5f88069",
+    "evidence": "SHA-authenticated TOC index reused for each selected CRILAYLA member; synthetic multi-member regression added",
+    "local_tests": "NOT_RUN",
+    "github_actions_run": null,
+    "github_actions_job": null,
+    "raw_job_log_verified": false,
+    "authentic_game_cpk_tested": false,
+    "native_consumer_proven": false
   }
 }
