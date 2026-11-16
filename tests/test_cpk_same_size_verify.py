@@ -45,7 +45,9 @@ class IndependentVerificationTests(unittest.TestCase):
                 self.verify(**{key: value})
 
     def test_rejects_tampered_unselected_member_even_with_updated_output_hash(self):
-        tampered = self.output.replace(b"untouched", b"UNCHANGED")
+        from portlib.cpk_events import entries
+        start = entries(self.output)["data/untouched"]["offset"]
+        tampered = self.output[:start] + b"UNCHANGED" + self.output[start + 9:]
         self.assertEqual(len(tampered), len(self.output))
         with self.assertRaisesRegex(ValueError, "Unselected member"):
             self.verify(tampered, output_sha=hashlib.sha256(tampered).hexdigest())
