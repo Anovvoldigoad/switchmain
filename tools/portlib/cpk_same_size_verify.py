@@ -44,7 +44,8 @@ def verify_same_size_output(source, output, source_sha256, output_sha256, select
             if source[start:end] != output[start:end]:
                 raise ValueError("Unselected member changed")
         else:
-            expected, _ = _extract_validated_candidate(\n                source, name, source_sha256, original_index, decoded_limit=limit)
+            expected, _ = _extract_validated_candidate(
+                source, name, source_sha256, original_index, decoded_limit=limit)
             packed = output[start:end]
             if not packed.startswith(b"CRILAYLA") or decompress(packed, limit=limit) != expected:
                 raise ValueError("Selected member semantic mismatch")
