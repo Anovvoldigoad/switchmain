@@ -92,6 +92,13 @@ class SameSizeArchiveIntegration(unittest.TestCase):
         self.assertEqual(proof["selected_paths"], sorted([PATH, second]))
         self.assertFalse(proof["runtime_verified"])
 
+    def test_batch_rejects_casefold_duplicate_before_edit(self):
+        from portlib.cpk_same_size import replace_many_same_size
+        with self.assertRaisesRegex(ValueError, "Duplicate CPK path"):
+            replace_many_same_size(self.source, self.sha, {
+                PATH: self.new_packed, PATH.upper(): self.new_packed,
+            })
+
     def test_batch_rejects_one_bad_member_without_mutating_source(self):
         from portlib.cpk_same_size import replace_many_same_size
         second = "data/spc/second.bin.xfbin"

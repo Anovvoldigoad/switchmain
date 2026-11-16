@@ -17,7 +17,18 @@ def publish(source_path, source_sha256, manifest_path, output_path):
     if output_path.exists() or output_path.is_symlink():
         raise FileExistsError(output_path)
     source = source_path.read_bytes()
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    def unique_members(pairs):
+        result = {}
+        seen = set()
+        for key, value in pairs:
+            folded = key.casefold()
+            if folded in seen:
+                raise ValueError("Duplicate manifest member")
+            seen.add(folded)
+            result[key] = value
+        return result
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"), object_pairs_hook=unique_members)
     if not isinstance(manifest, dict) or not manifest:
         raise ValueError("Nonempty JSON path-to-candidate-file mapping required")
     replacements = {}

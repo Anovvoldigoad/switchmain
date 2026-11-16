@@ -48,6 +48,14 @@ class PublishCPKTests(unittest.TestCase):
             publish(self.source, self.sha, self.manifest, self.output)
         self.assertEqual(self.output.read_bytes(), b"keep")
 
+    def test_duplicate_manifest_member_does_not_publish(self):
+        for names in [(self.path, self.path), (self.path, self.path.upper())]:
+            with self.subTest(names=names):
+                self.manifest.write_text("{" + ",".join(json.dumps(k) + ":" + json.dumps(str(self.candidate)) for k in names) + "}")
+                with self.assertRaisesRegex(ValueError, "Duplicate manifest member"):
+                    publish(self.source, self.sha, self.manifest, self.output)
+                self.assertFalse(self.output.exists())
+
     def test_wrong_sha_does_not_publish(self):
         with self.assertRaisesRegex(ValueError, "SHA256 mismatch"):
             publish(self.source, "0" * 64, self.manifest, self.output)

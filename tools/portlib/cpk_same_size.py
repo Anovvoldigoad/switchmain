@@ -51,7 +51,7 @@ def replace_many_same_size(source, expected_sha256, replacements, *, limit=256 *
         raise ValueError("Source archive SHA256 mismatch")
     index = entries(source)
     canonical_paths = [canonical(path) for path in replacements]
-    if len(set(canonical_paths)) != len(canonical_paths):
+    if len({path.casefold() for path in canonical_paths}) != len(canonical_paths):
         raise ValueError("Duplicate CPK path")
     changes = []
     for path, packed in replacements.items():
