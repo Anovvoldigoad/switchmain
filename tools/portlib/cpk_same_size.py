@@ -42,7 +42,7 @@ def replace_same_size(source, expected_sha256, path, packed, *, limit=256 * 1024
     }
 
 
-def replace_many_same_size(source, expected_sha256, replacements, *, limit=256 * 1024 * 1024):
+def validate_many_same_size(source, expected_sha256, replacements, *, limit=256 * 1024 * 1024):
     """Validate every source-bound edit before publishing a single new archive."""
     if not isinstance(replacements, dict) or not replacements:
         raise ValueError("Nonempty path-to-packed mapping required")
@@ -59,6 +59,11 @@ def replace_many_same_size(source, expected_sha256, replacements, *, limit=256 *
                    for name, row in index.items())
     if any(start < previous_end for (_, previous_end, _), (start, _, _) in zip(spans, spans[1:])):
         raise ValueError("Overlapping CPK member storage ranges")
+    changes = _validated_changes(source, expected_sha256, replacements, index, canonical_paths, limit)
+    return changes, index, canonical_paths
+
+
+def _validated_changes(source, expected_sha256, replacements, index, canonical_paths, limit):
     changes = []
     for path, packed in replacements.items():
         if not isinstance(packed, bytes) or path not in index:
@@ -73,6 +78,11 @@ def replace_many_same_size(source, expected_sha256, replacements, *, limit=256 *
         if decompress(packed, limit=limit) != expected:
             raise ValueError("Candidate does not match source-authenticated Event236 conversion")
         changes.append((start, start + size, packed))
+    return changes
+
+
+def replace_many_same_size(source, expected_sha256, replacements, *, limit=256 * 1024 * 1024):
+    changes, index, canonical_paths = validate_many_same_size(source, expected_sha256, replacements, limit=limit)
     result = bytearray(source)
     for start, end, packed in changes:
         result[start:end] = packed

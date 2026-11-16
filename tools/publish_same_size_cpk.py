@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import tempfile
 
-from portlib.cpk_same_size import replace_many_same_size
+from portlib.cpk_same_size import validate_many_same_size
 from portlib.cpk_same_size_verify import verify_same_size_output
 
 
@@ -39,26 +39,38 @@ def publish(source_path, source_sha256, manifest_path, output_path):
         replacements[member] = Path(candidate).read_bytes()
     with source_path.open("rb") as handle:
         with mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as source:
-            output, proof = replace_many_same_size(source, source_sha256, replacements)
-    # Never overwrite the source or another existing output. Stage in the target
-    # directory and publish with an exclusive hard link, then remove staging.
-    if output_path.resolve() == source_path.resolve():
-        raise ValueError("Output must differ from source")
-    fd, staged = tempfile.mkstemp(prefix=".cpk-stage-", dir=output_path.parent)
-    try:
-        with os.fdopen(fd, "wb") as handle:
-            handle.write(output)
-            handle.flush()
-            os.fsync(handle.fileno())
-        # Verify persisted bytes independently before making the file visible.
-        with source_path.open("rb") as original_handle, open(staged, "rb") as staged_handle:
-            with mmap.mmap(original_handle.fileno(), 0, access=mmap.ACCESS_READ) as original:
-                with mmap.mmap(staged_handle.fileno(), 0, access=mmap.ACCESS_READ) as written:
-                    verify_same_size_output(original, written, source_sha256,
-                                            proof["output_sha256"], proof["selected_paths"])
-        os.link(staged, output_path)
-    finally:
-        os.unlink(staged)
+            changes, _, paths = validate_many_same_size(source, source_sha256, replacements)
+            if output_path.resolve() == source_path.resolve():
+                raise ValueError("Output must differ from source")
+            fd, staged = tempfile.mkstemp(prefix=".cpk-stage-", dir=output_path.parent)
+            try:
+                digest = hashlib.sha256()
+                with os.fdopen(fd, "wb") as target:
+                    cursor = 0
+                    for start, end, packed in sorted(changes):
+                        for offset in range(cursor, start, 1024 * 1024):
+                            chunk = source[offset:min(offset + 1024 * 1024, start)]
+                            target.write(chunk)
+                            digest.update(chunk)
+                        target.write(packed)
+                        digest.update(packed)
+                        cursor = end
+                    for offset in range(cursor, len(source), 1024 * 1024):
+                        chunk = source[offset:min(offset + 1024 * 1024, len(source))]
+                        target.write(chunk)
+                        digest.update(chunk)
+                    target.flush()
+                    os.fsync(target.fileno())
+                proof = {"source_sha256": source_sha256, "output_sha256": digest.hexdigest(),
+                         "selected_paths": sorted(paths), "metadata_and_other_payloads_unchanged": True,
+                         "runtime_verified": False, "ready_for_gameplay_test": False}
+                with open(staged, "rb") as written_handle:
+                    with mmap.mmap(written_handle.fileno(), 0, access=mmap.ACCESS_READ) as written:
+                        verify_same_size_output(source, written, source_sha256,
+                                                proof["output_sha256"], proof["selected_paths"])
+                os.link(staged, output_path)
+            finally:
+                os.unlink(staged)
     return proof
 
 

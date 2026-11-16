@@ -52,6 +52,12 @@ class PublishCPKTests(unittest.TestCase):
         self.assertEqual(read.call_count, 1)
         self.assertTrue(self.output.exists())
 
+    def test_streaming_does_not_construct_full_archive(self):
+        with patch("publish_same_size_cpk.validate_many_same_size", wraps=__import__("portlib.cpk_same_size", fromlist=["validate_many_same_size"]).validate_many_same_size) as validate:
+            proof = publish(self.source, self.sha, self.manifest, self.output)
+        validate.assert_called_once()
+        self.assertEqual(proof["output_sha256"], hashlib.sha256(self.output.read_bytes()).hexdigest())
+
     def test_independent_persisted_verification_blocks_publication(self):
         with patch("publish_same_size_cpk.verify_same_size_output", side_effect=ValueError("persisted verification failed")) as verify:
             with self.assertRaisesRegex(ValueError, "persisted verification failed"):
