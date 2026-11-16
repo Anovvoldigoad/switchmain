@@ -96,6 +96,35 @@ class IndependentVerificationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Overlapping CPK member"):
                 self.verify()
 
+    def test_multi_member_verification_reuses_authenticated_index(self):
+        from unittest.mock import patch
+        from portlib.cpk_events import entries as parse_entries
+        from portlib.compressed_prm_events import _extract_validated_candidate
+        from test_cpk_events import cpk
+        from test_compressed_prm_events import literal_stream
+        from test_prm_marker import fixture, event
+        from portlib.prm_events import mark
+        original = fixture([event(14), event(0), event(15)])
+        converted, _ = mark(original)
+        paths = ["data/spc/a.bin.xfbin", "data/spc/b.bin.xfbin"]
+        source = cpk(
+            [(name, literal_stream(original)) for name in paths],
+            lambda rows: [row.update({"ExtractSize": len(original)}) for row in rows],
+        )
+        source_sha = hashlib.sha256(source).hexdigest()
+        output, _ = replace_many_same_size(
+            source, source_sha, {name: literal_stream(converted) for name in paths})
+        output_sha = hashlib.sha256(output).hexdigest()
+        with patch("portlib.cpk_same_size_verify.entries", wraps=parse_entries) as parse, \
+             patch("portlib.cpk_same_size_verify._extract_validated_candidate",
+                   wraps=_extract_validated_candidate) as extract:
+            proof = verify_same_size_output(source, output, source_sha, output_sha, paths)
+        self.assertEqual(parse.call_count, 2)
+        self.assertEqual(extract.call_count, 2)
+        self.assertTrue(all(call.args[3] == parse_entries(source)
+                            for call in extract.call_args_list))
+        self.assertEqual(proof["selected_paths"], paths)
+
     def test_rejects_archive_length_change(self):
         longer = self.output + b"x"
         with self.assertRaisesRegex(ValueError, "Archive length"):
