@@ -4,6 +4,7 @@ on:
     branches: [port/full-api-v170]
     paths:
       - 'tools/portlib/cpk_same_size.py'
+      - 'tools/portlib/cpk_same_size_verify.py'
       - 'tools/publish_same_size_cpk.py'
       - 'tests/test_cpk_same_size*.py'
       - 'tests/test_publish_same_size_cpk.py'
@@ -20,4 +21,4 @@ jobs:
       - name: Real-parser synthetic integration
         env:
           PYTHONPATH: tools:tests
-        run: python -m unittest -v test_cpk_same_size test_cpk_same_size_integration test_publish_same_size_cpk
+        run: python -m unittest -v test_cpk_same_size test_cpk_same_size_integration test_publish_same_size_cpk test_cpk_same_size_verify
