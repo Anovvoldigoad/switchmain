@@ -11,6 +11,7 @@ from pathlib import Path
 import tempfile
 
 from portlib.cpk_same_size import replace_many_same_size
+from portlib.cpk_same_size_verify import verify_same_size_output
 
 
 def publish(source_path, source_sha256, manifest_path, output_path):
@@ -49,6 +50,12 @@ def publish(source_path, source_sha256, manifest_path, output_path):
             handle.write(output)
             handle.flush()
             os.fsync(handle.fileno())
+        # Verify persisted bytes independently before making the file visible.
+        with source_path.open("rb") as original_handle, open(staged, "rb") as staged_handle:
+            with mmap.mmap(original_handle.fileno(), 0, access=mmap.ACCESS_READ) as original:
+                with mmap.mmap(staged_handle.fileno(), 0, access=mmap.ACCESS_READ) as written:
+                    verify_same_size_output(original, written, source_sha256,
+                                            proof["output_sha256"], proof["selected_paths"])
         os.link(staged, output_path)
     finally:
         os.unlink(staged)

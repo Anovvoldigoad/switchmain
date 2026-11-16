@@ -52,6 +52,14 @@ class PublishCPKTests(unittest.TestCase):
         self.assertEqual(read.call_count, 1)
         self.assertTrue(self.output.exists())
 
+    def test_independent_persisted_verification_blocks_publication(self):
+        with patch("publish_same_size_cpk.verify_same_size_output", side_effect=ValueError("persisted verification failed")) as verify:
+            with self.assertRaisesRegex(ValueError, "persisted verification failed"):
+                publish(self.source, self.sha, self.manifest, self.output)
+        verify.assert_called_once()
+        self.assertFalse(self.output.exists())
+        self.assertEqual(list(self.root.glob(".cpk-stage-*")), [])
+
     def test_existing_output_is_never_overwritten(self):
         self.output.write_bytes(b"keep")
         with self.assertRaises(FileExistsError):
