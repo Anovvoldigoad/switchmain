@@ -99,6 +99,17 @@ class SameSizeArchiveIntegration(unittest.TestCase):
                 PATH: self.new_packed, PATH.upper(): self.new_packed,
             })
 
+    def test_batch_rejects_overlapping_toc_member_ranges(self):
+        from unittest.mock import patch
+        from portlib.cpk_same_size import replace_many_same_size
+        original = entries(self.source)
+        overlap = {name: dict(row) for name, row in original.items()}
+        overlap[OTHER]["offset"] = overlap[PATH]["offset"] + 1
+        with patch("portlib.cpk_same_size.entries", return_value=overlap):
+            with self.assertRaisesRegex(ValueError, "Overlapping CPK member storage"):
+                replace_many_same_size(self.source, self.sha, {PATH: self.new_packed})
+        self.assertEqual(hashlib.sha256(self.source).hexdigest(), self.sha)
+
     def test_batch_rejects_one_bad_member_without_mutating_source(self):
         from portlib.cpk_same_size import replace_many_same_size
         second = "data/spc/second.bin.xfbin"

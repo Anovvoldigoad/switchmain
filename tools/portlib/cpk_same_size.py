@@ -53,6 +53,11 @@ def replace_many_same_size(source, expected_sha256, replacements, *, limit=256 *
     canonical_paths = [canonical(path) for path in replacements]
     if len({path.casefold() for path in canonical_paths}) != len(canonical_paths):
         raise ValueError("Duplicate CPK path")
+    # Reject overlapping TOC storage ranges before any candidate is accepted.
+    spans = sorted((row["offset"], row["offset"] + row["stored_size"], name)
+                   for name, row in index.items())
+    if any(start < previous_end for (_, previous_end, _), (start, _, _) in zip(spans, spans[1:])):
+        raise ValueError("Overlapping CPK member storage ranges")
     changes = []
     for path, packed in replacements.items():
         if not isinstance(packed, bytes) or path not in index:
