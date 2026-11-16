@@ -3,6 +3,7 @@
 Never writes game files and does not establish runtime compatibility.
 """
 import hashlib
+import mmap
 
 from .cpk_events import canonical, entries
 from .compressed_prm_events import SHA, extract_candidate
@@ -10,7 +11,7 @@ from .crilayla import decompress
 
 
 def verify_same_size_output(source, output, source_sha256, output_sha256, selected, *, limit=256 * 1024 * 1024):
-    if not isinstance(source, bytes) or not isinstance(output, bytes):
+    if not isinstance(source, (bytes, mmap.mmap)) or not isinstance(output, (bytes, mmap.mmap)):
         raise ValueError("Immutable source/output bytes required")
     if not all(isinstance(x, str) and SHA.fullmatch(x) for x in (source_sha256, output_sha256)):
         raise ValueError("Exact SHA256 pins required")

@@ -1,5 +1,8 @@
 """Independent verifier integration: real synthetic CPK/UTF/CRILAYLA parsers."""
 import hashlib
+import mmap
+import tempfile
+from pathlib import Path
 import unittest
 
 from portlib.cpk_same_size import replace_many_same_size
@@ -36,6 +39,24 @@ class IndependentVerificationTests(unittest.TestCase):
         proof = self.verify()
         self.assertEqual(proof["selected_paths"], [self.name])
         self.assertFalse(proof["runtime_verified"])
+
+    def test_readonly_mapped_archives_match_bytes_and_reject_tampering(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source_path = Path(directory) / "source.cpk"
+            output_path = Path(directory) / "output.cpk"
+            source_path.write_bytes(self.source)
+            output_path.write_bytes(self.output)
+            with source_path.open("rb") as src, output_path.open("rb") as dst:
+                with mmap.mmap(src.fileno(), 0, access=mmap.ACCESS_READ) as source:
+                    with mmap.mmap(dst.fileno(), 0, access=mmap.ACCESS_READ) as output:
+                        proof = verify_same_size_output(
+                            source, output, self.source_sha, self.output_sha, [self.name])
+                        self.assertEqual(proof, self.verify())
+                        with self.assertRaisesRegex(ValueError, "Output SHA256 mismatch"):
+                            verify_same_size_output(
+                                source, output, self.source_sha, "0" * 64, [self.name])
+            self.assertEqual(source_path.read_bytes(), self.source)
+            self.assertEqual(output_path.read_bytes(), self.output)
 
     def test_rejects_wrong_hashes_and_missing_selection(self):
         for key, value in (("source_sha", "0" * 64), ("output_sha", "0" * 64),
