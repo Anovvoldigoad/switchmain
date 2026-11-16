@@ -92,6 +92,31 @@ class SameSizeArchiveIntegration(unittest.TestCase):
         self.assertEqual(proof["selected_paths"], sorted([PATH, second]))
         self.assertFalse(proof["runtime_verified"])
 
+    def test_batch_validates_archive_index_only_twice(self):
+        from unittest.mock import patch
+        from portlib.cpk_same_size import replace_many_same_size
+        from portlib.cpk_events import entries as parse_entries
+        second = "data/spc/second.bin.xfbin"
+        source = cpk(
+            [(PATH, self.old_packed), (second, self.old_packed)],
+            lambda rows: [row.update({"ExtractSize": len(self.decoded)}) for row in rows],
+        )
+        sha = hashlib.sha256(source).hexdigest()
+        with patch("portlib.cpk_same_size.entries", wraps=parse_entries) as parse:
+            result, proof = replace_many_same_size(
+                source, sha, {PATH: self.new_packed, second: self.new_packed})
+        self.assertEqual(parse.call_count, 2)
+        self.assertEqual(read_payload(result, second), self.converted)
+        self.assertEqual(proof["source_sha256"], sha)
+
+    def test_batch_bad_sha_fails_before_toc(self):
+        from unittest.mock import patch
+        from portlib.cpk_same_size import replace_many_same_size
+        with patch("portlib.cpk_same_size.entries") as parse:
+            with self.assertRaisesRegex(ValueError, "Source archive SHA256 mismatch"):
+                replace_many_same_size(self.source, "0" * 64, {PATH: self.new_packed})
+        parse.assert_not_called()
+
     def test_batch_rejects_casefold_duplicate_before_edit(self):
         from portlib.cpk_same_size import replace_many_same_size
         with self.assertRaisesRegex(ValueError, "Duplicate CPK path"):
