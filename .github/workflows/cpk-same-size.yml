@@ -1,0 +1,23 @@
+name: Same-size CPK offline integration
+on:
+  push:
+    branches: [port/full-api-v170]
+    paths:
+      - 'tools/portlib/cpk_same_size.py'
+      - 'tools/publish_same_size_cpk.py'
+      - 'tests/test_cpk_same_size*.py'
+      - 'tests/test_publish_same_size_cpk.py'
+      - '.github/workflows/cpk-same-size.yml'
+  workflow_dispatch:
+jobs:
+  synthetic-cpk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Real-parser synthetic integration
+        env:
+          PYTHONPATH: tools:tests
+        run: python -m unittest -v test_cpk_same_size test_cpk_same_size_integration test_publish_same_size_cpk
