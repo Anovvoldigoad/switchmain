@@ -1,7 +1,7 @@
 """Fail-closed same-size CRILAYLA replacement; no relocation or runtime hook."""
 import hashlib
 from .cpk_events import entries, canonical
-from .compressed_prm_events import extract_candidate, SHA
+from .compressed_prm_events import extract_candidate, _extract_validated_candidate, SHA
 from .crilayla import decompress
 
 
@@ -68,7 +68,7 @@ def replace_many_same_size(source, expected_sha256, replacements, *, limit=256 *
             raise ValueError("Both streams must be CRILAYLA")
         if len(packed) != size:
             raise ValueError("Stored-size mismatch: relocation forbidden")
-        expected, _ = extract_candidate(source, path, expected_sha256, decoded_limit=limit)
+        expected, _ = _extract_validated_candidate(source, path, expected_sha256, index, decoded_limit=limit)
         if decompress(packed, limit=limit) != expected:
             raise ValueError("Candidate does not match source-authenticated Event236 conversion")
         changes.append((start, start + size, packed))
