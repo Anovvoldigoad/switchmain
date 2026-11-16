@@ -5,7 +5,7 @@
   "repository": "https://github.com/Anovvoldigoad/switchmain",
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
-  "documentation_commit": "2026-11-16 CPK authenticated-index verifier 1d010383 + regression 5b0a7c75 PENDING_CI",
+  "documentation_commit": "2026-11-16 verifier SyntaxError fix 15701b3c PENDING_CI",
   "prior_storm_checkpoint_id": "80be5308-6dfa-44d8-91e9-71c92a4f00e2",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
@@ -16,6 +16,7 @@
     "pc_mod_manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
     "pc_api_source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
     "implemented_this_change": [
+      "2026-11-16 PENDING_CI: Fixed an actual Python SyntaxError in tools/portlib/cpk_same_size_verify.py: the call to _extract_validated_candidate contained literal backslash-n characters instead of a newline, preventing module import and therefore all independent verifier tests. Code commit 15701b3cfb5326645d59c08da81b4ebefd11e530 (parent 3db3a0209d34b9861fbca4fcb2442c5f1d805bb1), one source file only; existing workflow unittest imports module and is the regression gate. Verified GitHub compare only changed this file; no local tests or authentic Actions push run/job/log confirmed (REST DNS failure). Upstream README anchors NSC-ModManager 2.1.2.1 blob 8e9560b2, NSC-Toolbox blob 657f1613, REA blob 5ea33378; none prove Switch ABI. No authentic original main/CPK bytes, consumer ABI/lifecycle, archive precedence or Uzuy proof. Keep SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 marked/unmarked, and all three release flags false. NEXT obtain Actions push-run and raw job log, fix remaining test failures, validate authentic CPK before runtime hooks.",
       "2026-11-16 PENDING_CI: Code 3067e6af1faa6aba2f4acf4faf24d52278ee26bc (parent d594906903bfe2da270753468c880123b028356a) adds read-only mmap verification for source/output CPK, avoiding full-file read_bytes copies on Android; direct verifier accepts mmap and bytes, positive and wrong-hash mmap regressions added. GitHub compare: 1 ahead, 0 behind; PR-filtered workflow lookup empty and combined statuses empty, NOT evidence of push-run absence. Push Actions run/job/authentic log NOT verified; local tests NOT executed. Primary source anchors: NSC-ModManager tag 2.1.2.1 README blob 8e9560b2 (Steam-only), NSC-Toolbox README 657f1613 (PC editor), REA README 5ea33378 (generic reverse engineering). No original Switch CPK or pinned original main bytes available here for ABI proof; no native consumer/ownership/lifecycle/archive precedence/Uzuy proof. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; Sakura aura107, Event236 marked/unmarked preserved. full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT: obtain push-run via Actions REST and inspect authentic job logs, repair failures, test genuine CPK; do not hook runtime.",
       "2026-11-16 PENDING_CI: Added read-only offline CLI tools/verify_same_size_cpk.py wrapping independent SHA-pinned CPK output verifier, with four real-parser synthetic subprocess regressions (valid, wrong SHA, unselected tamper with recomputed SHA, unknown member) and push workflow trigger. Parent 77b2ee97e0a37c071b5cc6443abcef216d0b2691, code f9261cc3d9a080388467405166eba71e9ba2686a. GitHub Actions push-run/job/log unavailable; no PASS. Research anchors NSC-ModManager tag 2.1.2.1 README blob 8e9560b2, NSC-Toolbox 6f780cb README blob 657f1613, REA README blob 5ea33378; no cross-OS ABI proof. Pinned main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107 and Event236 marked/unmarked unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. Next authenticate HEAD Actions job logs, repair any failures, then test genuine Switch CPK; do not hook native consumers.",
       "2026-11-16 PENDING_CI: Added independent read-only verification of SHA-pinned source/output CPK, TOC equality, every nonselected byte, selected Event236 decoded semantics, and synthetic positive/negative regressions. No authentic Switch archive or native consumer ABI/ownership/lifecycle/archive precedence; no Uzuy. Upstream anchors NSC-ModManager 2.1.2.1 README 8e9560b2, NSC-Toolbox 6f780cb README 657f1613, REA README 5ea33378 (not Switch ABI). Parent b80b93c69fd40a651baf04a9fd60c33ce45ecea0; final HEAD CI run/job/log not yet authenticated. Preserve pinned main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 marked/unmarked; all three release flags false.",
@@ -1435,17 +1436,13 @@
   },
   "latest_pending_code_commit": "bffe2fde7a4987fb125eb55583f0b7ed4206b590",
   "latest_pending_ci": {
-    "parent_sha": "9a07521e0683431b40ffe4aa41e878f8bdaf3e50",
-    "code_sha": "1d01038349fe735832dfeb3b5bba3ca127d73016",
-    "test_sha": "5b0a7c75a454ee7e73f39f9c624f8938f5f88069",
-    "workflow": "cpk-same-size.yml",
+    "parent_sha": "3db3a0209d34b9861fbca4fcb2442c5f1d805bb1",
+    "code_sha": "15701b3cfb5326645d59c08da81b4ebefd11e530",
     "status": "PENDING_CI",
     "run_id": null,
     "job_id": null,
     "authentic_log_verified": false,
-    "local_tests_run": false,
-    "authentic_cpk_tested": false,
-    "next": "Fetch push workflow run and raw job log, fix regressions, then authenticate original CPK before runtime changes"
+    "local_tests_run": false
   },
   "crilayla_total_output_limit": {
     "status": "pending_ci",
