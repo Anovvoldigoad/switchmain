@@ -1,4 +1,4 @@
-"""Offline CRILAYLA distance-3 run encoder regressions; no CPK or game writes."""
+"""Offline CRILAYLA bounded-distance encoder regressions; no CPK or game writes."""
 import random
 import unittest
 from portlib.crilayla_rle import encode_runs
@@ -37,6 +37,17 @@ class Runs(unittest.TestCase):
                 encoded = encode_runs(decoded)
                 self.assertEqual(decompress(encoded), decoded)
                 self.assertEqual(encode_runs(decoded), encoded)
+                self.assertLess(len(encoded), len(encode_literals(decoded)) // 3)
+
+    def test_long_period_127_and_251(self):
+        prefix = bytes(range(256))
+        for period in (127, 251):
+            suffix = bytes((i * 37 + i // 7 + period) % 256 for i in range(period)) * 20
+            decoded = prefix + suffix
+            with self.subTest(period=period):
+                encoded = encode_runs(decoded)
+                self.assertEqual(decompress(encoded), decoded)
+                self.assertEqual(encoded, encode_runs(decoded))
                 self.assertLess(len(encoded), len(encode_literals(decoded)) // 3)
 
     def test_random_input_and_long_run_boundary(self):

@@ -30,10 +30,13 @@ def encode_runs(decoded, *, limit=256 * 1024 * 1024):
     while pos > 0x100:
         count = 0
         distance = 0
-        # Search only the first 32 backward-decoding distances. Unlike the
-        # distance-3-only path, this also compresses periodic non-run payloads.
+        # Search the first 256 backward-decoding distances, covering longer
+        # periodic structures without an unbounded full-window search.
         # A reference must start inside already decoded bytes to the right.
-        for candidate in range(3, min(35, len(decoded) - pos + 1)):
+        for candidate in range(3, min(259, len(decoded) - pos + 1)):
+            # Four-byte prefilter avoids long scans for nonmatching distances.
+            if pos - 4 < 0x100 or decoded[pos-4:pos] != decoded[pos-4+candidate:pos+candidate]:
+                continue
             matched = 0
             while (pos - matched - 1 >= 0x100 and matched < 1024
                    and decoded[pos - matched - 1] ==
