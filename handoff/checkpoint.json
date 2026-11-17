@@ -1858,15 +1858,23 @@
     "next": "Verify push workflow run and original job log, repair failures; obtain authenticated main and CPK for native ABI proof."
   },
   "crilayla_bounded_distance_20261118": {
-    "status": "PENDING_CI_SYNTHETIC_ONLY",
+    "status": "VERIFIED_CI_SYNTHETIC_ONLY",
     "parent_sha": "c6625cb95730fd521d55a02499543f87c19551fe",
     "source": "tools/portlib/crilayla_rle.py",
     "test": "tests/test_crilayla_rle.py",
     "local_prototype_roundtrips": 49,
-    "github_actions_log_verified": false,
+    "github_actions_log_verified": true,
     "authentic_game_fixture": false,
     "native_consumer_abi": false,
     "emulator_tested": false,
-    "next": "Verify HEAD foundation push-run and raw job log, then authenticate compressed game PRM"
+    "next": "Confirm HEAD workflow-label-only followup CI; obtain authentic PRM and consumer ABI evidence",
+    "code_commit": "05e376d01731eaf60b83fc09108c97561ef6b14c",
+    "foundation_run": 44179052280,
+    "foundation_job": 134378140592,
+    "compressed_run": 44179052253,
+    "compressed_job": 134378140460,
+    "moveset_run": 44179052312,
+    "moveset_job": 134378141078,
+    "tests": "5/5 CRILAYLA encoder tests, foundation full workflow completed success"
   }
 }
