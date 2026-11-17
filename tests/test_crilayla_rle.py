@@ -28,6 +28,25 @@ class Runs(unittest.TestCase):
         with self.assertRaises(ValueError):
             encode_runs(b'x' * 257, limit=256)
 
+    def test_periodic_non_run_matches_and_exact_replay(self):
+        prefix = bytes(range(256))
+        for period in (5, 7, 13, 31):
+            suffix = bytes((i * 29 + period) % 256 for i in range(period)) * 512
+            decoded = prefix + suffix
+            with self.subTest(period=period):
+                encoded = encode_runs(decoded)
+                self.assertEqual(decompress(encoded), decoded)
+                self.assertEqual(encode_runs(decoded), encoded)
+                self.assertLess(len(encoded), len(encode_literals(decoded)) // 3)
+
+    def test_random_input_and_long_run_boundary(self):
+        rng = random.Random(170)
+        for n in (256, 257, 260, 511, 1024, 8192):
+            decoded = bytes(range(256)) + bytes(rng.randrange(256) for _ in range(n - 256))
+            with self.subTest(n=n):
+                self.assertEqual(decompress(encode_runs(decoded)), decoded)
+        decoded = bytes(range(256)) + b'Z' * 4096
+        self.assertEqual(decompress(encode_runs(decoded)), decoded)
 
 if __name__ == "__main__":
     unittest.main()

@@ -1856,5 +1856,17 @@
     "native_consumer_abi_verified": false,
     "emulator_tested": false,
     "next": "Verify push workflow run and original job log, repair failures; obtain authenticated main and CPK for native ABI proof."
+  },
+  "crilayla_bounded_distance_20261118": {
+    "status": "PENDING_CI_SYNTHETIC_ONLY",
+    "parent_sha": "c6625cb95730fd521d55a02499543f87c19551fe",
+    "source": "tools/portlib/crilayla_rle.py",
+    "test": "tests/test_crilayla_rle.py",
+    "local_prototype_roundtrips": 49,
+    "github_actions_log_verified": false,
+    "authentic_game_fixture": false,
+    "native_consumer_abi": false,
+    "emulator_tested": false,
+    "next": "Verify HEAD foundation push-run and raw job log, then authenticate compressed game PRM"
   }
 }
