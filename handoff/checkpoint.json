@@ -1845,5 +1845,16 @@
     "authentic_game_tested": false,
     "native_consumer_abi_verified": false,
     "emulator_tested": false
+  },
+  "pc_moveset_selective_restore_20261117": {
+    "status": "PENDING_CI_OFFLINE_EDITOR_ONLY",
+    "parent_sha": "b288d3a7711870231a5b6ba62abebf3267b21f8d",
+    "code_commit": "47bf6df1eda645679745b159716f525e21e1db35",
+    "tests": "tests/test_split_pc_moveset_nsc_manifests.py",
+    "local_tests_executed": false,
+    "github_actions_job_log_verified": false,
+    "native_consumer_abi_verified": false,
+    "emulator_tested": false,
+    "next": "Verify push workflow run and original job log, repair failures; obtain authenticated main and CPK for native ABI proof."
   }
 }
