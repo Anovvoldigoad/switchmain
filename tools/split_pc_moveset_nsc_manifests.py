@@ -8,19 +8,25 @@ from merge_pc_moveset_nsc_manifests import split
 from verify_pc_moveset_nsc_sources import verify
 
 
-def restore(payload, proof, directory):
+def restore(payload, proof, directory, selected_name=None):
     """Publish all validated parts exclusively, or leave no new files."""
     parts = split(payload, proof)
     if not 1 <= len(parts) <= 64:
         raise ValueError("Invalid source count")
+    if selected_name is not None:
+        matches = [(i, item) for i, item in enumerate(parts) if item[0] == selected_name]
+        if len(matches) != 1:
+            raise ValueError("Unknown or ambiguous source name")
+    else:
+        matches = list(enumerate(parts))
     if not directory.is_dir():
         raise ValueError("Output directory must already exist")
-    targets = [directory / f"{i:02d}.nsc.json" for i in range(len(parts))]
+    targets = [directory / f"{i:02d}.nsc.json" for i, _ in matches]
     if any(path.exists() or path.is_symlink() for path in targets):
         raise ValueError("Output already exists")
     created = []
     try:
-        for target, (_, raw) in zip(targets, parts):
+        for target, (_, raw) in zip(targets, (item for _, item in matches)):
             with target.open("xb") as stream:
                 created.append(target)
                 stream.write(raw)
@@ -29,13 +35,13 @@ def restore(payload, proof, directory):
             target.unlink()
         raise
     return [{"name": name, "file": path.name, "sha256": hashlib.sha256(raw).hexdigest()}
-            for (name, raw), path in zip(parts, targets)]
+            for (_, (name, raw)), path in zip(matches, targets)]
 
 
-def restore_verified(payload, proof, sources, directory):
+def restore_verified(payload, proof, sources, directory, selected_name=None):
     """Authenticate original PC sources before publishing converted per-mod indices."""
     verify(payload, proof, sources)
-    return restore(payload, proof, directory)
+    return restore(payload, proof, directory, selected_name)
 
 
 def main():
@@ -45,12 +51,13 @@ def main():
     p.add_argument("--directory", type=Path, required=True)
     p.add_argument("--source", nargs=3, action="append", required=True,
                    metavar=("NAME", "PATH", "SHA256"))
+    p.add_argument("--name", help="Restore only this authenticated source name")
     args = p.parse_args()
     try:
         sources = [(name, Path(path).read_bytes(), sha) for name, path, sha in args.source]
         result = restore_verified(args.merged.read_bytes(),
                                   json.loads(args.evidence.read_bytes()), sources,
-                                  args.directory)
+                                  args.directory, args.name)
     except (OSError, ValueError, KeyError, TypeError, UnicodeError) as exc:
         p.error(str(exc))
     print(json.dumps({"status": "PC_EDITOR_INDEX_ONLY", "restored": result},
