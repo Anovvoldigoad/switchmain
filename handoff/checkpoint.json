@@ -1828,5 +1828,11 @@
     "authentic_game_archive_verified": false,
     "native_consumer_verified": false,
     "emulator_tested": false
+  },
+  "pc_moveset_append_editor_mod_20261117": {
+    "status": "PENDING_CI",
+    "parent_sha": "242616bf101c37c34ae65235733b4cf6b5ff555a",
+    "next": "Inspect HEAD push workflow job raw logs, fix regression if any. No native consumer hook without ownership proof.",
+    "runtime_verified": false
   }
 }

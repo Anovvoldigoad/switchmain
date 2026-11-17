@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply multiple source-authenticated PC editor mod removals/replacements at once.
+"""Apply multiple source-authenticated PC editor mod removals/replacements/additions at once.
 
 This only emits NSC editor index manifests, never game binaries or hooks.
 """
@@ -11,20 +11,26 @@ from merge_pc_moveset_nsc_manifests import merge
 from verify_pc_moveset_nsc_sources import verify
 
 
-def patch_verified(payload, evidence, sources, removals=(), replacements=()):
+def patch_verified(payload, evidence, sources, removals=(), replacements=(), additions=()):
     """Replay old sources, apply all edits simultaneously, replay final sources."""
     verify(payload, evidence, sources)
     removed = list(removals)
     replacement_list = list(replacements)
+    additions = list(additions)
     names = [name for name, _, _ in sources]
+    added_names = [name for name, _, _ in additions]
     changed = removed + [name for name, _, _ in replacement_list]
-    if not changed or len(changed) != len(set(changed)):
+    if (not changed and not additions) or len(changed) != len(set(changed)):
         raise ValueError('Expected nonempty, disjoint mod changes')
+    if (len(added_names) != len(set(added_names)) or
+            any(name in names for name in added_names)):
+        raise ValueError('Added mod name already exists or is duplicated')
     if any(name not in names for name in changed):
         raise ValueError('Unknown mod name')
     replacement_map = {name: (name, raw, sha) for name, raw, sha in replacement_list}
     updated = [replacement_map.get(name, (name, raw, sha))
                for name, raw, sha in sources if name not in removed]
+    updated.extend(additions)
     if not updated:
         raise ValueError('Cannot remove all mods')
     result, proof = merge(updated)
@@ -39,6 +45,8 @@ def main():
     p.add_argument('--source', nargs=3, action='append', required=True,
                    metavar=('NAME', 'PATH', 'SHA256'))
     p.add_argument('--remove', action='append', default=[], metavar='NAME')
+    p.add_argument('--add', nargs=3, action='append', default=[],
+                   metavar=('NAME', 'PATH', 'SHA256'))
     p.add_argument('--replace', nargs=3, action='append', default=[],
                    metavar=('NAME', 'PATH', 'SHA256'))
     p.add_argument('--output', type=Path, required=True)
@@ -49,9 +57,10 @@ def main():
             raise ValueError('Outputs must be distinct and absent')
         sources = [(name, Path(path).read_bytes(), sha) for name, path, sha in args.source]
         replacements = [(name, Path(path).read_bytes(), sha) for name, path, sha in args.replace]
+        additions = [(name, Path(path).read_bytes(), sha) for name, path, sha in args.add]
         result, proof = patch_verified(args.merged.read_bytes(),
                                        json.loads(args.evidence.read_bytes()),
-                                       sources, args.remove, replacements)
+                                       sources, args.remove, replacements, additions)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output_evidence.parent.mkdir(parents=True, exist_ok=True)
         with args.output.open('xb') as f:
@@ -64,7 +73,7 @@ def main():
             raise
     except (OSError, ValueError, KeyError, TypeError, UnicodeError) as exc:
         p.error(str(exc))
-    print('PC_EDITOR_BATCH_PATCHED', len(args.remove) + len(args.replace), 'NOT_SWITCH_ABI')
+    print('PC_EDITOR_BATCH_PATCHED', len(args.remove) + len(args.replace) + len(args.add), 'NOT_SWITCH_ABI')
 
 
 if __name__ == '__main__':
