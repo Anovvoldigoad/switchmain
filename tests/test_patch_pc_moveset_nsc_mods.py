@@ -93,6 +93,40 @@ class BatchPatchTests(unittest.TestCase):
             patch_verified(self.payload, forged, self.sources,
                            additions=[source('d', 'd')])
 
+    def test_reorder_existing_sources_preserves_exact_replay(self):
+        ordered = [self.sources[2], self.sources[0], self.sources[1]]
+        result, proof = patch_verified(self.payload, self.proof, self.sources,
+                                       order=['c', 'a', 'b'])
+        self.assertEqual((result, proof), merge(ordered))
+        self.assertEqual(verify(result, proof, ordered)['source_count'], 3)
+
+    def test_order_after_remove_replace_add(self):
+        replacement = source('b', 'new_b')
+        added = source('d', 'd')
+        ordered = [added, self.sources[2], replacement]
+        result, proof = patch_verified(self.payload, self.proof, self.sources,
+                                       ['a'], [replacement], [added],
+                                       ['d', 'c', 'b'])
+        self.assertEqual((result, proof), merge(ordered))
+        self.assertEqual(verify(result, proof, ordered)['source_count'], 3)
+
+    def test_order_rejects_missing_duplicate_unknown_and_old_names(self):
+        for order in (['a', 'b'], ['a', 'b', 'b'],
+                      ['a', 'b', 'unknown'], ['a', 'b', 'c', 'c']):
+            with self.subTest(order=order), self.assertRaises(ValueError):
+                patch_verified(self.payload, self.proof, self.sources,
+                               order=order)
+        with self.assertRaises(ValueError):
+            patch_verified(self.payload, self.proof, self.sources,
+                           ['a'], order=['a', 'b'])
+
+    def test_order_64_source_boundary(self):
+        extra = [source('m' + str(i), 'e' + str(i)) for i in range(61)]
+        order = [item[0] for item in reversed(self.sources + extra)]
+        result, proof = patch_verified(self.payload, self.proof, self.sources,
+                                       additions=extra, order=order)
+        self.assertEqual((result, proof), merge(list(reversed(self.sources + extra))))
+
     def test_single_source_replacement_boundary(self):
         original = [source('only', 'old')]
         payload, proof = merge(original)

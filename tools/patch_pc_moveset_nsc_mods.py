@@ -11,7 +11,7 @@ from merge_pc_moveset_nsc_manifests import merge
 from verify_pc_moveset_nsc_sources import verify
 
 
-def patch_verified(payload, evidence, sources, removals=(), replacements=(), additions=()):
+def patch_verified(payload, evidence, sources, removals=(), replacements=(), additions=(), order=None):
     """Replay old sources, apply all edits simultaneously, replay final sources."""
     verify(payload, evidence, sources)
     removed = list(removals)
@@ -20,7 +20,7 @@ def patch_verified(payload, evidence, sources, removals=(), replacements=(), add
     names = [name for name, _, _ in sources]
     added_names = [name for name, _, _ in additions]
     changed = removed + [name for name, _, _ in replacement_list]
-    if (not changed and not additions) or len(changed) != len(set(changed)):
+    if (not changed and not additions and order is None) or len(changed) != len(set(changed)):
         raise ValueError('Expected nonempty, disjoint mod changes')
     if (len(added_names) != len(set(added_names)) or
             any(name in names for name in added_names)):
@@ -33,6 +33,12 @@ def patch_verified(payload, evidence, sources, removals=(), replacements=(), add
     updated.extend(additions)
     if not updated:
         raise ValueError('Cannot remove all mods')
+    if order is not None:
+        final_names = [name for name, _, _ in updated]
+        if len(order) != len(final_names) or set(order) != set(final_names) or len(set(order)) != len(order):
+            raise ValueError('Order must be an exact permutation of final mod names')
+        by_name = {name: item for item in updated for name in [item[0]]}
+        updated = [by_name[name] for name in order]
     result, proof = merge(updated)
     verify(result, proof, updated)
     return result, proof
@@ -49,6 +55,7 @@ def main():
                    metavar=('NAME', 'PATH', 'SHA256'))
     p.add_argument('--replace', nargs=3, action='append', default=[],
                    metavar=('NAME', 'PATH', 'SHA256'))
+    p.add_argument('--order', nargs='+', metavar='NAME', help='Exact final mod order')
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--output-evidence', type=Path, required=True)
     args = p.parse_args()
@@ -60,7 +67,7 @@ def main():
         additions = [(name, Path(path).read_bytes(), sha) for name, path, sha in args.add]
         result, proof = patch_verified(args.merged.read_bytes(),
                                        json.loads(args.evidence.read_bytes()),
-                                       sources, args.remove, replacements, additions)
+                                       sources, args.remove, replacements, additions, args.order)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output_evidence.parent.mkdir(parents=True, exist_ok=True)
         with args.output.open('xb') as f:
@@ -73,7 +80,7 @@ def main():
             raise
     except (OSError, ValueError, KeyError, TypeError, UnicodeError) as exc:
         p.error(str(exc))
-    print('PC_EDITOR_BATCH_PATCHED', len(args.remove) + len(args.replace) + len(args.add), 'NOT_SWITCH_ABI')
+    print('PC_EDITOR_BATCH_PATCHED', len(args.remove) + len(args.replace) + len(args.add) + int(args.order is not None), 'NOT_SWITCH_ABI')
 
 
 if __name__ == '__main__':
