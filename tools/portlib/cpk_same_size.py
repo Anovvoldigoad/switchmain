@@ -66,11 +66,11 @@ def validate_many_same_size(source, expected_sha256, replacements, *, limit=256 
 def _validated_changes(source, expected_sha256, replacements, index, canonical_paths, limit):
     changes = []
     for path, packed in replacements.items():
-        if not isinstance(packed, bytes) or path not in index:
+        if not isinstance(packed, (bytes, mmap.mmap)) or path not in index:
             raise ValueError("Unknown member or non-bytes payload")
         entry = index[path]
         start, size = entry["offset"], entry["stored_size"]
-        if not source[start:start + size].startswith(b"CRILAYLA") or not packed.startswith(b"CRILAYLA"):
+        if not source[start:start + size].startswith(b"CRILAYLA") or packed[:8] != b"CRILAYLA":
             raise ValueError("Both streams must be CRILAYLA")
         if len(packed) != size:
             raise ValueError("Stored-size mismatch: relocation forbidden")

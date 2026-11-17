@@ -44,13 +44,29 @@ class PublishCPKTests(unittest.TestCase):
         self.assertFalse(proof["runtime_verified"])
 
     def test_publisher_uses_readonly_mmap_not_full_source_read(self):
-        candidate_bytes = self.candidate.read_bytes()
-        with patch.object(Path, "read_bytes", autospec=True, side_effect=lambda path: (_ for _ in ()).throw(AssertionError("source read_bytes")) if path == self.source else candidate_bytes) as read:
-            # The candidate is read normally; the large source archive must be mapped.
+        with patch.object(Path, "read_bytes", side_effect=AssertionError("full file read forbidden")) as read:
             proof = publish(self.source, self.sha, self.manifest, self.output)
         self.assertEqual(proof["source_sha256"], self.sha)
-        self.assertEqual(read.call_count, 1)
+        read.assert_not_called()
         self.assertTrue(self.output.exists())
+
+    def test_two_mapped_candidates_preserve_unselected_bytes(self):
+        original = fixture([event(14), event(0), event(15)])
+        converted, _ = mark(original)
+        second = "data/spc/second.bin.xfbin"
+        self.source.write_bytes(cpk([
+            (self.path, literal_stream(original)),
+            (second, literal_stream(original)),
+            ("data/untouched", b"original"),
+        ], lambda rows: [row.update({"ExtractSize": len(original)}) for row in rows[:2]]))
+        self.sha = hashlib.sha256(self.source.read_bytes()).hexdigest()
+        candidate2 = self.root / "candidate2.cri"
+        candidate2.write_bytes(literal_stream(converted))
+        self.manifest.write_text(json.dumps({self.path: str(self.candidate), second: str(candidate2)}))
+        proof = publish(self.source, self.sha, self.manifest, self.output)
+        self.assertEqual(len(proof["selected_paths"]), 2)
+        self.assertEqual(read_payload(self.output.read_bytes(), "data/untouched"), b"original")
+        self.assertEqual(proof["output_sha256"], hashlib.sha256(self.output.read_bytes()).hexdigest())
 
     def test_streaming_does_not_construct_full_archive(self):
         with patch("publish_same_size_cpk.validate_many_same_size", wraps=__import__("portlib.cpk_same_size", fromlist=["validate_many_same_size"]).validate_many_same_size) as validate:
