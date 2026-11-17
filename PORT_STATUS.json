@@ -1444,12 +1444,20 @@
   },
   "latest_automation_evidence": "2026-11-17 PENDING_CI: code d238ae7ca128f0cdcada84c9fae1407b76f46429 (parent 5004892d263b9721c1900fb608b59c39a5fb6382) extracts source-SHA/TOC/semantic validation into validate_many_same_size and streams CPK output in 1MiB chunks to fsynced staging, followed by independent on-disk verifier and exclusive hard-link publication. No full archive bytearray/bytes output allocation in publisher; in-memory replace_many_same_size remains for API compatibility. Synthetic publication regression added; local tests NOT executed (container GitHub DNS unavailable), HEAD push Actions run/job/log NOT verified. Prior synthetic CI successes do not cover this HEAD. Original game main/CPK consumer ABI, ownership, lifecycle, async, rollback, precedence and Uzuy remain unresolved. Preserve main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 marked/unmarked and all three release flags false. NEXT inspect HEAD Actions raw job log, repair failures, authenticate game bytes before native hooks.",
   "pc_moveset_append_editor_mod_20261117": {
-    "status": "PENDING_CI_OFFLINE_EDITOR_ONLY",
-    "parent_sha": "242616bf101c37c34ae65235733b4cf6b5ff555a",
+    "status": "OFFLINE_EDITOR_CI_VERIFIED",
+    "code_commit": "5b482d578c193a137dc2729bd77b0191a1b4c821",
     "source": "tools/patch_pc_moveset_nsc_mods.py",
     "test": "tests/test_patch_pc_moveset_nsc_mods.py",
+    "moveset_run": 43995597662,
+    "moveset_job": 133746734402,
+    "foundation_run": 43995597649,
+    "foundation_job": 133746734362,
+    "compressed_run": 43995597642,
+    "compressed_job": 133746734613,
+    "all_completed_success": true,
+    "original_job_logs_read": true,
+    "authentic_game_tested": false,
     "native_consumer_abi_verified": false,
-    "emulator_tested": false,
-    "authentic_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+    "emulator_tested": false
   }
 }

@@ -141,3 +141,6 @@ Continue independently, report actual new HEAD, verified CI, unresolved blockers
 NEXT 2026-11-15: Verify Actions for source-authenticated per-mod removal CLI; require original PC source --source NAME PATH SHA256 ordered entries, test tampering/omission/reorder. No native ABI/Uzuy; preserve all false flags. Parent 65c0bbedda31523e2849a5e10a824a21d0730ad2.
 
 NEXT SLICE: PC MovesetPlus source-authenticated append in patch_pc_moveset_nsc_mods.py, pending HEAD CI. Verify actual push-run job logs and fix failures. No Switch native ABI or Uzuy. Preserve original main SHA, Sakura aura107, Event236 variants and three false release flags.
+
+2026-11-17: PC MovesetPlus source-authenticated append transaction implemented at 5b482d578c193a137dc2729bd77b0191a1b4c821. HEAD push Actions: multi-mod 43995597662 job 133746734402 COMPLETED SUCCESS, raw log 9 patch tests PASS; compressed 43995597642 job 133746734613 COMPLETED SUCCESS; foundation 43995597649 job 133746734362 COMPLETED SUCCESS; original job logs read. Editor-index-only, no native ABI, game archive or Uzuy proof. Release flags remain false.
+NEXT: real consumer native proof from pinned original main; do not mistake editor index or CI for runtime compatibility.

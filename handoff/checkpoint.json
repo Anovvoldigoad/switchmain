@@ -1830,9 +1830,20 @@
     "emulator_tested": false
   },
   "pc_moveset_append_editor_mod_20261117": {
-    "status": "PENDING_CI",
-    "parent_sha": "242616bf101c37c34ae65235733b4cf6b5ff555a",
-    "next": "Inspect HEAD push workflow job raw logs, fix regression if any. No native consumer hook without ownership proof.",
-    "runtime_verified": false
+    "status": "OFFLINE_EDITOR_CI_VERIFIED",
+    "code_commit": "5b482d578c193a137dc2729bd77b0191a1b4c821",
+    "source": "tools/patch_pc_moveset_nsc_mods.py",
+    "test": "tests/test_patch_pc_moveset_nsc_mods.py",
+    "moveset_run": 43995597662,
+    "moveset_job": 133746734402,
+    "foundation_run": 43995597649,
+    "foundation_job": 133746734362,
+    "compressed_run": 43995597642,
+    "compressed_job": 133746734613,
+    "all_completed_success": true,
+    "original_job_logs_read": true,
+    "authentic_game_tested": false,
+    "native_consumer_abi_verified": false,
+    "emulator_tested": false
   }
 }
