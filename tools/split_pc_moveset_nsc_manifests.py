@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 from merge_pc_moveset_nsc_manifests import split
+from verify_pc_moveset_nsc_sources import verify
 
 
 def restore(payload, proof, directory):
@@ -31,15 +32,25 @@ def restore(payload, proof, directory):
             for (name, raw), path in zip(parts, targets)]
 
 
+def restore_verified(payload, proof, sources, directory):
+    """Authenticate original PC sources before publishing converted per-mod indices."""
+    verify(payload, proof, sources)
+    return restore(payload, proof, directory)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--merged", type=Path, required=True)
     p.add_argument("--evidence", type=Path, required=True)
     p.add_argument("--directory", type=Path, required=True)
+    p.add_argument("--source", nargs=3, action="append", required=True,
+                   metavar=("NAME", "PATH", "SHA256"))
     args = p.parse_args()
     try:
-        result = restore(args.merged.read_bytes(),
-                         json.loads(args.evidence.read_bytes()), args.directory)
+        sources = [(name, Path(path).read_bytes(), sha) for name, path, sha in args.source]
+        result = restore_verified(args.merged.read_bytes(),
+                                  json.loads(args.evidence.read_bytes()), sources,
+                                  args.directory)
     except (OSError, ValueError, KeyError, TypeError, UnicodeError) as exc:
         p.error(str(exc))
     print(json.dumps({"status": "PC_EDITOR_INDEX_ONLY", "restored": result},

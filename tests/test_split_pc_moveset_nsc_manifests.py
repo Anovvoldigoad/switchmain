@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from merge_pc_moveset_nsc_manifests import merge
-from split_pc_moveset_nsc_manifests import restore
+from split_pc_moveset_nsc_manifests import restore, restore_verified
 
 
 def fixture():
@@ -21,7 +21,46 @@ def fixture():
     return merge(sources)
 
 
+def source_fixture():
+    sources = []
+    for name, event in (("a", "first"), ("b", "second")):
+        raw = json.dumps({"source_version": "nsc", "events": [
+            {"event_id": event, "function_index": 0}]}).encode()
+        sources.append((name, raw, hashlib.sha256(raw).hexdigest()))
+    return sources
+
+
 class RestoreTests(unittest.TestCase):
+    def test_authenticated_restore_replays_original_bytes(self):
+        sources = source_fixture()
+        payload, proof = merge(sources)
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            result = restore_verified(payload, proof, sources, out)
+            self.assertEqual(len(result), 2)
+            self.assertEqual([name for name, _ in
+                              __import__('merge_pc_moveset_nsc_manifests').split(payload, proof)],
+                             [row["name"] for row in result])
+            self.assertEqual([hashlib.sha256((out / row["file"]).read_bytes()).hexdigest()
+                              for row in result], [row["sha256"] for row in result])
+
+    def test_authenticated_restore_rejects_forged_replay_and_order(self):
+        sources = source_fixture()
+        payload, proof = merge(sources)
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            wrong = [(name, raw, '0' * 64) for name, raw, _ in sources]
+            for candidate in (wrong, list(reversed(sources)),
+                              sources[:1],
+                              [(sources[0][0], sources[0][1] + b' ', sources[0][2]), sources[1]]):
+                with self.subTest(candidate=candidate), self.assertRaises(ValueError):
+                    restore_verified(payload, proof, candidate, out)
+                self.assertEqual(list(out.iterdir()), [])
+            forged = dict(proof, output_sha256='0' * 64)
+            with self.assertRaises(ValueError):
+                restore_verified(payload, forged, sources, out)
+            self.assertEqual(list(out.iterdir()), [])
+
     def test_roundtrip_and_safe_filenames(self):
         payload, proof = fixture()
         with tempfile.TemporaryDirectory() as tmp:
