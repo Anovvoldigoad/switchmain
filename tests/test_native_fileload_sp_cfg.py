@@ -70,6 +70,14 @@ def run(main,out):
     byte_report=trace(byte_load,0x7500)
     assert [a["byte_width"] for a in byte_report["accesses"]]==[8,1]
     assert byte_report["possible_stack_write_read_pairs"]==[]
+    # A store through another base may still alias the SP slot.
+    unknown_alias=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9000083,
+                                      0xf94007e2,0xd65f03c0]))
+    assert trace(unknown_alias,0x7600)["possible_stack_write_read_pairs"]==[]
+    # A load through another base does not overwrite stack memory.
+    unrelated_read=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9400083,
+                                        0xf94007e2,0xd65f03c0]))
+    assert len(trace(unrelated_read,0x7700)["possible_stack_write_read_pairs"])==1
     # A different load displacement must not be matched.
     different=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9400be2,0xd65f03c0]))
     assert trace(different,0x1800)["possible_stack_write_read_pairs"]==[]

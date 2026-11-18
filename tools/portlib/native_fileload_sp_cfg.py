@@ -118,6 +118,15 @@ def trace(data, start, max_states=1024):
             while pending:
                 state,path = pending.popleft()
                 current = access_by_pc.get(state[0])
+                # A store through a non-SP base may alias the tracked stack slot.
+                # Without register provenance its destination is unknown: fail closed.
+                intermediate = decoded.get(state[0])
+                if state != origin and intermediate is not None:
+                    memory_operands = [o for o in intermediate.operands if o.type == ARM64_OP_MEM]
+                    if memory_operands and (intermediate.mnemonic.startswith("st") or
+                            not intermediate.mnemonic.startswith("ld")):
+                        if any(intermediate.reg_name(o.mem.base) != "sp" for o in memory_operands):
+                            continue
                 if (state != origin and current is not None and current["memory_direction"] != "read":
                     # An intervening store (or unclassified memory operation) may kill the value.
                     target_range = slot
