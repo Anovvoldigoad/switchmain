@@ -1980,5 +1980,27 @@
     "consumer_abi_proven": false,
     "uzuy_tested": false,
     "next": "Verify HEAD Foundation push workflow via Actions run API and authentic job logs; trace non-SP base register provenance from pinned original main before relaxing alias barriers."
+  },
+  "fileload_sp_cfg_20261119_syntax_repair": {
+    "state": "PENDING_CI",
+    "parent_sha": "ee1b77baab796b63e2164b5cb39d226f29de59c0",
+    "code_commit": "8ff037581cd49ebfe50be905876687c8e61127e9",
+    "source": "tools/portlib/native_fileload_sp_cfg.py",
+    "failing_run": 44390924739,
+    "failing_job": 135108023312,
+    "failure": "Python SyntaxError missing ) at line 130, authentic job log inspected",
+    "foundation_run": 44419953534,
+    "foundation_job": 135209989291,
+    "foundation_log_verified": false,
+    "moveset_run": 44419953656,
+    "moveset_job": 135209988828,
+    "moveset_log_verified": true,
+    "compressed_run": 44419953633,
+    "compressed_job": 135209989361,
+    "compressed_log_verified": true,
+    "consumer_abi_verified": false,
+    "ownership_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect Foundation raw log for 44419953534; if pass then trace register provenance from SHA-pinned main; do not hook."
   }
 }
