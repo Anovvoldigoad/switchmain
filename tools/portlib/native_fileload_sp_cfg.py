@@ -127,7 +127,7 @@ def trace(data, start, max_states=1024):
                             not intermediate.mnemonic.startswith("ld")):
                         if any(intermediate.reg_name(o.mem.base) != "sp" for o in memory_operands):
                             continue
-                if (state != origin and current is not None and current["memory_direction"] != "read":
+                if (state != origin and current is not None and current["memory_direction"] != "read"):
                     # An intervening store (or unclassified memory operation) may kill the value.
                     target_range = slot
                     observed_range = current["entry_sp_relative_byte_range"]
