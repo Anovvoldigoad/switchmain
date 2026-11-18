@@ -67,8 +67,13 @@ def straight_line_sp_prefix(data, start):
         elif ins.writeback:
             for operand in ins.operands:
                 if operand.type == ARM64_OP_MEM and ins.reg_name(operand.mem.base) == "sp":
-                    return {"stop_pc": hex(ins.address), "stop_reason": "sp_writeback_unresolved",
-                            "events": events, "final_sp_delta": delta}
+                    if "]!" in ins.op_str:
+                        delta += operand.mem.disp
+                    elif "], #" in ins.op_str and ins.operands[-1].type == ARM64_OP_IMM:
+                        delta += ins.operands[-1].imm
+                    else:
+                        return {"stop_pc": hex(ins.address), "stop_reason": "sp_writeback_unresolved",
+                                "events": events, "final_sp_delta": delta}
         elif ins.operands and ins.operands[0].type == ARM64_OP_REG and ins.reg_name(ins.operands[0].reg) == "sp":
             return {"stop_pc": hex(ins.address), "stop_reason": "unresolved_sp_write",
                     "events": events, "final_sp_delta": delta}
@@ -91,6 +96,7 @@ def inspect(nso):
             "window_end_exclusive":hex(END),
             "window_sha256":hashlib.sha256(window).hexdigest(),
             "accesses":census(window,ENTRY),
+            "straight_line_sp_prefix":straight_line_sp_prefix(window,ENTRY),
             "stack_pointer_delta_proven":False,
             "stack_slot_dataflow_proven":False,
             "ownership_lifecycle_async_destructor_proven":False,
