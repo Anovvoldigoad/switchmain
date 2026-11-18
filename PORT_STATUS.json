@@ -1469,13 +1469,15 @@
     "emulator_tested": false
   },
   "fileload_cfg_path_witness_20261118": {
-    "state": "PENDING_CI",
+    "state": "VERIFIED_CI_STATIC_ONLY",
     "code_commit": "cef593fa0d2369ca16623722e817c16f35c2696b",
-    "head_foundation_run": 44334315953,
-    "head_job_id": null,
-    "raw_job_log_inspected": false,
+    "head_foundation_run": 44334444138,
+    "head_job_id": 134907198707,
+    "raw_job_log_inspected": true,
     "authentic_main_runtime_proven": false,
     "consumer_abi_proven": false,
-    "emulator_tested": false
+    "emulator_tested": false,
+    "moveset_run": 44334444289,
+    "compressed_run": 44334444230
   }
 }
