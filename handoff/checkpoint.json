@@ -1,6 +1,26 @@
 {
-  "fileload_sp_cfg_20261118": {"state":"VERIFIED_CI_STATIC_ONLY","foundation_run_verified":44294505825,"foundation_job_verified":134767889692,"raw_job_log_inspected":true,"cfg_reachable_states":166,"cfg_sp_accesses":10,"compressed_run_verified":44294505944,"compressed_job_verified":134767889225,"moveset_run_verified":44294505872,"moveset_job_verified":134767888993,"parent_sha":"93f12b34ea4ab167e03a9e9d97395d9d3ae3fa15","code_commit":"b9bed4840db45d1a0d0eb725fa0a41ce768a5179","foundation_run":44294432602,"source":"tools/portlib/native_fileload_sp_cfg.py","test":"tests/test_native_fileload_sp_cfg.py","consumer_abi_verified":false,"ownership_verified":false,"uzuy_verified":false,"next":"Trace authentic consumer object and ownership provenance from original main and original CPK; no hook until ABI/lifecycle proven."},
-"schema_version": 1,
+  "fileload_sp_cfg_20261118": {
+    "state": "VERIFIED_CI_STATIC_ONLY",
+    "foundation_run_verified": 44294505825,
+    "foundation_job_verified": 134767889692,
+    "raw_job_log_inspected": true,
+    "cfg_reachable_states": 166,
+    "cfg_sp_accesses": 10,
+    "compressed_run_verified": 44294505944,
+    "compressed_job_verified": 134767889225,
+    "moveset_run_verified": 44294505872,
+    "moveset_job_verified": 134767888993,
+    "parent_sha": "93f12b34ea4ab167e03a9e9d97395d9d3ae3fa15",
+    "code_commit": "b9bed4840db45d1a0d0eb725fa0a41ce768a5179",
+    "foundation_run": 44294432602,
+    "source": "tools/portlib/native_fileload_sp_cfg.py",
+    "test": "tests/test_native_fileload_sp_cfg.py",
+    "consumer_abi_verified": false,
+    "ownership_verified": false,
+    "uzuy_verified": false,
+    "next": "Trace authentic consumer object and ownership provenance from original main and original CPK; no hook until ABI/lifecycle proven."
+  },
+  "schema_version": 1,
   "project": "NSC_FULL_MODDINGAPI_SWITCH_170",
   "goal": "Full NSC PC ModdingAPI port to Switch Connections 1.70; new character slots; Android emulator workflow.",
   "repository": "https://github.com/Anovvoldigoad/switchmain",
@@ -1880,5 +1900,17 @@
     "moveset_run": 44179052312,
     "moveset_job": 134378141078,
     "tests": "5/5 CRILAYLA encoder tests, foundation full workflow completed success"
+  },
+  "fileload_sp_pair_candidates_20261118": {
+    "state": "PENDING_CI",
+    "parent_sha": "0396cef291485e617db4f108d13edda60287cdbb",
+    "source": "tools/portlib/native_fileload_sp_cfg.py",
+    "test": "tests/test_native_fileload_sp_cfg.py",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "same_path_proven": false,
+    "ownership_proven": false,
+    "consumer_abi_proven": false,
+    "uzuy_verified": false,
+    "next": "Inspect HEAD Foundation authentic job log; then path-sensitive provenance."
   }
 }

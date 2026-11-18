@@ -18,6 +18,14 @@ def run(main,out):
     r=trace(linear,0x1000)
     assert len(r["accesses"])==1
     assert r["accesses"][0]["entry_sp_relative_offsets"]==[-8]
+    # A store followed by a load of the same entry-SP-relative address is a candidate only.
+    pair=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf94007e2,0xd65f03c0]))
+    pairs=trace(pair,0x1800)["possible_stack_write_read_pairs"]
+    assert len(pairs)==1 and pairs[0]["entry_sp_relative_offset"]==-8
+    assert not pairs[0]["same_executed_path_proven"] and not pairs[0]["register_value_proven"]
+    # A different load displacement must not be matched.
+    different=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9400be2,0xd65f03c0]))
+    assert trace(different,0x1800)["possible_stack_write_read_pairs"]==[]
     # CBZ X0,+12 bypasses ADD SP,#16, creating two distinct SP offsets.
     fork=b"".join(map(word,[0xd10043ff,0xb4000060,0x910043ff,
                            0x14000002,0xd503201f,0xf90007e1,0xd65f03c0]))
@@ -27,6 +35,7 @@ def run(main,out):
     assert len(r["accesses"])==1
     assert r["accesses"][0]["path_ambiguous"]
     assert r["accesses"][0]["observed_sp_deltas"]==[-16,0]
+    assert r["possible_stack_write_read_pairs"]==[]
     # A call is a hard evidence barrier, not assumed to preserve SP.
     call=b"".join(map(word,[0xd10043ff,0x94000002,0xf90007e1,0xd65f03c0]))
     r=trace(call,0x3000)

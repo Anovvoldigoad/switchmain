@@ -67,12 +67,29 @@ def trace(data, start, max_states=1024):
             offsets = sorted({v+op.mem.disp for v in values if v is not None})
             ambiguous = None in values or len(offsets) != 1
             accesses.append({"pc":hex(pc),"word_le":data[pc-start:pc-start+4].hex(),
+                            "memory_direction": "read" if ins.mnemonic.startswith("ld") else ("write" if ins.mnemonic.startswith("st") else "unknown"),
                             "sp_displacement":op.mem.disp,
                             "entry_sp_relative_offsets":offsets if not ambiguous else [],
                             "path_ambiguous":ambiguous,
                             "observed_sp_deltas":sorted(v for v in values if v is not None),
                             "unknown_path":None in values})
-    return {"reachable_states":len(visited),"reachable_instructions":len(at),
+    # Address equality is only a possible def/use witness, never a path or lifetime proof.
+    candidates = []
+    for writer in accesses:
+        if writer["memory_direction"] != "write" or writer["path_ambiguous"]:
+            continue
+        for reader in accesses:
+            if (reader["memory_direction"] != "read" or reader["path_ambiguous"]
+                    or int(reader["pc"], 16) <= int(writer["pc"], 16)):
+                continue
+            if writer["entry_sp_relative_offsets"] == reader["entry_sp_relative_offsets"]:
+                candidates.append({"writer_pc":writer["pc"], "reader_pc":reader["pc"],
+                                   "entry_sp_relative_offset":writer["entry_sp_relative_offsets"][0],
+                                   "same_executed_path_proven":False,
+                                   "register_value_proven":False})
+    return {"possible_stack_write_read_pairs":candidates,
+            "candidate_pairs_are_not_dataflow_proof":True,
+            "reachable_states":len(visited),"reachable_instructions":len(at),
             "accesses":accesses,"call_barriers":sorted(set(barriers)),
             "out_of_window_edges":exits[:32],"out_of_window_edges_truncated":len(exits)>32,
             "consumer_abi_proven":False,"stack_ownership_proven":False,
