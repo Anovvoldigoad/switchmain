@@ -62,6 +62,22 @@ def trace(data, start, max_states=1024):
             successor = (target,next_delta)
             transitions[(pc,delta)].append((kind,successor))
             queue.append(successor)
+    def byte_width(ins):
+        """Width of a recognized single/pair stack transfer; unknown is not proof."""
+        if not (ins.mnemonic.startswith("ld") or ins.mnemonic.startswith("st")):
+            return None
+        regs = [ins.reg_name(o.reg) for o in ins.operands if o.type == ARM64_OP_REG]
+        if not regs:
+            return None
+        sizes = {"w": 4, "x": 8, "s": 4, "d": 8, "q": 16}
+        widths = [sizes.get(r[0]) for r in regs]
+        if any(w is None for w in widths):
+            return None
+        if ins.mnemonic.startswith(("ldp", "stp")) and len(widths) == 2 and widths[0] == widths[1]:
+            return sum(widths)
+        if len(widths) == 1:
+            return widths[0]
+        return None
     accesses = []
     for pc,values in sorted(at.items()):
         ins = decoded[pc]
@@ -70,7 +86,12 @@ def trace(data, start, max_states=1024):
                 continue
             offsets = sorted({v+op.mem.disp for v in values if v is not None})
             ambiguous = None in values or len(offsets) != 1
-            accesses.append({"pc":hex(pc),"word_le":data[pc-start:pc-start+4].hex(),
+            width = byte_width(ins)
+            byte_range = ([offsets[0], offsets[0]+width]
+                          if not ambiguous and width is not None else None)
+            accesses.append({"byte_width":width,
+                            "entry_sp_relative_byte_range":byte_range,
+                            "pc":hex(pc),"word_le":data[pc-start:pc-start+4].hex(),
                             "memory_direction": "read" if ins.mnemonic.startswith("ld") else ("write" if ins.mnemonic.startswith("st") else "unknown"),
                             "sp_displacement":op.mem.disp,
                             "entry_sp_relative_offsets":offsets if not ambiguous else [],
@@ -89,7 +110,10 @@ def trace(data, start, max_states=1024):
                 current = access_by_pc.get(state[0])
                 if (state != origin and current is not None and current["memory_direction"] != "read":
                     # An intervening store (or unclassified memory operation) may kill the value.
-                    if (current["path_ambiguous"] or slot in current["entry_sp_relative_offsets"]
+                    target_range = slot
+                    observed_range = current["entry_sp_relative_byte_range"]
+                    if (current["path_ambiguous"] or observed_range is None
+                            or max(target_range[0], observed_range[0]) < min(target_range[1], observed_range[1])
                             or current["memory_direction"] == "unknown"):
                         continue
                 for kind,nxt in transitions.get(state,()):
@@ -105,14 +129,16 @@ def trace(data, start, max_states=1024):
     # CFG reachability proves only a possible path, not actual execution or dataflow.
     candidates = []
     for writer in accesses:
-        if writer["memory_direction"] != "write" or writer["path_ambiguous"]:
+        if (writer["memory_direction"] != "write" or writer["path_ambiguous"]
+                or writer["entry_sp_relative_byte_range"] is None):
             continue
         for reader in accesses:
             if (reader["memory_direction"] != "read" or reader["path_ambiguous"]
+                    or reader["entry_sp_relative_byte_range"] is None
                     or int(reader["pc"], 16) <= int(writer["pc"], 16)):
                 continue
-            if writer["entry_sp_relative_offsets"] == reader["entry_sp_relative_offsets"]:
-                witness = path_witness(int(writer["pc"],16),int(reader["pc"],16),writer["entry_sp_relative_offsets"][0])
+            if writer["entry_sp_relative_byte_range"] == reader["entry_sp_relative_byte_range"]:
+                witness = path_witness(int(writer["pc"],16),int(reader["pc"],16),writer["entry_sp_relative_byte_range"])
                 if witness is None:
                     continue
                 candidates.append({"writer_pc":writer["pc"], "reader_pc":reader["pc"],
@@ -120,6 +146,7 @@ def trace(data, start, max_states=1024):
                                    "cfg_path_witness":witness,
                                    "same_executed_path_proven":False,
                                    "register_value_proven":False,
+                                   "intervening_overlapping_write_excluded_on_witness":True,
                                    "intervening_same_slot_write_excluded_on_witness":True})
     return {"possible_stack_write_read_pairs":candidates,
             "candidate_pairs_are_not_dataflow_proof":True,
