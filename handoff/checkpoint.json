@@ -1912,5 +1912,21 @@
     "consumer_abi_proven": false,
     "uzuy_verified": false,
     "next": "Inspect HEAD Foundation authentic job log; then path-sensitive provenance."
+  },
+  "fileload_cfg_path_witness_20261118": {
+    "state": "PENDING_CI",
+    "parent_sha": "436807c8510cf430b0ffa8e46ff013ac4426de7c",
+    "code_commit": "cef593fa0d2369ca16623722e817c16f35c2696b",
+    "source": "tools/portlib/native_fileload_sp_cfg.py",
+    "test": "tests/test_native_fileload_sp_cfg.py",
+    "previous_foundation_run": 44312970061,
+    "previous_foundation_job": 134831603454,
+    "previous_raw_log_inspected": true,
+    "head_foundation_run": 44334315953,
+    "head_foundation_log_inspected": false,
+    "consumer_abi_verified": false,
+    "ownership_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect HEAD Foundation job log, repair if needed; then path-sensitive register provenance, no runtime hook."
   }
 }

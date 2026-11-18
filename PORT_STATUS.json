@@ -1467,5 +1467,15 @@
     "authentic_game_tested": false,
     "native_consumer_abi_verified": false,
     "emulator_tested": false
+  },
+  "fileload_cfg_path_witness_20261118": {
+    "state": "PENDING_CI",
+    "code_commit": "cef593fa0d2369ca16623722e817c16f35c2696b",
+    "head_foundation_run": 44334315953,
+    "head_job_id": null,
+    "raw_job_log_inspected": false,
+    "authentic_main_runtime_proven": false,
+    "consumer_abi_proven": false,
+    "emulator_tested": false
   }
 }
