@@ -55,6 +55,21 @@ def run(main,out):
     adjacent_pairs=trace(adjacent,0x7300)["possible_stack_write_read_pairs"]
     assert len(adjacent_pairs)==1 and adjacent_pairs[0]["writer_pc"]=="0x7304"
     assert adjacent_pairs[0]["intervening_overlapping_write_excluded_on_witness"]
+    # Byte-width semantics must follow the transfer opcode, not the X/W
+    # destination register width (e.g. LDRSW reads four bytes into X).
+    narrow=b"".join(map(word,[0xd10043ff,0xf90007e1,0xb9400fe2,
+                                  0xd65f03c0]))
+    widths=trace(narrow,0x7400)["accesses"]
+    assert [a["byte_width"] for a in widths]==[8,4]
+    assert widths[1]["entry_sp_relative_byte_range"]==[-4,0]
+    assert trace(narrow,0x7400)["possible_stack_write_read_pairs"]==[]
+    # A byte load from the same start address cannot establish an
+    # eight-byte stored value's provenance.
+    byte_load=b"".join(map(word,[0xd10043ff,0xf90007e1,0x394023e2,
+                                     0xd65f03c0]))
+    byte_report=trace(byte_load,0x7500)
+    assert [a["byte_width"] for a in byte_report["accesses"]]==[8,1]
+    assert byte_report["possible_stack_write_read_pairs"]==[]
     # A different load displacement must not be matched.
     different=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9400be2,0xd65f03c0]))
     assert trace(different,0x1800)["possible_stack_write_read_pairs"]==[]

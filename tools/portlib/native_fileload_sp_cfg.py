@@ -69,13 +69,23 @@ def trace(data, start, max_states=1024):
         regs = [ins.reg_name(o.reg) for o in ins.operands if o.type == ARM64_OP_REG]
         if not regs:
             return None
+        # Memory width is not always the destination register width:
+        # LDRB/LDRH/LDRSW sign/zero extend after reading 1/2/4 bytes.
+        # Treat unsupported variants as unknown rather than inventing aliases.
+        mnemonic = ins.mnemonic.lower()
+        if mnemonic in ("ldrb", "ldrsb", "strb", "ldurb", "ldursb"):
+            return 1 if len(regs) == 1 else None
+        if mnemonic in ("ldrh", "ldrsh", "strh", "ldurh", "ldursh"):
+            return 2 if len(regs) == 1 else None
+        if mnemonic in ("ldrsw", "ldursw"):
+            return 4 if len(regs) == 1 else None
         sizes = {"w": 4, "x": 8, "s": 4, "d": 8, "q": 16}
         widths = [sizes.get(r[0]) for r in regs]
         if any(w is None for w in widths):
             return None
-        if ins.mnemonic.startswith(("ldp", "stp")) and len(widths) == 2 and widths[0] == widths[1]:
+        if mnemonic in ("ldp", "stp", "ldnp", "stnp") and len(widths) == 2 and widths[0] == widths[1]:
             return sum(widths)
-        if len(widths) == 1:
+        if mnemonic in ("ldr", "str", "ldur", "stur", "ldtr", "sttr") and len(widths) == 1:
             return widths[0]
         return None
     accesses = []
