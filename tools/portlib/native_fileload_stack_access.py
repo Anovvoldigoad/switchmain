@@ -35,6 +35,49 @@ def census(data, start):
                         "object_identity_proven":False})
     return out
 
+def straight_line_sp_prefix(data, start):
+    """Track SP-relative byte offsets only until first control-transfer instruction.
+
+    This is a syntactic prefix, not a path-sensitive alias/ownership proof.
+    Unrecognized SP writers stop the trace rather than fabricate an offset.
+    """
+    if len(data) % 4:
+        raise ValueError("Unaligned ARM64 instruction window")
+    cs = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
+    cs.detail = True
+    delta = 0
+    events = []
+    for off in range(0, len(data), 4):
+        insns = list(cs.disasm(data[off:off+4], start+off))
+        if len(insns) != 1 or insns[0].size != 4:
+            raise ValueError("Undecodable instruction at " + hex(start+off))
+        ins = insns[0]
+        mnemonic = ins.mnemonic
+        if mnemonic in ("bl", "blr", "br", "ret", "b", "cbz", "cbnz", "tbz", "tbnz") or mnemonic.startswith("b."):
+            return {"stop_pc": hex(ins.address), "stop_reason": "control_transfer",
+                    "events": events, "final_sp_delta": delta}
+        before = delta
+        if mnemonic in ("add", "sub") and ins.op_str.startswith("sp, sp, #"):
+            operands = ins.operands
+            if len(operands) != 3 or operands[2].type != 2:
+                return {"stop_pc": hex(ins.address), "stop_reason": "unresolved_sp_write",
+                        "events": events, "final_sp_delta": delta}
+            amount = operands[2].imm
+            delta += amount if mnemonic == "add" else -amount
+        elif ins.writeback:
+            for operand in ins.operands:
+                if operand.type == ARM64_OP_MEM and ins.reg_name(operand.mem.base) == "sp":
+                    return {"stop_pc": hex(ins.address), "stop_reason": "sp_writeback_unresolved",
+                            "events": events, "final_sp_delta": delta}
+        elif ins.operands and ins.reg_name(ins.operands[0].reg) == "sp" if ins.operands and ins.operands[0].type == 1 else False:
+            return {"stop_pc": hex(ins.address), "stop_reason": "unresolved_sp_write",
+                    "events": events, "final_sp_delta": delta}
+        events.append({"pc": hex(ins.address), "word_le": data[off:off+4].hex(),
+                       "sp_delta_before": before, "sp_delta_after": delta})
+    return {"stop_pc": hex(start+len(data)), "stop_reason": "window_end",
+            "events": events, "final_sp_delta": delta}
+
+
 def inspect(nso):
     sha = hashlib.sha256(nso).hexdigest()
     if sha != MAIN_SHA256:
