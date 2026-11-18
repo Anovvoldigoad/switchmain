@@ -75,6 +75,8 @@ jobs:
         run: python tests/test_native_fileload_corrected_entry.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Trace verified native FileLoad status5 argument branches and actual setter code
         run: python tests/test_native_fileload_status.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Trace SHA-pinned FileLoad CFG SP offsets conservatively (no consumer ABI)
+        run: python tests/test_native_fileload_sp_cfg.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Trace corrected original FileLoad entry CFG to native FileOpen and status5 callsites
         run: python tests/test_native_fileload_corridor_cfg.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Verify original FileOpen W0 zero-result branch into status5 static corridors
