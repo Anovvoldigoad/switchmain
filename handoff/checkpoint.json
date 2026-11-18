@@ -1934,5 +1934,11 @@
     "compressed_run": 44334444230,
     "compressed_job": 134907199446,
     "all_three_logs_inspected": true
+  },
+  "latest_fileload_stack_overwrite": {
+    "status": "pending_ci",
+    "parent": "1df62942b111f459db4283549e6ca737d10db44d",
+    "evidence": "synthetic regression, CI pending",
+    "next": "Inspect HEAD Foundation raw job log; do not infer consumer ABI"
   }
 }

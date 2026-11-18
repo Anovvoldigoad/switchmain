@@ -1479,5 +1479,9 @@
     "emulator_tested": false,
     "moveset_run": 44334444289,
     "compressed_run": 44334444230
+  },
+  "latest_fileload_stack_overwrite": {
+    "status": "pending_ci",
+    "scope": "read-only CFG path candidate filtering; no consumer ABI"
   }
 }

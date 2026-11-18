@@ -77,7 +77,8 @@ def trace(data, start, max_states=1024):
                             "path_ambiguous":ambiguous,
                             "observed_sp_deltas":sorted(v for v in values if v is not None),
                             "unknown_path":None in values})
-    def path_witness(writer_pc, reader_pc):
+    access_by_pc = {int(a["pc"],16): a for a in accesses}
+    def path_witness(writer_pc, reader_pc, slot):
         """Find a CFG state path, excluding opaque calls and unknown SP."""
         starts = [(pc,delta) for pc,delta in visited if pc == writer_pc and delta is not None]
         for origin in sorted(starts):
@@ -85,6 +86,12 @@ def trace(data, start, max_states=1024):
             seen = {origin}
             while pending:
                 state,path = pending.popleft()
+                current = access_by_pc.get(state[0])
+                if (state != origin and current is not None and current["memory_direction"] != "read":
+                    # An intervening store (or unclassified memory operation) may kill the value.
+                    if (current["path_ambiguous"] or slot in current["entry_sp_relative_offsets"]
+                            or current["memory_direction"] == "unknown"):
+                        continue
                 for kind,nxt in transitions.get(state,()):
                     if (kind.startswith("fallthrough_after_") or nxt[1] is None
                             or nxt in seen):
@@ -105,14 +112,15 @@ def trace(data, start, max_states=1024):
                     or int(reader["pc"], 16) <= int(writer["pc"], 16)):
                 continue
             if writer["entry_sp_relative_offsets"] == reader["entry_sp_relative_offsets"]:
-                witness = path_witness(int(writer["pc"],16),int(reader["pc"],16))
+                witness = path_witness(int(writer["pc"],16),int(reader["pc"],16),writer["entry_sp_relative_offsets"][0])
                 if witness is None:
                     continue
                 candidates.append({"writer_pc":writer["pc"], "reader_pc":reader["pc"],
                                    "entry_sp_relative_offset":writer["entry_sp_relative_offsets"][0],
                                    "cfg_path_witness":witness,
                                    "same_executed_path_proven":False,
-                                   "register_value_proven":False})
+                                   "register_value_proven":False,
+                                   "intervening_same_slot_write_excluded_on_witness":True})
     return {"possible_stack_write_read_pairs":candidates,
             "candidate_pairs_are_not_dataflow_proof":True,
             "reachable_states":len(visited),"reachable_instructions":len(at),

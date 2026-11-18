@@ -35,6 +35,15 @@ def run(main,out):
     joined=trace(join,0x5000)["possible_stack_write_read_pairs"]
     assert len(joined)==1
     assert [int(s["pc"],16) for s in joined[0]["cfg_path_witness"]]==[0x5008,0x500c,0x5014]
+    # Intervening same-slot store kills the first writer on the only path.
+    overwrite=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf90007e3,0xf94007e2,0xd65f03c0]))
+    overwritten=trace(overwrite,0x7000)["possible_stack_write_read_pairs"]
+    assert [(x["writer_pc"],x["reader_pc"]) for x in overwritten]==[("0x7008","0x700c")]
+    assert overwritten[0]["intervening_same_slot_write_excluded_on_witness"]
+    # A write to a different slot does not kill the candidate.
+    other_slot=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9000be3,0xf94007e2,0xd65f03c0]))
+    unaffected=trace(other_slot,0x7100)["possible_stack_write_read_pairs"]
+    assert len(unaffected)==1 and unaffected[0]["writer_pc"]=="0x7104"
     # A different load displacement must not be matched.
     different=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9400be2,0xd65f03c0]))
     assert trace(different,0x1800)["possible_stack_write_read_pairs"]==[]
