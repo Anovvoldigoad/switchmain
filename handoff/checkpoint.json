@@ -1963,5 +1963,22 @@
     "ownership_verified": false,
     "uzuy_verified": false,
     "next": "Inspect authentic HEAD Foundation job log and test narrow transfer semantics before PASS."
+  },
+  "fileload_unknown_base_alias_20261119": {
+    "status": "PENDING_CI_STATIC_ONLY",
+    "parent_sha": "a5cb045ec0ed6f700f8df20037be137a0944aeb1",
+    "code_commit": "606396709b4a1a78c8a1b07d2ac62823c2415a01",
+    "feature": "Fail closed on unknown-base intervening stores which may alias tracked SP stack slot",
+    "tests": [
+      "unknown-base store kills candidate",
+      "unknown-base load does not kill candidate"
+    ],
+    "local_tests": "NOT_RUN_CAPSTONE_UNAVAILABLE",
+    "ci_run": null,
+    "ci_job": null,
+    "authentic_job_log_inspected": false,
+    "consumer_abi_proven": false,
+    "uzuy_tested": false,
+    "next": "Verify HEAD Foundation push workflow via Actions run API and authentic job logs; trace non-SP base register provenance from pinned original main before relaxing alias barriers."
   }
 }

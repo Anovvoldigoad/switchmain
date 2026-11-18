@@ -1491,5 +1491,11 @@
     "code_commit": "e629afe31fccb8230d5111775cd1614a4396ffbc",
     "test_commit": "dd7632afde07a6952765128ffefeeef6fb50d4da",
     "consumer_abi_proven": false
+  },
+  "fileload_unknown_base_alias_20261119": {
+    "status": "PENDING_CI_STATIC_ONLY",
+    "code_commit": "606396709b4a1a78c8a1b07d2ac62823c2415a01",
+    "consumer_abi_proven": false,
+    "emulator_tested": false
   }
 }
