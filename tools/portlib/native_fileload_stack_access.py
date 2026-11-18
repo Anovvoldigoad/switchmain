@@ -1,7 +1,7 @@
 """Read-only exact-main FileLoad stack memory operand census (NOT ownership proof)."""
 import hashlib
 from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM
-from capstone.arm64 import ARM64_OP_MEM
+from capstone.arm64 import ARM64_OP_MEM, ARM64_OP_REG, ARM64_OP_IMM
 from .native_cpk_graph import MAIN_SHA256
 from .native_fileload_corridor_cfg import ENTRY, END
 from .nso_profile import segments
@@ -59,7 +59,7 @@ def straight_line_sp_prefix(data, start):
         before = delta
         if mnemonic in ("add", "sub") and ins.op_str.startswith("sp, sp, #"):
             operands = ins.operands
-            if len(operands) != 3 or operands[2].type != 2:
+            if len(operands) != 3 or operands[2].type != ARM64_OP_IMM:
                 return {"stop_pc": hex(ins.address), "stop_reason": "unresolved_sp_write",
                         "events": events, "final_sp_delta": delta}
             amount = operands[2].imm
@@ -69,7 +69,7 @@ def straight_line_sp_prefix(data, start):
                 if operand.type == ARM64_OP_MEM and ins.reg_name(operand.mem.base) == "sp":
                     return {"stop_pc": hex(ins.address), "stop_reason": "sp_writeback_unresolved",
                             "events": events, "final_sp_delta": delta}
-        elif ins.operands and ins.reg_name(ins.operands[0].reg) == "sp" if ins.operands and ins.operands[0].type == 1 else False:
+        elif ins.operands and ins.operands[0].type == ARM64_OP_REG and ins.reg_name(ins.operands[0].reg) == "sp":
             return {"stop_pc": hex(ins.address), "stop_reason": "unresolved_sp_write",
                     "events": events, "final_sp_delta": delta}
         events.append({"pc": hex(ins.address), "word_le": data[off:off+4].hex(),
