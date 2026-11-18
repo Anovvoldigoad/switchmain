@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
-from portlib.native_fileload_stack_access import census,inspect
+from portlib.native_fileload_stack_access import census,inspect,straight_line_sp_prefix
 from portlib.native_cpk_graph import MAIN_SHA256
 
 def run(main,out):
@@ -21,6 +21,19 @@ def run(main,out):
         pass
     else:
         raise AssertionError("Accepted truncated ARM64 instruction")
+    # STP X29,X30,[SP,#-16]!; SUB SP,SP,#32; ADD SP,SP,#16; RET
+    prefix=straight_line_sp_prefix(bytes.fromhex(
+        "fd7bbfa9ff8300d1ff430091c0035fd6"),0x2000)
+    assert prefix["stop_reason"]=="control_transfer"
+    assert prefix["stop_pc"]=="0x200c"
+    assert [x["sp_delta_after"] for x in prefix["events"]]==[-16,-48,-32]
+    assert prefix["final_sp_delta"]==-32
+    try:
+        straight_line_sp_prefix(bytes.fromhex("ff8300d1")[:-1],0x2000)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Accepted partial SP instruction")
     raw=main.read_bytes()
     report=inspect(raw)
     assert hashlib.sha256(raw).hexdigest()==MAIN_SHA256
@@ -29,6 +42,7 @@ def run(main,out):
         "ownership_lifecycle_async_destructor_proven",
         "native_consumer_abi_proven","hook_added","Uzuy_gameplay_verified"))
     assert all(not a["object_identity_proven"] for a in report["accesses"])
+    assert report["straight_line_sp_prefix"]["stop_reason"] in ("control_transfer","sp_writeback_unresolved","unresolved_sp_write","window_end")
     mutated=bytearray(raw)
     mutated[255]^=1
     try:
