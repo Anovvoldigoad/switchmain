@@ -23,6 +23,18 @@ def run(main,out):
     pairs=trace(pair,0x1800)["possible_stack_write_read_pairs"]
     assert len(pairs)==1 and pairs[0]["entry_sp_relative_offset"]==-8
     assert not pairs[0]["same_executed_path_proven"] and not pairs[0]["register_value_proven"]
+    assert [int(s["pc"],16) for s in pairs[0]["cfg_path_witness"]]==[0x1804,0x1808]
+    # Exclusive branches: writer at +8 and reader at +16 cannot share a path.
+    exclusive=b"".join(map(word,[0xd10043ff,0xb4000060,0xf90007e1,
+                                 0x14000003,0xf94007e2,0x14000002,
+                                 0xd503201f,0xd65f03c0]))
+    assert trace(exclusive,0x4000)["possible_stack_write_read_pairs"]==[]
+    # Both branches reach the reader; only the writer branch witnesses a pair.
+    join=b"".join(map(word,[0xd10043ff,0xb4000060,0xf90007e1,
+                            0x14000002,0xd503201f,0xf94007e2,0xd65f03c0]))
+    joined=trace(join,0x5000)["possible_stack_write_read_pairs"]
+    assert len(joined)==1
+    assert [int(s["pc"],16) for s in joined[0]["cfg_path_witness"]]==[0x5008,0x500c,0x5014]
     # A different load displacement must not be matched.
     different=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9400be2,0xd65f03c0]))
     assert trace(different,0x1800)["possible_stack_write_read_pairs"]==[]
@@ -41,6 +53,10 @@ def run(main,out):
     r=trace(call,0x3000)
     assert r["call_barriers"]==["0x3004"]
     assert r["accesses"][0]["unknown_path"]
+    # A call between writer and reader is opaque; no cross-call witness.
+    opaque=b"".join(map(word,[0xd10043ff,0xf90007e1,0x94000002,
+                              0xf94007e2,0xd65f03c0]))
+    assert trace(opaque,0x6000)["possible_stack_write_read_pairs"]==[]
     for bad in (linear[:-1],):
         try: trace(bad,0x1000)
         except ValueError: pass

@@ -21,6 +21,7 @@ def trace(data, start, max_states=1024):
     at = {}
     barriers = []
     exits = []
+    transitions = {}
     while queue:
         pc, delta = queue.popleft()
         if (pc,delta) in visited:
@@ -54,10 +55,13 @@ def trace(data, start, max_states=1024):
         if any(kind == "call" for kind,_ in edges) or ins.mnemonic in ("blr","bl"):
             barriers.append(hex(pc))
             next_delta = None  # Do not infer SP preservation across unknown calls.
+        transitions[(pc,delta)] = []
         for kind,target in edges:
             if kind == "call" or target is None:
                 continue
-            queue.append((target,next_delta))
+            successor = (target,next_delta)
+            transitions[(pc,delta)].append((kind,successor))
+            queue.append(successor)
     accesses = []
     for pc,values in sorted(at.items()):
         ins = decoded[pc]
@@ -73,7 +77,25 @@ def trace(data, start, max_states=1024):
                             "path_ambiguous":ambiguous,
                             "observed_sp_deltas":sorted(v for v in values if v is not None),
                             "unknown_path":None in values})
-    # Address equality is only a possible def/use witness, never a path or lifetime proof.
+    def path_witness(writer_pc, reader_pc):
+        """Find a CFG state path, excluding opaque calls and unknown SP."""
+        starts = [(pc,delta) for pc,delta in visited if pc == writer_pc and delta is not None]
+        for origin in sorted(starts):
+            pending = deque([(origin,[origin])])
+            seen = {origin}
+            while pending:
+                state,path = pending.popleft()
+                for kind,nxt in transitions.get(state,()):
+                    if (kind.startswith("fallthrough_after_") or nxt[1] is None
+                            or nxt in seen):
+                        continue
+                    candidate_path = path+[nxt]
+                    if nxt[0] == reader_pc:
+                        return [{"pc":hex(pc),"sp_delta":delta} for pc,delta in candidate_path]
+                    seen.add(nxt)
+                    pending.append((nxt,candidate_path))
+        return None
+    # CFG reachability proves only a possible path, not actual execution or dataflow.
     candidates = []
     for writer in accesses:
         if writer["memory_direction"] != "write" or writer["path_ambiguous"]:
@@ -83,8 +105,12 @@ def trace(data, start, max_states=1024):
                     or int(reader["pc"], 16) <= int(writer["pc"], 16)):
                 continue
             if writer["entry_sp_relative_offsets"] == reader["entry_sp_relative_offsets"]:
+                witness = path_witness(int(writer["pc"],16),int(reader["pc"],16))
+                if witness is None:
+                    continue
                 candidates.append({"writer_pc":writer["pc"], "reader_pc":reader["pc"],
                                    "entry_sp_relative_offset":writer["entry_sp_relative_offsets"][0],
+                                   "cfg_path_witness":witness,
                                    "same_executed_path_proven":False,
                                    "register_value_proven":False})
     return {"possible_stack_write_read_pairs":candidates,
