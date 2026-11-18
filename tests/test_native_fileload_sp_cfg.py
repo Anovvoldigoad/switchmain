@@ -44,6 +44,17 @@ def run(main,out):
     other_slot=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9000be3,0xf94007e2,0xd65f03c0]))
     unaffected=trace(other_slot,0x7100)["possible_stack_write_read_pairs"]
     assert len(unaffected)==1 and unaffected[0]["writer_pc"]=="0x7104"
+    # A 32-bit store at SP+12 overlaps the upper half of an earlier X store at SP+8.
+    partial=b"".join(map(word,[0xd10043ff,0xf90007e1,0xb9000fe3,
+                                 0xf94007e2,0xd65f03c0]))
+    partial_pairs=trace(partial,0x7200)["possible_stack_write_read_pairs"]
+    assert partial_pairs==[], "A partial-width overwrite must kill the X-register candidate"
+    # Adjacent 32-bit write at SP+16 does not overlap the eight bytes at SP+8.
+    adjacent=b"".join(map(word,[0xd10043ff,0xf90007e1,0xb90013e3,
+                                  0xf94007e2,0xd65f03c0]))
+    adjacent_pairs=trace(adjacent,0x7300)["possible_stack_write_read_pairs"]
+    assert len(adjacent_pairs)==1 and adjacent_pairs[0]["writer_pc"]=="0x7304"
+    assert adjacent_pairs[0]["intervening_overlapping_write_excluded_on_witness"]
     # A different load displacement must not be matched.
     different=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9400be2,0xd65f03c0]))
     assert trace(different,0x1800)["possible_stack_write_read_pairs"]==[]
