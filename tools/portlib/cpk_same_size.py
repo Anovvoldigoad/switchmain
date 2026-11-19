@@ -1,9 +1,10 @@
-"""Fail-closed same-size CRILAYLA replacement; no relocation or runtime hook."""
+"""Fail-closed same-size Event236 replacement; no relocation or runtime hook."""
 import hashlib
 import mmap
 from .cpk_events import entries, canonical
 from .compressed_prm_events import extract_candidate, _extract_validated_candidate, SHA
 from .crilayla import decompress
+from .prm_events import mark
 
 
 def replace_same_size(source, expected_sha256, path, packed, *, limit=256 * 1024 * 1024):
@@ -70,13 +71,19 @@ def _validated_changes(source, expected_sha256, replacements, index, canonical_p
             raise ValueError("Unknown member or non-bytes payload")
         entry = index[path]
         start, size = entry["offset"], entry["stored_size"]
-        if not source[start:start + size].startswith(b"CRILAYLA") or packed[:8] != b"CRILAYLA":
-            raise ValueError("Both streams must be CRILAYLA")
+        original = source[start:start + size]
         if len(packed) != size:
             raise ValueError("Stored-size mismatch: relocation forbidden")
-        expected, _ = _extract_validated_candidate(source, path, expected_sha256, index, decoded_limit=limit)
-        if decompress(packed, limit=limit) != expected:
-            raise ValueError("Candidate does not match source-authenticated Event236 conversion")
+        if original.startswith(b"CRILAYLA"):
+            expected, _ = _extract_validated_candidate(source, path, expected_sha256, index, decoded_limit=limit)
+            if packed[:8] != b"CRILAYLA" or decompress(packed, limit=limit) != expected:
+                raise ValueError("Candidate does not match source-authenticated Event236 conversion")
+        else:
+            if entry["size"] != size or size > limit:
+                raise ValueError("Unsupported plain CPK member")
+            expected, report = mark(bytes(original))
+            if not report["marked_records"] or bytes(packed) != expected:
+                raise ValueError("Candidate does not match source-authenticated plain Event236 conversion")
         changes.append((start, start + size, packed))
     return changes
 

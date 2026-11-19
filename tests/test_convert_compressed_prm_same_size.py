@@ -105,6 +105,24 @@ class ConvertCompressedSameSize(unittest.TestCase):
         self.assertEqual(set(proof["candidates"]), {self.member, plain})
         self.assertFalse(proof["ready_for_gameplay_test"])
 
+    def test_mixed_plain_candidate_semantic_tamper_rejected(self):
+        from portlib.cpk_same_size import validate_many_same_size
+        from portlib.cpk_same_size_verify import verify_same_size_output
+        plain = "data/spc/plain.bin.xfbin"
+        original = cpk([(plain, self.decoded)])
+        sha = hashlib.sha256(original).hexdigest()
+        expected, _ = mark(self.decoded)
+        tampered = bytearray(expected)
+        tampered[-1] ^= 1
+        with self.assertRaisesRegex(ValueError, "plain Event236 conversion"):
+            validate_many_same_size(original, sha, {plain: bytes(tampered)})
+        index = entries(original)
+        offset = index[plain]["offset"]
+        modified = original[:offset] + bytes(tampered) + original[offset + len(tampered):]
+        with self.assertRaisesRegex(ValueError, "Selected plain member semantic mismatch"):
+            verify_same_size_output(original, modified, sha,
+                                    hashlib.sha256(modified).hexdigest(), [plain])
+
     def test_mixed_batch_rejects_noop_plain_without_publication(self):
         plain = "data/spc/plain.bin.xfbin"
         marked, _ = mark(self.decoded)
