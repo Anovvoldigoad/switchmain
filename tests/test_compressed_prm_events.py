@@ -96,6 +96,53 @@ class CompressedPRMFeasibility(unittest.TestCase):
                          ["already_marked", "native_preserved"])
         self.assertEqual(report["changed_decoded_offsets"], [])
 
+
+    def test_reencode_verified_payload_not_archive(self):
+        from portlib.compressed_prm_events import reencode_candidate
+        from portlib.crilayla import decompress
+        raw = fixture([event(14), event(0), event(15)])
+        path = "data/spc/reencode.bin.xfbin"
+        archive = cpk([(path, literal_stream(raw))],
+                      lambda rows: rows[0].update({"ExtractSize": len(raw)}))
+        original = bytes(archive)
+        packed, report = reencode_candidate(archive, path, digest(archive))
+        decoded, _ = extract_candidate(archive, path, digest(archive))
+        self.assertEqual(decompress(packed), decoded)
+        self.assertEqual(report["candidate_stored_sha256"], digest(packed))
+        self.assertEqual(report["candidate_stored_bytes"], len(packed))
+        self.assertTrue(report["candidate_payload_roundtrip_verified"])
+        self.assertFalse(report["compressed_archive_repacked"])
+        self.assertFalse(report["gameplay_verified"])
+        self.assertEqual(archive, original)
+        self.assertEqual(reencode_candidate(archive, path, digest(archive)), (packed, report))
+
+    def test_reencode_rejects_bad_provenance_and_budget(self):
+        from portlib.compressed_prm_events import reencode_candidate
+        raw = fixture([event(14)])
+        path = "data/spc/reencode.bin.xfbin"
+        archive = cpk([(path, literal_stream(raw))],
+                      lambda rows: rows[0].update({"ExtractSize": len(raw)}))
+        with self.assertRaises(ValueError):
+            reencode_candidate(archive, path, "0" * 64)
+        with self.assertRaises(ValueError):
+            reencode_candidate(archive, path, digest(archive), decoded_limit=len(raw)-1)
+        with self.assertRaises(ValueError):
+            reencode_candidate(archive, "missing.bin.xfbin", digest(archive))
+
+    def test_reencode_zero_change_preserves_decoded_content(self):
+        from portlib.compressed_prm_events import reencode_candidate
+        from portlib.prm_events import mark
+        from portlib.crilayla import decompress
+        raw, _ = mark(fixture([event(14), event(0)]))
+        path = "data/spc/marked.bin.xfbin"
+        archive = cpk([(path, literal_stream(raw))],
+                      lambda rows: rows[0].update({"ExtractSize": len(raw)}))
+        packed, report = reencode_candidate(archive, path, digest(archive))
+        self.assertEqual(decompress(packed), raw)
+        self.assertEqual(report["changed_decoded_offsets"], [])
+        self.assertEqual(report["stored_size_delta"],
+                         report["candidate_stored_bytes"] - report["stored_bytes"])
+
     def test_fail_closed(self):
         raw = fixture([event(14)])
         path = "data/spc/testprm.bin.xfbin"

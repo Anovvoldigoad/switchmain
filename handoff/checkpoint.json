@@ -2064,5 +2064,15 @@
     "compressed_run": 44457996703,
     "compressed_job": 135337632479,
     "raw_job_logs_inspected": true
+  },
+  "compressed_prm_payload_reencode_20261119": {
+    "state": "PENDING_CI",
+    "parent_sha": "d6bb1bacc40a6bcb8e31dee77c1855c96091e8b0",
+    "source": "tools/portlib/compressed_prm_events.py",
+    "test": "tests/test_compressed_prm_events.py",
+    "offline_only": true,
+    "consumer_abi_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect authentic HEAD Actions logs; fix failures; no runtime hook"
   }
 }

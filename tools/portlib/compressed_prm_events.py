@@ -102,3 +102,33 @@ def _extract_validated_candidate(data, path, expected_sha256, validated_index, *
     if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
         raise ValueError("Decoded candidate integrity mismatch")
     return candidate, report
+
+
+def reencode_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
+    """Build a verified CRILAYLA payload candidate, never an installable CPK.
+
+    Literal-only encoding may exceed the original stored allocation. The caller
+    must not substitute this payload into a CPK unless an independent repacker
+    establishes TOC/ITOC offsets, archive integrity and consumer semantics.
+    """
+    from .crilayla_literal import encode_literals
+    from .crilayla import decompress
+
+    candidate, report = extract_candidate(
+        data, path, expected_sha256, decoded_limit=decoded_limit)
+    packed = encode_literals(candidate, limit=decoded_limit)
+    if decompress(packed, limit=decoded_limit) != candidate:
+        raise ValueError("CRILAYLA candidate failed independent decode roundtrip")
+    result = dict(report)
+    result.update({
+        "status": "VERIFIED_OFFLINE_CRILAYLA_PAYLOAD_CANDIDATE_NOT_CPK",
+        "candidate_stored_sha256": hashlib.sha256(packed).hexdigest(),
+        "candidate_stored_bytes": len(packed),
+        "stored_size_delta": len(packed) - report["stored_bytes"],
+        "candidate_fits_original_stored_allocation": len(packed) <= report["stored_bytes"],
+        "candidate_payload_roundtrip_verified": True,
+        "compressed_archive_repacked": False,
+        "original_archive_unchanged": True,
+        "gameplay_verified": False,
+    })
+    return packed, result
