@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from convert_compressed_prm_same_size import convert
+from convert_compressed_prm_same_size import convert, convert_many
 from portlib.cpk_events import read_payload
 from portlib.prm_events import mark
 from test_cpk_events import cpk
@@ -59,6 +59,40 @@ class ConvertCompressedSameSize(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             convert(self.source, self.sha, self.member, self.output)
         self.assertEqual(self.output.read_bytes(), b"keep")
+
+    def test_multi_member_atomic_publish_and_integrity(self):
+        second = "data/spc/second.bin.xfbin"
+        original = cpk([(self.member, literal_stream(self.decoded)),
+                        (second, literal_stream(self.decoded)),
+                        ("data/untouched", b"untouched")],
+                       lambda rows: [row.update({"ExtractSize": len(self.decoded)})
+                                     for row in rows[:2]])
+        self.source.write_bytes(original)
+        sha = hashlib.sha256(original).hexdigest()
+        proof = convert_many(self.source, sha, [self.member, second], self.output)
+        expected, _ = mark(self.decoded)
+        written = self.output.read_bytes()
+        for member in (self.member, second):
+            self.assertEqual(read_payload(written, member), expected)
+            self.assertIn(member, proof["candidates"])
+        self.assertEqual(read_payload(written, "data/untouched"), b"untouched")
+        self.assertEqual(len(written), len(original))
+        self.assertEqual(hashlib.sha256(written).hexdigest(), proof["output_sha256"])
+        self.assertEqual(self.source.read_bytes(), original)
+
+    def test_multi_member_rejects_invalid_second_without_partial_output(self):
+        with self.assertRaises(ValueError):
+            convert_many(self.source, self.sha, [self.member, "missing"], self.output)
+        self.assertFalse(self.output.exists())
+        self.assertEqual(self.source.read_bytes(), self.original)
+
+    def test_multi_member_rejects_duplicates_and_empty_list(self):
+        for members in ([], [self.member, self.member]):
+            with self.subTest(members=members):
+                with self.assertRaises(ValueError):
+                    convert_many(self.source, self.sha, members, self.output)
+                self.assertFalse(self.output.exists())
+
 
 
 if __name__ == "__main__":
