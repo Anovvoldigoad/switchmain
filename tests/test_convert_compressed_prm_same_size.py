@@ -1,10 +1,14 @@
 """End-to-end offline compressed Event236 conversion with authentic synthetic CPK parser."""
 import hashlib
+import contextlib
+import io
+import json
+from unittest.mock import patch
 from pathlib import Path
 import tempfile
 import unittest
 
-from convert_compressed_prm_same_size import convert, convert_many
+from convert_compressed_prm_same_size import convert, convert_many, main
 from portlib.cpk_events import read_payload
 from portlib.prm_events import mark
 from test_cpk_events import cpk
@@ -92,6 +96,50 @@ class ConvertCompressedSameSize(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     convert_many(self.source, self.sha, members, self.output)
                 self.assertFalse(self.output.exists())
+
+
+    def test_cli_multi_member_matches_api_and_preserves_source(self):
+        second = "data/spc/second.bin.xfbin"
+        original = cpk([(self.member, literal_stream(self.decoded)),
+                        (second, literal_stream(self.decoded)),
+                        ("data/untouched", b"untouched")],
+                       lambda rows: [row.update({"ExtractSize": len(self.decoded)})
+                                     for row in rows[:2]])
+        self.source.write_bytes(original)
+        sha = hashlib.sha256(original).hexdigest()
+        argv = ["convert_compressed_prm_same_size.py", str(self.source), sha,
+                self.member, second, str(self.output)]
+        with patch("sys.argv", argv), contextlib.redirect_stdout(io.StringIO()) as stdout:
+            main()
+        proof = json.loads(stdout.getvalue())
+        expected, _ = mark(self.decoded)
+        written = self.output.read_bytes()
+        self.assertEqual(set(proof["candidates"]), {self.member, second})
+        for member in (self.member, second):
+            self.assertEqual(read_payload(written, member), expected)
+        self.assertEqual(read_payload(written, "data/untouched"), b"untouched")
+        self.assertEqual(len(written), len(original))
+        self.assertEqual(hashlib.sha256(written).hexdigest(), proof["output_sha256"])
+        self.assertEqual(self.source.read_bytes(), original)
+
+    def test_cli_invalid_second_rolls_back_without_output(self):
+        argv = ["convert_compressed_prm_same_size.py", str(self.source), self.sha,
+                self.member, "missing", str(self.output)]
+        with patch("sys.argv", argv), contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(ValueError):
+                main()
+        self.assertFalse(self.output.exists())
+        self.assertEqual(self.source.read_bytes(), self.original)
+
+    def test_cli_single_member_backwards_compatible(self):
+        argv = ["convert_compressed_prm_same_size.py", str(self.source), self.sha,
+                self.member, str(self.output)]
+        with patch("sys.argv", argv), contextlib.redirect_stdout(io.StringIO()) as stdout:
+            main()
+        proof = json.loads(stdout.getvalue())
+        self.assertEqual(set(proof["candidates"]), {self.member})
+        self.assertTrue(self.output.exists())
+        self.assertFalse(proof["ready_for_gameplay_test"])
 
 
 
