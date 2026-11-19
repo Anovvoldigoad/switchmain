@@ -1563,8 +1563,33 @@
     "emulator_tested": false
   },
   "mixed_event236_20261120": {
-    "state": "PENDING_CI_REPAIR",
-    "scope": "offline synthetic mixed compressed/uncompressed Event236 batch; no runtime proof",
-    "parent_sha": "4b992ba11941642fa721e743bdd0cce881570022"
+    "state": "VERIFIED_CI_OFFLINE_SYNTHETIC_CODE_HEAD",
+    "code_sha": "3edc5d915a748912335decdb544b661961cecab6",
+    "raw_job_logs_inspected": true,
+    "workflows": {
+      "compressed": {
+        "run": 44628063852,
+        "job": 135927055000,
+        "tests": "6+13+32+16"
+      },
+      "foundation": {
+        "run": 44628063805,
+        "job": 135927054696
+      },
+      "moveset": {
+        "run": 44628063939,
+        "job": 135927055922
+      },
+      "same_size": {
+        "run": 44628063929,
+        "job": 135927055273,
+        "tests": 39
+      }
+    },
+    "consumer_abi_verified": false,
+    "uzuy_verified": false,
+    "full_moddingapi": false,
+    "ready_for_gameplay_test": false,
+    "emulator_tested": false
   }
 }
