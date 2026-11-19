@@ -1545,5 +1545,21 @@
     "consumer_abi_verified": false,
     "uzuy_verified": false,
     "next": "Obtain HEAD push workflow run and raw logs, fix any failure; then prove native ownership and archive precedence."
+  },
+  "compressed_prm_batch_single_validation_20261120": {
+    "state": "CODE_CI_VERIFIED_SYNTHETIC_OFFLINE",
+    "parent_sha": "d18b446c4a5ee689af6206bdbd52e43c2dc58b11",
+    "code_sha": "d360cd62f7758e4ceff7fe1abaef824c13473ceb",
+    "scope": "one source SHA256 and one CPK TOC parse for N compressed Event236 members, internal validated index reused; fail closed before parsing on wrong source SHA",
+    "tests": "12/12 same-size synthetic integration; compressed workflow 6+13+32+12 tests",
+    "compressed_run": 44618894253,
+    "compressed_job": 135894875213,
+    "compressed_job_log_inspected": true,
+    "foundation_run": 44618894255,
+    "moveset_run": 44618894295,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "authentic_game_cpk_verified": false,
+    "native_consumer_abi_verified": false,
+    "emulator_tested": false
   }
 }
