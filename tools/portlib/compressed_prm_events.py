@@ -104,7 +104,7 @@ def _extract_validated_candidate(data, path, expected_sha256, validated_index, *
     return candidate, report
 
 
-def reencode_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024):
+def reencode_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 * 1024, _validated_index=None):
     """Build a verified CRILAYLA payload candidate, never an installable CPK.
 
     Literal-only encoding may exceed the original stored allocation. The caller
@@ -114,11 +114,16 @@ def reencode_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 
     from .crilayla_literal import encode_literals
     from .crilayla import decompress
 
-    candidate, report = extract_candidate(
-        data, path, expected_sha256, decoded_limit=decoded_limit)
+    if _validated_index is None:
+        candidate, report = extract_candidate(
+            data, path, expected_sha256, decoded_limit=decoded_limit)
+    else:
+        candidate, report = _extract_validated_candidate(
+            data, path, expected_sha256, _validated_index, decoded_limit=decoded_limit)
     if not report["changed_decoded_offsets"]:
         # No semantic change: preserve the exact original compressed bitstream.
-        entry = entries(data)[canonical(path)]
+        index = _validated_index if _validated_index is not None else entries(data)
+        entry = index[canonical(path)]
         packed = bytes(data[entry["offset"]:entry["offset"] + entry["stored_size"]])
         if hashlib.sha256(packed).hexdigest() != report["stored_sha256"]:
             raise ValueError("Original stored payload identity mismatch")

@@ -9,6 +9,7 @@ import tempfile
 import unittest
 
 from convert_compressed_prm_same_size import convert, convert_many, main
+from portlib.cpk_events import entries
 from portlib.cpk_events import read_payload
 from portlib.prm_events import mark
 from test_cpk_events import cpk
@@ -83,6 +84,28 @@ class ConvertCompressedSameSize(unittest.TestCase):
         self.assertEqual(len(written), len(original))
         self.assertEqual(hashlib.sha256(written).hexdigest(), proof["output_sha256"])
         self.assertEqual(self.source.read_bytes(), original)
+
+    def test_multi_member_validates_source_and_toc_once(self):
+        second = "data/spc/second.bin.xfbin"
+        original = cpk([(self.member, literal_stream(self.decoded)),
+                        (second, literal_stream(self.decoded))],
+                       lambda rows: [row.update({"ExtractSize": len(self.decoded)})
+                                     for row in rows])
+        self.source.write_bytes(original)
+        sha = hashlib.sha256(original).hexdigest()
+        with patch("convert_compressed_prm_same_size.entries", wraps=entries) as parse, \
+             patch("portlib.compressed_prm_events.entries", side_effect=AssertionError(
+                 "member must reuse validated TOC")):
+            proof = convert_many(self.source, sha, [self.member, second], self.output)
+        self.assertEqual(parse.call_count, 1)
+        self.assertEqual(set(proof["candidates"]), {self.member, second})
+
+    def test_multi_member_wrong_sha_rejected_before_toc(self):
+        with patch("convert_compressed_prm_same_size.entries",
+                   side_effect=AssertionError("TOC parsed before SHA")):
+            with self.assertRaisesRegex(ValueError, "source SHA256 mismatch"):
+                convert_many(self.source, "0" * 64, [self.member], self.output)
+        self.assertFalse(self.output.exists())
 
     def test_multi_member_rejects_invalid_second_without_partial_output(self):
         with self.assertRaises(ValueError):

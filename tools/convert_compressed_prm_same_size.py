@@ -10,6 +10,7 @@ from pathlib import Path
 import tempfile
 
 from portlib.compressed_prm_events import reencode_candidate
+from portlib.cpk_events import entries
 from publish_same_size_cpk import publish
 
 
@@ -32,8 +33,12 @@ def convert_many(source_path, source_sha256, members, output_path):
         manifest = {}
         with source_path.open("rb") as handle:
             with mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as source:
+                if hashlib.sha256(source).hexdigest() != source_sha256:
+                    raise ValueError("CPK source SHA256 mismatch")
+                index = entries(source)
                 for number, member in enumerate(members):
-                    packed, candidate = reencode_candidate(source, member, source_sha256)
+                    packed, candidate = reencode_candidate(
+                        source, member, source_sha256, _validated_index=index)
                     if not candidate["changed_decoded_offsets"]:
                         raise ValueError("No Event236 change; refusing redundant archive publication")
                     if candidate["stored_size_delta"] != 0:
