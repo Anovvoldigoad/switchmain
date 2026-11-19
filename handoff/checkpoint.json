@@ -2002,5 +2002,23 @@
     "ownership_verified": false,
     "uzuy_verified": false,
     "next": "Inspect Foundation raw log for 44419953534; if pass then trace register provenance from SHA-pinned main; do not hook."
+  },
+  "fileload_sp_alias_20261119": {
+    "state": "PENDING_CI",
+    "parent_sha": "18685003b34cc6e5f0673667646183d769fb5440",
+    "code_sha": "49e8081e873140520120a90b887af2e92b64db94",
+    "source": "tools/portlib/native_fileload_sp_cfg.py",
+    "tests": "tests/test_native_fileload_sp_cfg.py",
+    "synthetic_cases": [
+      "disjoint_SP_derived_store",
+      "overlap_SP_derived_store",
+      "clobbered_alias_unknown"
+    ],
+    "host_tested": false,
+    "ci_log_verified": false,
+    "consumer_abi_verified": false,
+    "ownership_verified": false,
+    "uzuy_verified": false,
+    "next": "Read authentic Foundation push-run job log for code SHA; repair if needed; then prove native consumer provenance before hooks."
   }
 }
