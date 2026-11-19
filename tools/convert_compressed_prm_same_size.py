@@ -65,10 +65,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source")
     parser.add_argument("source_sha256")
-    parser.add_argument("member")
+    parser.add_argument("members", nargs="+", metavar="member",
+                        help="One or more CPK member paths (output path last)")
     parser.add_argument("output")
     args = parser.parse_args()
-    print(json.dumps(convert(args.source, args.source_sha256, args.member, args.output), sort_keys=True))
+    print(json.dumps(convert_many(args.source, args.source_sha256, args.members, args.output), sort_keys=True))
 
 
 if __name__ == "__main__":
