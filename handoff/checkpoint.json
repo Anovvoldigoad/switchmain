@@ -2158,5 +2158,16 @@
         "tests": 39
       }
     }
+  },
+  "pc_multimod_reorder_20261120": {
+    "state": "PENDING_CI",
+    "parent_sha": "18d55757a9ecf0dd99e4dc783ca4239a03cdcc9c",
+    "code_commit": "f6dc2c829463061b74ae8faa3fbadf6d937b05a0",
+    "source": "tools/reorder_pc_moveset_nsc_mods.py",
+    "test": "tests/test_reorder_pc_moveset_nsc_mods.py",
+    "workflow": ".github/workflows/verify-pc-moveset-multimod.yml",
+    "native_consumer_abi_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect push-run and authentic job log; fix failures before PASS."
   }
 }
