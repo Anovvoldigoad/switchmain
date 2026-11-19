@@ -1512,7 +1512,7 @@
     ]
   },
   "fileload_w_register_clobber_20261119": {
-    "state": "PENDING_CI",
+    "state": "VERIFIED_CI_STATIC_ONLY",
     "parent_sha": "b17064d32a689ae33e74d60ed203486cf3c5b7b3",
     "source": "tools/portlib/native_fileload_sp_cfg.py",
     "test": "tests/test_native_fileload_sp_cfg.py",
@@ -1522,6 +1522,12 @@
       "unrelated_w_preserves_alias"
     ],
     "consumer_abi_proven": false,
-    "emulator_tested": false
+    "emulator_tested": false,
+    "code_commit": "9d87417613ba2fb26b18396a1a3d03b4187163bd",
+    "foundation_run": 44457996680,
+    "foundation_job": 135337632477,
+    "raw_job_log_inspected": true,
+    "moveset_run": 44457996686,
+    "compressed_run": 44457996703
   }
 }

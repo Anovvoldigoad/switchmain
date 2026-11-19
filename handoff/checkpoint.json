@@ -2046,15 +2046,23 @@
     "next": "Inspect authentic HEAD Foundation push job log; fix regression before PASS; then trace consumer lifecycle."
   },
   "fileload_w_register_clobber_20261119": {
-    "state": "PENDING_CI",
+    "state": "VERIFIED_CI_STATIC_ONLY",
     "parent_sha": "b17064d32a689ae33e74d60ed203486cf3c5b7b3",
     "prior_foundation_run": 44451292830,
     "prior_foundation_job": 135315619331,
     "prior_raw_log_inspected": true,
-    "new_head_ci_verified": false,
+    "new_head_ci_verified": true,
     "consumer_abi_proven": false,
     "ownership_verified": false,
     "uzuy_verified": false,
-    "next": "Read new HEAD push Foundation raw job log, fix regressions, then pursue pinned original main consumer lifecycle evidence."
+    "next": "Read new HEAD push Foundation raw job log, fix regressions, then pursue pinned original main consumer lifecycle evidence.",
+    "code_commit": "9d87417613ba2fb26b18396a1a3d03b4187163bd",
+    "foundation_run": 44457996680,
+    "foundation_job": 135337632477,
+    "moveset_run": 44457996686,
+    "moveset_job": 135337632473,
+    "compressed_run": 44457996703,
+    "compressed_job": 135337632479,
+    "raw_job_logs_inspected": true
   }
 }
