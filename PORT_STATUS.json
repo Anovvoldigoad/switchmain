@@ -1500,5 +1500,15 @@
     "code_commit": "606396709b4a1a78c8a1b07d2ac62823c2415a01",
     "consumer_abi_proven": false,
     "emulator_tested": false
+  },
+  "fileload_entry_alias_20261119": {
+    "state": "PENDING_CI",
+    "code_commit": "a2def4e665a150cb357c4442530082a753a04674",
+    "proof_scope": "synthetic CFG witness only; no consumer ABI or runtime",
+    "tests": [
+      "prewriter_disjoint",
+      "prewriter_overlap",
+      "prewriter_clobber"
+    ]
   }
 }
