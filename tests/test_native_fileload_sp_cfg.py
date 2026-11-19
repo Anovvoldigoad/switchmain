@@ -102,6 +102,13 @@ def run(main,out):
                                       0x91000003,0xaa0303e4,0xf9000085,
                                       0xf94007e2,0xd65f03c0]))
     assert trace(chain_killed,0x7d00)["possible_stack_write_read_pairs"]==[]
+    # Alias defined before writer: disjoint, overlapping, and clobbered.
+    prior_disjoint=b"".join(map(word,[0xd10043ff,0x910083e3,0xf90007e1,0xf9000064,0xf94007e2,0xd65f03c0]))
+    assert len(trace(prior_disjoint,0x7e00)["possible_stack_write_read_pairs"])==1
+    prior_overlap=b"".join(map(word,[0xd10043ff,0x910023e3,0xf90007e1,0xf9000064,0xf94007e2,0xd65f03c0]))
+    assert trace(prior_overlap,0x7f00)["possible_stack_write_read_pairs"]==[]
+    prior_clobber=b"".join(map(word,[0xd10043ff,0x910083e3,0x91000003,0xf90007e1,0xf9000064,0xf94007e2,0xd65f03c0]))
+    assert trace(prior_clobber,0x8000)["possible_stack_write_read_pairs"]==[]
     # A load through another base does not overwrite stack memory.
     unrelated_read=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9400083,
                                         0xf94007e2,0xd65f03c0]))

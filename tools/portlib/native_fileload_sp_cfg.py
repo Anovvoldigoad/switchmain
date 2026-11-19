@@ -109,14 +109,59 @@ def trace(data, start, max_states=1024):
                             "observed_sp_deltas":sorted(v for v in values if v is not None),
                             "unknown_path":None in values})
     access_by_pc = {int(a["pc"],16): a for a in accesses}
+    def advance_aliases(state, aliases):
+        intermediate = decoded.get(state[0])
+        if intermediate is None:
+            return dict(aliases)
+        next_aliases = dict(aliases)
+        if intermediate is not None:
+            _, writes = intermediate.regs_access()
+            for reg in writes:
+                next_aliases.pop(intermediate.reg_name(reg), None)
+            ops = intermediate.operands
+            if (intermediate.mnemonic in ("add", "sub") and len(ops) == 3
+                    and ops[0].type == ARM64_OP_REG
+                    and ops[1].type == ARM64_OP_REG
+                    and ops[2].type == ARM64_OP_IMM):
+                base = intermediate.reg_name(ops[1].reg)
+                offset = state[1] if base == "sp" else aliases.get(base)
+                if offset is not None:
+                    next_aliases[intermediate.reg_name(ops[0].reg)] = (
+                        offset + ops[2].imm * (1 if intermediate.mnemonic == "add" else -1))
+            elif (intermediate.mnemonic == "mov" and len(ops) == 2
+                    and ops[0].type == ARM64_OP_REG and ops[1].type == ARM64_OP_REG):
+                base = intermediate.reg_name(ops[1].reg)
+                offset = state[1] if base == "sp" else aliases.get(base)
+                if offset is not None:
+                    next_aliases[intermediate.reg_name(ops[0].reg)] = offset
+        return next_aliases
+    def writer_prefixes(writer_pc):
+        pending = deque([((start, 0), {})])
+        seen = set()
+        results = []
+        while pending:
+            state, aliases = pending.popleft()
+            key = (state, tuple(sorted(aliases.items())))
+            if key in seen:
+                continue
+            if len(seen) >= max_states * 16:
+                return []
+            seen.add(key)
+            if state[0] == writer_pc and state[1] is not None:
+                results.append((state, aliases))
+                continue
+            if state[1] is None:
+                continue
+            next_aliases = advance_aliases(state, aliases)
+            for kind, nxt in transitions.get(state, ()):
+                if not kind.startswith("fallthrough_after_") and nxt[1] is not None:
+                    pending.append((nxt, next_aliases))
+        return results
     def path_witness(writer_pc, reader_pc, slot):
         """Find a CFG state path, excluding opaque calls and unknown SP."""
-        starts = [(pc,delta) for pc,delta in visited if pc == writer_pc and delta is not None]
-        for origin in sorted(starts):
-            # Aliases are established only on the witnessed suffix. An alias
-            # defined before the writer remains unknown (and fails closed).
-            pending = deque([(origin,[origin],{})])
-            seen = {(origin,())}
+        for origin, initial_aliases in writer_prefixes(writer_pc):
+            pending = deque([(origin,[origin],initial_aliases)])
+            seen = {(origin,tuple(sorted(initial_aliases.items())))}
             while pending:
                 state,path,aliases = pending.popleft()
                 current = access_by_pc.get(state[0])
@@ -147,30 +192,7 @@ def trace(data, start, max_states=1024):
                             or max(target_range[0], observed_range[0]) < min(target_range[1], observed_range[1])
                             or current["memory_direction"] == "unknown"):
                         continue
-                # Register writes kill tracked aliases. Only ADD Xd, SP, #imm
-                # with a known SP delta establishes an alias; all other
-                # definitions remain unknown. No cross-call propagation.
-                next_aliases = dict(aliases)
-                if intermediate is not None:
-                    _, writes = intermediate.regs_access()
-                    for reg in writes:
-                        next_aliases.pop(intermediate.reg_name(reg), None)
-                    ops = intermediate.operands
-                    if (intermediate.mnemonic in ("add", "sub") and len(ops) == 3
-                            and ops[0].type == ARM64_OP_REG
-                            and ops[1].type == ARM64_OP_REG
-                            and ops[2].type == ARM64_OP_IMM):
-                        base = intermediate.reg_name(ops[1].reg)
-                        offset = state[1] if base == "sp" else aliases.get(base)
-                        if offset is not None:
-                            next_aliases[intermediate.reg_name(ops[0].reg)] = (
-                                offset + ops[2].imm * (1 if intermediate.mnemonic == "add" else -1))
-                    elif (intermediate.mnemonic == "mov" and len(ops) == 2
-                            and ops[0].type == ARM64_OP_REG and ops[1].type == ARM64_OP_REG):
-                        base = intermediate.reg_name(ops[1].reg)
-                        offset = state[1] if base == "sp" else aliases.get(base)
-                        if offset is not None:
-                            next_aliases[intermediate.reg_name(ops[0].reg)] = offset
+                next_aliases = advance_aliases(state, aliases)
                 for kind,nxt in transitions.get(state,()):
                     if kind.startswith("fallthrough_after_") or nxt[1] is None:
                         continue
