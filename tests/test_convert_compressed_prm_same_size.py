@@ -85,6 +85,49 @@ class ConvertCompressedSameSize(unittest.TestCase):
         self.assertEqual(hashlib.sha256(written).hexdigest(), proof["output_sha256"])
         self.assertEqual(self.source.read_bytes(), original)
 
+    def test_mixed_compressed_and_plain_member_atomic_integrity(self):
+        plain = "data/spc/plain.bin.xfbin"
+        original = cpk([(self.member, literal_stream(self.decoded)),
+                        (plain, self.decoded),
+                        ("data/untouched", b"untouched")],
+                       lambda rows: rows[0].update({"ExtractSize": len(self.decoded)}))
+        self.source.write_bytes(original)
+        sha = hashlib.sha256(original).hexdigest()
+        proof = convert_many(self.source, sha, [self.member, plain], self.output)
+        expected, _ = mark(self.decoded)
+        written = self.output.read_bytes()
+        self.assertEqual(read_payload(written, self.member), expected)
+        self.assertEqual(read_payload(written, plain), expected)
+        self.assertEqual(read_payload(written, "data/untouched"), b"untouched")
+        self.assertEqual(len(written), len(original))
+        self.assertEqual(self.source.read_bytes(), original)
+        self.assertEqual(hashlib.sha256(written).hexdigest(), proof["output_sha256"])
+        self.assertEqual(set(proof["candidates"]), {self.member, plain})
+        self.assertFalse(proof["ready_for_gameplay_test"])
+
+    def test_mixed_batch_rejects_noop_plain_without_publication(self):
+        plain = "data/spc/plain.bin.xfbin"
+        marked, _ = mark(self.decoded)
+        original = cpk([(self.member, literal_stream(self.decoded)), (plain, marked)],
+                       lambda rows: rows[0].update({"ExtractSize": len(self.decoded)}))
+        self.source.write_bytes(original)
+        sha = hashlib.sha256(original).hexdigest()
+        with self.assertRaisesRegex(ValueError, "No Event236 change"):
+            convert_many(self.source, sha, [self.member, plain], self.output)
+        self.assertFalse(self.output.exists())
+        self.assertEqual(self.source.read_bytes(), original)
+
+    def test_mixed_batch_rejects_non_prm_plain_without_publication(self):
+        original = cpk([(self.member, literal_stream(self.decoded)),
+                        ("data/not_prm", b"not a prm")],
+                       lambda rows: rows[0].update({"ExtractSize": len(self.decoded)}))
+        self.source.write_bytes(original)
+        sha = hashlib.sha256(original).hexdigest()
+        with self.assertRaises(ValueError):
+            convert_many(self.source, sha, [self.member, "data/not_prm"], self.output)
+        self.assertFalse(self.output.exists())
+        self.assertEqual(self.source.read_bytes(), original)
+
     def test_multi_member_validates_source_and_toc_once(self):
         second = "data/spc/second.bin.xfbin"
         original = cpk([(self.member, literal_stream(self.decoded)),

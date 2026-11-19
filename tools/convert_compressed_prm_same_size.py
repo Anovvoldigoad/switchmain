@@ -1,6 +1,6 @@
 """Offline source-bound Event236 conversion and same-size CPK publication.
 
-Only exact-size CRILAYLA candidates can be published; no relocation or game hook.
+Supports exact-size CRILAYLA and uncompressed PRMs; no relocation or game hook.
 """
 import argparse
 import hashlib
@@ -10,7 +10,8 @@ from pathlib import Path
 import tempfile
 
 from portlib.compressed_prm_events import reencode_candidate
-from portlib.cpk_events import entries
+from portlib.cpk_events import entries, canonical
+from portlib.prm_events import mark
 from publish_same_size_cpk import publish
 
 
@@ -37,12 +38,32 @@ def convert_many(source_path, source_sha256, members, output_path):
                     raise ValueError("CPK source SHA256 mismatch")
                 index = entries(source)
                 for number, member in enumerate(members):
-                    packed, candidate = reencode_candidate(
-                        source, member, source_sha256, _validated_index=index)
-                    if not candidate["changed_decoded_offsets"]:
-                        raise ValueError("No Event236 change; refusing redundant archive publication")
-                    if candidate["stored_size_delta"] != 0:
-                        raise ValueError("Compressed candidate changes stored size; CPK relocation not supported")
+                    path = canonical(member)
+                    if path not in index:
+                        raise ValueError("CPK entry not found")
+                    entry = index[path]
+                    stored = source[entry["offset"]:entry["offset"] + entry["stored_size"]]
+                    if stored.startswith(b"CRILAYLA"):
+                        packed, candidate = reencode_candidate(
+                            source, path, source_sha256, _validated_index=index)
+                        if not candidate["changed_decoded_offsets"]:
+                            raise ValueError("No Event236 change; refusing redundant archive publication")
+                        if candidate["stored_size_delta"] != 0:
+                            raise ValueError("Compressed candidate changes stored size; CPK relocation not supported")
+                    else:
+                        if entry["stored_size"] != entry["size"]:
+                            raise ValueError("Unsupported CPK entry encoding")
+                        packed, report = mark(bytes(stored))
+                        if not report["marked_records"]:
+                            raise ValueError("No Event236 change; refusing redundant archive publication")
+                        if len(packed) != entry["stored_size"]:
+                            raise ValueError("Uncompressed PRM changes stored size")
+                        candidate = {
+                            "path": path,
+                            "candidate_stored_sha256": hashlib.sha256(packed).hexdigest(),
+                            "candidate_decoded_sha256": hashlib.sha256(packed).hexdigest(),
+                            "marked_records": report["marked_records"],
+                        }
                     if hashlib.sha256(packed).hexdigest() != candidate["candidate_stored_sha256"]:
                         raise ValueError("Candidate SHA256 mismatch")
                     packed_path = Path(folder) / f"{number}.crilayla"

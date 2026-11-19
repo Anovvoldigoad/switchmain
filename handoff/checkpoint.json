@@ -2118,5 +2118,19 @@
     "authentic_game_cpk_verified": false,
     "native_consumer_abi_verified": false,
     "emulator_tested": false
+  },
+  "mixed_event236_20261120": {
+    "state": "PENDING_CI",
+    "parent_sha": "4b992ba11941642fa721e743bdd0cce881570022",
+    "source": "tools/convert_compressed_prm_same_size.py",
+    "test": "tests/test_convert_compressed_prm_same_size.py",
+    "positive": "compressed plus plain exact-size synthetic batch",
+    "negative": [
+      "plain already marked rollback",
+      "non-PRM plain rollback"
+    ],
+    "consumer_abi_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect HEAD push Actions completed success and raw jobs; repair any failure; then native consumer proof."
   }
 }
