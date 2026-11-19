@@ -18,3 +18,5 @@ jobs:
         run: PYTHONPATH=tools python -m unittest discover -s tests -p test_export_compressed_prm_batch.py -v
       - name: Independently verify source-bound compressed candidates (synthetic)
         run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_verify_compressed_prm_batch.py -v
+      - name: Verify offline same-size compressed CPK conversion (synthetic)
+        run: PYTHONPATH=tools:tests python -m unittest discover -s tests -p test_convert_compressed_prm_same_size.py -v
