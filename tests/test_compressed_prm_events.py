@@ -111,6 +111,7 @@ class CompressedPRMFeasibility(unittest.TestCase):
         self.assertEqual(report["candidate_stored_sha256"], digest(packed))
         self.assertEqual(report["candidate_stored_bytes"], len(packed))
         self.assertTrue(report["candidate_payload_roundtrip_verified"])
+        self.assertFalse(report["original_stored_payload_reused"])
         self.assertFalse(report["compressed_archive_repacked"])
         self.assertFalse(report["gameplay_verified"])
         self.assertEqual(archive, original)
@@ -140,6 +141,8 @@ class CompressedPRMFeasibility(unittest.TestCase):
         packed, report = reencode_candidate(archive, path, digest(archive))
         self.assertEqual(decompress(packed), raw)
         self.assertEqual(report["changed_decoded_offsets"], [])
+        self.assertTrue(report["original_stored_payload_reused"])
+        self.assertEqual(packed, literal_stream(raw))
         self.assertEqual(report["stored_size_delta"],
                          report["candidate_stored_bytes"] - report["stored_bytes"])
 

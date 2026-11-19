@@ -5,9 +5,7 @@ import json
 import mmap
 import os
 from pathlib import Path
-from portlib.compressed_prm_events import extract_candidate
-from portlib.crilayla_literal import encode_literals
-from portlib.crilayla import decompress
+from portlib.compressed_prm_events import reencode_candidate
 
 
 def export(archive, member, sha256, destination, *, limit=256 * 1024 * 1024):
@@ -17,14 +15,9 @@ def export(archive, member, sha256, destination, *, limit=256 * 1024 * 1024):
     # Map the read-only source; never allocate the full CPK as a Python bytes copy.
     with archive.open('rb') as source_file:
         with mmap.mmap(source_file.fileno(), 0, access=mmap.ACCESS_READ) as source:
-            candidate, report = extract_candidate(source, member, sha256, decoded_limit=limit)
-    if len(candidate) < 256:
-        raise ValueError("Decoded candidate lacks CRILAYLA prefix")
-    packed = encode_literals(candidate, limit=limit)
-    if decompress(packed, limit=limit) != candidate:
-        raise ValueError("Compressed candidate roundtrip mismatch")
-    if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
-        raise ValueError("Candidate decoded SHA256 mismatch")
+            packed, report = reencode_candidate(source, member, sha256, decoded_limit=limit)
+    if hashlib.sha256(packed).hexdigest() != report["candidate_stored_sha256"]:
+        raise ValueError("Candidate stored SHA256 mismatch")
     fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         with os.fdopen(fd, "wb") as out:

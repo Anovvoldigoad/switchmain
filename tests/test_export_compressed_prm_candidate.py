@@ -41,6 +41,20 @@ class CompressedCandidate(unittest.TestCase):
         self.assertFalse(report["compressed_archive_repacked"])
         self.assertEqual(self.archive.read_bytes(), self.source)
 
+    def test_zero_change_export_preserves_exact_stored_payload(self):
+        from portlib.prm_events import mark
+        marked, _ = mark(self.decoded)
+        packed = literal_stream(marked)
+        self.source = cpk([(self.member, packed)],
+                          lambda rows: rows[0].update({"ExtractSize": len(marked)}))
+        self.archive.write_bytes(self.source)
+        self.sha = hashlib.sha256(self.source).hexdigest()
+        report = module.export(self.archive, self.member, self.sha, self.output)
+        self.assertEqual(self.output.read_bytes(), packed)
+        self.assertTrue(report["original_stored_payload_reused"])
+        self.assertEqual(report["stored_size_delta"], 0)
+        self.assertEqual(self.archive.read_bytes(), self.source)
+
     def test_single_decode_and_mark_per_export(self):
         original_read = compressed_prm_events.read_payload
         original_mark = compressed_prm_events.mark

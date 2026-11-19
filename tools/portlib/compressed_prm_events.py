@@ -116,7 +116,14 @@ def reencode_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 
 
     candidate, report = extract_candidate(
         data, path, expected_sha256, decoded_limit=decoded_limit)
-    packed = encode_literals(candidate, limit=decoded_limit)
+    if not report["changed_decoded_offsets"]:
+        # No semantic change: preserve the exact original compressed bitstream.
+        entry = entries(data)[canonical(path)]
+        packed = bytes(data[entry["offset"]:entry["offset"] + entry["stored_size"]])
+        if hashlib.sha256(packed).hexdigest() != report["stored_sha256"]:
+            raise ValueError("Original stored payload identity mismatch")
+    else:
+        packed = encode_literals(candidate, limit=decoded_limit)
     if decompress(packed, limit=decoded_limit) != candidate:
         raise ValueError("CRILAYLA candidate failed independent decode roundtrip")
     result = dict(report)
@@ -127,6 +134,7 @@ def reencode_candidate(data, path, expected_sha256, *, decoded_limit=256 * 1024 
         "stored_size_delta": len(packed) - report["stored_bytes"],
         "candidate_fits_original_stored_allocation": len(packed) <= report["stored_bytes"],
         "candidate_payload_roundtrip_verified": True,
+        "original_stored_payload_reused": not bool(report["changed_decoded_offsets"]),
         "compressed_archive_repacked": False,
         "original_archive_unchanged": True,
         "gameplay_verified": False,
