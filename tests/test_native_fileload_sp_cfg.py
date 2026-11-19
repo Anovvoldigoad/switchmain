@@ -86,6 +86,22 @@ def run(main,out):
     clobbered=b"".join(map(word,[0xd10043ff,0xf90007e1,0x910083e3,
                                  0x91000003,0xf9000064,0xf94007e2,0xd65f03c0]))
     assert trace(clobbered,0x7a00)["possible_stack_write_read_pairs"]==[]
+    # SP-derived pointer provenance survives a MOV and ADD immediate chain.
+    # ADD X3,SP,#32; MOV X4,X3; ADD X4,X4,#16; STR X5,[X4].
+    chained=b"".join(map(word,[0xd10043ff,0xf90007e1,0x910083e3,
+                                 0xaa0303e4,0x91004084,0xf9000085,
+                                 0xf94007e2,0xd65f03c0]))
+    assert len(trace(chained,0x7b00)["possible_stack_write_read_pairs"])==1
+    # SUB X4,X3,#24 aliases the original slot at SP+8.
+    subtract=b"".join(map(word,[0xd10043ff,0xf90007e1,0x910083e3,
+                                  0xd1006064,0xf9000085,0xf94007e2,
+                                  0xd65f03c0]))
+    assert trace(subtract,0x7c00)["possible_stack_write_read_pairs"]==[]
+    # A redefinition of the source before MOV must not preserve provenance.
+    chain_killed=b"".join(map(word,[0xd10043ff,0xf90007e1,0x910083e3,
+                                      0x91000003,0xaa0303e4,0xf9000085,
+                                      0xf94007e2,0xd65f03c0]))
+    assert trace(chain_killed,0x7d00)["possible_stack_write_read_pairs"]==[]
     # A load through another base does not overwrite stack memory.
     unrelated_read=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9400083,
                                         0xf94007e2,0xd65f03c0]))

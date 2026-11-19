@@ -156,12 +156,21 @@ def trace(data, start, max_states=1024):
                     for reg in writes:
                         next_aliases.pop(intermediate.reg_name(reg), None)
                     ops = intermediate.operands
-                    if (intermediate.mnemonic == "add" and len(ops) == 3
+                    if (intermediate.mnemonic in ("add", "sub") and len(ops) == 3
                             and ops[0].type == ARM64_OP_REG
                             and ops[1].type == ARM64_OP_REG
-                            and intermediate.reg_name(ops[1].reg) == "sp"
-                            and ops[2].type == ARM64_OP_IMM and state[1] is not None):
-                        next_aliases[intermediate.reg_name(ops[0].reg)] = state[1]+ops[2].imm
+                            and ops[2].type == ARM64_OP_IMM):
+                        base = intermediate.reg_name(ops[1].reg)
+                        offset = state[1] if base == "sp" else aliases.get(base)
+                        if offset is not None:
+                            next_aliases[intermediate.reg_name(ops[0].reg)] = (
+                                offset + ops[2].imm * (1 if intermediate.mnemonic == "add" else -1))
+                    elif (intermediate.mnemonic == "mov" and len(ops) == 2
+                            and ops[0].type == ARM64_OP_REG and ops[1].type == ARM64_OP_REG):
+                        base = intermediate.reg_name(ops[1].reg)
+                        offset = state[1] if base == "sp" else aliases.get(base)
+                        if offset is not None:
+                            next_aliases[intermediate.reg_name(ops[0].reg)] = offset
                 for kind,nxt in transitions.get(state,()):
                     if kind.startswith("fallthrough_after_") or nxt[1] is None:
                         continue
