@@ -74,6 +74,18 @@ def run(main,out):
     unknown_alias=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9000083,
                                       0xf94007e2,0xd65f03c0]))
     assert trace(unknown_alias,0x7600)["possible_stack_write_read_pairs"]==[]
+    # Path-local ADD X3,SP,#32 proves a non-SP store is disjoint.
+    disjoint_alias=b"".join(map(word,[0xd10043ff,0xf90007e1,0x910083e3,
+                                      0xf9000064,0xf94007e2,0xd65f03c0]))
+    assert len(trace(disjoint_alias,0x7800)["possible_stack_write_read_pairs"])==1
+    # ADD X3,SP,#8 aliases the original X store exactly: reject.
+    overlap_alias=b"".join(map(word,[0xd10043ff,0xf90007e1,0x910023e3,
+                                     0xf9000064,0xf94007e2,0xd65f03c0]))
+    assert trace(overlap_alias,0x7900)["possible_stack_write_read_pairs"]==[]
+    # Clobbering the alias register before the store must fail closed.
+    clobbered=b"".join(map(word,[0xd10043ff,0xf90007e1,0x910083e3,
+                                 0x91000003,0xf9000064,0xf94007e2,0xd65f03c0]))
+    assert trace(clobbered,0x7a00)["possible_stack_write_read_pairs"]==[]
     # A load through another base does not overwrite stack memory.
     unrelated_read=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9400083,
                                         0xf94007e2,0xd65f03c0]))

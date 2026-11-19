@@ -113,19 +113,31 @@ def trace(data, start, max_states=1024):
         """Find a CFG state path, excluding opaque calls and unknown SP."""
         starts = [(pc,delta) for pc,delta in visited if pc == writer_pc and delta is not None]
         for origin in sorted(starts):
-            pending = deque([(origin,[origin])])
-            seen = {origin}
+            # Aliases are established only on the witnessed suffix. An alias
+            # defined before the writer remains unknown (and fails closed).
+            pending = deque([(origin,[origin],{})])
+            seen = {(origin,())}
             while pending:
-                state,path = pending.popleft()
+                state,path,aliases = pending.popleft()
                 current = access_by_pc.get(state[0])
-                # A store through a non-SP base may alias the tracked stack slot.
-                # Without register provenance its destination is unknown: fail closed.
                 intermediate = decoded.get(state[0])
                 if state != origin and intermediate is not None:
                     memory_operands = [o for o in intermediate.operands if o.type == ARM64_OP_MEM]
                     if memory_operands and (intermediate.mnemonic.startswith("st") or
                             not intermediate.mnemonic.startswith("ld")):
-                        if any(intermediate.reg_name(o.mem.base) != "sp" for o in memory_operands):
+                        for mem in memory_operands:
+                            base = intermediate.reg_name(mem.mem.base)
+                            if base == "sp":
+                                continue  # Existing SP byte-range check below.
+                            width = byte_width(intermediate)
+                            offset = aliases.get(base)
+                            if (offset is None or width is None or intermediate.writeback
+                                    or max(slot[0], offset+mem.mem.disp)
+                                       < min(slot[1], offset+mem.mem.disp+width)):
+                                break
+                        else:
+                            memory_operands = []  # Proven disjoint alias stores.
+                        if memory_operands:
                             continue
                 if (state != origin and current is not None and current["memory_direction"] != "read"):
                     # An intervening store (or unclassified memory operation) may kill the value.
@@ -135,15 +147,32 @@ def trace(data, start, max_states=1024):
                             or max(target_range[0], observed_range[0]) < min(target_range[1], observed_range[1])
                             or current["memory_direction"] == "unknown"):
                         continue
+                # Register writes kill tracked aliases. Only ADD Xd, SP, #imm
+                # with a known SP delta establishes an alias; all other
+                # definitions remain unknown. No cross-call propagation.
+                next_aliases = dict(aliases)
+                if intermediate is not None:
+                    _, writes = intermediate.regs_access()
+                    for reg in writes:
+                        next_aliases.pop(intermediate.reg_name(reg), None)
+                    ops = intermediate.operands
+                    if (intermediate.mnemonic == "add" and len(ops) == 3
+                            and ops[0].type == ARM64_OP_REG
+                            and ops[1].type == ARM64_OP_REG
+                            and intermediate.reg_name(ops[1].reg) == "sp"
+                            and ops[2].type == ARM64_OP_IMM and state[1] is not None):
+                        next_aliases[intermediate.reg_name(ops[0].reg)] = state[1]+ops[2].imm
                 for kind,nxt in transitions.get(state,()):
-                    if (kind.startswith("fallthrough_after_") or nxt[1] is None
-                            or nxt in seen):
+                    if kind.startswith("fallthrough_after_") or nxt[1] is None:
+                        continue
+                    key = (nxt,tuple(sorted(next_aliases.items())))
+                    if key in seen:
                         continue
                     candidate_path = path+[nxt]
                     if nxt[0] == reader_pc:
                         return [{"pc":hex(pc),"sp_delta":delta} for pc,delta in candidate_path]
-                    seen.add(nxt)
-                    pending.append((nxt,candidate_path))
+                    seen.add(key)
+                    pending.append((nxt,candidate_path,next_aliases))
         return None
     # CFG reachability proves only a possible path, not actual execution or dataflow.
     candidates = []
