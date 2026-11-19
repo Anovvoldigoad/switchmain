@@ -1532,5 +1532,18 @@
     "raw_job_log_inspected": true,
     "moveset_run": 44457996686,
     "compressed_run": 44457996703
+  },
+  "compressed_prm_multi_member_20261119": {
+    "state": "PENDING_CI",
+    "parent_sha": "c1ab84f3f8b9b7b7275c2424533d971d92edff1d",
+    "code_commit": "129eaf7adea0367d9aecbf18ca3ad65b4af390b9",
+    "test_commit": "6aa8ad785317f0f64d5bcde27cfb407b42df8a9e",
+    "scope": "atomic multi-member offline compressed Event236 same-size CPK publication",
+    "tests": "synthetic positive two-member integrity, negative missing second rollback, duplicate and empty",
+    "head_ci_completed_success": false,
+    "raw_job_log_inspected": false,
+    "consumer_abi_verified": false,
+    "uzuy_verified": false,
+    "next": "Obtain HEAD push workflow run and raw logs, fix any failure; then prove native ownership and archive precedence."
   }
 }
