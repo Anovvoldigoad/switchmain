@@ -1510,5 +1510,18 @@
       "prewriter_overlap",
       "prewriter_clobber"
     ]
+  },
+  "fileload_w_register_clobber_20261119": {
+    "state": "PENDING_CI",
+    "parent_sha": "b17064d32a689ae33e74d60ed203486cf3c5b7b3",
+    "source": "tools/portlib/native_fileload_sp_cfg.py",
+    "test": "tests/test_native_fileload_sp_cfg.py",
+    "cases": [
+      "prewriter_w_clobber",
+      "postwriter_w_clobber",
+      "unrelated_w_preserves_alias"
+    ],
+    "consumer_abi_proven": false,
+    "emulator_tested": false
   }
 }

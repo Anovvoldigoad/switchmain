@@ -117,7 +117,12 @@ def trace(data, start, max_states=1024):
         if intermediate is not None:
             _, writes = intermediate.regs_access()
             for reg in writes:
-                next_aliases.pop(intermediate.reg_name(reg), None)
+                name = intermediate.reg_name(reg)
+                # A Wn write zero-extends into Xn on AArch64. Keeping an
+                # earlier Xn stack alias would invent pointer provenance.
+                if name.startswith("w") and name[1:].isdigit():
+                    next_aliases.pop("x" + name[1:], None)
+                next_aliases.pop(name, None)
             ops = intermediate.operands
             if (intermediate.mnemonic in ("add", "sub") and len(ops) == 3
                     and ops[0].type == ARM64_OP_REG

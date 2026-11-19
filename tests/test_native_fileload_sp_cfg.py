@@ -109,6 +109,21 @@ def run(main,out):
     assert trace(prior_overlap,0x7f00)["possible_stack_write_read_pairs"]==[]
     prior_clobber=b"".join(map(word,[0xd10043ff,0x910083e3,0x91000003,0xf90007e1,0xf9000064,0xf94007e2,0xd65f03c0]))
     assert trace(prior_clobber,0x8000)["possible_stack_write_read_pairs"]==[]
+    # A 32-bit register write clears the corresponding X register's
+    # provenance, including aliases created before the stack writer.
+    # MOV W3,W0 is ORR W3,WZR,W0; its architectural result zero-extends X3.
+    w_clobber=b"".join(map(word,[0xd10043ff,0x910083e3,0xf90007e1,
+                                  0x2a0003e3,0xf9000064,0xf94007e2,0xd65f03c0]))
+    assert trace(w_clobber,0x8100)["possible_stack_write_read_pairs"]==[]
+    # Same case with alias created after writer; no stale X3 survives.
+    late_w_clobber=b"".join(map(word,[0xd10043ff,0xf90007e1,0x910083e3,
+                                       0x2a0003e3,0xf9000064,0xf94007e2,0xd65f03c0]))
+    assert trace(late_w_clobber,0x8200)["possible_stack_write_read_pairs"]==[]
+    # X-register overwrite still invalidates, and a W write to a
+    # different register must leave the disjoint X3 alias intact.
+    unrelated_w=b"".join(map(word,[0xd10043ff,0x910083e3,0xf90007e1,
+                                    0x2a0003e5,0xf9000064,0xf94007e2,0xd65f03c0]))
+    assert len(trace(unrelated_w,0x8300)["possible_stack_write_read_pairs"])==1
     # A load through another base does not overwrite stack memory.
     unrelated_read=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9400083,
                                         0xf94007e2,0xd65f03c0]))

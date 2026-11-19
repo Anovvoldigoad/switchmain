@@ -2044,5 +2044,17 @@
     "ownership_verified": false,
     "uzuy_verified": false,
     "next": "Inspect authentic HEAD Foundation push job log; fix regression before PASS; then trace consumer lifecycle."
+  },
+  "fileload_w_register_clobber_20261119": {
+    "state": "PENDING_CI",
+    "parent_sha": "b17064d32a689ae33e74d60ed203486cf3c5b7b3",
+    "prior_foundation_run": 44451292830,
+    "prior_foundation_job": 135315619331,
+    "prior_raw_log_inspected": true,
+    "new_head_ci_verified": false,
+    "consumer_abi_proven": false,
+    "ownership_verified": false,
+    "uzuy_verified": false,
+    "next": "Read new HEAD push Foundation raw job log, fix regressions, then pursue pinned original main consumer lifecycle evidence."
   }
 }
