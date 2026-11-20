@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions, merge_resolved, verify_resolved, partition_resolved, build_partition_bundle, verify_partition_bundle, verify_partition_directory, publish_partition_directory
+from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions, merge_resolved, verify_resolved, partition_resolved, reassemble_owner_partitions, build_partition_bundle, verify_partition_bundle, verify_partition_directory, publish_partition_directory
 from pc_moveset_event_preflight import audit
 
 def source(name, version, rows):
@@ -15,6 +15,32 @@ def source(name, version, rows):
     return name, raw, hashlib.sha256(raw).hexdigest()
 
 class MultiModIndexMerge(unittest.TestCase):
+    def test_reassemble_owner_partitions_order_and_rejections(self):
+        a = source("alpha", "nsc", [{"event_id": "shared", "function_index": 1},
+                                     {"event_id": "a", "function_index": 3}])
+        b = source("beta", "nsc", [{"event_id": "shared", "function_index": 2},
+                                    {"event_id": "b", "function_index": 4}])
+        payload, proof = merge_resolved([a, b], {"shared": "beta"})
+        parts = partition_resolved(payload, proof, [a, b])
+        self.assertEqual(reassemble_owner_partitions(parts, proof), payload)
+        self.assertEqual([row["event_id"] for row in json.loads(payload)["events"]],
+                         ["shared", "a", "b"])
+        for bad_parts, bad_proof in (
+            (list(reversed(parts)), proof),
+            (parts[:1], proof),
+            ([(parts[0][0], parts[0][1] + b" ", parts[0][2]), parts[1]], proof),
+            (parts, dict(proof, event_owners=proof["event_owners"][:-1])),
+            (parts, dict(proof, event_owners=list(reversed(proof["event_owners"])))),
+            (parts, dict(proof, output_sha256="0" * 64)),
+        ):
+            with self.assertRaises(ValueError):
+                reassemble_owner_partitions(bad_parts, bad_proof)
+        # Empty partitions remain valid when all of a source's events lose ownership.
+        c = source("loser", "nsc", [{"event_id": "shared", "function_index": 9}])
+        merged, ledger = merge_resolved([c, b], {"shared": "beta"})
+        self.assertEqual(reassemble_owner_partitions(
+            partition_resolved(merged, ledger, [c, b]), ledger), merged)
+
     def test_standalone_owner_partition_directory_publication(self):
         a = source("alpha/unsafe", "nsc", [{"event_id": "shared", "function_index": 1},
                                              {"event_id": "alpha", "function_index": 3}])

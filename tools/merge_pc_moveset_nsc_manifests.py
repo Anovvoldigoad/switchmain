@@ -91,6 +91,48 @@ def verify_resolved(payload, proof, sources):
         raise ValueError("Resolved payload or provenance does not match authenticated sources")
     return True
 
+def reassemble_owner_partitions(partitions, proof):
+    """Restore original cross-mod event order from authenticated owner partitions.
+
+    This is an editor-only inverse; it cannot restore discarded conflicting rows.
+    """
+    if not isinstance(proof, dict) or proof.get("status") != "PC_EXPLICIT_OWNER_EDITOR_INDEX_ONLY":
+        raise ValueError("Expected resolved editor provenance")
+    owners = proof.get("event_owners")
+    origins = proof.get("sources")
+    if not isinstance(owners, list) or not isinstance(origins, list):
+        raise ValueError("Missing owner ledger")
+    if len(partitions) != len(origins):
+        raise ValueError("Partition count mismatch")
+    queues = {}
+    for (name, raw, digest), origin in zip(partitions, origins):
+        if name != origin["name"] or name in queues:
+            raise ValueError("Partition source order mismatch")
+        if hashlib.sha256(raw).hexdigest() != digest:
+            raise ValueError("Partition SHA256 mismatch")
+        doc = json.loads(raw)
+        if doc.get("source_version") != "nsc" or not isinstance(doc.get("events"), list):
+            raise ValueError("Invalid partition manifest")
+        queues[name] = iter(doc["events"])
+    events = []
+    for owner in owners:
+        if not isinstance(owner, dict) or set(owner) != {"event_id", "source"}:
+            raise ValueError("Invalid owner ledger entry")
+        try:
+            row = next(queues[owner["source"]])
+        except (KeyError, StopIteration):
+            raise ValueError("Missing owned event") from None
+        if row["event_id"] != owner["event_id"]:
+            raise ValueError("Owner ledger event mismatch")
+        events.append(row)
+    if any(next(queue, None) is not None for queue in queues.values()):
+        raise ValueError("Unexpected unowned partition event")
+    result = (json.dumps({"source_version": "nsc", "events": events},
+                         ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    if len(events) != proof.get("event_count") or hashlib.sha256(result).hexdigest() != proof.get("output_sha256"):
+        raise ValueError("Reassembled editor payload differs from provenance")
+    return result
+
 def partition_resolved(payload, proof, sources):
     """Partition selected editor rows by owner; discarded conflicts stay discarded."""
     verify_resolved(payload, proof, sources)
