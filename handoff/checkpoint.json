@@ -2276,5 +2276,21 @@
     "ci_result": "COMPLETED_SUCCESS_RAW_LOG_INSPECTED",
     "native_consumer_verified": false,
     "uzuy_verified": false
+  },
+  "factory_multimod_20261121": {
+    "state": "PENDING_HEAD_CI_OFFLINE",
+    "parent_sha": "2f364d178ed609fedf36e27d7a0d7d97443fc181",
+    "code_commit": "52d7034b7257da2ff0902783f2bb2f5dc44f68a8",
+    "fix_commit": "5eaf77ca2b9fc81b3f32367794ee60e9bea6ff2e",
+    "source": "tools/merge_factory_profiles.py",
+    "test": "tests/test_merge_factory_profiles.py",
+    "workflow": ".github/workflows/verify-factory-multimod.yml",
+    "failed_run": 44828176316,
+    "failed_job": 136606011691,
+    "failure": "test import path ModuleNotFoundError: portlib; corrected test sys.path",
+    "scope": "offline multi-mod class selector composition from canonical SHA256-pinned profiles; not native consumer",
+    "consumer_abi_verified": false,
+    "uzuy_verified": false,
+    "next": "Read HEAD factory Actions job logs and fix any failing regression; authenticate original main consumer ABI and lifecycle before hook."
   }
 }
