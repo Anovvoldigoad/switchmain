@@ -147,6 +147,28 @@ def publish_partition_directory(destination, payload, proof, sources):
         os.rename(staging, destination)
     return index
 
+def verify_partition_directory(directory, payload, proof, sources):
+    """Verify standalone editor files against exact authenticated source replay."""
+    parts = partition_resolved(payload, proof, sources)
+    index = {"status": "PC_EDITOR_STANDALONE_PARTITIONS_ONLY",
+             "merged_sha256": hashlib.sha256(payload).hexdigest(),
+             "partitions": [], "native_switch_abi_verified": False}
+    names = {"index.json"}
+    for i, (owner, data, digest) in enumerate(parts):
+        filename = f"{i:03d}.json"
+        names.add(filename)
+        index["partitions"].append({"source": owner, "file": filename, "sha256": digest})
+        path = directory / filename
+        if path.is_symlink() or path.read_bytes() != data:
+            raise ValueError("Partition bytes differ from source replay")
+    expected = (json.dumps(index, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    path = directory / "index.json"
+    if path.is_symlink() or path.read_bytes() != expected:
+        raise ValueError("Partition index differs from source replay")
+    if {p.name for p in directory.iterdir()} != names:
+        raise ValueError("Unexpected partition directory entry")
+    return True
+
 def merge(sources):
     if not 1 <= len(sources) <= 64:
         raise ValueError("Expected 1..64 source manifests")
@@ -211,6 +233,7 @@ def main():
     p.add_argument("--verify-resolved", action="store_true", help="Replay and verify existing resolved output and evidence")
     p.add_argument("--partition-output", type=Path, help="Write verified owner partitions as one editor-only JSON bundle")
     p.add_argument("--partition-directory", type=Path, help="Publish standalone selected-owner editor manifests atomically")
+    p.add_argument("--verify-partition-directory", type=Path, help="Replay published editor directory read-only")
     p.add_argument("--verify-partition-bundle", type=Path, help="Read-only replay of an existing owner partition bundle")
     p.add_argument("--collisions-only", action="store_true", help="Report authenticated event-ID conflicts without merging")
     p.add_argument("--output", type=Path, required=True)
@@ -225,6 +248,10 @@ def main():
             raise ValueError("Partition directory must be distinct from inputs")
         if args.verify_partition_bundle is not None and (not args.verify_resolved or args.partition_output is not None):
             raise ValueError("Bundle verification requires --verify-resolved without --partition-output")
+        if args.verify_partition_directory is not None and (
+                not args.verify_resolved or args.partition_directory is not None or
+                args.partition_output is not None or args.verify_partition_bundle is not None):
+            raise ValueError("Directory replay requires --verify-resolved only")
         if args.output == args.evidence:
             raise ValueError("Outputs must be distinct")
         if not args.verify_resolved and (args.output.exists() or args.evidence.exists()):
@@ -244,6 +271,8 @@ def main():
                     out.write(data)
             if args.partition_directory is not None:
                 publish_partition_directory(args.partition_directory, payload, proof, sources)
+            if args.verify_partition_directory is not None:
+                verify_partition_directory(args.verify_partition_directory, payload, proof, sources)
             if args.verify_partition_bundle is not None:
                 verify_partition_bundle(args.verify_partition_bundle.read_bytes(), payload, proof, sources)
             print("PC_EXPLICIT_OWNER_INDEX_VERIFIED NOT_SWITCH_ABI")

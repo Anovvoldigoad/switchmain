@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions, merge_resolved, verify_resolved, partition_resolved, build_partition_bundle, verify_partition_bundle, publish_partition_directory
+from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions, merge_resolved, verify_resolved, partition_resolved, build_partition_bundle, verify_partition_bundle, verify_partition_directory, publish_partition_directory
 from pc_moveset_event_preflight import audit
 
 def source(name, version, rows):
@@ -291,6 +291,51 @@ class MultiModIndexMerge(unittest.TestCase):
             pa.write_bytes(a[1] + b" ")
             self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
             self.assertEqual(partition.read_bytes(), bundle)
+
+    def test_standalone_partition_directory_replay(self):
+        a = source("alpha", "nsc", [{"event_id": "same", "function_index": 1}])
+        b = source("beta", "nsc", [{"event_id": "same", "function_index": 2}])
+        sources = [a, b]
+        payload, proof = merge_resolved(sources, {"same": "beta"})
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            directory = root / "parts"
+            publish_partition_directory(directory, payload, proof, sources)
+            self.assertTrue(verify_partition_directory(directory, payload, proof, sources))
+            index = directory / "index.json"
+            saved = index.read_bytes()
+            index.write_bytes(saved + b" ")
+            with self.assertRaises(ValueError):
+                verify_partition_directory(directory, payload, proof, sources)
+            index.write_bytes(saved)
+            part = directory / "001.json"
+            saved = part.read_bytes()
+            part.write_bytes(saved + b" ")
+            with self.assertRaises(ValueError):
+                verify_partition_directory(directory, payload, proof, sources)
+            part.write_bytes(saved)
+            (directory / "extra.json").write_text("{}")
+            with self.assertRaises(ValueError):
+                verify_partition_directory(directory, payload, proof, sources)
+            (directory / "extra.json").unlink()
+            with self.assertRaises(ValueError):
+                verify_partition_directory(directory, payload, proof,
+                                           [a, ("beta", b[1] + b" ", b[2])])
+            pa, pb = root / "a.json", root / "b.json"
+            pa.write_bytes(a[1])
+            pb.write_bytes(b[1])
+            merged, evidence = root / "merged.json", root / "proof.json"
+            merged.write_bytes(payload)
+            evidence.write_text(json.dumps(proof))
+            cmd = [sys.executable, str(Path(__file__).resolve().parents[1] /
+                   "tools" / "merge_pc_moveset_nsc_manifests.py"),
+                   "--verify-resolved", "--verify-partition-directory", str(directory),
+                   "--source", "alpha", str(pa), a[2],
+                   "--source", "beta", str(pb), b[2],
+                   "--output", str(merged), "--evidence", str(evidence)]
+            self.assertEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
+            part.write_bytes(saved + b" ")
+            self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
 
     def test_mixed_sources_exact_order_and_sha(self):
         a = source("alpha", "ns4", [{"event_id": "a", "function_index": 288}])
