@@ -1604,5 +1604,13 @@
     "test": "tests/test_merge_pc_moveset_nsc_manifests.py",
     "native_consumer_abi_verified": false,
     "uzuy_verified": false
+  },
+  "pc_partition_bundle_replay_20261120": {
+    "status": "PENDING_CI",
+    "parent_sha": "55306b12028a5f182c0a5dc83a7616f3e3b8ca12",
+    "code_commit": "de8cbb7522cae0b9cccd31a0380c5f9fca7a2811",
+    "scope": "read-only PC editor exact bundle replay; synthetic only",
+    "head_ci_verified": false,
+    "consumer_abi_verified": false
   }
 }

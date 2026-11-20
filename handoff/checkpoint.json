@@ -2223,5 +2223,30 @@
     "next": "Run partition regression and inspect HEAD push Actions original job log; fix failure; no runtime hooks",
     "native_abi": false,
     "uzuy": false
+  },
+  "pc_partition_bundle_replay_20261120": {
+    "status": "PENDING_CI",
+    "parent_sha": "55306b12028a5f182c0a5dc83a7616f3e3b8ca12",
+    "code_commit": "de8cbb7522cae0b9cccd31a0380c5f9fca7a2811",
+    "head_ci_verified": false,
+    "previous_parent_runs": {
+      "foundation": [
+        44744226927,
+        136315242897
+      ],
+      "moveset": [
+        44744226985,
+        136315242449
+      ],
+      "cpk": [
+        44744226917,
+        136315242743
+      ],
+      "compressed": [
+        44744226878,
+        136315242596
+      ]
+    },
+    "next": "Inspect new HEAD MovesetPlus push job original log and fix failures; original main consumer ABI still unresolved."
   }
 }
