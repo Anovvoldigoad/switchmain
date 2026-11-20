@@ -69,7 +69,7 @@ def merge_resolved(sources, choices):
     if len(selected) > 65536:
         raise ValueError("Combined event count exceeds editor manifest limit")
     payload = (json.dumps({"source_version": "nsc", "events": selected},
-                          ensure_ascii=False, indent=2) + "\\n").encode("utf-8")
+                          ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     proof = {"status": "PC_EXPLICIT_OWNER_EDITOR_INDEX_ONLY",
              "sources": origins, "resolved_owners": choices,
              "output_sha256": hashlib.sha256(payload).hexdigest(),
