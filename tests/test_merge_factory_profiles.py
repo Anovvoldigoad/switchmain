@@ -2,8 +2,10 @@ import hashlib
 import tempfile
 import unittest
 from pathlib import Path
-from tools.merge_factory_profiles import merge
-from tools.portlib.factory_profile import encode, decode, seal
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
+from merge_factory_profiles import merge
+from portlib.factory_profile import encode, decode, seal
 
 
 class MergeFactoryProfiles(unittest.TestCase):
