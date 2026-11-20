@@ -2169,5 +2169,15 @@
     "native_consumer_abi_verified": false,
     "uzuy_verified": false,
     "next": "Inspect push-run and authentic job log; fix failures before PASS."
+  },
+  "pc_editor_collision_cli_20261120": {
+    "state": "PENDING_CI",
+    "parent_sha": "ff37c40425fe9a240c163830a309b79235d3cadd",
+    "code_commit": "813669ded6e4c7afdc28e7eb1cbc4181210adccf",
+    "host_tested": false,
+    "actions_raw_logs_verified": false,
+    "native_consumer_abi_verified": false,
+    "uzuy_verified": false,
+    "next": "Read HEAD push workflow job logs, repair failures, then authentic consumer ownership evidence."
   }
 }
