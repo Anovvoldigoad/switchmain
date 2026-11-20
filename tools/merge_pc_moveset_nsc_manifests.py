@@ -77,6 +77,15 @@ def merge_resolved(sources, choices):
              "gameplay_verified": False}
     return payload, proof
 
+def verify_resolved(payload, proof, sources):
+    """Replay SHA-authenticated sources and owner decisions against published bytes."""
+    if not isinstance(proof, dict) or proof.get("status") != "PC_EXPLICIT_OWNER_EDITOR_INDEX_ONLY":
+        raise ValueError("Not an explicit-owner editor proof")
+    expected_payload, expected_proof = merge_resolved(sources, proof.get("resolved_owners"))
+    if payload != expected_payload or proof != expected_proof:
+        raise ValueError("Resolved payload or provenance does not match authenticated sources")
+    return True
+
 def merge(sources):
     if not 1 <= len(sources) <= 64:
         raise ValueError("Expected 1..64 source manifests")
@@ -138,14 +147,23 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--source", nargs=3, action="append", metavar=("NAME", "PATH", "SHA256"), required=True)
     p.add_argument("--resolve", type=Path, help="JSON event_id to explicit source owner (editor only)")
+    p.add_argument("--verify-resolved", action="store_true", help="Replay and verify existing resolved output and evidence")
     p.add_argument("--collisions-only", action="store_true", help="Report authenticated event-ID conflicts without merging")
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--evidence", type=Path, required=True)
     args = p.parse_args()
     try:
-        if args.output == args.evidence or args.output.exists() or args.evidence.exists():
+        if args.output == args.evidence:
+            raise ValueError("Outputs must be distinct")
+        if not args.verify_resolved and (args.output.exists() or args.evidence.exists()):
             raise ValueError("Outputs must be distinct and absent")
         sources = [(name, Path(path).read_bytes(), sha) for name, path, sha in args.source]
+        if args.verify_resolved:
+            if args.resolve is not None or args.collisions_only:
+                raise ValueError("Verification cannot be combined with merge options")
+            verify_resolved(args.output.read_bytes(), json.loads(args.evidence.read_bytes()), sources)
+            print("PC_EXPLICIT_OWNER_INDEX_VERIFIED NOT_SWITCH_ABI")
+            return
         if args.collisions_only and args.resolve is not None:
             raise ValueError("--resolve cannot be combined with --collisions-only")
         if args.collisions_only:
