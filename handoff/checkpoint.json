@@ -2292,5 +2292,17 @@
     "consumer_abi_verified": false,
     "uzuy_verified": false,
     "next": "Read HEAD factory Actions job logs and fix any failing regression; authenticate original main consumer ABI and lifecycle before hook."
+  },
+  "latest_raw_factory_collision": {
+    "state": "PENDING_HEAD_CI_OFFLINE",
+    "parent_sha": "13249b458ca4bc9c5f3f5a327791b6c87822b497",
+    "code_commit": "8292c004bffc5bedc44f34aad5672552c3941fc3",
+    "source": "tools/portlib/factory_profile.py",
+    "cli": "tools/compile_factory_profile.py",
+    "test": "tests/test_factory_raw_conflicts.py",
+    "workflow": ".github/workflows/verify-factory-multimod.yml",
+    "native_consumer_verified": false,
+    "uzuy_verified": false,
+    "next": "Read HEAD factory Actions push job raw log; authenticate original main consumer ABI."
   }
 }
