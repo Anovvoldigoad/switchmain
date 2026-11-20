@@ -56,7 +56,7 @@ def merge_resolved(sources, choices):
     collisions = {key for key, owners in rows_by_id.items() if len(owners) > 1}
     if set(choices) != collisions:
         raise ValueError("Resolution keys must exactly match cross-mod collisions")
-    selected = []
+    selected, event_owners = [], []
     for key in order:
         owners = rows_by_id[key]
         if key in collisions:
@@ -64,14 +64,17 @@ def merge_resolved(sources, choices):
             if len(matching) != 1:
                 raise ValueError("Resolution source does not own event: " + key)
             selected.append(matching[0])
+            event_owners.append({"event_id": key, "source": choices[key]})
         else:
             selected.append(owners[0][1])
+            event_owners.append({"event_id": key, "source": owners[0][0]})
     if len(selected) > 65536:
         raise ValueError("Combined event count exceeds editor manifest limit")
     payload = (json.dumps({"source_version": "nsc", "events": selected},
                           ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     proof = {"status": "PC_EXPLICIT_OWNER_EDITOR_INDEX_ONLY",
              "sources": origins, "resolved_owners": choices,
+             "event_owners": event_owners,
              "output_sha256": hashlib.sha256(payload).hexdigest(),
              "event_count": len(selected), "native_switch_abi_verified": False,
              "gameplay_verified": False}

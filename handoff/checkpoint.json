@@ -2207,5 +2207,14 @@
     },
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
     "next": "Run new test on host and inspect HEAD Actions raw jobs; repair failures; no runtime hooks before consumer ABI/ownership/lifecycle proof"
+  },
+  "pc_moveset_event_owner_provenance_20261120": {
+    "state": "PENDING_CI",
+    "parent_sha": "876c7c9f5cfe50ff993e0f074953c98d94d3b8c5",
+    "source": "tools/merge_pc_moveset_nsc_manifests.py",
+    "test": "tests/test_merge_pc_moveset_nsc_manifests.py",
+    "native_switch_abi_verified": false,
+    "uzuy_verified": false,
+    "next": "Run tests/test_merge_pc_moveset_nsc_manifests.py and inspect HEAD Actions push job raw logs; fix failures before PASS."
   }
 }

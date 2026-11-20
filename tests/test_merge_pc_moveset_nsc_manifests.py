@@ -77,6 +77,9 @@ class MultiModIndexMerge(unittest.TestCase):
                           json.loads(payload)["events"]], [("shared", 2), ("unique", 3)])
         self.assertEqual(proof["output_sha256"], hashlib.sha256(payload).hexdigest())
         self.assertEqual(proof["resolved_owners"], {"shared": "beta"})
+        self.assertEqual(proof["event_owners"], [
+            {"event_id": "shared", "source": "beta"},
+            {"event_id": "unique", "source": "alpha"}])
         self.assertFalse(proof["native_switch_abi_verified"])
         for choices in ({}, {"shared": "gamma"}, {"unique": "alpha"},
                         {"shared": "beta", "unique": "alpha"}, []):
@@ -124,6 +127,8 @@ class MultiModIndexMerge(unittest.TestCase):
             (payload + b" ", proof, [a, b]),
             (payload, dict(proof, output_sha256="0" * 64), [a, b]),
             (payload, dict(proof, sources=[]), [a, b]),
+            (payload, dict(proof, event_owners=[]), [a, b]),
+            (payload, dict(proof, event_owners=[{"event_id": "same", "source": "alpha"}]), [a, b]),
             (payload, proof, [a, ("beta", b[1] + b" ", b[2])]),
             (payload, dict(proof, resolved_owners={"same": "alpha"}), [a, b]),
         ):
