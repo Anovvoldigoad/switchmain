@@ -31,6 +31,52 @@ def analyze_collisions(sources):
             "native_switch_abi_verified": False}
 
 
+def merge_resolved(sources, choices):
+    """Compose editor events with explicit ownership for every cross-mod collision."""
+    if not isinstance(choices, dict) or not all(isinstance(k, str) and isinstance(v, str)
+                                                 for k, v in choices.items()):
+        raise ValueError("Resolution must map event IDs to source names")
+    if not 1 <= len(sources) <= 64:
+        raise ValueError("Expected 1..64 source manifests")
+    names, rows_by_id, order, origins = set(), {}, [], []
+    for name, raw, expected_sha in sources:
+        if not isinstance(name, str) or not name or len(name) > 128 or name in names:
+            raise ValueError("Invalid or duplicate mod name")
+        names.add(name)
+        converted, proof = convert(raw, expected_sha)
+        rows = json.loads(converted)["events"]
+        origins.append({"name": name, "input_sha256": proof["input_sha256"],
+                        "converted_sha256": hashlib.sha256(converted).hexdigest()})
+        for row in rows:
+            key = row["event_id"]
+            if key not in rows_by_id:
+                rows_by_id[key] = []
+                order.append(key)
+            rows_by_id[key].append((name, row))
+    collisions = {key for key, owners in rows_by_id.items() if len(owners) > 1}
+    if set(choices) != collisions:
+        raise ValueError("Resolution keys must exactly match cross-mod collisions")
+    selected = []
+    for key in order:
+        owners = rows_by_id[key]
+        if key in collisions:
+            matching = [row for name, row in owners if name == choices[key]]
+            if len(matching) != 1:
+                raise ValueError("Resolution source does not own event: " + key)
+            selected.append(matching[0])
+        else:
+            selected.append(owners[0][1])
+    if len(selected) > 65536:
+        raise ValueError("Combined event count exceeds editor manifest limit")
+    payload = (json.dumps({"source_version": "nsc", "events": selected},
+                          ensure_ascii=False, indent=2) + "\\n").encode("utf-8")
+    proof = {"status": "PC_EXPLICIT_OWNER_EDITOR_INDEX_ONLY",
+             "sources": origins, "resolved_owners": choices,
+             "output_sha256": hashlib.sha256(payload).hexdigest(),
+             "event_count": len(selected), "native_switch_abi_verified": False,
+             "gameplay_verified": False}
+    return payload, proof
+
 def merge(sources):
     if not 1 <= len(sources) <= 64:
         raise ValueError("Expected 1..64 source manifests")
@@ -91,6 +137,7 @@ def split(payload, proof):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--source", nargs=3, action="append", metavar=("NAME", "PATH", "SHA256"), required=True)
+    p.add_argument("--resolve", type=Path, help="JSON event_id to explicit source owner (editor only)")
     p.add_argument("--collisions-only", action="store_true", help="Report authenticated event-ID conflicts without merging")
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--evidence", type=Path, required=True)
@@ -99,6 +146,8 @@ def main():
         if args.output == args.evidence or args.output.exists() or args.evidence.exists():
             raise ValueError("Outputs must be distinct and absent")
         sources = [(name, Path(path).read_bytes(), sha) for name, path, sha in args.source]
+        if args.collisions_only and args.resolve is not None:
+            raise ValueError("--resolve cannot be combined with --collisions-only")
         if args.collisions_only:
             report = analyze_collisions(sources)
             payload = (json.dumps(report, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
@@ -106,6 +155,8 @@ def main():
                      "report_sha256": hashlib.sha256(payload).hexdigest(),
                      "source_count": len(sources), "collision_count": len(report["collisions"]),
                      "native_switch_abi_verified": False}
+        elif args.resolve is not None:
+            payload, proof = merge_resolved(sources, json.loads(args.resolve.read_bytes()))
         else:
             payload, proof = merge(sources)
         proof_bytes = (json.dumps(proof, indent=2) + "\n").encode()
@@ -123,6 +174,8 @@ def main():
         p.error(str(exc))
     if args.collisions_only:
         print("PC_EDITOR_COLLISION_REPORT", proof["collision_count"], "NOT_SWITCH_ABI")
+    elif args.resolve is not None:
+        print("PC_EXPLICIT_OWNER_INDEX_MERGE", proof["event_count"], "NOT_SWITCH_ABI")
     else:
         print("PC_MULTI_MOD_INDEX_MERGE", proof["event_count"], "NOT_SWITCH_ABI")
 
