@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions, merge_resolved
+from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions, merge_resolved, verify_resolved
 from pc_moveset_event_preflight import audit
 
 def source(name, version, rows):
@@ -114,6 +114,40 @@ class MultiModIndexMerge(unittest.TestCase):
             self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
             self.assertFalse(out.exists())
             self.assertFalse(evidence.exists())
+
+    def test_resolved_replay_verifier_and_cli_fail_closed(self):
+        a = source("alpha", "nsc", [{"event_id": "same", "function_index": 1}])
+        b = source("beta", "nsc", [{"event_id": "same", "function_index": 2}])
+        payload, proof = merge_resolved([a, b], {"same": "beta"})
+        self.assertTrue(verify_resolved(payload, proof, [a, b]))
+        for bad_payload, bad_proof, bad_sources in (
+            (payload + b" ", proof, [a, b]),
+            (payload, dict(proof, output_sha256="0" * 64), [a, b]),
+            (payload, dict(proof, sources=[]), [a, b]),
+            (payload, proof, [a, ("beta", b[1] + b" ", b[2])]),
+            (payload, dict(proof, resolved_owners={"same": "alpha"}), [a, b]),
+        ):
+            with self.assertRaises(ValueError):
+                verify_resolved(bad_payload, bad_proof, bad_sources)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pa, pb = root / "a.json", root / "b.json"
+            out, evidence = root / "out.json", root / "proof.json"
+            pa.write_bytes(a[1])
+            pb.write_bytes(b[1])
+            out.write_bytes(payload)
+            evidence.write_text(json.dumps(proof))
+            cmd = [sys.executable, str(Path(__file__).resolve().parents[1] /
+                   "tools" / "merge_pc_moveset_nsc_manifests.py"),
+                   "--verify-resolved", "--source", "alpha", str(pa), a[2],
+                   "--source", "beta", str(pb), b[2],
+                   "--output", str(out), "--evidence", str(evidence)]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(out.read_bytes(), payload)
+            out.write_bytes(payload + b" ")
+            self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
+            self.assertEqual(out.read_bytes(), payload + b" ")
 
     def test_mixed_sources_exact_order_and_sha(self):
         a = source("alpha", "ns4", [{"event_id": "a", "function_index": 288}])
