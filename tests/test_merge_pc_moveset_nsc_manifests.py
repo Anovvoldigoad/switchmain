@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions, merge_resolved, verify_resolved, partition_resolved
+from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions, merge_resolved, verify_resolved, partition_resolved, build_partition_bundle, verify_partition_bundle
 from pc_moveset_event_preflight import audit
 
 def source(name, version, rows):
@@ -213,6 +213,45 @@ class MultiModIndexMerge(unittest.TestCase):
             pb.write_bytes(b[1] + b" ")
             self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
             self.assertFalse(bundle.exists())
+
+    def test_partition_bundle_replay_positive_negative_and_cli_read_only(self):
+        a = source("alpha", "nsc", [{"event_id": "same", "function_index": 1},
+                                     {"event_id": "only_a", "function_index": 3}])
+        b = source("beta", "nsc", [{"event_id": "same", "function_index": 2}])
+        sources = [a, b]
+        payload, proof = merge_resolved(sources, {"same": "beta"})
+        bundle = build_partition_bundle(payload, proof, sources)
+        self.assertTrue(verify_partition_bundle(bundle, payload, proof, sources))
+        for altered in (bundle + b" ", bundle.replace(b'"source": "alpha"', b'"source": "beta"', 1),
+                        bundle.replace(b'"sha256": "', b'"sha256": "0', 1)):
+            with self.assertRaises(ValueError):
+                verify_partition_bundle(altered, payload, proof, sources)
+        with self.assertRaises(ValueError):
+            verify_partition_bundle(bundle, payload, proof, [a, ("beta", b[1] + b" ", b[2])])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pa, pb = root / "a.json", root / "b.json"
+            merged, evidence, partition = root / "merged.json", root / "proof.json", root / "partition.json"
+            pa.write_bytes(a[1])
+            pb.write_bytes(b[1])
+            merged.write_bytes(payload)
+            evidence.write_text(json.dumps(proof))
+            partition.write_bytes(bundle)
+            cmd = [sys.executable, str(Path(__file__).resolve().parents[1] /
+                   "tools" / "merge_pc_moveset_nsc_manifests.py"),
+                   "--verify-resolved", "--verify-partition-bundle", str(partition),
+                   "--source", "alpha", str(pa), a[2],
+                   "--source", "beta", str(pb), b[2],
+                   "--output", str(merged), "--evidence", str(evidence)]
+            self.assertEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
+            self.assertEqual(partition.read_bytes(), bundle)
+            partition.write_bytes(bundle + b" ")
+            self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
+            self.assertEqual(partition.read_bytes(), bundle + b" ")
+            partition.write_bytes(bundle)
+            pa.write_bytes(a[1] + b" ")
+            self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
+            self.assertEqual(partition.read_bytes(), bundle)
 
     def test_mixed_sources_exact_order_and_sha(self):
         a = source("alpha", "ns4", [{"event_id": "a", "function_index": 288}])

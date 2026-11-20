@@ -102,6 +102,25 @@ def partition_resolved(payload, proof, sources):
         result.append((name, part, hashlib.sha256(part).hexdigest()))
     return result
 
+def build_partition_bundle(payload, proof, sources):
+    """Deterministically encode authenticated selected-owner partitions."""
+    parts = partition_resolved(payload, proof, sources)
+    bundle = {"status": "PC_EDITOR_OWNER_PARTITIONS_ONLY",
+              "merged_sha256": hashlib.sha256(payload).hexdigest(),
+              "partitions": [{"source": name, "sha256": digest,
+                              "manifest": json.loads(raw)}
+                             for name, raw, digest in parts],
+              "native_switch_abi_verified": False}
+    return (json.dumps(bundle, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
+def verify_partition_bundle(bundle_bytes, payload, proof, sources):
+    """Reject any byte or provenance drift from source-replayed partition bundle."""
+    expected = build_partition_bundle(payload, proof, sources)
+    if bundle_bytes != expected:
+        raise ValueError("Partition bundle differs from authenticated replay")
+    return True
+
 def merge(sources):
     if not 1 <= len(sources) <= 64:
         raise ValueError("Expected 1..64 source manifests")
@@ -165,6 +184,7 @@ def main():
     p.add_argument("--resolve", type=Path, help="JSON event_id to explicit source owner (editor only)")
     p.add_argument("--verify-resolved", action="store_true", help="Replay and verify existing resolved output and evidence")
     p.add_argument("--partition-output", type=Path, help="Write verified owner partitions as one editor-only JSON bundle")
+    p.add_argument("--verify-partition-bundle", type=Path, help="Read-only replay of an existing owner partition bundle")
     p.add_argument("--collisions-only", action="store_true", help="Report authenticated event-ID conflicts without merging")
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--evidence", type=Path, required=True)
@@ -172,6 +192,8 @@ def main():
     try:
         if args.partition_output is not None and (not args.verify_resolved or args.partition_output in (args.output, args.evidence)):
             raise ValueError("Partition output requires --verify-resolved and a distinct path")
+        if args.verify_partition_bundle is not None and (not args.verify_resolved or args.partition_output is not None):
+            raise ValueError("Bundle verification requires --verify-resolved without --partition-output")
         if args.output == args.evidence:
             raise ValueError("Outputs must be distinct")
         if not args.verify_resolved and (args.output.exists() or args.evidence.exists()):
@@ -186,16 +208,11 @@ def main():
             if args.partition_output is not None:
                 if args.partition_output.exists():
                     raise ValueError("Partition output already exists")
-                parts = partition_resolved(payload, proof, sources)
-                bundle = {"status": "PC_EDITOR_OWNER_PARTITIONS_ONLY",
-                          "merged_sha256": hashlib.sha256(payload).hexdigest(),
-                          "partitions": [{"source": name, "sha256": digest,
-                                          "manifest": json.loads(raw)}
-                                         for name, raw, digest in parts],
-                          "native_switch_abi_verified": False}
-                data = (json.dumps(bundle, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+                data = build_partition_bundle(payload, proof, sources)
                 with args.partition_output.open("xb") as out:
                     out.write(data)
+            if args.verify_partition_bundle is not None:
+                verify_partition_bundle(args.verify_partition_bundle.read_bytes(), payload, proof, sources)
             print("PC_EXPLICIT_OWNER_INDEX_VERIFIED NOT_SWITCH_ABI")
             return
         if args.collisions_only and args.resolve is not None:
