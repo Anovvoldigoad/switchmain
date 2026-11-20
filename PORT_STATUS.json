@@ -1596,5 +1596,13 @@
     "full_moddingapi": false,
     "ready_for_gameplay_test": false,
     "emulator_tested": false
+  },
+  "pc_resolved_partition_20261120": {
+    "state": "PENDING_CI",
+    "parent_sha": "10ef48963b5031531f8c128a893ab2f27cf424b4",
+    "source": "tools/merge_pc_moveset_nsc_manifests.py",
+    "test": "tests/test_merge_pc_moveset_nsc_manifests.py",
+    "native_consumer_abi_verified": false,
+    "uzuy_verified": false
   }
 }

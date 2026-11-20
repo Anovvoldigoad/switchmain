@@ -89,6 +89,19 @@ def verify_resolved(payload, proof, sources):
         raise ValueError("Resolved payload or provenance does not match authenticated sources")
     return True
 
+def partition_resolved(payload, proof, sources):
+    """Partition selected editor rows by owner; discarded conflicts stay discarded."""
+    verify_resolved(payload, proof, sources)
+    grouped = {name: [] for name, _, _ in sources}
+    for row, owner in zip(json.loads(payload)["events"], proof["event_owners"]):
+        grouped[owner["source"]].append(row)
+    result = []
+    for name in grouped:
+        part = (json.dumps({"source_version": "nsc", "events": grouped[name]},
+                           ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        result.append((name, part, hashlib.sha256(part).hexdigest()))
+    return result
+
 def merge(sources):
     if not 1 <= len(sources) <= 64:
         raise ValueError("Expected 1..64 source manifests")

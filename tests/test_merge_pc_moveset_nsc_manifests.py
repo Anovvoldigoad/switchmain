@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions, merge_resolved, verify_resolved
+from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions, merge_resolved, verify_resolved, partition_resolved
 from pc_moveset_event_preflight import audit
 
 def source(name, version, rows):
@@ -153,6 +153,25 @@ class MultiModIndexMerge(unittest.TestCase):
             out.write_bytes(payload + b" ")
             self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
             self.assertEqual(out.read_bytes(), payload + b" ")
+
+    def test_partition_resolved_owner_selection_and_tamper(self):
+        a = source("alpha", "nsc", [{"event_id": "shared", "function_index": 1},
+                                     {"event_id": "a", "function_index": 3}])
+        b = source("beta", "nsc", [{"event_id": "shared", "function_index": 2},
+                                    {"event_id": "b", "function_index": 4}])
+        payload, proof = merge_resolved([a, b], {"shared": "beta"})
+        parts = partition_resolved(payload, proof, [a, b])
+        self.assertEqual([name for name, _, _ in parts], ["alpha", "beta"])
+        self.assertEqual([[r["event_id"] for r in json.loads(raw)["events"]]
+                          for _, raw, _ in parts], [["a"], ["shared", "b"]])
+        for _, raw, digest in parts:
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), digest)
+        with self.assertRaises(ValueError):
+            partition_resolved(payload + b" ", proof, [a, b])
+        with self.assertRaises(ValueError):
+            partition_resolved(payload, dict(proof, event_owners=[]), [a, b])
+        with self.assertRaises(ValueError):
+            partition_resolved(payload, proof, [a, ("beta", b[1] + b" ", b[2])])
 
     def test_mixed_sources_exact_order_and_sha(self):
         a = source("alpha", "ns4", [{"event_id": "a", "function_index": 288}])

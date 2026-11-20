@@ -2216,5 +2216,12 @@
     "native_switch_abi_verified": false,
     "uzuy_verified": false,
     "next": "Run tests/test_merge_pc_moveset_nsc_manifests.py and inspect HEAD Actions push job raw logs; fix failures before PASS."
+  },
+  "pc_resolved_partition_20261120": {
+    "state": "PENDING_CI",
+    "parent_sha": "10ef48963b5031531f8c128a893ab2f27cf424b4",
+    "next": "Run partition regression and inspect HEAD push Actions original job log; fix failure; no runtime hooks",
+    "native_abi": false,
+    "uzuy": false
   }
 }
