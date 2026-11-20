@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions
+from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions, merge_resolved
 from pc_moveset_event_preflight import audit
 
 def source(name, version, rows):
@@ -66,6 +66,53 @@ class MultiModIndexMerge(unittest.TestCase):
             paths[1].write_bytes(b[1] + b" ")
             self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
             self.assertFalse(output.exists())
+            self.assertFalse(evidence.exists())
+
+    def test_explicit_owner_semantic_selection_and_rejection(self):
+        a = source("alpha", "nsc", [{"event_id": "shared", "function_index": 1},
+                                     {"event_id": "unique", "function_index": 3}])
+        b = source("beta", "nsc", [{"event_id": "shared", "function_index": 2}])
+        payload, proof = merge_resolved([a, b], {"shared": "beta"})
+        self.assertEqual([(r["event_id"], r["function_index"]) for r in
+                          json.loads(payload)["events"]], [("shared", 2), ("unique", 3)])
+        self.assertEqual(proof["output_sha256"], hashlib.sha256(payload).hexdigest())
+        self.assertEqual(proof["resolved_owners"], {"shared": "beta"})
+        self.assertFalse(proof["native_switch_abi_verified"])
+        for choices in ({}, {"shared": "gamma"}, {"unique": "alpha"},
+                        {"shared": "beta", "unique": "alpha"}, []):
+            with self.assertRaises(ValueError):
+                merge_resolved([a, b], choices)
+        with self.assertRaises(ValueError):
+            merge_resolved([a, ("beta", b[1] + b" ", b[2])], {"shared": "beta"})
+        with self.assertRaises(ValueError):
+            merge_resolved([a, a], {"shared": "alpha"})
+
+    def test_explicit_owner_cli_publication_and_rollback(self):
+        a = source("alpha", "nsc", [{"event_id": "same", "function_index": 1}])
+        b = source("beta", "nsc", [{"event_id": "same", "function_index": 2}])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pa, pb, policy = root / "a.json", root / "b.json", root / "owners.json"
+            out, evidence = root / "merged.json", root / "proof.json"
+            pa.write_bytes(a[1])
+            pb.write_bytes(b[1])
+            policy.write_text(json.dumps({"same": "beta"}))
+            cmd = [sys.executable, str(Path(__file__).resolve().parents[1] /
+                   "tools" / "merge_pc_moveset_nsc_manifests.py"),
+                   "--source", "alpha", str(pa), a[2],
+                   "--source", "beta", str(pb), b[2],
+                   "--resolve", str(policy), "--output", str(out),
+                   "--evidence", str(evidence)]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(out.read_bytes())["events"][0]["function_index"], 2)
+            self.assertEqual(json.loads(evidence.read_bytes())["output_sha256"],
+                             hashlib.sha256(out.read_bytes()).hexdigest())
+            out.unlink()
+            evidence.unlink()
+            policy.write_text(json.dumps({"same": "unknown"}))
+            self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
+            self.assertFalse(out.exists())
             self.assertFalse(evidence.exists())
 
     def test_mixed_sources_exact_order_and_sha(self):
