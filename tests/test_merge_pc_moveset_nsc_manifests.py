@@ -5,7 +5,7 @@ import sys
 import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from merge_pc_moveset_nsc_manifests import merge, split
+from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions
 from pc_moveset_event_preflight import audit
 
 def source(name, version, rows):
@@ -13,6 +13,28 @@ def source(name, version, rows):
     return name, raw, hashlib.sha256(raw).hexdigest()
 
 class MultiModIndexMerge(unittest.TestCase):
+    def test_authenticated_collision_report_and_negative_sources(self):
+        a = source("alpha", "nsc", [{"event_id": "same", "function_index": 0},
+                                     {"event_id": "only_a", "function_index": 0}])
+        b = source("beta", "nsc", [{"event_id": "same", "function_index": 1}])
+        c = source("gamma", "nsc", [{"event_id": "same", "function_index": 2}])
+        report = analyze_collisions([a, b, c])
+        self.assertEqual(report["collisions"], [
+            {"event_id": "same", "first_source": "alpha", "second_source": "beta"},
+            {"event_id": "same", "first_source": "alpha", "second_source": "gamma"}])
+        self.assertEqual([x["input_sha256"] for x in report["sources"]],
+                         [a[2], b[2], c[2]])
+        self.assertFalse(report["native_switch_abi_verified"])
+        self.assertEqual(analyze_collisions([a])["collisions"], [])
+        with self.assertRaises(ValueError):
+            analyze_collisions([a, ("beta", b[1] + b" ", b[2])])
+        with self.assertRaises(ValueError):
+            analyze_collisions([a, a])
+        with self.assertRaises(ValueError):
+            analyze_collisions([])
+        with self.assertRaises(ValueError):
+            analyze_collisions([a] * 65)
+
     def test_mixed_sources_exact_order_and_sha(self):
         a = source("alpha", "ns4", [{"event_id": "a", "function_index": 288}])
         b = source("beta", "nsc", [{"event_id": "b", "function_index": 299}])
