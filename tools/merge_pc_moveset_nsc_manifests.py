@@ -3,6 +3,8 @@
 import argparse
 import hashlib
 import json
+import os
+import tempfile
 from pathlib import Path
 from export_pc_moveset_nsc_manifest import convert
 
@@ -121,6 +123,30 @@ def verify_partition_bundle(bundle_bytes, payload, proof, sources):
         raise ValueError("Partition bundle differs from authenticated replay")
     return True
 
+def publish_partition_directory(destination, payload, proof, sources):
+    """Publish replay-verified standalone editor manifests as one directory."""
+    parts = partition_resolved(payload, proof, sources)
+    if destination.exists():
+        raise ValueError("Partition directory already exists")
+    parent = destination.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".owner-partitions-", dir=parent) as tmp:
+        staging = Path(tmp) / "published"
+        staging.mkdir()
+        index = {"status": "PC_EDITOR_STANDALONE_PARTITIONS_ONLY",
+                 "merged_sha256": hashlib.sha256(payload).hexdigest(),
+                 "partitions": [], "native_switch_abi_verified": False}
+        for number, (name, data, digest) in enumerate(parts):
+            filename = f"{number:03d}.json"
+            (staging / filename).write_bytes(data)
+            index["partitions"].append({"source": name, "file": filename, "sha256": digest})
+        (staging / "index.json").write_bytes(
+            (json.dumps(index, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        if destination.exists():
+            raise ValueError("Partition directory already exists")
+        os.rename(staging, destination)
+    return index
+
 def merge(sources):
     if not 1 <= len(sources) <= 64:
         raise ValueError("Expected 1..64 source manifests")
@@ -184,6 +210,7 @@ def main():
     p.add_argument("--resolve", type=Path, help="JSON event_id to explicit source owner (editor only)")
     p.add_argument("--verify-resolved", action="store_true", help="Replay and verify existing resolved output and evidence")
     p.add_argument("--partition-output", type=Path, help="Write verified owner partitions as one editor-only JSON bundle")
+    p.add_argument("--partition-directory", type=Path, help="Publish standalone selected-owner editor manifests atomically")
     p.add_argument("--verify-partition-bundle", type=Path, help="Read-only replay of an existing owner partition bundle")
     p.add_argument("--collisions-only", action="store_true", help="Report authenticated event-ID conflicts without merging")
     p.add_argument("--output", type=Path, required=True)
@@ -192,6 +219,10 @@ def main():
     try:
         if args.partition_output is not None and (not args.verify_resolved or args.partition_output in (args.output, args.evidence)):
             raise ValueError("Partition output requires --verify-resolved and a distinct path")
+        if args.partition_directory is not None and (not args.verify_resolved or args.partition_output is not None or args.verify_partition_bundle is not None):
+            raise ValueError("Directory publication requires --verify-resolved only")
+        if args.partition_directory is not None and args.partition_directory in (args.output, args.evidence):
+            raise ValueError("Partition directory must be distinct from inputs")
         if args.verify_partition_bundle is not None and (not args.verify_resolved or args.partition_output is not None):
             raise ValueError("Bundle verification requires --verify-resolved without --partition-output")
         if args.output == args.evidence:
@@ -211,6 +242,8 @@ def main():
                 data = build_partition_bundle(payload, proof, sources)
                 with args.partition_output.open("xb") as out:
                     out.write(data)
+            if args.partition_directory is not None:
+                publish_partition_directory(args.partition_directory, payload, proof, sources)
             if args.verify_partition_bundle is not None:
                 verify_partition_bundle(args.verify_partition_bundle.read_bytes(), payload, proof, sources)
             print("PC_EXPLICIT_OWNER_INDEX_VERIFIED NOT_SWITCH_ABI")

@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions, merge_resolved, verify_resolved, partition_resolved, build_partition_bundle, verify_partition_bundle
+from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions, merge_resolved, verify_resolved, partition_resolved, build_partition_bundle, verify_partition_bundle, publish_partition_directory
 from pc_moveset_event_preflight import audit
 
 def source(name, version, rows):
@@ -15,6 +15,45 @@ def source(name, version, rows):
     return name, raw, hashlib.sha256(raw).hexdigest()
 
 class MultiModIndexMerge(unittest.TestCase):
+    def test_standalone_owner_partition_directory_publication(self):
+        a = source("alpha/unsafe", "nsc", [{"event_id": "shared", "function_index": 1},
+                                             {"event_id": "alpha", "function_index": 3}])
+        b = source("beta", "nsc", [{"event_id": "shared", "function_index": 2}])
+        payload, proof = merge_resolved([a, b], {"shared": "beta"})
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "partitions"
+            index = publish_partition_directory(target, payload, proof, [a, b])
+            self.assertEqual([x["file"] for x in index["partitions"]],
+                             ["000.json", "001.json"])
+            self.assertEqual([x["source"] for x in index["partitions"]],
+                             ["alpha/unsafe", "beta"])
+            self.assertEqual(sorted(x.name for x in target.iterdir()),
+                             ["000.json", "001.json", "index.json"])
+            self.assertEqual(json.loads((target / "index.json").read_bytes()), index)
+            for part in index["partitions"]:
+                data = (target / part["file"]).read_bytes()
+                self.assertEqual(hashlib.sha256(data).hexdigest(), part["sha256"])
+            self.assertEqual([r["event_id"] for r in
+                              json.loads((target / "000.json").read_bytes())["events"]],
+                             ["alpha"])
+            self.assertEqual([r["event_id"] for r in
+                              json.loads((target / "001.json").read_bytes())["events"]],
+                             ["shared"])
+            with self.assertRaises(ValueError):
+                publish_partition_directory(target, payload, proof, [a, b])
+            self.assertEqual(json.loads((target / "index.json").read_bytes()), index)
+            bad = dict(proof)
+            bad["output_sha256"] = "0" * 64
+            other = root / "rejected"
+            with self.assertRaises(ValueError):
+                publish_partition_directory(other, payload, bad, [a, b])
+            self.assertFalse(other.exists())
+            with self.assertRaises(ValueError):
+                publish_partition_directory(other, payload, proof,
+                                            [a, ("beta", b[1] + b" ", b[2])])
+            self.assertFalse(other.exists())
+
     def test_authenticated_collision_report_and_negative_sources(self):
         a = source("alpha", "nsc", [{"event_id": "same", "function_index": 0},
                                      {"event_id": "only_a", "function_index": 0}])
