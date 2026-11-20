@@ -2189,5 +2189,23 @@
     "consumer_abi_verified": false,
     "uzuy_verified": false,
     "next": "Verify new HEAD push workflow original job logs, fix failures; only then consider offline PASS. No native hooks."
+  },
+  "explicit_owner_replay_20261120": {
+    "state": "PENDING_CI",
+    "parent_sha": "f1f5ab0f324cee774a196293c5240878d5f42fa5",
+    "code_commit": "4eaff6c515090061c66a010695a771927370c9d1",
+    "test_commit": "d5c62c1aba9f46154653cfdb0cf5e3f194c002c3",
+    "feature": "Read-only --verify-resolved replays SHA-authenticated source manifests and owner choices and compares exact payload and proof; positive/negative/tamper/CLI regressions",
+    "host_tests_executed": false,
+    "head_actions_verified": false,
+    "native_consumer_abi_verified": false,
+    "uzuy_verified": false,
+    "upstream": {
+      "modmanager": "2.1.2.1 README blob 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709",
+      "toolbox": "README blob 657f161390c4abe8afe10cea11a2b9a28e6bf6b0",
+      "rea": "README inspected; no Switch ABI proof"
+    },
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "next": "Run new test on host and inspect HEAD Actions raw jobs; repair failures; no runtime hooks before consumer ABI/ownership/lifecycle proof"
   }
 }
