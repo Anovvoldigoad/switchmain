@@ -200,7 +200,7 @@ class MultiModIndexMerge(unittest.TestCase):
             self.assertEqual([[r["event_id"] for r in p["manifest"]["events"]]
                               for p in doc["partitions"]], [["a"], ["shared"]])
             for part in doc["partitions"]:
-                raw = (json.dumps(part["manifest"], ensure_ascii=False, indent=2) + "\\n").encode()
+                raw = (json.dumps(part["manifest"], ensure_ascii=False, indent=2) + "\n").encode()
                 self.assertEqual(hashlib.sha256(raw).hexdigest(), part["sha256"])
             original = bundle.read_bytes()
             self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
