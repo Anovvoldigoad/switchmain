@@ -173,6 +173,47 @@ class MultiModIndexMerge(unittest.TestCase):
         with self.assertRaises(ValueError):
             partition_resolved(payload, proof, [a, ("beta", b[1] + b" ", b[2])])
 
+    def test_partition_cli_verified_bundle_and_rejections(self):
+        a = source("alpha", "nsc", [{"event_id": "shared", "function_index": 1},
+                                     {"event_id": "a", "function_index": 3}])
+        b = source("beta", "nsc", [{"event_id": "shared", "function_index": 2}])
+        payload, proof = merge_resolved([a, b], {"shared": "beta"})
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pa, pb = root / "a.json", root / "b.json"
+            out, evidence, bundle = root / "merged.json", root / "proof.json", root / "parts.json"
+            pa.write_bytes(a[1])
+            pb.write_bytes(b[1])
+            out.write_bytes(payload)
+            evidence.write_text(json.dumps(proof))
+            cmd = [sys.executable, str(Path(__file__).resolve().parents[1] /
+                   "tools" / "merge_pc_moveset_nsc_manifests.py"),
+                   "--verify-resolved", "--partition-output", str(bundle),
+                   "--source", "alpha", str(pa), a[2],
+                   "--source", "beta", str(pb), b[2],
+                   "--output", str(out), "--evidence", str(evidence)]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            doc = json.loads(bundle.read_bytes())
+            self.assertEqual(doc["merged_sha256"], hashlib.sha256(payload).hexdigest())
+            self.assertEqual([p["source"] for p in doc["partitions"]], ["alpha", "beta"])
+            self.assertEqual([[r["event_id"] for r in p["manifest"]["events"]]
+                              for p in doc["partitions"]], [["a"], ["shared"]])
+            for part in doc["partitions"]:
+                raw = (json.dumps(part["manifest"], ensure_ascii=False, indent=2) + "\\n").encode()
+                self.assertEqual(hashlib.sha256(raw).hexdigest(), part["sha256"])
+            original = bundle.read_bytes()
+            self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
+            self.assertEqual(bundle.read_bytes(), original)
+            bundle.unlink()
+            out.write_bytes(payload + b" ")
+            self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
+            self.assertFalse(bundle.exists())
+            out.write_bytes(payload)
+            pb.write_bytes(b[1] + b" ")
+            self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
+            self.assertFalse(bundle.exists())
+
     def test_mixed_sources_exact_order_and_sha(self):
         a = source("alpha", "ns4", [{"event_id": "a", "function_index": 288}])
         b = source("beta", "nsc", [{"event_id": "b", "function_index": 299}])

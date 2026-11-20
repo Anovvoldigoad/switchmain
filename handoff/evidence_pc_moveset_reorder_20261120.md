@@ -1,7 +1,0 @@
-# PC MovesetPlus multi-mod reorder — evidence (2026-11-20)
-
-Parent: `18d55757a9ecf0dd99e4dc783ca4239a03cdcc9c`. Source references: [NSC-ModManager v2.1.2.1](https://github.com/TheLeonX/NSC-ModManager/releases/tag/2.1.2.1) (PC tool; Switch Projectiles Target noted, Start/Stop Deflect IDs unverified); [NSC-Toolbox 6f780cb](https://github.com/TheLeonX/NSC-Toolbox/commit/6f780cb6814f07e03c16b3e78d97dde4e4368983) (PC editor); [REA 1a070dee](https://github.com/morluto/rea/commit/1a070dee8026b7cceb878ee76692d137ee94b39b) (generic RE). No upstream PC source establishes Switch consumer ABI. Pinned original Switch main SHA256 `2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9` not independently rehashed this run.
-
-Slice: authenticate original merged index and all exact SHA-pinned source bytes, reorder by a bijective list of source names, regenerate editor index and provenance, verify exact source replay, and publish two CLI files only after validation. Positive permutation, inverse replay, tampered source/merged payload, missing/duplicate/unknown names, and CLI no-partial-output tests. Order changes *editor index order only*; no native archive precedence inference.
-
-Status PENDING_CI until HEAD push workflows completed success and original job logs inspected. No runtime hooks, no genuine game CPK, no Uzuy test. Sakura aura107, Event236 marker 0x4E53 +0x2A and unmarked records untouched. `full_moddingapi=false`, `ready_for_gameplay_test=false`, `emulator_tested=false`.

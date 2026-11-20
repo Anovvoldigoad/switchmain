@@ -1,7 +1,0 @@
-# PC MovesetPlus append-only editor manifest slice — 2026-11-17
-
-Research: NSC-ModManager tag 2.1.2.1 commit 502c38d3ee832509f9ee3951b7d3339826538fec (release 2026-08-30, Switch Projectiles Target); NSC-Toolbox commit 6f780cb6814f07e03c16b3e78d97dde4e4368983 (PC editor index); REA commit d5a942177fad030d3caf0f8d39856c116e3e5cda (unrelated desktop tool, NOT Switch engine ABI). Pinned Switch main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; original game bytes not analyzed in this slice.
-
-Capability: batch editor manifest transaction now accepts --add NAME PATH SHA256 alongside --remove and --replace. Old merged payload and source list are authenticated before any edits. New source manifests are SHA-authenticated through merge(); appended in declared order. Duplicate mod names, event collisions, invalid source hashes, 65-mod boundary and forged old proof fail closed. Source provenance remains independently replayable. This does NOT convert moveset binary, identify v2.1.2.1 new function numeric IDs, prove Switch consumer ABI or test Uzuy.
-
-Tests: tests/test_patch_pc_moveset_nsc_mods.py positive add, combined remove/replace/add, provenance replay, duplicate names, event collision, SHA mutation, 64/65 mod boundary and forged old proof. Workflow: verify-pc-moveset-multimod.yml already runs that test. Status PENDING_CI until HEAD push-run completed/success and original job logs inspected. No runtime hooks. All three release flags false.
