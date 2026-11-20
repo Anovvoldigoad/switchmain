@@ -11,6 +11,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--param', type=Path, action='append', default=[], help='Raw PC specialCondParam; repeat in mod load order')
     p.add_argument('--owner-map', type=Path, help='Explicit JSON object mapping PC owner IDs to final Switch IDs')
+    p.add_argument('--conflicts', choices=('last', 'reject'), default='last',
+                   help='Reject duplicate final Switch owners, including remap collisions')
     p.add_argument('--output', type=Path, required=True, help='New output directory; never an install folder')
     p.add_argument('--module', type=Path, help='Optional built subsdk9 to configure')
     p.add_argument('--expected-module-sha256', help='Exact SHA256 of the audited input module')
@@ -26,8 +28,9 @@ def main():
             if str(int(k)) != k:
                 p.error('Owner-map keys must be canonical decimal IDs')
             owner_map[int(k)] = v
-    profile, records = compile_records([(str(f), f.read_bytes()) for f in a.param], owner_map)
-    result, report = None, {'records': records, 'gameplay_verified': False, 'full_moddingapi': False}
+    profile, records = compile_records([(str(f), f.read_bytes()) for f in a.param], owner_map,
+                                       conflicts=a.conflicts)
+    result, report = None, {'records': records, 'conflicts': a.conflicts, 'gameplay_verified': False, 'full_moddingapi': False}
     if a.module:
         result, module_report = configure(a.module.read_bytes(), profile, a.expected_module_sha256)
         report['module'] = module_report

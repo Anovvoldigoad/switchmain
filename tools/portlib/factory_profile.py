@@ -63,8 +63,10 @@ def decode(block):
     return entries
 
 
-def compile_records(inputs, owner_map=None):
+def compile_records(inputs, owner_map=None, *, conflicts='last'):
     """Inputs are ordered (label, raw bytes) pairs. PC last-owner-wins semantics."""
+    if conflicts not in ('last', 'reject'):
+        raise ValueError('Unknown PC record collision policy')
     names = catalog()
     owner_map = {} if owner_map is None else owner_map
     for old, new in owner_map.items():
@@ -90,6 +92,8 @@ def compile_records(inputs, owner_map=None):
             owner = owner_map.get(old, old)
             if not 0 <= owner < CAPACITY:
                 raise ValueError(f'{label}:{off}: owner {owner} outside verified loader capacity')
+            if owner in entries and conflicts == 'reject':
+                raise ValueError(f'{label}:{off}: Switch owner {owner} collides with an earlier record')
             sources.append({'file': str(label), 'record': off//32, 'pc_owner': old,
                             'switch_owner': owner, 'name': name, 'selector': row['selector'],
                             'replaces_previous_mapping': owner in entries})

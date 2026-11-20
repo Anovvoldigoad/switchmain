@@ -11,5 +11,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Verify raw PC record collision policy and publication
+        run: PYTHONPATH=. python -m unittest discover -s tests -p test_factory_raw_conflicts.py -v
       - name: Verify factory profile composition and rejection
         run: PYTHONPATH=. python -m unittest discover -s tests -p test_merge_factory_profiles.py -v
