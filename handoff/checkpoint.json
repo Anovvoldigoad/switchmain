@@ -37,6 +37,7 @@
     "pc_mod_manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
     "pc_api_source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
     "implemented_this_change": [
+      "2026-11-21 PENDING_CI: code f5ad7cfd8bc1526f9021e43e08ffd7d4a99610d6 (parent 1dce633b87d215bfe8631092934bb0fea4c48892) adds read-only --verify-partition-directory exact source replay of standalone selected-owner editor files/index; positive, altered index, altered part, unexpected file, altered source and CLI regression. GitHub Actions push run/job/raw log for this code not yet available. ModManager tag 2.1.2.1 README 8e9560b2; Toolbox 6f780cb README 657f1613; REA README 93e1e272 are PC/generic only. No native Switch consumer ABI/ownership/Uzuy proof. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 pinned; Sakura aura107, Event236 marked/unmarked and all three false release flags untouched. NEXT inspect exact HEAD push Actions job raw logs, repair failures, then authenticate original main consumer ownership.",
       "2026-11-18 PENDING_CI: new SHA-pinned FileLoad SP/FP memory operand census (original instruction words, exact offsets, writeback, negative mutated main, synthetic STR/LDR test); no stack-slot dataflow, pointer ownership, consumer ABI or runtime claims. Parent b56ae5e70769b400597ec1e9ffd8fdc9bc62519f. Upstream ModManager 2.1.2.1, Toolbox 6f780cb6814f07e03c16b3e78d97dde4e4368983, REA 4995018d3a492aa6627929e1d45ea35c95170970 are not Switch ABI evidence. All release flags false. NEXT verify HEAD Actions authentic log; investigate original FileLoad SP delta and control-flow before claiming stack aliases.",
       "2026-11-18 VERIFIED OFFLINE SYNTHETIC: code 61403b49750938ff7710cc5b04bf38d0c2b29c39 extends CRILAYLA match distance to 258 with 4-byte prefilter; 6 encoder tests PASS incl 127/251 periodic payloads. Foundation push run 44189015312 job 134413108606 COMPLETED SUCCESS and authentic log read (6/6). MovesetPlus run 44189015390 job 134413110690 and compressed PRM run 44189015431 job 134413108835 COMPLETED SUCCESS; both authentic logs read. Synthetic/offline only; original game archive and native consumer ABI/lifecycle/Uzuy unverified. No hooks or release flags changed. This documentation followup HEAD CI is pending.",
       "2026-11-18 PENDING_CI: offline CRILAYLA encoder expanded deterministic match search from distances 3..34 to 3..258 with four-byte candidate prefilter, plus periods 127/251 roundtrip, deterministic replay and compression-ratio regressions. Parent e4f132a6487066f970f965cc2505ce2b083f0912. Synthetic only; CI HEAD run/job/log not yet verified. Original main blob 8af900db0d7003255b4ddb3cbd1289cd5a15458e is tracked in repository (27,701,509 bytes), but SHA256 not independently checked in this session; do not infer native consumer ABI. Upstream NSC-ModManager release 2.1.2.1 published 2026-08-30; NSC-Toolbox HEAD 6f780cb6814f07e03c16b3e78d97dde4e4368983; REA HEAD c78e6e3aa54facde2d7610f203dd740e47611090; none proves Switch ABI. No runtime hooks; Sakura aura107/Event236 marked/unmarked untouched; three release flags false.",
@@ -105,18 +106,7 @@
       "2026-11-05 372cfa1a GitHub Actions 42050734300 COMPLETED SUCCESS 63 steps: Original FileOpen two indirect dispatch corridors: 0x116B718 LDR X8,[X0], 0x116B71C LDR X1,[X8,#0xC0], 0x116B724 BR X1; 0x116B41C LDR X8,[X0], 0x116B424 LDR X2,[X8,#0x58], 0x116B430 BR X2. Original exact main SHA pinned, no runtime ABI/ownership.",
       "2026-11-05 912ef384 GitHub Actions 42055285084 COMPLETED SUCCESS: Compiles 9 bounded PC raw formats into ARM64 module with AArch64-only registration and matches 123 actual/synthetic PC row views with 38 invalids rejected; job 127341886598, 64 steps.",
       "2026-11-05 9af5c535 GitHub Actions 42057187119 COMPLETED SUCCESS: Exact symbol lookup fixed; original ELF AArch64 9-family reader calls pass Unicorn: 30 positive API calls, 19 negative cases, host C++ 123 matching PC rows and 39 negatives; 65 steps, job 127348672877 log inspected.",
-      "2026-11-05 4ecbeeae Actions 42065894664 COMPLETED SUCCESS 67 steps job 127379739873 actual logs verified: new source-authenticated ZIP PC raw pack binary and AArch64 native reader (host 24 positive/26 rejected; ARM64 22 positive/12 rejected). No game consumer hooks, no Uzuy gameplay.",
-      "2026-11-06 CI failure 42143523682 original job 127649363979: generated C++ #include had literal escaped newline; fixed include and stale PASS marker 15->17, added unused-arena-tail overlap regression. New CI pending; no engine ABI.",
-      "2026-11-08 offline multi-mod source path file/directory prefix conflict rejection, including casefold and reverse ordering; 3 regression cases added; pending GitHub Actions CI; no engine archive precedence or native ABI proof.",
-      "2026-11-08 pending CI: source-pinned read-only CPK payload evidence collector; synthetic tests; no engine ABI, real CPK or gameplay proof.",
-      "2026-11-08 pending CI: source-pinned CPK inventory CLI, exact stored payload hash and suffix filtering. No runtime ABI or Uzuy proof.",
-      "2026-11-08 PENDING_CI: memory-mapped read-only CPK source intake, streamed SHA256, 4MiB padded synthetic regression; original archive proof unresolved.",
-      "2026-11-08 pending CI: single-TOC-parse batched CPK capture and bounded indexed decode; synthetic tests only.",
-      "2026-11-09 pending CI: source-pinned PC editor event-index preflight; explicit JSON only; native ABI and gameplay unresolved.",
-      "2026-11-09 pending CI: original-main SHA-pinned nine-PC-family literal and adjacent ARM64 ADRP/ADD reference census; exact main segment hashes, negative results scoped, no consumer ABI inference.",
-      "2026-11-11: FileOpen call-free witness rejects opaque BLR as well as BL; synthetic negative and pinned main regression; pending HEAD CI, no native consumer ABI.",
-      "PENDING CI: SHA-pinned static adjacent ADRP+LDR/literal LDR code-to-candidate-base references; no runtime X8 or ABI proof",
-      "2026-11-15 pending CI: PC MovesetPlus multi-mod index composition, SHA-pinned inputs, cross-mod collision rejection, provenance, synthetic tests; no Switch ABI"
+      "2026-11-05 4ecbeeae Actions 42065894664 COMPLETED SUCCESS 67 steps job 127379739873 actual logs verified: new source-authenticated ZIP PC raw pack binary and AArch64 native reader (host 24 positive/26 rejected; ARM64 22 positive/12 rejected). No game consumer hooks, no Uzuy gameplay."
     ],
     "blocking_gaps": [
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -2260,5 +2250,14 @@
     "native_consumer_abi_verified": false,
     "uzuy_verified": false,
     "next": "Inspect actual HEAD push Actions job log, repair failures, then authenticate original native consumer ownership."
+  },
+  "latest_standalone_directory_replay": {
+    "state": "PENDING_CI",
+    "parent_sha": "1dce633b87d215bfe8631092934bb0fea4c48892",
+    "code_commit": "f5ad7cfd8bc1526f9021e43e08ffd7d4a99610d6",
+    "source": "tools/merge_pc_moveset_nsc_manifests.py",
+    "test": "tests/test_merge_pc_moveset_nsc_manifests.py",
+    "native_consumer_abi_verified": false,
+    "uzuy_verified": false
   }
 }
