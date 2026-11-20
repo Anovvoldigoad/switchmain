@@ -2268,5 +2268,13 @@
     "ci": "PENDING_CI",
     "runtime_verified": false,
     "next": "Verify exact final HEAD Actions raw job logs, repair any failures; original-main consumer ownership proof remains blocked."
+  },
+  "latest_offline_editor_reassembly": {
+    "code_commit": "8eaba7c4cb0a17b50eae911ebc969b2b3726a5c2",
+    "ci_run": 44802490050,
+    "ci_job": 136517931666,
+    "ci_result": "COMPLETED_SUCCESS_RAW_LOG_INSPECTED",
+    "native_consumer_verified": false,
+    "uzuy_verified": false
   }
 }

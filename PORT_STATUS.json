@@ -1584,5 +1584,13 @@
     "scope": "read-only PC editor exact bundle replay; synthetic only",
     "head_ci_verified": false,
     "consumer_abi_verified": false
+  },
+  "latest_offline_editor_reassembly": {
+    "code_commit": "8eaba7c4cb0a17b50eae911ebc969b2b3726a5c2",
+    "ci_run": 44802490050,
+    "ci_job": 136517931666,
+    "ci_result": "COMPLETED_SUCCESS_RAW_LOG_INSPECTED",
+    "native_consumer_verified": false,
+    "uzuy_verified": false
   }
 }
