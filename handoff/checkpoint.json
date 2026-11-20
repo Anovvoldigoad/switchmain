@@ -2248,5 +2248,17 @@
       ]
     },
     "next": "Inspect new HEAD MovesetPlus push job original log and fix failures; original main consumer ABI still unresolved."
+  },
+  "pc_standalone_partition_directory_20261120": {
+    "status": "PENDING_CI",
+    "parent_sha": "316e8342b30232671d21c59f95e083fc47e073b5",
+    "code_commit": "b72be2698cc5c46027446860c5fb69a3b06498d9",
+    "source": "tools/merge_pc_moveset_nsc_manifests.py",
+    "test": "tests/test_merge_pc_moveset_nsc_manifests.py",
+    "host_tests_run": false,
+    "head_ci_verified": false,
+    "native_consumer_abi_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect actual HEAD push Actions job log, repair failures, then authenticate original native consumer ownership."
   }
 }
