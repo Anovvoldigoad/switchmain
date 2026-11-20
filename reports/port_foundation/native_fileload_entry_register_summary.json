@@ -1,0 +1,35 @@
+{
+  "status": "PASS_ORIGINAL_PINNED_FILELOAD_ENTRY_ARGUMENT_REGISTER_PROVENANCE_STATIC_ONLY",
+  "code_commit": "c32b1d2235e54b17c334081063132aa6df389424",
+  "ci_run_id": 42013833559,
+  "ci_conclusion": "success",
+  "main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "fileload_candidate_entry": "0x116F404",
+  "register_copies": [
+    {
+      "at": "0x116F434",
+      "instruction": "mov x20, x2",
+      "source": "entry X2 (no preceding reached write in bounded CFG)",
+      "use": [
+        "0x116F51C",
+        "0x116F5BC"
+      ]
+    },
+    {
+      "at": "0x116F438",
+      "instruction": "mov x22, x1",
+      "source": "entry X1 (no preceding reached write in bounded CFG)",
+      "use": [
+        "0x116F5AC read of [X22,#0x1D8]"
+      ]
+    }
+  ],
+  "caller_saved_X1_X2_clobbers_modeled": true,
+  "class_identity_or_pointer_ownership_proven": false,
+  "callback_or_status_async_proven": false,
+  "archive_precedence_proven": false,
+  "safe_hook_ABI_proven": false,
+  "native_patch_installed": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

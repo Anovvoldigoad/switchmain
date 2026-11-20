@@ -1,0 +1,37 @@
+{
+  "status": "PASS_PINNED_STATIC_REGS_AND_INSTRUCTION_WORDS_ONLY",
+  "main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "code_commits": [
+    "90be75437ecfc6a7e67a0a6d82eade3db8ee8131",
+    "9dfbf05bfebbab38f93b1a66812e8c76c2aa7a36"
+  ],
+  "ci_ids": [
+    41976417627,
+    41977060825
+  ],
+  "ci_conclusion": "success",
+  "nine_windows_disassembled": true,
+  "seven_register_word_witnesses": true,
+  "proven_blr_chains": [
+    "0x106ED90 LDR X8,[X20]; 0x106ED98 LDR X8,[X8,#0x20]; 0x106ED9C BLR X8",
+    "0x106EDC8 LDR X8,[X0]; 0x106EDCC LDR X8,[X8,#0x10]; 0x106EDD0 BLR X8"
+  ],
+  "corrected_legacy_fileload_process_anchor": {
+    "offset": "0x106f404",
+    "instruction": "BL",
+    "target": "0xfff6a0",
+    "is_verified_function_entry": false
+  },
+  "candidate_adjacent_function_entry": {
+    "relocation_slot": "0x215c478",
+    "target": "0x106f394",
+    "first_instruction": "SUB SP,SP,#0x40",
+    "function_boundary_verified": false
+  },
+  "vtable_ownership_verified": false,
+  "abi_verified": false,
+  "async_completion_verified": false,
+  "unbind_verified": false,
+  "archive_winner_verified": false,
+  "gameplay_verified": false
+}

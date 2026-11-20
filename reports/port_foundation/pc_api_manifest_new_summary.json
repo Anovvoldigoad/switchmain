@@ -1,0 +1,17 @@
+{
+  "status": "PASS_SOURCE_AUTHENTICATED_9_FAMILY_PC_ONLY_MANIFEST",
+  "code_commit": "85e14efd4bf6269be148810a9175766351ec063a",
+  "ci_id": 41987853686,
+  "ci_conclusion": "success",
+  "source_families": 9,
+  "unresolved_audio_effect_name_candidates": 9,
+  "source_manifest_sha256": "7b3b07919a14356ca91bd5b0ec0bb6bef80178607d12d017d1c10143b07c03ca",
+  "invalid_specs_rejected": 7,
+  "PC_input_source": "Public NSC-ModManager pinned original Git blobs",
+  "native_switch_170_family_loaders_integrated": 0,
+  "original_real_user_PC_mod_package_audited": false,
+  "CRI_effect_audio_banks_authenticated": false,
+  "ready_for_gameplay_test": false,
+  "gameplay_verified": false,
+  "full_moddingapi": false
+}

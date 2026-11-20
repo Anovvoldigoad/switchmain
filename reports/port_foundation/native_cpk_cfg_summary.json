@@ -1,0 +1,45 @@
+{
+  "status": "PASS_SHA_PINNED_STATIC_BOUNDED_CFG_ONLY",
+  "code_commit": "1c40470550195e200e39c9537856736e69d5d191",
+  "ci_id": 41986733558,
+  "conclusion": "success",
+  "source_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+  "observations": {
+    "candidate_106f394": {
+      "reachable_instructions": 147,
+      "incoming_direct_B_BL": 0,
+      "relocation_slots": [
+        "0x215c478"
+      ],
+      "observed_terminators": [
+        "0x106f47c",
+        "0x106f444",
+        "0x106f59c",
+        "0x106f578"
+      ],
+      "legacy_callsite_0x106f404_reachable": true
+    },
+    "relocated_106edb8": {
+      "reachable_instructions": 3,
+      "incoming_direct_B_BL": 0,
+      "relocation_slots": [
+        "0x212b5f0"
+      ],
+      "observed_terminators": [
+        "0x106edc0"
+      ]
+    },
+    "file_open_1170fb0": {
+      "reachable_instructions": 52,
+      "incoming_direct_B_BL": 1
+    }
+  },
+  "full_source_report": "Actions artifact proof-work/native_cpk_candidate_cfg.json",
+  "function_boundary_verified": false,
+  "vtable_owner_verified": false,
+  "async_completion_verified": false,
+  "unbind_verified": false,
+  "archive_priority_verified": false,
+  "native_patch_written": false,
+  "gameplay_verified": false
+}

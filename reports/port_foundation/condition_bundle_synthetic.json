@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "invalid_archives_or_arguments_rejected": 11,
+  "exact_marker_diff_verified": true,
+  "archive_profile_identity_verified": true,
+  "no_conversion_preserves_archive": true,
+  "module_composition_and_conflict_checks": true,
+  "gameplay_verified": false,
+  "module_kind": "synthetic NSO container; no native execution",
+  "module_sha256": "ab364eebe37e9fc88c3c6fd20b94f674996f3274d817577bcff08310f246a017"
+}
