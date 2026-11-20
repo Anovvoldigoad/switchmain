@@ -91,14 +91,23 @@ def split(payload, proof):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--source", nargs=3, action="append", metavar=("NAME", "PATH", "SHA256"), required=True)
+    p.add_argument("--collisions-only", action="store_true", help="Report authenticated event-ID conflicts without merging")
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--evidence", type=Path, required=True)
     args = p.parse_args()
     try:
         if args.output == args.evidence or args.output.exists() or args.evidence.exists():
             raise ValueError("Outputs must be distinct and absent")
-        payload, proof = merge([(name, Path(path).read_bytes(), sha)
-                                for name, path, sha in args.source])
+        sources = [(name, Path(path).read_bytes(), sha) for name, path, sha in args.source]
+        if args.collisions_only:
+            report = analyze_collisions(sources)
+            payload = (json.dumps(report, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+            proof = {"status": "PC_EDITOR_COLLISION_DIAGNOSTIC_ONLY",
+                     "report_sha256": hashlib.sha256(payload).hexdigest(),
+                     "source_count": len(sources), "collision_count": len(report["collisions"]),
+                     "native_switch_abi_verified": False}
+        else:
+            payload, proof = merge(sources)
         proof_bytes = (json.dumps(proof, indent=2) + "\n").encode()
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.evidence.parent.mkdir(parents=True, exist_ok=True)
@@ -112,7 +121,10 @@ def main():
             raise
     except (OSError, ValueError, UnicodeError, json.JSONDecodeError) as exc:
         p.error(str(exc))
-    print("PC_MULTI_MOD_INDEX_MERGE", proof["event_count"], "NOT_SWITCH_ABI")
+    if args.collisions_only:
+        print("PC_EDITOR_COLLISION_REPORT", proof["collision_count"], "NOT_SWITCH_ABI")
+    else:
+        print("PC_MULTI_MOD_INDEX_MERGE", proof["event_count"], "NOT_SWITCH_ABI")
 
 if __name__ == "__main__":
     main()

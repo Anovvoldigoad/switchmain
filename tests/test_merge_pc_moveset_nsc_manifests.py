@@ -3,6 +3,8 @@ import hashlib
 import json
 import sys
 import unittest
+import subprocess
+import tempfile
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from merge_pc_moveset_nsc_manifests import merge, split, analyze_collisions
@@ -34,6 +36,37 @@ class MultiModIndexMerge(unittest.TestCase):
             analyze_collisions([])
         with self.assertRaises(ValueError):
             analyze_collisions([a] * 65)
+
+    def test_collision_cli_report_and_fail_closed_publication(self):
+        a = source("alpha", "nsc", [{"event_id": "shared", "function_index": 0}])
+        b = source("beta", "nsc", [{"event_id": "shared", "function_index": 1}])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths = [root / "a.json", root / "b.json"]
+            for path, item in zip(paths, (a, b)):
+                path.write_bytes(item[1])
+            output, evidence = root / "report.json", root / "proof.json"
+            cmd = [sys.executable, str(Path(__file__).resolve().parents[1] /
+                   "tools" / "merge_pc_moveset_nsc_manifests.py"),
+                   "--collisions-only", "--source", a[0], str(paths[0]), a[2],
+                   "--source", b[0], str(paths[1]), b[2],
+                   "--output", str(output), "--evidence", str(evidence)]
+            completed = subprocess.run(cmd, capture_output=True, text=True)
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            report = json.loads(output.read_bytes())
+            proof = json.loads(evidence.read_bytes())
+            self.assertEqual(report["collisions"], [
+                {"event_id": "shared", "first_source": "alpha", "second_source": "beta"}])
+            self.assertEqual(proof["report_sha256"], hashlib.sha256(output.read_bytes()).hexdigest())
+            self.assertEqual(proof["collision_count"], 1)
+            self.assertFalse(proof["native_switch_abi_verified"])
+            self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
+            output.unlink()
+            evidence.unlink()
+            paths[1].write_bytes(b[1] + b" ")
+            self.assertNotEqual(subprocess.run(cmd, capture_output=True).returncode, 0)
+            self.assertFalse(output.exists())
+            self.assertFalse(evidence.exists())
 
     def test_mixed_sources_exact_order_and_sha(self):
         a = source("alpha", "ns4", [{"event_id": "a", "function_index": 288}])
