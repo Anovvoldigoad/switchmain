@@ -14,6 +14,7 @@ jobs:
       - name: Verify multi-mod editor index composition and restoration
         run: |
           PYTHONPATH=tools python -m unittest discover -s tests -p test_merge_pc_moveset_nsc_manifests.py -v
+          PYTHONPATH=tools python -m unittest discover -s tests -p test_reassemble_pc_moveset_owner_directory.py -v
           PYTHONPATH=tools python -m unittest discover -s tests -p test_split_pc_moveset_nsc_manifests.py -v
           PYTHONPATH=tools python -m unittest discover -s tests -p test_verify_pc_moveset_nsc_sources.py -v
           PYTHONPATH=tools python -m unittest discover -s tests -p test_remove_pc_moveset_nsc_mod.py -v
