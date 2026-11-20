@@ -6,6 +6,31 @@ import json
 from pathlib import Path
 from export_pc_moveset_nsc_manifest import convert
 
+def analyze_collisions(sources):
+    """Authenticate PC editor sources and report duplicate event IDs without merging."""
+    if not 1 <= len(sources) <= 64:
+        raise ValueError("Expected 1..64 source manifests")
+    seen_names, owners, conflicts, inputs = set(), {}, [], []
+    for name, raw, expected_sha in sources:
+        if not isinstance(name, str) or not name or len(name) > 128 or name in seen_names:
+            raise ValueError("Invalid or duplicate mod name")
+        seen_names.add(name)
+        converted, proof = convert(raw, expected_sha)
+        rows = json.loads(converted)["events"]
+        inputs.append({"name": name, "input_sha256": proof["input_sha256"],
+                       "converted_sha256": hashlib.sha256(converted).hexdigest()})
+        for row in rows:
+            event_id = row["event_id"]
+            if event_id in owners:
+                conflicts.append({"event_id": event_id, "first_source": owners[event_id],
+                                  "second_source": name})
+            else:
+                owners[event_id] = name
+    return {"status": "PC_EDITOR_EVENT_COLLISION_REPORT_ONLY",
+            "sources": inputs, "collisions": conflicts,
+            "native_switch_abi_verified": False}
+
+
 def merge(sources):
     if not 1 <= len(sources) <= 64:
         raise ValueError("Expected 1..64 source manifests")
