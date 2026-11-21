@@ -71,6 +71,7 @@ def main():
     p.add_argument("--conflicts", choices=("last", "reject"), default="last")
     p.add_argument("--owner-map", type=Path)
     p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--verify-output", action="store_true", help="Verify existing profile and provenance by source replay")
     a = p.parse_args()
     mapping = None
     if a.owner_map:
@@ -85,6 +86,18 @@ def main():
               "excluded_labels": a.exclude,
               "profile_sha256": hashlib.sha256(result).hexdigest(),
               "native_consumer_verified": False, "gameplay_verified": False}
+    if a.verify_output:
+        if not a.output.is_dir() or {x.name for x in a.output.iterdir()} != {"factory.profile", "factory_ordered_report.json"}:
+            p.error("Missing or unexpected verification files")
+        if (a.output / "factory.profile").read_bytes() != result:
+            p.error("Factory profile replay mismatch")
+        try:
+            saved = json.loads((a.output / "factory_ordered_report.json").read_text())
+        except (ValueError, UnicodeError) as exc:
+            p.error(f"Invalid report: {exc}")
+        if saved != report:
+            p.error("Factory provenance replay mismatch")
+        return
     a.output.mkdir(parents=True, exist_ok=False)
     (a.output / "factory.profile").write_bytes(result)
     (a.output / "factory_ordered_report.json").write_text(json.dumps(report, indent=2) + "\n")

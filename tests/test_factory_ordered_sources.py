@@ -117,6 +117,41 @@ class OrderedFactoryTests(unittest.TestCase):
             self.assertNotEqual(bad.returncode, 0)
             self.assertFalse((d / "bad").exists())
 
+    def test_cli_verify_replay_and_tamper(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            import json
+            d = Path(tmp)
+            a = d / "a.bin"
+            b = d / "b.profile"
+            a.write_bytes(raw("2dnz", 280))
+            b.write_bytes(encode({280: 1}))
+            cmd = [sys.executable, str(ROOT / "tools/compose_ordered_factory.py"),
+                   "--source", "raw", "a", str(a), hashlib.sha256(a.read_bytes()).hexdigest(),
+                   "--source", "profile", "b", str(b), hashlib.sha256(b.read_bytes()).hexdigest(),
+                   "--exclude", "b", "--output", str(d / "out")]
+            def run(*extra):
+                return subprocess.run(cmd + list(extra), capture_output=True, text=True)
+            self.assertEqual(run().returncode, 0)
+            self.assertEqual(run("--verify-output").returncode, 0)
+            profile = d / "out/factory.profile"
+            original = profile.read_bytes()
+            profile.write_bytes(original + b"x")
+            self.assertNotEqual(run("--verify-output").returncode, 0)
+            profile.write_bytes(original)
+            report_path = d / "out/factory_ordered_report.json"
+            report = json.loads(report_path.read_text())
+            report["sources"][1]["excluded"] = False
+            report_path.write_text(json.dumps(report))
+            self.assertNotEqual(run("--verify-output").returncode, 0)
+            report["sources"][1]["excluded"] = True
+            report_path.write_text(json.dumps(report))
+            self.assertEqual(run("--verify-output").returncode, 0)
+            (d / "out/extra").write_text("unexpected")
+            self.assertNotEqual(run("--verify-output").returncode, 0)
+            (d / "out/extra").unlink()
+            b.write_bytes(b.read_bytes() + b"x")
+            self.assertNotEqual(run("--verify-output").returncode, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
