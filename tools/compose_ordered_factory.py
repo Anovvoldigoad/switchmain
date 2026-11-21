@@ -72,6 +72,8 @@ def main():
     p.add_argument("--owner-map", type=Path)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--verify-output", action="store_true", help="Verify existing profile and provenance by source replay")
+    p.add_argument("--baseline-profile", nargs=2, metavar=("PATH", "SHA256"),
+                   help="Compare against a SHA-pinned existing factory profile before deployment")
     a = p.parse_args()
     mapping = None
     if a.owner_map:
@@ -87,9 +89,27 @@ def main():
     for row in ledger:
         effective[row["owner"]] = {"source": row["source"], "kind": row["kind"],
                                    "selector": row["selector"]}
+    baseline = None
+    if a.baseline_profile:
+        baseline_path, expected_sha = a.baseline_profile
+        baseline_bytes = Path(baseline_path).read_bytes()
+        baseline_sha = hashlib.sha256(baseline_bytes).hexdigest()
+        if baseline_sha != expected_sha.lower() or len(expected_sha) != 64:
+            p.error("Baseline profile SHA256 mismatch")
+        baseline = decode(baseline_bytes)
+    changes = []
+    if baseline is not None:
+        current = decode(result)
+        for owner in sorted(set(baseline) | set(current)):
+            before, after = baseline.get(owner), current.get(owner)
+            if before != after:
+                changes.append({"owner": owner, "before": before, "after": after,
+                                "operation": "add" if before is None else
+                                "remove" if after is None else "replace"})
     report = {"effective_owners": [{"owner": owner, **effective[owner]}
                                     for owner in sorted(effective)],
               "sources": provenance, "records": ledger,
+              **({"baseline_sha256": baseline_sha, "changes": changes} if baseline is not None else {}),
               "excluded_labels": a.exclude,
               "profile_sha256": hashlib.sha256(result).hexdigest(),
               "native_consumer_verified": False, "gameplay_verified": False}

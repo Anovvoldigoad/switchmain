@@ -119,6 +119,34 @@ class OrderedFactoryTests(unittest.TestCase):
             self.assertNotEqual(bad.returncode, 0)
             self.assertFalse((d / "bad").exists())
 
+    def test_baseline_semantic_delta_and_replay(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            baseline = d / "baseline.profile"
+            baseline.write_bytes(encode({280: 1, 281: 1}))
+            proposed = d / "proposed.profile"
+            proposed.write_bytes(encode({280: 58, 282: 1}))
+            sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+            cmd = [sys.executable, str(ROOT / "tools/compose_ordered_factory.py"),
+                   "--source", "profile", "proposed", str(proposed), sha(proposed),
+                   "--baseline-profile", str(baseline), sha(baseline),
+                   "--output", str(d / "out")]
+            run = lambda *extra: subprocess.run(cmd + list(extra), capture_output=True, text=True)
+            created = run()
+            self.assertEqual(created.returncode, 0, created.stderr)
+            report = json.loads((d / "out/factory_ordered_report.json").read_text())
+            self.assertEqual(report["changes"], [
+                {"owner": 280, "before": 1, "after": 58, "operation": "replace"},
+                {"owner": 281, "before": 1, "after": None, "operation": "remove"},
+                {"owner": 282, "before": None, "after": 1, "operation": "add"}])
+            self.assertEqual(report["baseline_sha256"], sha(baseline))
+            self.assertEqual(run("--verify-output").returncode, 0)
+            baseline.write_bytes(encode({280: 1}))
+            self.assertNotEqual(run("--verify-output").returncode, 0)
+            self.assertEqual(decode((d / "out/factory.profile").read_bytes()),
+                             {280: 58, 282: 1})
+
     def test_cli_verify_replay_and_tamper(self):
         with tempfile.TemporaryDirectory() as tmp:
             import json

@@ -1625,5 +1625,11 @@
     "native_consumer_verified": false,
     "uzuy_verified": false,
     "next": "Read HEAD factory Actions push job raw log; authenticate original main consumer ABI."
+  },
+  "latest_factory_baseline_delta": {
+    "state": "PENDING_HEAD_CI",
+    "scope": "offline editor only",
+    "native_consumer_verified": false,
+    "emulator_tested": false
   }
 }
