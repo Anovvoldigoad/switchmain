@@ -119,6 +119,37 @@ class OrderedFactoryTests(unittest.TestCase):
             self.assertNotEqual(bad.returncode, 0)
             self.assertFalse((d / "bad").exists())
 
+    def test_atomic_publication_and_rollback(self):
+        from unittest.mock import patch
+        from compose_ordered_factory import main
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            source = d / "input.profile"
+            source.write_bytes(encode({280: 1}))
+            output = d / "out"
+            args = ["compose_ordered_factory.py", "--source", "profile", "mod",
+                    str(source), hashlib.sha256(source.read_bytes()).hexdigest(),
+                    "--output", str(output)]
+            with patch.object(sys, "argv", args):
+                original_write = Path.write_text
+                def fail_report(path, *a, **kw):
+                    if path.name == "factory_ordered_report.json":
+                        raise OSError("simulated report write failure")
+                    return original_write(path, *a, **kw)
+                with patch.object(Path, "write_text", fail_report):
+                    with self.assertRaisesRegex(OSError, "simulated"):
+                        main()
+            self.assertFalse(output.exists())
+            self.assertEqual(sorted(p.name for p in d.iterdir()), ["input.profile"])
+            with patch.object(sys, "argv", args):
+                main()
+            original = (output / "factory.profile").read_bytes()
+            with patch.object(sys, "argv", args):
+                with self.assertRaises(OSError):
+                    main()
+            self.assertEqual((output / "factory.profile").read_bytes(), original)
+            self.assertEqual(sorted(p.name for p in d.iterdir()), ["input.profile", "out"])
+
     def test_baseline_semantic_delta_and_replay(self):
         import json
         with tempfile.TemporaryDirectory() as tmp:
