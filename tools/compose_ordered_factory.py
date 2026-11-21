@@ -141,9 +141,15 @@ def main():
                                     "before_source": prior_owner["source"],
                                     "after_source": current_owner["source"]})
             if before != after:
-                changes.append({"owner": owner, "before": before, "after": after,
-                                "operation": "add" if before is None else
-                                "remove" if after is None else "replace"})
+                change = {"owner": owner, "before": before, "after": after,
+                          "operation": "add" if before is None else
+                          "remove" if after is None else "replace"}
+                if baseline_owners is not None:
+                    change["before_source"] = (baseline_owners[owner]["source"]
+                                               if before is not None else None)
+                    change["after_source"] = (effective[owner]["source"]
+                                              if after is not None else None)
+                changes.append(change)
     report = {"effective_owners": [{"owner": owner, **effective[owner]}
                                     for owner in sorted(effective)],
               "sources": provenance, "records": ledger,

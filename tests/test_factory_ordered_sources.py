@@ -147,6 +147,40 @@ class OrderedFactoryTests(unittest.TestCase):
             self.assertEqual(decode((d / "out/factory.profile").read_bytes()),
                              {280: 58, 282: 1})
 
+    def test_baseline_changed_selector_preserves_source_attribution(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            first, second = d / "first.profile", d / "second.profile"
+            first.write_bytes(encode({280: 1, 281: 1}))
+            second.write_bytes(encode({280: 58, 282: 1}))
+            sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+            script = str(ROOT / "tools/compose_ordered_factory.py")
+            old = subprocess.run([sys.executable, script, "--source", "profile",
+                                  "old-mod", str(first), sha(first), "--output", str(d / "old")],
+                                 capture_output=True, text=True)
+            self.assertEqual(old.returncode, 0, old.stderr)
+            baseline = d / "old/factory.profile"
+            report = d / "old/factory_ordered_report.json"
+            cmd = [sys.executable, script, "--source", "profile", "new-mod",
+                   str(second), sha(second), "--baseline-profile", str(baseline),
+                   sha(baseline), "--baseline-report", str(report), sha(report),
+                   "--output", str(d / "new")]
+            run = lambda *args: subprocess.run(cmd + list(args), capture_output=True, text=True)
+            result = run()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            changes = json.loads((d / "new/factory_ordered_report.json").read_text())["changes"]
+            self.assertEqual(changes, [
+                {"owner": 280, "before": 1, "after": 58, "operation": "replace",
+                 "before_source": "old-mod", "after_source": "new-mod"},
+                {"owner": 281, "before": 1, "after": None, "operation": "remove",
+                 "before_source": "old-mod", "after_source": None},
+                {"owner": 282, "before": None, "after": 1, "operation": "add",
+                 "before_source": None, "after_source": "new-mod"}])
+            self.assertEqual(run("--verify-output").returncode, 0)
+            self.assertEqual(decode((d / "new/factory.profile").read_bytes()),
+                             {280: 58, 282: 1})
+
     def test_baseline_same_selector_owner_transfer_and_tamper(self):
         import json
         with tempfile.TemporaryDirectory() as tmp:
