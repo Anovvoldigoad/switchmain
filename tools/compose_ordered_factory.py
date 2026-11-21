@@ -174,6 +174,9 @@ def main():
             p.error("Factory provenance replay mismatch")
         return
     # Publish both files together; clean staging if either write fails.
+    if a.output.exists():
+        raise FileExistsError(a.output)
+    a.output.parent.mkdir(parents=True, exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix=".factory-ordered-", dir=a.output.parent))
     try:
         (stage / "factory.profile").write_bytes(result)
