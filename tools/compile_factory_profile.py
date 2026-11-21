@@ -4,7 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-from portlib.factory_profile import compile_records
+from portlib.factory_profile import compile_records, decode, encode
 from portlib.nso_profile import configure
 
 
@@ -13,6 +13,8 @@ def main():
     p.add_argument('--param', type=Path, action='append', default=[], help='Raw PC specialCondParam; repeat in mod load order')
     p.add_argument('--param-sha256', action='append', default=[],
                    help='Required SHA256 for each --param in identical order; omit only for legacy unauthenticated use')
+    p.add_argument('--profile', nargs=3, action='append', default=[], metavar=('LABEL', 'PATH', 'SHA256'),
+                   help='Append authenticated profiles after raw PC sources in priority order')
     p.add_argument('--owner-map', type=Path, help='Explicit JSON object mapping PC owner IDs to final Switch IDs')
     p.add_argument('--conflicts', choices=('last', 'reject'), default='last',
                    help='Reject duplicate final Switch owners, including remap collisions')
@@ -44,6 +46,27 @@ def main():
         provenance.append({'source_index': index, 'sha256': digest,
                            'authenticated': bool(a.param_sha256)})
     profile, records = compile_records(inputs, owner_map, conflicts=a.conflicts)
+    owners, labels = decode(profile), set()
+    for label, path, expected in a.profile:
+        if label in labels:
+            p.error('Duplicate profile label')
+        labels.add(label)
+        data = Path(path).read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
+        if len(expected) != 64 or digest != expected.lower():
+            p.error(f'Profile SHA256 mismatch: {label}')
+        mappings = decode(data)
+        for owner, selector in mappings.items():
+            previous = owners.get(owner)
+            if previous is not None and a.conflicts == 'reject':
+                p.error(f'Profile {label}: owner {owner} collides')
+            records.append({'source': label, 'owner': owner, 'selector': selector,
+                            'replaces_previous_mapping': previous is not None,
+                            'previous_selector': previous})
+            owners[owner] = selector
+        provenance.append({'profile_label': label, 'sha256': digest,
+                           'authenticated': True, 'source_kind': 'factory.profile'})
+    profile = encode(owners)
     result, report = None, {'records': records, 'sources': provenance, 'conflicts': a.conflicts, 'gameplay_verified': False, 'full_moddingapi': False}
     if a.module:
         result, module_report = configure(a.module.read_bytes(), profile, a.expected_module_sha256)
