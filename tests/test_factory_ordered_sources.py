@@ -147,6 +147,43 @@ class OrderedFactoryTests(unittest.TestCase):
             self.assertEqual(decode((d / "out/factory.profile").read_bytes()),
                              {280: 58, 282: 1})
 
+    def test_baseline_same_selector_owner_transfer_and_tamper(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            a, b = d / "a.profile", d / "b.profile"
+            a.write_bytes(encode({280: 1}))
+            b.write_bytes(encode({280: 1}))
+            sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+            script = str(ROOT / "tools/compose_ordered_factory.py")
+            old = subprocess.run([sys.executable, script, "--source", "profile", "first",
+                                  str(a), sha(a), "--output", str(d / "old")],
+                                 capture_output=True, text=True)
+            self.assertEqual(old.returncode, 0, old.stderr)
+            profile = d / "old/factory.profile"
+            report = d / "old/factory_ordered_report.json"
+            cmd = [sys.executable, script, "--source", "profile", "second",
+                   str(b), sha(b), "--baseline-profile", str(profile), sha(profile),
+                   "--baseline-report", str(report), sha(report), "--output", str(d / "new")]
+            run = lambda *extra: subprocess.run(cmd + list(extra), capture_output=True, text=True)
+            created = run()
+            self.assertEqual(created.returncode, 0, created.stderr)
+            proof = json.loads((d / "new/factory_ordered_report.json").read_text())
+            self.assertEqual(proof["changes"], [{"owner": 280, "before": 1, "after": 1,
+                "operation": "transfer", "before_source": "first", "after_source": "second"}])
+            self.assertEqual(run("--verify-output").returncode, 0)
+            self.assertEqual((d / "new/factory.profile").read_bytes(), profile.read_bytes())
+            old_report = json.loads(report.read_text())
+            old_report["effective_owners"][0]["source"] = "forged"
+            report.write_text(json.dumps(old_report))
+            self.assertNotEqual(run("--verify-output").returncode, 0)
+            self.assertEqual((d / "new/factory.profile").read_bytes(), profile.read_bytes())
+            missing = subprocess.run([sys.executable, script, "--source", "profile", "second",
+                                      str(b), sha(b), "--baseline-report", str(report), sha(report),
+                                      "--output", str(d / "invalid")], capture_output=True, text=True)
+            self.assertNotEqual(missing.returncode, 0)
+            self.assertFalse((d / "invalid").exists())
+
     def test_cli_verify_replay_and_tamper(self):
         with tempfile.TemporaryDirectory() as tmp:
             import json
