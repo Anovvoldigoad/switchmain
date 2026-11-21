@@ -72,6 +72,8 @@ def main():
     p.add_argument("--owner-map", type=Path)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--verify-output", action="store_true", help="Verify existing profile and provenance by source replay")
+    p.add_argument("--baseline-report", nargs=2, metavar=("PATH", "SHA256"),
+                   help="Authenticate prior ordered report and detect same-selector ownership transfers")
     p.add_argument("--baseline-profile", nargs=2, metavar=("PATH", "SHA256"),
                    help="Compare against a SHA-pinned existing factory profile before deployment")
     a = p.parse_args()
@@ -97,11 +99,47 @@ def main():
         if baseline_sha != expected_sha.lower() or len(expected_sha) != 64:
             p.error("Baseline profile SHA256 mismatch")
         baseline = decode(baseline_bytes)
+    baseline_owners = None
+    if a.baseline_report:
+        if baseline is None:
+            p.error("--baseline-report requires --baseline-profile")
+        report_path, report_expected = a.baseline_report
+        report_bytes = Path(report_path).read_bytes()
+        report_sha = hashlib.sha256(report_bytes).hexdigest()
+        if len(report_expected) != 64 or report_sha != report_expected.lower():
+            p.error("Baseline report SHA256 mismatch")
+        try:
+            prior = json.loads(report_bytes)
+            if prior["profile_sha256"] != baseline_sha:
+                raise ValueError("Baseline report/profile digest mismatch")
+            prior_owners = prior["effective_owners"]
+            if not isinstance(prior_owners, list):
+                raise ValueError("Invalid baseline owners")
+            baseline_owners = {}
+            for entry in prior_owners:
+                owner = entry["owner"]
+                if not isinstance(owner, int) or owner in baseline_owners or owner not in baseline:
+                    raise ValueError("Invalid or duplicate baseline owner")
+                if entry["selector"] != baseline[owner] or not isinstance(entry["source"], str) or not isinstance(entry["kind"], str):
+                    raise ValueError("Baseline owner/profile mismatch")
+                baseline_owners[owner] = entry
+            if set(baseline_owners) != set(baseline):
+                raise ValueError("Incomplete baseline ownership")
+        except (ValueError, KeyError, TypeError) as exc:
+            p.error(f"Invalid baseline report: {exc}")
     changes = []
     if baseline is not None:
         current = decode(result)
         for owner in sorted(set(baseline) | set(current)):
             before, after = baseline.get(owner), current.get(owner)
+            if before == after and baseline_owners is not None and before is not None:
+                prior_owner = baseline_owners[owner]
+                current_owner = effective[owner]
+                if (prior_owner["source"], prior_owner["kind"]) != (current_owner["source"], current_owner["kind"]):
+                    changes.append({"owner": owner, "before": before, "after": after,
+                                    "operation": "transfer",
+                                    "before_source": prior_owner["source"],
+                                    "after_source": current_owner["source"]})
             if before != after:
                 changes.append({"owner": owner, "before": before, "after": after,
                                 "operation": "add" if before is None else
@@ -110,6 +148,7 @@ def main():
                                     for owner in sorted(effective)],
               "sources": provenance, "records": ledger,
               **({"baseline_sha256": baseline_sha, "changes": changes} if baseline is not None else {}),
+              **({"baseline_report_sha256": report_sha} if baseline_owners is not None else {}),
               "excluded_labels": a.exclude,
               "profile_sha256": hashlib.sha256(result).hexdigest(),
               "native_consumer_verified": False, "gameplay_verified": False}
