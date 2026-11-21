@@ -95,7 +95,9 @@ class OrderedFactoryTests(unittest.TestCase):
             self.assertEqual(decode((d / "out/factory.profile").read_bytes()), {280: 58})
             proof = json.loads((d / "out/factory_ordered_report.json").read_text())
             self.assertEqual(proof["excluded_labels"], ["second"])
-            self.assertTrue(proof["sources"][1]["excluded"])\n            self.assertEqual(proof["effective_owners"],\n                             [{"owner": 280, "source": "first", "kind": "raw", "selector": 58}])
+            self.assertTrue(proof["sources"][1]["excluded"])
+            self.assertEqual(proof["effective_owners"],
+                             [{"owner": 280, "source": "first", "kind": "raw", "selector": 58}])
             bad = subprocess.run(base + ["--exclude", "unknown", "--output", str(d / "bad")],
                                  capture_output=True, text=True)
             self.assertNotEqual(bad.returncode, 0)
@@ -131,7 +133,10 @@ class OrderedFactoryTests(unittest.TestCase):
                    "--exclude", "b", "--output", str(d / "out")]
             def run(*extra):
                 return subprocess.run(cmd + list(extra), capture_output=True, text=True)
-            self.assertEqual(run().returncode, 0)\n            initial_report = json.loads((d / "out/factory_ordered_report.json").read_text())\n            self.assertEqual(initial_report["effective_owners"],\n                             [{"owner": 280, "source": "a", "kind": "raw", "selector": 58}])
+            self.assertEqual(run().returncode, 0)
+            initial_report = json.loads((d / "out/factory_ordered_report.json").read_text())
+            self.assertEqual(initial_report["effective_owners"],
+                             [{"owner": 280, "source": "a", "kind": "raw", "selector": 58}])
             self.assertEqual(run("--verify-output").returncode, 0)
             profile = d / "out/factory.profile"
             original = profile.read_bytes()
