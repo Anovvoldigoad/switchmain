@@ -1633,5 +1633,16 @@
     "native_consumer_verified": false,
     "emulator_tested": false
   },
-  "latest_engineering_pending_ci": "2026-11-21 PENDING_HEAD_CI: code dba80ee828b8bf759216258b4c47b785a9da1b7e (parent a8b18362cc33d47bcbf183b23713d127a1bab1ec) now attributes baseline add/remove/replace operations to before_source/after_source when SHA256-pinned baseline report is provided. Added positive add/remove/replace provenance and --verify-output replay regression. GitHub connector can read previous job 136800592579 log (run 44889037329, prior commit only), but HEAD push workflow run/job/log is not accessible yet. No host test execution or HEAD CI PASS claimed. ModManager and Toolbox tag 2.1.2.1 READMEs checked (blob SHA 8e9560b2 and 657f1613); original Switch main not available for byte rehash; native ABI/ownership/lifecycle/CPK precedence/Uzuy unresolved. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. Sakura aura107, marked/unmarked Event236 untouched; full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. NEXT inspect exact HEAD push Actions logs and repair failures; source-authenticate native consumer before any hook."
+  "latest_engineering_pending_ci": "2026-11-21 PENDING_HEAD_CI: code dba80ee828b8bf759216258b4c47b785a9da1b7e (parent a8b18362cc33d47bcbf183b23713d127a1bab1ec) now attributes baseline add/remove/replace operations to before_source/after_source when SHA256-pinned baseline report is provided. Added positive add/remove/replace provenance and --verify-output replay regression. GitHub connector can read previous job 136800592579 log (run 44889037329, prior commit only), but HEAD push workflow run/job/log is not accessible yet. No host test execution or HEAD CI PASS claimed. ModManager and Toolbox tag 2.1.2.1 READMEs checked (blob SHA 8e9560b2 and 657f1613); original Switch main not available for byte rehash; native ABI/ownership/lifecycle/CPK precedence/Uzuy unresolved. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. Sakura aura107, marked/unmarked Event236 untouched; full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. NEXT inspect exact HEAD push Actions logs and repair failures; source-authenticate native consumer before any hook.",
+  "ordered_factory_atomic_publication": {
+    "state": "PENDING_HEAD_CI",
+    "source_commit": "4a882d11426a7c55dfbb0c5468aa3375d165c190",
+    "test_commit": "ff89765295c97d867628f71ebcf48fdddf0b6076",
+    "parent_sha": "00cb3ec6db5de8745dd70fe2a3fce37d6a4eee07",
+    "host_tested": false,
+    "head_ci_verified": false,
+    "native_consumer_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect authentic HEAD factory push workflow job log and fix failures; native consumer requires pinned original main byte evidence."
+  }
 }
