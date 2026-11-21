@@ -37,7 +37,7 @@ class AuthenticatedRawFactoryTests(unittest.TestCase):
             self.assertTrue(all(x["authenticated"] for x in report["sources"]))
             for index, args in enumerate((
                 base[:-3] + ["--output", str(root / "missing")],
-                base[:-4] + ["--param-sha256", db, "--param-sha256", da, "--output", str(root / "reversed")],
+                base[:6] + ["--param-sha256", db, "--param-sha256", da, "--output", str(root / "reversed")],
             )):
                 bad = subprocess.run(args, capture_output=True, text=True)
                 self.assertNotEqual(bad.returncode, 0, bad.stderr)
