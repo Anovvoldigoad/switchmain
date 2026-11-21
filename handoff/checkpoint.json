@@ -2379,5 +2379,15 @@
     "native_consumer_verified": false,
     "uzuy_verified": false,
     "next": "Read HEAD push Actions authentic logs; continue native consumer proof without speculative hooks"
+  },
+  "latest_factory_owner_transfer": {
+    "state": "PENDING_HEAD_CI",
+    "parent_sha": "3f98581455a71d688b889901a95633da777dbfb6",
+    "source_commit": "981bc6cba42c58e88a1f9eecc2c5fbb9fc65e2ff",
+    "test_commit": "d51d309ca047c57e196df4dde5478eaea1c2fddb",
+    "native_consumer_verified": false,
+    "uzuy_verified": false,
+    "ci_log_inspected": false,
+    "next": "Read push Actions logs for HEAD; run regression and fix failures; no hook before native ABI proof"
   }
 }
