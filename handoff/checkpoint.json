@@ -1454,7 +1454,7 @@
     "fix": "Initialize negatives before four output-alias negative tests; do not reset before other negatives",
     "ci": "PENDING"
   },
-  "latest_pending_code_commit": "bffe2fde7a4987fb125eb55583f0b7ed4206b590",
+  "latest_pending_code_commit": "622d65c890359be4dbaaac2d2b32c29bd5953ee6",
   "latest_pending_ci": {
     "parent_sha": "3db3a0209d34b9861fbca4fcb2442c5f1d805bb1",
     "code_sha": "15701b3cfb5326645d59c08da81b4ebefd11e530",
@@ -1572,7 +1572,7 @@
     "next": "Inspect real unique external target path summaries, choose semantically likely caller/callee provenance; no hook until ABI and lifecycle proven."
   },
   "pending_ci": true,
-  "last_parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
+  "last_parent_sha": "66847664b781ae31f5b7a35e2ddbfdbb66a71736",
   "native_fileopen_call_free_witness": {
     "status": "PENDING_CI",
     "parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
@@ -2314,5 +2314,23 @@
     "next": "Read final HEAD factory push workflow job log, repair failure; authenticate original main before native ABI work.",
     "native_consumer_verified": false,
     "uzuy_verified": false
+  },
+  "factory_mixed_20261121": {
+    "status": "PENDING_CI",
+    "parent_sha": "66847664b781ae31f5b7a35e2ddbfdbb66a71736",
+    "code_commit": "622d65c890359be4dbaaac2d2b32c29bd5953ee6",
+    "source": "tools/compile_factory_profile.py",
+    "test": "tests/test_factory_mixed_sources.py",
+    "workflow": ".github/workflows/verify-factory-multimod.yml",
+    "parent_verified_runs": [
+      44855979418,
+      44855979405,
+      44855979396,
+      44855979480
+    ],
+    "head_run": null,
+    "native_consumer_verified": false,
+    "uzuy_verified": false,
+    "next": "Read exact HEAD push factory job raw log; fix failing regression. No runtime hooks."
   }
 }
