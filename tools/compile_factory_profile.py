@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Compile audited class-selector parameters; NOT a full mod converter/release."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from portlib.factory_profile import compile_records
@@ -10,6 +11,8 @@ from portlib.nso_profile import configure
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--param', type=Path, action='append', default=[], help='Raw PC specialCondParam; repeat in mod load order')
+    p.add_argument('--param-sha256', action='append', default=[],
+                   help='Required SHA256 for each --param in identical order; omit only for legacy unauthenticated use')
     p.add_argument('--owner-map', type=Path, help='Explicit JSON object mapping PC owner IDs to final Switch IDs')
     p.add_argument('--conflicts', choices=('last', 'reject'), default='last',
                    help='Reject duplicate final Switch owners, including remap collisions')
@@ -28,9 +31,20 @@ def main():
             if str(int(k)) != k:
                 p.error('Owner-map keys must be canonical decimal IDs')
             owner_map[int(k)] = v
-    profile, records = compile_records([(str(f), f.read_bytes()) for f in a.param], owner_map,
-                                       conflicts=a.conflicts)
-    result, report = None, {'records': records, 'conflicts': a.conflicts, 'gameplay_verified': False, 'full_moddingapi': False}
+    if a.param_sha256 and len(a.param_sha256) != len(a.param):
+        p.error('Supply exactly one --param-sha256 for each --param')
+    inputs, provenance = [], []
+    for index, path in enumerate(a.param):
+        raw = path.read_bytes()
+        digest = hashlib.sha256(raw).hexdigest()
+        if a.param_sha256 and (len(a.param_sha256[index]) != 64 or
+                               digest != a.param_sha256[index].lower()):
+            p.error(f'--param-sha256 mismatch for input {index}')
+        inputs.append((str(path), raw))
+        provenance.append({'source_index': index, 'sha256': digest,
+                           'authenticated': bool(a.param_sha256)})
+    profile, records = compile_records(inputs, owner_map, conflicts=a.conflicts)
+    result, report = None, {'records': records, 'sources': provenance, 'conflicts': a.conflicts, 'gameplay_verified': False, 'full_moddingapi': False}
     if a.module:
         result, module_report = configure(a.module.read_bytes(), profile, a.expected_module_sha256)
         report['module'] = module_report
