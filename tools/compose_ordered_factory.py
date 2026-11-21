@@ -82,7 +82,7 @@ def main():
     inputs = [(kind, label, Path(path).read_bytes(), sha)
               for kind, label, path, sha in a.source]
     result, ledger, provenance = compose(inputs, conflicts=a.conflicts, owner_map=mapping, exclude=a.exclude)
-    report = {"sources": provenance, "records": ledger,
+    # Last writer for each owner is the effective mod after ordered composition.\n    effective = {}\n    for row in ledger:\n        effective[row["owner"]] = {"source": row["source"], "kind": row["kind"],\n                                   "selector": row["selector"]}\n    report = {"effective_owners": [{"owner": owner, **effective[owner]}\n                                    for owner in sorted(effective)],\n              "sources": provenance, "records": ledger,
               "excluded_labels": a.exclude,
               "profile_sha256": hashlib.sha256(result).hexdigest(),
               "native_consumer_verified": False, "gameplay_verified": False}
