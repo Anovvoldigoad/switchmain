@@ -51,6 +51,56 @@ class OrderedFactoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "kind"):
             compose([("other", "x", b"", hashlib.sha256(b"").hexdigest())])
 
+
+    def test_remove_middle_and_last_replays_precedence(self):
+        a = src("raw", "first", raw("2dnz", 280))
+        b = src("profile", "middle", encode({280: 1, 281: 1}))
+        c = src("raw", "last", raw("2dnz", 280))
+        result, ledger, proof = compose([a, b, c], exclude=["middle", "last"])
+        self.assertEqual(decode(result), {280: 58})
+        self.assertEqual([r["source"] for r in ledger], ["first"])
+        self.assertEqual([r["excluded"] for r in proof], [False, True, True])
+        self.assertEqual(decode(compose([a, b, c], exclude=["last"])[0]),
+                         {280: 1, 281: 1})
+        self.assertEqual(decode(compose([a, b, c], exclude=["first", "last"])[0]),
+                         {280: 1, 281: 1})
+        self.assertEqual(decode(compose([a, b, c], exclude=["first", "middle", "last"])[0]), {})
+
+    def test_removed_sources_still_authenticated_and_unknown_rejected(self):
+        a = src("raw", "first", raw("2dnz", 280))
+        with self.assertRaisesRegex(ValueError, "SHA256"):
+            compose([(*a[:3], "0" * 64)], exclude=["first"])
+        with self.assertRaisesRegex(ValueError, "Unknown excluded"):
+            compose([a], exclude=["missing"])
+        with self.assertRaisesRegex(ValueError, "Duplicate excluded"):
+            compose([a], exclude=["first", "first"])
+        with self.assertRaisesRegex(ValueError, "Duplicate source"):
+            compose([a, a], exclude=["first"])
+        with self.assertRaisesRegex(ValueError, "Unknown source kind"):
+            compose([src("invalid", "first", b"")], exclude=["first"])
+
+    def test_cli_remove_source_and_replay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            import json
+            d = Path(tmp)
+            a, b = d / "first.bin", d / "second.bin"
+            a.write_bytes(raw("2dnz", 280))
+            b.write_bytes(encode({280: 1}))
+            base = [sys.executable, str(ROOT / "tools/compose_ordered_factory.py"),
+                    "--source", "raw", "first", str(a), hashlib.sha256(a.read_bytes()).hexdigest(),
+                    "--source", "profile", "second", str(b), hashlib.sha256(b.read_bytes()).hexdigest()]
+            run = subprocess.run(base + ["--exclude", "second", "--output", str(d / "out")],
+                                 capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertEqual(decode((d / "out/factory.profile").read_bytes()), {280: 58})
+            proof = json.loads((d / "out/factory_ordered_report.json").read_text())
+            self.assertEqual(proof["excluded_labels"], ["second"])
+            self.assertTrue(proof["sources"][1]["excluded"])
+            bad = subprocess.run(base + ["--exclude", "unknown", "--output", str(d / "bad")],
+                                 capture_output=True, text=True)
+            self.assertNotEqual(bad.returncode, 0)
+            self.assertFalse((d / "bad").exists())
+
     def test_cli_fail_closed_and_output(self):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
