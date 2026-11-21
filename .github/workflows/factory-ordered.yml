@@ -1,0 +1,21 @@
+name: Ordered Factory Composition (Offline)
+on:
+  push:
+    branches: [port/full-api-v170]
+    paths:
+      - 'tools/compose_ordered_factory.py'
+      - 'tools/portlib/factory_profile.py'
+      - 'profiles/factory_catalog_v170.json'
+      - 'tests/test_factory_ordered_sources.py'
+      - '.github/workflows/factory-ordered.yml'
+  workflow_dispatch:
+jobs:
+  ordered-factory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify ordered mixed-source composition
+        run: PYTHONPATH=tools python -m unittest discover -s tests -p test_factory_ordered_sources.py -v
