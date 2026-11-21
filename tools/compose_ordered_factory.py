@@ -6,6 +6,9 @@ Offline class-selector editor only; not a native Switch engine consumer.
 import argparse
 import hashlib
 import json
+import os
+import shutil
+import tempfile
 from pathlib import Path
 
 from portlib.factory_profile import compile_records, decode, encode
@@ -170,9 +173,15 @@ def main():
         if saved != report:
             p.error("Factory provenance replay mismatch")
         return
-    a.output.mkdir(parents=True, exist_ok=False)
-    (a.output / "factory.profile").write_bytes(result)
-    (a.output / "factory_ordered_report.json").write_text(json.dumps(report, indent=2) + "\n")
+    # Publish both files together; clean staging if either write fails.
+    stage = Path(tempfile.mkdtemp(prefix=".factory-ordered-", dir=a.output.parent))
+    try:
+        (stage / "factory.profile").write_bytes(result)
+        (stage / "factory_ordered_report.json").write_text(json.dumps(report, indent=2) + "\n")
+        os.rename(stage, a.output)
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage)
 
 
 if __name__ == "__main__":
