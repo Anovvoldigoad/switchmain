@@ -150,6 +150,30 @@ class OrderedFactoryTests(unittest.TestCase):
             self.assertEqual((output / "factory.profile").read_bytes(), original)
             self.assertEqual(sorted(p.name for p in d.iterdir()), ["input.profile", "out"])
 
+    def test_racing_destination_preserved(self):
+        from unittest.mock import patch
+        from compose_ordered_factory import main
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            source = d / "input.profile"
+            source.write_bytes(encode({280: 1}))
+            output = d / "out"
+            args = ["compose_ordered_factory.py", "--source", "profile", "mod",
+                    str(source), hashlib.sha256(source.read_bytes()).hexdigest(),
+                    "--output", str(output)]
+            original = Path.write_text
+            def create_racing_output(path, *args, **kwargs):
+                result = original(path, *args, **kwargs)
+                if path.name == "factory_ordered_report.json":
+                    output.mkdir()
+                    (output / "sentinel").write_bytes(b"keep")
+                return result
+            with patch.object(sys, "argv", args), patch.object(Path, "write_text", create_racing_output):
+                with self.assertRaises(FileExistsError):
+                    main()
+            self.assertEqual((output / "sentinel").read_bytes(), b"keep")
+            self.assertEqual(sorted(p.name for p in d.iterdir()), ["input.profile", "out"])
+
     def test_baseline_semantic_delta_and_replay(self):
         import json
         with tempfile.TemporaryDirectory() as tmp:

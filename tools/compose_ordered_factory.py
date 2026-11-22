@@ -4,6 +4,8 @@
 Offline class-selector editor only; not a native Switch engine consumer.
 """
 import argparse
+import ctypes
+import errno
 import hashlib
 import json
 import os
@@ -63,6 +65,20 @@ def compose(sources, *, conflicts="last", owner_map=None, exclude=()):
         provenance.append({"kind": kind, "label": label, "sha256": digest,
                            "excluded": False})
     return encode(owners), ledger, provenance
+
+
+def publish_new_directory(stage, output):
+    """Atomic Linux no-replace publication; unsupported hosts fail closed."""
+    libc = ctypes.CDLL(None, use_errno=True)
+    fn = getattr(libc, "renameat2", None)
+    if fn is None:
+        raise OSError(errno.ENOSYS, "renameat2 required for exclusive publication")
+    fn.argtypes = (ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
+                   ctypes.c_char_p, ctypes.c_uint)
+    fn.restype = ctypes.c_int
+    if fn(-100, os.fsencode(stage), -100, os.fsencode(output), 1):
+        code = ctypes.get_errno()
+        raise OSError(code, os.strerror(code), str(output))
 
 
 def main():
@@ -181,7 +197,7 @@ def main():
     try:
         (stage / "factory.profile").write_bytes(result)
         (stage / "factory_ordered_report.json").write_text(json.dumps(report, indent=2) + "\n")
-        os.rename(stage, a.output)
+        publish_new_directory(stage, a.output)
     finally:
         if stage.exists():
             shutil.rmtree(stage)

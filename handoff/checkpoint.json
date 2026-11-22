@@ -2401,5 +2401,14 @@
     "native_consumer_verified": false,
     "uzuy_verified": false,
     "next": "Inspect authentic HEAD factory push workflow job log and fix failures; native consumer requires pinned original main byte evidence."
+  },
+  "ordered_factory_exclusive_publication": {
+    "state": "PENDING_HEAD_CI",
+    "parent_sha": "346c2b698fbf181a2abcbbbf42973cd336a17602",
+    "host_tested": false,
+    "head_ci_verified": false,
+    "native_consumer_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect authentic HEAD Actions push job logs and fix failures."
   }
 }
