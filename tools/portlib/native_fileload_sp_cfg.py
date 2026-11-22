@@ -51,8 +51,12 @@ def trace(data, start, max_states=1024):
             next_delta = delta+amount if delta is not None and amount is not None else None
         elif op and op[0].type == ARM64_OP_REG and ins.reg_name(op[0].reg) == "sp":
             next_delta = None
+        # Authenticated indirect calls must not be treated as plain fallthrough.
+        authenticated_calls = {"blraa", "blrab", "blraaz", "blrabz"}
         edges = _edges(pc,ins.mnemonic,ins.op_str)
-        if any(kind == "call" for kind,_ in edges) or ins.mnemonic in ("blr","bl"):
+        if ins.mnemonic in authenticated_calls:
+            edges = [("fallthrough_after_indirect_call", pc + 4)]
+        if any(kind == "call" for kind,_ in edges) or ins.mnemonic in ({"blr", "bl"} | authenticated_calls):
             barriers.append(hex(pc))
             next_delta = None  # Do not infer SP preservation across unknown calls.
         transitions[(pc,delta)] = []

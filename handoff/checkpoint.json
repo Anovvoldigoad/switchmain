@@ -2419,5 +2419,18 @@
     "consumer_abi_verified": false,
     "original_main_rehashed": false,
     "next": "Inspect HEAD Foundation job log and resolve failures; trace original consumer lifecycle before hooks."
+  },
+  "latest_pending_head_ci": {
+    "parent_sha": "2da3c6f97aa4cdc9856d1686c05062bad761de12",
+    "topic": "authenticated_indirect_call_barrier",
+    "source": "tools/portlib/native_fileload_sp_cfg.py",
+    "test": "tests/test_native_fileload_sp_cfg.py",
+    "status": "PENDING_HEAD_CI",
+    "host_tested": false,
+    "ci_run_id": null,
+    "ci_job_id": null,
+    "ci_log_inspected": false,
+    "consumer_abi_proven": false,
+    "uzuy_tested": false
   }
 }

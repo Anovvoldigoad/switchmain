@@ -157,6 +157,14 @@ def run(main,out):
     r=trace(call,0x3000)
     assert r["call_barriers"]==["0x3004"]
     assert r["accesses"][0]["unknown_path"]
+    # ARMv8.3 BLRAA X9,X10: authenticated indirect call, not fallthrough.
+    # Word assembled using clang --target=aarch64-linux-gnu -march=armv8.3-a+pauth.
+    pac_call=b"".join(map(word,[0xd10043ff,0xf90007e1,0xd73f092a,
+                                 0xf94007e2,0xd65f03c0]))
+    pac_report=trace(pac_call,0x6100)
+    assert pac_report["call_barriers"]==["0x6108"]
+    assert pac_report["possible_stack_write_read_pairs"]==[]
+    assert pac_report["accesses"][1]["unknown_path"]
     # A call between writer and reader is opaque; no cross-call witness.
     opaque=b"".join(map(word,[0xd10043ff,0xf90007e1,0x94000002,
                               0xf94007e2,0xd65f03c0]))
