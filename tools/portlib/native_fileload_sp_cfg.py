@@ -2,7 +2,7 @@
 from collections import deque
 from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM
 from capstone.arm64 import ARM64_OP_IMM, ARM64_OP_MEM, ARM64_OP_REG
-from .native_cpk_cfg import _edges
+from .native_cpk_cfg import _edges, AUTHENTICATED_CALLS
 
 def trace(data, start, max_states=1024):
     if len(data) % 4:
@@ -52,11 +52,8 @@ def trace(data, start, max_states=1024):
         elif op and op[0].type == ARM64_OP_REG and ins.reg_name(op[0].reg) == "sp":
             next_delta = None
         # Authenticated indirect calls must not be treated as plain fallthrough.
-        authenticated_calls = {"blraa", "blrab", "blraaz", "blrabz"}
         edges = _edges(pc,ins.mnemonic,ins.op_str)
-        if ins.mnemonic in authenticated_calls:
-            edges = [("fallthrough_after_indirect_call", pc + 4)]
-        if any(kind == "call" for kind,_ in edges) or ins.mnemonic in ({"blr", "bl"} | authenticated_calls):
+        if any(kind == "call" for kind,_ in edges) or ins.mnemonic in ({"blr", "bl"} | AUTHENTICATED_CALLS):
             barriers.append(hex(pc))
             next_delta = None  # Do not infer SP preservation across unknown calls.
         transitions[(pc,delta)] = []

@@ -12,6 +12,16 @@ def run(main,out):
     assert _edges(0x100,"blr","x8")==[
         ("indirect_call_unresolved",None),("fallthrough_after_indirect_call",0x104)]
     assert _edges(0x100,"ret","")==[("return_or_indirect_terminator",None)]
+    # ARMv8.3 pointer-authenticated indirect control transfers: a call
+    # returns to the next word, but its target and side effects are opaque.
+    for mnemonic in ("blraa","blrab","blraaz","blrabz"):
+        assert _edges(0x100,mnemonic,"x9, x10")==[
+            ("indirect_call_unresolved",None),
+            ("fallthrough_after_indirect_call",0x104)]
+    # Authenticated indirect jumps must not invent a fallthrough edge.
+    for mnemonic in ("braa","brab","braaz","brabz","retaa","retab"):
+        assert _edges(0x100,mnemonic,"x9, x10")==[
+            ("return_or_indirect_terminator",None)]
     raw=main.read_bytes()
     report=inspect(raw)
     assert report["main_sha256"]==MAIN_SHA256

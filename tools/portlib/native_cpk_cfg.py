@@ -24,7 +24,8 @@ REGIONS={
 MAX_NODES=384
 MAX_XREF_SAMPLES=24
 BRANCHES={"b","bl","cbz","cbnz","tbz","tbnz"}
-TERMINALS={"ret","retaa","retab","br","braa","brab"}
+TERMINALS={"ret","retaa","retab","br","braa","brab","braaz","brabz"}
+AUTHENTICATED_CALLS={"blraa","blrab","blraaz","blrabz"}
 
 
 def _target(mnemonic,op_str):
@@ -46,7 +47,7 @@ def _edges(address,mnemonic,op_str):
     if mnemonic in {"cbz","cbnz","tbz","tbnz"} or mnemonic.startswith("b."):
         return [("conditional",_target(mnemonic,op_str)),
                 ("fallthrough",address+4)]
-    if mnemonic=="blr":
+    if mnemonic=="blr" or mnemonic in AUTHENTICATED_CALLS:
         return [("indirect_call_unresolved",None),
                 ("fallthrough_after_indirect_call",address+4)]
     if mnemonic in TERMINALS:
