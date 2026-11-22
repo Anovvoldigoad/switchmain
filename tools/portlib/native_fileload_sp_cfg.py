@@ -219,7 +219,7 @@ def trace(data, start, max_states=1024):
         for reader in accesses:
             if (reader["memory_direction"] != "read" or reader["path_ambiguous"]
                     or reader["entry_sp_relative_byte_range"] is None
-                    or int(reader["pc"], 16) <= int(writer["pc"], 16)):
+                    or reader["pc"] == writer["pc"]):
                 continue
             if writer["entry_sp_relative_byte_range"] == reader["entry_sp_relative_byte_range"]:
                 witness = path_witness(int(writer["pc"],16),int(reader["pc"],16),writer["entry_sp_relative_byte_range"])

@@ -24,6 +24,17 @@ def run(main,out):
     assert len(pairs)==1 and pairs[0]["entry_sp_relative_offset"]==-8
     assert not pairs[0]["same_executed_path_proven"] and not pairs[0]["register_value_proven"]
     assert [int(s["pc"],16) for s in pairs[0]["cfg_path_witness"]]==[0x1804,0x1808]
+    # A backward branch can reach a reader at a lower address after a writer.
+    # SUB SP,#16; B writer; LDR; B exit; STR; B reader; RET.
+    backward=b"".join(map(word,[0xd10043ff,0x14000003,0xf94007e2,
+                                  0x14000003,0xf90007e1,0x17fffffd,0xd65f03c0]))
+    backwards=trace(backward,0x3800)["possible_stack_write_read_pairs"]
+    assert [(p["writer_pc"],p["reader_pc"]) for p in backwards]==[("0x3810","0x3808")]
+    assert [int(s["pc"],16) for s in backwards[0]["cfg_path_witness"]]==[0x3810,0x3814,0x3808]
+    # A branch to a lower reader without a writer-to-reader edge is not proof.
+    no_backward=b"".join(map(word,[0xd10043ff,0x14000003,0xf94007e2,
+                                     0x14000003,0xf90007e1,0x14000001,0xd65f03c0]))
+    assert trace(no_backward,0x3900)["possible_stack_write_read_pairs"]==[]
     # Exclusive branches: writer at +8 and reader at +16 cannot share a path.
     exclusive=b"".join(map(word,[0xd10043ff,0xb4000060,0xf90007e1,
                                  0x14000003,0xf94007e2,0x14000002,
