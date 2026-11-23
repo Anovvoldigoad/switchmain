@@ -10,6 +10,8 @@ from portlib.prm_events import records, MARKER
 import struct
 from portlib.cpk_events import entries
 from portlib.crilayla import decompress
+from portlib.crilayla_literal import encode_literals
+from portlib.crilayla_rle import encode_runs
 
 def verify_batch(archive, sha256, report, output_dir, *, limit=256 * 1024 * 1024):
     if not isinstance(sha256, str) or not SHA.fullmatch(sha256):
@@ -119,6 +121,12 @@ def verify_batch(archive, sha256, report, output_dir, *, limit=256 * 1024 * 1024
                     raise ValueError("No-op compressed payload differs from original")
             elif row.get("encoder") not in ("literal", "runs"):
                 raise ValueError("Changed candidate encoder provenance mismatch")
+            else:
+                # A valid decoded stream is not proof of the claimed encoder.
+                # Reconstruct the exact deterministic bitstream independently.
+                reproduce = encode_literals if row["encoder"] == "literal" else encode_runs
+                if reproduce(bytes(expected), limit=limit) != packed:
+                    raise ValueError("Changed candidate encoder bitstream mismatch")
     return {"verified_members": len(rows), "source_sha256": sha256,
             "byte_exact_decoded_match": True, "gameplay_verified": False,
             "compressed_archive_repacked": False}

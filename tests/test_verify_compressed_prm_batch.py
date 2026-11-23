@@ -94,6 +94,30 @@ class CandidateVerification(CompressedBatch):
         with self.assertRaisesRegex(ValueError, "encoder provenance"):
             verifier.verify_batch(self.archive, self.sha, report, self.out)
 
+    def test_changed_encoder_exact_bitstream_provenance(self):
+        from portlib.crilayla_literal import encode_literals
+        from portlib.crilayla_rle import encode_runs
+        from portlib.crilayla import decompress
+        for mode in ("literal", "runs", "auto"):
+            with self.subTest(mode=mode):
+                target = self.out / mode
+                target.mkdir()
+                report = exporter.export_batch(self.archive, self.sha, self.manifest,
+                                               target, encoder=mode)
+                self.assertEqual(verifier.verify_batch(self.archive, self.sha, report, target)["verified_members"], 2)
+                row = report["members"][0]
+                path = target / row["output"]
+                decoded = decompress(path.read_bytes())
+                alternate = (encode_runs(decoded) if row["encoder"] == "literal"
+                             else encode_literals(decoded))
+                self.assertEqual(decompress(alternate), decoded)
+                self.assertNotEqual(alternate, path.read_bytes())
+                path.write_bytes(alternate)
+                row["compressed_candidate_sha256"] = hashlib.sha256(alternate).hexdigest()
+                row["compressed_candidate_bytes"] = len(alternate)
+                with self.assertRaisesRegex(ValueError, "encoder bitstream mismatch"):
+                    verifier.verify_batch(self.archive, self.sha, report, target)
+
     def test_symlink_and_duplicate_output_rejected(self):
         report = self._export()
         path = self.out / report["members"][0]["output"]
