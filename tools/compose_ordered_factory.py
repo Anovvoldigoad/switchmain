@@ -36,6 +36,8 @@ def compose(sources, *, conflicts="last", owner_map=None, exclude=()):
             raise ValueError(f"{label}: SHA256 mismatch")
         if kind not in ("raw", "profile"):
             raise ValueError("Unknown source kind")
+        if kind not in ("raw", "profile"):
+            raise ValueError("Unknown source kind")
         if label in excluded:
             provenance.append({"kind": kind, "label": label, "sha256": digest,
                                "excluded": True})

@@ -78,6 +78,9 @@ class OrderedFactoryTests(unittest.TestCase):
             compose([a, a], exclude=["first"])
         with self.assertRaisesRegex(ValueError, "Unknown source kind"):
             compose([src("invalid", "first", b"")], exclude=["first"])
+        # Exclusion must not turn an unknown input format into a valid source.
+        with self.assertRaisesRegex(ValueError, "Unknown source kind"):
+            compose([src("invalid", "first", b"")], exclude=["first",])
 
     def test_cli_remove_source_and_replay(self):
         with tempfile.TemporaryDirectory() as tmp:
