@@ -2453,5 +2453,16 @@
     "test": "tests/test_factory_ordered_sources.py",
     "consumer_abi_verified": false,
     "uzuy_verified": false
+  },
+  "compressed_prm_noop_20261123": {
+    "state": "PENDING_HEAD_CI",
+    "parent_sha": "40f8de7c05c193a21b7fc799b28273bf663692c0",
+    "source": "tools/export_compressed_prm_batch.py",
+    "test": "tests/test_export_compressed_prm_batch.py",
+    "evidence": "synthetic_only_original_compressed_payload_identity",
+    "ci_verified": false,
+    "native_consumer_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect exact new HEAD compressed PRM Actions push job and raw logs; repair failure if any."
   }
 }

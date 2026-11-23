@@ -72,6 +72,51 @@ class CompressedBatch(unittest.TestCase):
         self.assertLessEqual(len(literal), len(runs))
         self.assertEqual(decompress(literal), decoded)
 
+    def test_noop_member_reuses_exact_original_stream_in_mixed_batch(self):
+        from portlib.prm_events import mark
+        from portlib.cpk_events import entries, canonical
+        marked, _ = mark(self.decoded[0])
+        original_packed = literal_stream(marked)
+        changed_packed = literal_stream(self.decoded[1])
+        archive = cpk(list(zip(self.paths, [original_packed, changed_packed])),
+                      lambda rows: [row.update({"ExtractSize": len(raw)})
+                                    for row, raw in zip(rows, [marked, self.decoded[1]])])
+        self.archive.write_bytes(archive)
+        self.sha = hashlib.sha256(archive).hexdigest()
+        for encoder in ("literal", "runs", "auto"):
+            with self.subTest(encoder=encoder):
+                out = self.out / encoder
+                out.mkdir()
+                report = module.export_batch(self.archive, self.sha, self.manifest, out, encoder=encoder)
+                first, second = report["members"]
+                self.assertEqual((out / "one.crilayla").read_bytes(), original_packed)
+                self.assertEqual(first["encoder"], "original")
+                self.assertTrue(first["original_stored_payload_reused"])
+                self.assertEqual(first["compressed_candidate_sha256"], hashlib.sha256(original_packed).hexdigest())
+                self.assertEqual(first["compressed_candidate_bytes"], len(original_packed))
+                self.assertFalse(second["original_stored_payload_reused"])
+                self.assertNotEqual((out / "two.crilayla").read_bytes(), changed_packed)
+                self.assertEqual(decompress((out / "two.crilayla").read_bytes()),
+                                 module._extract_validated_candidate(
+                                     archive, self.paths[1], self.sha, entries(archive),
+                                     decoded_limit=256 * 1024 * 1024)[0])
+        self.assertEqual(self.archive.read_bytes(), archive)
+
+    def test_noop_reuse_skips_encoder_and_preserves_allocation(self):
+        from portlib.prm_events import mark
+        marked, _ = mark(self.decoded[0])
+        packed = literal_stream(marked)
+        archive = cpk([(self.paths[0], packed)],
+                      lambda rows: rows[0].update({"ExtractSize": len(marked)}))
+        self.archive.write_bytes(archive)
+        self.sha = hashlib.sha256(archive).hexdigest()
+        one = {"members": [self.manifest["members"][0]]}
+        with patch.object(module, "encode_literals", side_effect=AssertionError("reencoded")), \
+             patch.object(module, "encode_runs", side_effect=AssertionError("reencoded")):
+            report = module.export_batch(self.archive, self.sha, one, self.out, encoder="auto")
+        self.assertEqual((self.out / "one.crilayla").read_bytes(), packed)
+        self.assertTrue(report["members"][0]["original_stored_payload_reused"])
+
     def test_unknown_encoder_rejected_before_output(self):
         with self.assertRaises(ValueError):
             module.export_batch(self.archive, self.sha, self.manifest, self.out, encoder="unknown")

@@ -59,12 +59,22 @@ def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 10
                         source, path, sha256, validated_index, decoded_limit=limit)
                     if hashlib.sha256(candidate).hexdigest() != report["candidate_decoded_sha256"]:
                         raise ValueError("Decoded candidate SHA mismatch")
-                    packed = encode_literals(candidate, limit=limit)
-                    selected = "literal"
-                    if encoder in ("runs", "auto"):
-                        run_packed = encode_runs(candidate, limit=limit)
-                        if encoder == "runs" or len(run_packed) < len(packed):
-                            packed, selected = run_packed, "runs"
+                    if not report["changed_decoded_offsets"]:
+                        # A no-op must retain the original CRILAYLA bitstream, not
+                        # silently substitute a different compression representation.
+                        from portlib.cpk_events import canonical
+                        entry = validated_index[canonical(path)]
+                        packed = bytes(source[entry["offset"]:entry["offset"] + entry["stored_size"]])
+                        if hashlib.sha256(packed).hexdigest() != report["stored_sha256"]:
+                            raise ValueError("Original compressed payload SHA mismatch")
+                        selected = "original"
+                    else:
+                        packed = encode_literals(candidate, limit=limit)
+                        selected = "literal"
+                        if encoder in ("runs", "auto"):
+                            run_packed = encode_runs(candidate, limit=limit)
+                            if encoder == "runs" or len(run_packed) < len(packed):
+                                packed, selected = run_packed, "runs"
                     if decompress(packed, limit=limit) != candidate:
                         raise ValueError("Compressed roundtrip mismatch")
                     staged_path = scratch / str(index)
@@ -78,6 +88,7 @@ def export_batch(archive, sha256, manifest, output_dir, *, limit=256 * 1024 * 10
                         "compressed_candidate_sha256": hashlib.sha256(packed).hexdigest(),
                         "compressed_candidate_bytes": len(packed),
                         "encoder": selected,
+                        "original_stored_payload_reused": selected == "original",
                     }))
                     del candidate, packed
         try:
