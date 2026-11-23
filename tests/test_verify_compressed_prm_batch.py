@@ -59,6 +59,41 @@ class CandidateVerification(CompressedBatch):
         with self.assertRaises(ValueError):
             verifier.verify_batch(self.archive, "0" * 64, report, self.out)
 
+    def test_noop_requires_original_compressed_bitstream(self):
+        from portlib.prm_events import mark
+        from test_compressed_prm_events import literal_stream
+        from test_cpk_events import cpk
+        from portlib.crilayla_rle import encode_runs
+        from portlib.crilayla import decompress
+        marked, _ = mark(self.decoded[0])
+        original = literal_stream(marked)
+        archive = cpk([(self.paths[0], original)],
+                      lambda rows: rows[0].update({"ExtractSize": len(marked)}))
+        self.archive.write_bytes(archive)
+        self.sha = hashlib.sha256(archive).hexdigest()
+        manifest = {"members": [self.manifest["members"][0]]}
+        report = exporter.export_batch(self.archive, self.sha, manifest, self.out)
+        self.assertEqual(verifier.verify_batch(self.archive, self.sha, report, self.out)["verified_members"], 1)
+        row = report["members"][0]
+        alternate = encode_runs(marked)
+        self.assertEqual(decompress(alternate), marked)
+        self.assertNotEqual(alternate, original)
+        (self.out / row["output"]).write_bytes(alternate)
+        row["compressed_candidate_sha256"] = hashlib.sha256(alternate).hexdigest()
+        row["compressed_candidate_bytes"] = len(alternate)
+        with self.assertRaisesRegex(ValueError, "No-op compressed payload"):
+            verifier.verify_batch(self.archive, self.sha, report, self.out)
+
+    def test_reuse_and_encoder_provenance_cannot_be_forged(self):
+        report = self._export()
+        report["members"][0]["original_stored_payload_reused"] = True
+        with self.assertRaisesRegex(ValueError, "reuse provenance"):
+            verifier.verify_batch(self.archive, self.sha, report, self.out)
+        report["members"][0]["original_stored_payload_reused"] = False
+        report["members"][0]["encoder"] = "original"
+        with self.assertRaisesRegex(ValueError, "encoder provenance"):
+            verifier.verify_batch(self.archive, self.sha, report, self.out)
+
     def test_symlink_and_duplicate_output_rejected(self):
         report = self._export()
         path = self.out / report["members"][0]["output"]

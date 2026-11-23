@@ -110,6 +110,15 @@ def verify_batch(archive, sha256, report, output_dir, *, limit=256 * 1024 * 1024
                 raise ValueError("Compressed candidate integrity mismatch")
             if decompress(packed, limit=limit) != expected:
                 raise ValueError("Decoded candidate differs from pinned source")
+            # A no-op is byte-identity, not merely equivalent decompression.
+            unchanged = not changed
+            if row.get("original_stored_payload_reused") is not unchanged:
+                raise ValueError("Original payload reuse provenance mismatch")
+            if unchanged:
+                if row.get("encoder") != "original" or packed != stored:
+                    raise ValueError("No-op compressed payload differs from original")
+            elif row.get("encoder") not in ("literal", "runs"):
+                raise ValueError("Changed candidate encoder provenance mismatch")
     return {"verified_members": len(rows), "source_sha256": sha256,
             "byte_exact_decoded_match": True, "gameplay_verified": False,
             "compressed_archive_repacked": False}
