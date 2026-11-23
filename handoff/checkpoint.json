@@ -2464,5 +2464,29 @@
     "native_consumer_verified": false,
     "uzuy_verified": false,
     "next": "Inspect exact new HEAD compressed PRM Actions push job and raw logs; repair failure if any."
+  },
+  "compressed_prm_independent_noop_identity_20261123": {
+    "state": "PENDING_HEAD_CI",
+    "parent_sha": "878885c126daf4d24a08de0df319f7a4f8c876db",
+    "code_commit": "227fd1d8e593eb3d1955a1f59b4842b688ab6b15",
+    "source": "tools/verify_compressed_prm_batch.py",
+    "tests": "tests/test_verify_compressed_prm_batch.py",
+    "proof": "independent verifier rejects equivalent-but-byte-different no-op CRILAYLA streams and forged reuse/encoder metadata",
+    "prior_verified_ci": {
+      "compressed_run": 45152168102,
+      "job": 137616007681,
+      "foundation_run": 45152168149,
+      "foundation_job": 137616007854,
+      "ordered_factory_run": 45152168330,
+      "ordered_factory_job": 137616008310,
+      "moveset_run": 45152168100,
+      "moveset_job": 137616007543,
+      "raw_logs_read": true
+    },
+    "head_ci_verified": false,
+    "original_main_rehashed": false,
+    "consumer_abi_verified": false,
+    "uzuy_verified": false,
+    "next": "Read exact HEAD push compressed workflow original job log; repair any failures; no native hook without ABI and ownership evidence."
   }
 }

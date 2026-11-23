@@ -1649,5 +1649,13 @@
     "native_consumer_verified": false,
     "uzuy_verified": false,
     "next": "Inspect authentic HEAD factory push workflow job log and fix failures; native consumer requires pinned original main byte evidence."
+  },
+  "compressed_prm_independent_noop_identity_20261123": {
+    "status": "PENDING_HEAD_CI_OFFLINE_SYNTHETIC",
+    "source": "tools/verify_compressed_prm_batch.py",
+    "test": "tests/test_verify_compressed_prm_batch.py",
+    "code_commit": "227fd1d8e593eb3d1955a1f59b4842b688ab6b15",
+    "native_consumer_verified": false,
+    "emulator_tested": false
   }
 }
