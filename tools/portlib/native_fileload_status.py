@@ -13,6 +13,7 @@ eventual gameplay. No hooks or native storage bytes are changed.
 import hashlib
 import struct
 from capstone import Cs,CS_ARCH_ARM64,CS_MODE_ARM
+from capstone.arm64_const import ARM64_OP_MEM
 from .native_cpk_graph import MAIN_SHA256,direct_branch
 from .nso_profile import segments
 
@@ -31,6 +32,8 @@ STATUS_CALL_WITNESSES={
  0x116F5C0:("bl","#0x120661c"),
 }
 FILE_OPEN_EDGE=(0x116F47C,0x1170FB0)
+SERVICE_WINDOW=(0x1215358,0x12153D8)
+SERVICE_ENTRYPOINTS=(0x1215358,0x1215374)
 
 
 def _words(code,start,end):
@@ -48,13 +51,86 @@ def _words(code,start,end):
     return result
 
 
+def _service_words(text,start,end):
+    if start<0 or end>len(text) or end<=start or (start&3) or (end&3):
+        raise ValueError("Invalid aligned service-code window")
+    cs=Cs(CS_ARCH_ARM64,CS_MODE_ARM)
+    cs.detail=True
+    result=[]
+    for at in range(start,end,4):
+        raw=text[at:at+4]
+        decoded=list(cs.disasm(raw,at))
+        if len(decoded)!=1 or decoded[0].size!=4:
+            result.append({
+                "at":f"0x{at:x}","word_le":raw.hex(),
+                "mnemonic":"UNPARSED_A64","operands":"",
+                "direct_branch_kind":None,"direct_branch_target":None,
+                "read_registers":[],"written_registers":[],
+                "memory_operands":[]
+            })
+            continue
+        ins=decoded[0]
+        branch=direct_branch(struct.unpack_from("<I",raw)[0],at)
+        try:
+            reads,writes=ins.regs_access()
+        except Exception as exc:
+            raise ValueError("AArch64 register access decode failed at "+hex(at)) from exc
+        memory=[]
+        for op in ins.operands:
+            if op.type!=ARM64_OP_MEM:
+                continue
+            memory.append({
+                "base_register":ins.reg_name(op.mem.base) if op.mem.base else None,
+                "index_register":ins.reg_name(op.mem.index) if op.mem.index else None,
+                "displacement":op.mem.disp,
+                "writeback":bool(getattr(ins,"writeback",False)),
+                "direction":("write" if ins.mnemonic.startswith("st") else
+                             "read" if ins.mnemonic.startswith("ld") else "unknown")
+            })
+        result.append({
+            "at":f"0x{at:x}","word_le":raw.hex(),
+            "mnemonic":ins.mnemonic,"operands":ins.op_str,
+            "direct_branch_kind":branch[0] if branch else None,
+            "direct_branch_target":hex(branch[1]) if branch else None,
+            "read_registers":sorted({ins.reg_name(x) for x in reads}),
+            "written_registers":sorted({ins.reg_name(x) for x in writes}),
+            "memory_operands":memory
+        })
+    return result
+
+
+def _service_window(text):
+    start,end=SERVICE_WINDOW
+    instructions=_service_words(text,start,end)
+    by_at={int(row["at"],16):row for row in instructions}
+    entrypoints=[]
+    for at in SERVICE_ENTRYPOINTS:
+        row=by_at.get(at)
+        if row is None:
+            raise ValueError("Required service target is outside the bounded window")
+        entrypoints.append({
+            "at":hex(at),"word_le":row["word_le"],
+            "mnemonic":row["mnemonic"],"operands":row["operands"]
+        })
+    return {
+        "start":hex(start),"end_exclusive":hex(end),
+        "window_bytes":end-start,
+        "window_sha256":hashlib.sha256(text[start:end]).hexdigest(),
+        "entrypoints":entrypoints,
+        "instructions":instructions,
+        "bounded_window_not_function_extent":True,
+        "lock_unlock_semantics_verified":False,
+        "service_function_boundaries_verified":False
+    }
+
+
 def inspect(nso):
     digest=hashlib.sha256(nso).hexdigest()
     if digest!=MAIN_SHA256:
         raise ValueError("Exact pinned v1.70 original main required")
     rows=segments(nso)
     va,text,_=rows[0]
-    if va!=0 or max(HELPER_WINDOW[1],OPEN_CORRIDOR[1])>len(text):
+    if va!=0 or max(HELPER_WINDOW[1],OPEN_CORRIDOR[1],SERVICE_WINDOW[1])>len(text):
         raise ValueError("Pinned original main geometry mismatch")
     witnesses=[]
     for at,(mnemonic,operands) in STATUS_CALL_WITNESSES.items():
@@ -71,6 +147,7 @@ def inspect(nso):
         raise ValueError("Native file-open callsite altered")
     helper=_words(text,*HELPER_WINDOW)
     opening=_words(text,*OPEN_CORRIDOR)
+    service=_service_window(text)
     return {
         "status":"PINNED_NATIVE_FILELOAD_STATUS_CALLSITE_WITNESSES_ONLY",
         "main_sha256":digest,
@@ -91,6 +168,11 @@ def inspect(nso):
             "window_sha256":hashlib.sha256(text[slice(*OPEN_CORRIDOR)]).hexdigest(),
             "instructions":opening
         },
+        "service_code_window":service,
+        "service_semantics_verified":False,
+        "mutex_lock_unlock_implementation_verified":False,
+        "service_function_boundaries_verified":False,
+        "service_runtime_binding_verified":False,
         "status_helper_object_field_write_verified":False,
         "file_open_failed_path_to_status_helper_verified":False,
         "native_status_field_semantics_not_verified":True,

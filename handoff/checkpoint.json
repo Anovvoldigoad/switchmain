@@ -837,311 +837,7 @@
     ]
   },
   "verified_component_commit": "4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4",
-  "progress_since_previous_handoff": [
-    {
-      "commit": "40eab530d7d90811250cea085d941ca26b929651",
-      "ci_run_id": 41937948988,
-      "ci_conclusion": "success",
-      "scope": "CPK registration append/merge and conflict-preserving condition profile composition"
-    },
-    {
-      "commit": "4f190568f73973682023582e34ddb7587662c309",
-      "ci_run_id": 41938539789,
-      "ci_conclusion": "success",
-      "scope": "Hash-pinned raw176 byte comparator and synthetic regressions"
-    },
-    {
-      "commit": "96c8684db1fe8965b4ac8d6315ea3a878f06ffb6",
-      "ci_run_id": 41949468472,
-      "ci_conclusion": "success",
-      "scope": "hash-pinned mmap multi-CPK path/content collision review, no runtime precedence"
-    },
-    {
-      "commit": "be2a86c6944dfcf84dada2f2b7ffd9fd43250ae2",
-      "ci_run_id": 41950000370,
-      "ci_conclusion": "success",
-      "scope": "pair of actual CPK entry extraction and ordinal-value comparison through synthetic fixture, real stock not tested"
-    },
-    {
-      "commit": "6819a8c2321ad38f39389745a35ffff3d0948196",
-      "ci_run_id": 41963328524,
-      "ci_conclusion": "success",
-      "scope": "global condition owner batch packaging for disjoint CPK entries; source/output hashes, atomic write and prior profile preservation; synthetic proof only"
-    },
-    {
-      "commit": "3b9f3f7618f3a48d10f789c9284ca59ccd629233",
-      "ci_run_id": 41963998226,
-      "ci_conclusion": "success",
-      "scope": "Read-only SHA-pinned native CPK/file loader direct-branch graph; 10 anchors, no ABI/runtime proof"
-    },
-    {
-      "commit": "e314f9c2157bb84ae16c1aa6394bb7b7c4c6e663",
-      "ci_run_id": 41964408868,
-      "ci_conclusion": "success",
-      "scope": "Publish per-anchor incoming counts and bounded outbound candidate edges to CI logs for native investigation"
-    },
-    {
-      "commit": "100bdea09ef39db558d449146b5a313f809882ff",
-      "ci_run_id": 41968568148,
-      "ci_conclusion": "failure",
-      "scope": "Initial indirect RELOCATION parser incorrectly rejected repeated ordinary dynamic tags; transparent failure corrected in next commit"
-    },
-    {
-      "commit": "be99b93e9b323944afd32a8dd75fd8c1cc9e4083",
-      "ci_run_id": 41968889996,
-      "ci_conclusion": "success",
-      "scope": "Validate only relocation dynamic tags on duplicate; exact pinned main indirect address references static audit"
-    },
-    {
-      "commit": "45f52ddb8832cf9a7433bb9c9bd79dcb6e64d389",
-      "ci_run_id": 41969481009,
-      "ci_conclusion": "success",
-      "scope": "Two PC ModdingAPI source-grounded raw32 readers, synthetic validation, pinned indirect anchor logging"
-    },
-    {
-      "commit": "fc24971ab3d635d9061b132842607d46ae2551a2",
-      "ci_run_id": 41969845880,
-      "ci_conclusion": "success",
-      "scope": "Exact Git blob authentic public PC NSC Susanoo and Partner 0x20 parameter samples, SHA256 proof and full CI"
-    },
-    {
-      "commit": "4702118dfaf574f252f79b4b6c19ded57fda831a",
-      "ci_run_id": 41972748025,
-      "ci_conclusion": "success",
-      "scope": "PC Ougi/Gudo/CharRelation raw stream readers verified against exact public Git blob fixtures; 9 bad inputs rejected; native CPK nearby direct/indirect branch and relocation candidates enumerated"
-    },
-    {
-      "commit": "ef738a5eba5738f40d9f8ca2384912496210e148",
-      "ci_run_id": 41973202913,
-      "ci_conclusion": "success",
-      "scope": "Eight adjacent executable-target RELATIVE relocation slot clusters near fileload_process with actual pinned main original code witnesses; no vtable ABI, async or unbind proof"
-    },
-    {
-      "commit": "ef0bd858ef7d1f139ddce5672066957bae591866",
-      "ci_run_id": 41976177875,
-      "ci_conclusion": "success",
-      "scope": "Last four PC parameter raw readers with exact public source fixtures (55 TUJ, 1 BGM, 4 interaction, 2 Guard) and 14 negative-format cases"
-    },
-    {
-      "commit": "90be75437ecfc6a7e67a0a6d82eade3db8ee8131",
-      "ci_run_id": 41976417627,
-      "ci_conclusion": "success",
-      "scope": "Capstone 9 bounded pinned ARM64 instruction transcripts from known CPK FileLoad indirect/direct sites"
-    },
-    {
-      "commit": "9dfbf05bfebbab38f93b1a66812e8c76c2aa7a36",
-      "ci_run_id": 41977060825,
-      "ci_conclusion": "success",
-      "scope": "7 register/BLR structural witnesses; 0x106F404 corrected to BL callsite, relocated 0x106F394 candidate entry; lifecycle still unknown"
-    },
-    {
-      "commit": "1c40470550195e200e39c9537856736e69d5d191",
-      "ci_run_id": 41986733558,
-      "ci_conclusion": "success",
-      "scope": "Read-only pinned AArch64 bounded control flow for 0x106F394, 0x106EDB8 and file-open 0x1170FB0; no ABI/CRI ownership claim"
-    },
-    {
-      "commit": "f441c5a54bd370b6e01ee263b8e76cac4805286b",
-      "ci_run_id": 41987276792,
-      "ci_conclusion": "success",
-      "scope": "Termux SHA-streaming 517-manager real-input intake plus existing CPK pair raw176 auditor; CI only synthetic stock 512/candidate517 manager517, seven failure cases"
-    },
-    {
-      "commit": "85e14efd4bf6269be148810a9175766351ec063a",
-      "ci_run_id": 41987853686,
-      "ci_conclusion": "success",
-      "scope": "One fail-closed index for all nine PC raw readers, exact public fixture hashes, 9 unresolved effect/audio names, seven bad inputs rejected; zero native Switch integrations"
-    },
-    {
-      "commit": "b882d5a711cc8e2ccb535eb545776375e2f4dfbb",
-      "ci_conclusion": "success",
-      "scope": "Pinned AArch64 relocation-slot data-reference candidate audit, no vtable ownership"
-    },
-    {
-      "commit": "e3171e79c48a3881af3f21c2a4b0a8d106af9b46",
-      "ci_conclusion": "success",
-      "scope": "PC resource names cross-referenced against synthetic CPK TOC, not actual stock game"
-    },
-    {
-      "commit": "4f50223defb54ea5923c321c31c163e7140edc7f",
-      "ci_conclusion": "success",
-      "scope": "Pinned FileLoad original error corridor; stale legacy diagnostic 0x106F404 hook fingerprint unsafe"
-    },
-    {
-      "commit": "5bd585929d108697ead1bce6ca340e8f0347e319",
-      "ci_conclusion": "success",
-      "scope": "Original FileLoad entry candidate 0x116F404 eight source prologue machine words match, 0x100000 legacy error"
-    },
-    {
-      "commit": "be0d074f8b40b125c1b74b92aceddbf8e0f46b68",
-      "ci_conclusion": "success",
-      "scope": "Two native status5 arg/call sequences and target 0x120661C disassembly"
-    },
-    {
-      "commit": "a1bd96f348ef009b91869bf07b75fb93d1df6f10",
-      "ci_run_id": 41994096469,
-      "ci_conclusion": "success",
-      "scope": "32 original native status setter ARM64 scenarios with modeled lock/unlock, old terminal states 3/5 preserved"
-    },
-    {
-      "commit": "a256dcf5702525ea4ea71ec386f95060868b6fb3",
-      "ci_run_id": 41994695967,
-      "ci_conclusion": "success",
-      "scope": "Native FileLoad corrected entry CFG 166 syntactically reachable words; FileOpen and two status5 BL sites reachable"
-    },
-    {
-      "commit": "d6b357cc93fc14ef36d8aa0bf218f5ab84167de3",
-      "ci_run_id": 41995755104,
-      "ci_conclusion": "success",
-      "scope": "SHA-pinned original FileOpen W0 return CBZ machine word at 0x116F480 -> 0x116F4D8; bounded path to first status5 (0x116F520) exists, second (0x116F5C0) not reachable; no runtime causal/async proof"
-    },
-    {
-      "commit": "696629615085cd0e586d00f9665d5f07d0e2b495",
-      "ci_run_id": 42000801083,
-      "ci_conclusion": "success",
-      "scope": "FileOpen W0 zero branch syntactic path length 19 and exact original setter X0/X20 W1/W20 [X21,#0x68] witnesses; native async/hook ABI/gameplay unverified"
-    },
-    {
-      "commit": "943f4406f93888e507f2f849b7642edba950d07e",
-      "ci_run_id": 42011552173,
-      "ci_conclusion": "success",
-      "scope": "original FileOpen bounded 52 nodes/2 RETs/11 W0 defining sites; synthetic fail-closed tests; no actual gameplay/CRI execution"
-    },
-    {
-      "commit": "80dd4b420e1c2675421f9634152392464f33e756",
-      "ci_run_id": 42012372858,
-      "ci_conclusion": "success",
-      "scope": "X20/X22 native reaching writers from 0x116F434 / 0x116F438; upstream source X2 and X1 observed; no actual gameplay/CRI execution"
-    },
-    {
-      "commit": "e5e3e4deacfe5987710921628840e3a5609c5735",
-      "ci_run_id": 42013112991,
-      "ci_conclusion": "success",
-      "scope": "original return W0 literal 1 or zero register 0, 2 RETs and 0 non-RET escapes in fixed CFG; no actual gameplay/CRI execution"
-    },
-    {
-      "commit": "c32b1d2235e54b17c334081063132aa6df389424",
-      "ci_run_id": 42013833559,
-      "ci_conclusion": "success",
-      "scope": "X1/X2 caller-saved provenance at capture from original function-entry registers, no earlier reached writes under bounded CFG; no actual gameplay/CRI execution"
-    },
-    {
-      "commit": "6c9b18db4bf80b07b4227dde6da8c58144b9df83",
-      "ci_run_id": 42034757420,
-      "ci_conclusion": "success",
-      "scope": "Original pinned FileOpen bounded external callees and flag/register writer sources: 3 condition branches, 4 callsites; first/last empty RET stubs, separate PLT and native X0+0x18 tail wrapper. CI completed SUCCESS; not original CRI ABI execution."
-    },
-    {
-      "commit": "ed3e32ac03b492000e8eb1cf410312b639200603",
-      "ci_run_id": 42035689408,
-      "ci_conclusion": "success",
-      "scope": "Pinned original FileOpen imported PLT/GOT target at 0x1171028 -> 0x12F39A0 -> 0x2142080 is R_AARCH64_JUMP_SLOT symbol #52 strncpy. Public original PC condition manager512 from TheLeonX/NSC-ModManager 2.1.2.1 Git blob 0e7133223f10eb2dbbb39d2166fdca9352e84c3e authenticated against SHA256 fae4c1e1a510f895a7b9b9acbf5b710e7472e9b47f3471087dd4b1c97b7b86c5; 517 merged and Switch CPK still missing."
-    },
-    {
-      "commit": "51639ef9bba9a64a45f26abc0b58d13b79b20e65",
-      "ci_run_id": 42036653763,
-      "ci_conclusion": "success",
-      "scope": "Pinned original FileOpen 0x117103C BL -> 0x115FC2C ADD X0,X0,#0x18 -> B 0x115EBD8, after return CMP W0,#1, B.LT to zero-result branch; bounded tail target CFG 53 reachable words, one local RET 0x115ECA8 and 8 other callsites. Original job logs inspected. No ABI/async/gameplay proof."
-    },
-    {
-      "commit": "93153c6ff258da28e67af51dfe5c72e7f48165ee",
-      "ci_run_id": 42040639506,
-      "ci_conclusion": "failure",
-      "scope": "First eight-callee audit incorrectly inverted _decode_window decode/graph outputs; exact original CI failure detected, subsequently fixed."
-    },
-    {
-      "commit": "3ad8b1299b5f4707e377b4a133e31b2497ef3c0c",
-      "ci_run_id": 42041112374,
-      "ci_conclusion": "success",
-      "scope": "Original v1.70 FileOpen tail eight direct BL targets and bounded W0 reaching-def provenance; original job 127291860119 logs verified. No CPK/CRI ABI."
-    },
-    {
-      "commit": "3e78cc5581c29b7a06348cd6af3bb9a476594bb8",
-      "ci_run_id": 42042384779,
-      "ci_conclusion": "failure",
-      "scope": "Argument/BR register provenance initially included out-of-window synthetic CFG escape addresses, causing KeyError."
-    },
-    {
-      "commit": "4df44e6348343d7b484e74f6900b2eb2a4a1b0cf",
-      "ci_run_id": 42043283000,
-      "ci_conclusion": "failure",
-      "scope": "First source-backed Android NSC ZIP importer implementation; inherited earlier native argument-test KeyError in CI."
-    },
-    {
-      "commit": "d7abbf28bcd3c3d4a36ec3fdb48d2de87c556818",
-      "ci_run_id": 42043526861,
-      "ci_conclusion": "success",
-      "scope": "Guarded native FileOpen tail argument/indirect-BR provenance and source-grounded PC NSC ZIP importer for Termux, 12 rejected unsafe/wrong examples; original job 127300266132 61 steps SUCCESS."
-    },
-    {
-      "commit": "23aba1b0fa5375b37e718aaf89641296dd02308e",
-      "ci_run_id": 42049654252,
-      "ci_conclusion": "success",
-      "verified_job": 127322007659,
-      "scope": "Source ZIP/staged CPK/original NSO SHA256-pinned multi-mod CPK candidate assembler: 2 positive, 13 negatives, exact binary cpk_profile encode/decode, byte-preserving CPK copies, fail-closed any duplicate CPK TOC path; NOT an installable Switch mod."
-    },
-    {
-      "commit": "372cfa1a7a2bb256628c84032fa6a9804e2a3a76",
-      "ci_run_id": 42050734300,
-      "ci_conclusion": "success",
-      "verified_job": 127325814383,
-      "scope": "Original FileOpen two indirect dispatch corridors: 0x116B718 LDR X8,[X0], 0x116B71C LDR X1,[X8,#0xC0], 0x116B724 BR X1; 0x116B41C LDR X8,[X0], 0x116B424 LDR X2,[X8,#0x58], 0x116B430 BR X2. Original exact main SHA pinned, no runtime ABI/ownership."
-    },
-    {
-      "commit": "3fde9d9eafc46ebaa54f21c8afcd10e80142db2c",
-      "ci_run_id": 42054426581,
-      "ci_conclusion": "failure",
-      "scope": "First ARM64 build missed two newly added source/header files in prepare_exlaunch.sh; compilation failed on missing nsc_pc_raw.hpp."
-    },
-    {
-      "commit": "ca5790ed8abb2946b5be96ed346f2ace87e7141f",
-      "ci_run_id": 42054951462,
-      "ci_conclusion": "failure",
-      "scope": "After inclusion, host bootstrap harness separately linked runtime_core without native raw API; undefined nsc_pc_raw_get_api."
-    },
-    {
-      "commit": "912ef38465bb466e2b3ad1fb1c70bddcfd799221",
-      "ci_run_id": 42055285084,
-      "ci_conclusion": "success",
-      "scope": "Compiles 9 bounded PC raw formats into ARM64 module with AArch64-only registration and matches 123 actual/synthetic PC row views with 38 invalids rejected; job 127341886598, 64 steps."
-    },
-    {
-      "commit": "76a450b9015587dd942a26c458997ba3b94ddfa8",
-      "ci_run_id": 42056338732,
-      "ci_conclusion": "failure",
-      "scope": "New ARM64 Unicorn test had ambiguous substring symbol resolution nsc_pc_raw_get_api vs its static table; not a native parser mismatch. Also fixed TUJ one-byte zero-record acceptance."
-    },
-    {
-      "commit": "9af5c5357e11e944e82f14babe0c95fe120e778a",
-      "ci_run_id": 42057187119,
-      "ci_conclusion": "success",
-      "scope": "Exact symbol lookup fixed; original ELF AArch64 9-family reader calls pass Unicorn: 30 positive API calls, 19 negative cases, host C++ 123 matching PC rows and 39 negatives; 65 steps, job 127348672877 log inspected."
-    },
-    {
-      "commit": "8fb8a1f1cbc3e04de73d07d45fe93fb81dcbe542",
-      "ci_run_id": 42064991061,
-      "ci_conclusion": "success",
-      "scope": "Initial nine-PC-family pack source implementation and native reader compiled, before new pack regression inserted; no game consumer proof."
-    },
-    {
-      "commit": "de15cec99a535468c2e431049c277a4b74b8154d",
-      "ci_run_id": 42065320767,
-      "ci_conclusion": "failure",
-      "scope": "New pack host CLI parity test failed after intentionally forged manifest was not restored."
-    },
-    {
-      "commit": "dae9998e8d0535069b8c676fddda1eec3a840749",
-      "ci_run_id": 42065447433,
-      "ci_conclusion": "failure",
-      "scope": "Host pack regression passed; ELF native pack API symbols garbage collected before runtime reference."
-    },
-    {
-      "commit": "4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4",
-      "ci_run_id": 42065894664,
-      "ci_conclusion": "success",
-      "scope": "2026-11-05 4ecbeeae Actions 42065894664 COMPLETED SUCCESS 67 steps job 127379739873 actual logs verified: new source-authenticated ZIP PC raw pack binary and AArch64 native reader (host 24 positive/26 rejected; ARM64 22 positive/12 rejected). No game consumer hooks, no Uzuy gameplay."
-    }
-  ],
+  "progress_since_previous_handoff": "2026-11-27 PENDING_CI: Extend SHA-pinned FileLoad status evidence with a 128-byte disassembly window covering direct service-target candidates 0x1215358 and 0x1215374, full-text direct BL/B xref census, cross-checks for the status helper and FileLoad request path, and synthetic aligned-window positive/negative/boundary tests. No lock/unlock interpretation is promoted; function extents and service semantics remain unresolved. Parent 0e84462e75faa2912bca6a5698987d38d23920eb; CI pending.",
   "native_fileopen_branch_dependency_checkpoint": {
     "commit": "9a9b6cd755e19598735df3c85a5bb637254b36c6",
     "actions_run_id": 42016068823,
@@ -1500,7 +1196,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "2026-11-11: Call-free bounded BR witness classification added: shortest syntactic paths which do not traverse opaque BL/BLR, with positive, call-only negative, bypass, and authentic main byte replay regressions. This is NOT actual call feasibility, consumer ABI, ownership, archive precedence or Uzuy. Parent 91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb; CI PENDING. Upstream ModManager release 2.1.2.1; Toolbox 6f780cb; REA b2f3dc81; cpktools eff288cf9. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; three release flags false.",
+  "next_action": "2026-11-27: Inspect the new Foundation push run/job/raw log and machine-readable service-window artifact for 0x1215358/0x1215374. Verify exact instructions, xrefs and service code hashes; only infer lock/unlock if call/import evidence proves it. Preserve no-hook invariant and all three false release flags.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -1631,7 +1327,7 @@
     "next": "Inspect real unique external target path summaries, choose semantically likely caller/callee provenance; no hook until ABI and lifecycle proven."
   },
   "pending_ci": true,
-  "last_parent_sha": "66847664b781ae31f5b7a35e2ddbfdbb66a71736",
+  "last_parent_sha": "0e84462e75faa2912bca6a5698987d38d23920eb",
   "native_fileopen_call_free_witness": {
     "status": "PENDING_CI",
     "parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
@@ -2479,12 +2175,11 @@
     "next": "Inspect HEAD Foundation job log and resolve failures; trace original consumer lifecycle before hooks."
   },
   "latest_pending_head_ci": {
-    "parent_sha": "2da3c6f97aa4cdc9856d1686c05062bad761de12",
-    "topic": "authenticated_indirect_call_barrier",
-    "source": "tools/portlib/native_fileload_sp_cfg.py",
-    "test": "tests/test_native_fileload_sp_cfg.py",
+    "parent_sha": "0e84462e75faa2912bca6a5698987d38d23920eb",
+    "topic": "fileload_status_service_window_and_xrefs",
+    "source": "tools/portlib/native_fileload_status.py",
+    "test": "tests/test_native_fileload_status.py",
     "status": "PENDING_HEAD_CI",
-    "host_tested": false,
     "ci_run_id": null,
     "ci_job_id": null,
     "ci_log_inspected": false,
@@ -2493,20 +2188,22 @@
   },
   "latest_execution": {
     "status": "PENDING_HEAD_CI",
-    "parent_sha": "d225194e6b18d3b540f12ea3c99adccda350dd5c",
-    "scope": "shared authenticated ARM64 CFG control-transfer semantics",
+    "parent_sha": "0e84462e75faa2912bca6a5698987d38d23920eb",
+    "scope": "FileLoad status-service target disassembly and full-text direct xrefs",
     "ci_run_id": null,
     "ci_job_id": null,
-    "original_main_rehashed": false,
+    "raw_job_log_inspected": false,
+    "original_main_rehashed_by_new_test": false,
     "consumer_abi_proven": false,
-    "emulator_tested": false,
-    "next": "Inspect exact HEAD push Actions job logs, then authenticate native consumer evidence."
+    "uzuy_tested": false,
+    "next": "Inspect exact Foundation push run/job/raw log and artifact; fix any regression before updating checkpoint."
   },
   "latest_slice": {
-    "state": "PENDING_HEAD_CI",
-    "parent_sha": "cdfbd08e7241b3118506aff161ce8318bdd3a039",
-    "description": "Validate excluded source kind before exclusion in ordered factory",
-    "test": "tests/test_factory_ordered_sources.py",
+    "state": "PENDING_CI",
+    "parent_sha": "0e84462e75faa2912bca6a5698987d38d23920eb",
+    "description": "Exact-main 0x1215358..0x12153d8 service-window disassembly plus full-text direct xref census",
+    "source": "tools/portlib/native_fileload_status.py",
+    "test": "tests/test_native_fileload_status.py",
     "consumer_abi_verified": false,
     "uzuy_verified": false
   },
@@ -2624,5 +2321,98 @@
     "host_static_pass": true,
     "arm64_emulated_for_slice": false,
     "lifecycle_verified": false
+  },
+  "native_fileload_callsite_constants_20261127": {
+    "state": "VERIFIED_CI_STATIC_ONLY",
+    "code_commit": "0e84462e75faa2912bca6a5698987d38d23920eb",
+    "parent_sha": "cf4fe8985bae1a76f3abe6d71b822cd54036a0a5",
+    "foundation": {
+      "run_id": 46009242285,
+      "job_id": 140540193791,
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "artifact_id": 15202721886
+    },
+    "factory": {
+      "run_id": 46009242146,
+      "job_id": 140540193654,
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "tests": 13
+    },
+    "compressed_prm": {
+      "run_id": 46009242342,
+      "job_id": 140540194218,
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "tests": 16
+    },
+    "movesetplus": {
+      "run_id": 46009242288,
+      "job_id": 140540193634,
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "tests": 16
+    },
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "consumer_abi_verified": false,
+    "uzuy_verified": false
+  },
+  "native_fileload_status_service_edges_20261127": {
+    "state": "PENDING_CI",
+    "parent_sha": "0e84462e75faa2912bca6a5698987d38d23920eb",
+    "source": "tools/portlib/native_fileload_status.py",
+    "test": "tests/test_native_fileload_status.py",
+    "graph_source": "tools/portlib/native_cpk_graph.py",
+    "graph_test": "tests/test_native_cpk_graph.py",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "status_helper_window_sha256": "fa5826cdfc6d88ea3e974578e266caad79e83b604eae441fd12840bba27b9bfa",
+    "service_window": {
+      "start": "0x1215358",
+      "end_exclusive": "0x12153d8",
+      "bytes": 128,
+      "sha256": null
+    },
+    "required_edges": [
+      [
+        "0x1206634",
+        "BL",
+        "0x1215358"
+      ],
+      [
+        "0x12066a8",
+        "BL",
+        "0x1215358"
+      ],
+      [
+        "0x1206bf4",
+        "BL",
+        "0x1215358"
+      ],
+      [
+        "0x1206654",
+        "B",
+        "0x1215374"
+      ],
+      [
+        "0x1206668",
+        "B",
+        "0x1215374"
+      ],
+      [
+        "0x1206c44",
+        "BL",
+        "0x1215374"
+      ]
+    ],
+    "consumer_abi_verified": false,
+    "ownership_lifecycle_verified": false,
+    "lock_unlock_semantics_verified": false,
+    "service_function_boundaries_verified": false,
+    "archive_precedence_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect the service-window disassembly and direct-xref artifact. Trace any resolvable import/indirect targets before assigning lock/unlock semantics."
   }
 }

@@ -90,7 +90,9 @@
     "Pinned original v1.70 main static nearby file-load CPK B/BL/BR/BLR neighborhood census and adjacent R_AARCH64_RELATIVE executable-target relocation cluster grouping; 8 candidate adjacent tables, four witnessed slots reproducible; no vtable/async/unbind claim",
     "All nine previously uncovered PC ModdingAPI parameter families now have source-pinned read-only format readers, validated with exact public raw samples; newest four: TUJ pairSpSkill (55x0x18), BGM (1x0x68), SpecialInteraction (4 count-prefixed records), GuardEffect (2x0xF8). 14 invalid inputs rejected. No Switch ABI/hook proof.",
     "Exact SHA-pinned Switch 1.70 ARM64 Capstone code-window transcript (9 windows); 7 word-exact register/BLR witnesses, candidate 0x106F394 prolog from relocation, corrected former fileload_process 0x106F404 to mid-code BL to 0xFFF6A0. No CRI lifecycle proven.",
-    "SHA-pinned bounded ARM64 CFG exploration of relocated 0x106F394 candidate (147 reachable words, zero direct B/BL inbound, one RELA pointer, 4 observed terminal addresses), 0x106EDB8 candidate (3 words), and file-open 0x1170FB0 (52 words, one direct caller); no CRI ABI/lifecycle proof"
+    "SHA-pinned bounded ARM64 CFG exploration of relocated 0x106F394 candidate (147 reachable words, zero direct B/BL inbound, one RELA pointer, 4 observed terminal addresses), 0x106EDB8 candidate (3 words), and file-open 0x1170FB0 (52 words, one direct caller); no CRI ABI/lifecycle proof",
+    "2026-11-27 VERIFIED_CI_STATIC_ONLY: FileLoad immediate status argument constants and bounded direct-callee evidence recorded from exact original main. Code 0e84462e75faa2912bca6a5698987d38d23920eb (parent cf4fe8985bae1a76f3abe6d71b822cd54036a0a5). Foundation push run 46009242285/job 140540193791 COMPLETED SUCCESS; raw log inspected: NATIVE_STATUS5_CALLS_PASS and original main SHA guard; artifact 15202721886 contains native_fileload_status.json, native_fileload_call_targets.json and native_cpk_call_edges.json. Factory run 46009242146/job 140540193654 COMPLETED SUCCESS (13 tests); compressed PRM 46009242342/job 140540194218 COMPLETED SUCCESS (16 tests); MovesetPlus 46009242288/job 140540193634 COMPLETED SUCCESS (16 tests); raw logs inspected. This proves only static original-main callsite words and bounded target windows, not lock semantics, native consumer ABI, object ownership/lifecycle, async completion, archive precedence or Uzuy.",
+    "2026-11-27 PENDING_CI: Extend SHA-pinned FileLoad status evidence with a 128-byte disassembly window covering direct service-target candidates 0x1215358 and 0x1215374, full-text direct BL/B xref census, cross-checks for the status helper and FileLoad request path, and synthetic aligned-window positive/negative/boundary tests. No lock/unlock interpretation is promoted; function extents and service semantics remain unresolved. Parent 0e84462e75faa2912bca6a5698987d38d23920eb; CI pending."
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -125,7 +127,8 @@
     "True original PC merged manager517, independently authenticated genuine stock Switch v1.70 common.cpk and mod candidate CPK bytes are missing; raw176 real stock-game audit cannot be honestly marked PASS.",
     "Nine PC source raw families are now parsed by compiled AArch64 C++ and verified against nine source-pinned public NSC templates (30 positive ARM64/19 negative); native acquisition/lifetime/owner class and consumer integration in real Switch 1.70 game remain NOT implemented/proven. MovesetPlus/factories/asset audio effects still incomplete.",
     "PC source-ZIP -> 9-family source pack is now byte/SHA-authenticated and callable in the built AArch64 module, but native Switch engine consumers and CRI resource ownership/lifecycle/async/teardown/precedence remain unconnected/unproven; not installable or Uzuy playable.",
-    "Source-bound CRILAYLA candidate verifier has synthetic compressed CI proof only; original game PRM fixture, native consumer ABI, archive precedence and Uzuy remain unverified."
+    "Source-bound CRILAYLA candidate verifier has synthetic compressed CI proof only; original game PRM fixture, native consumer ABI, archive precedence and Uzuy remain unverified.",
+    "FileLoad status service targets 0x1215358/0x1215374 are direct call/branch candidates only; their lock/unlock semantics, function boundaries and runtime binding remain unproven."
   ],
   "proofs": [
     "reports/port_foundation/bootstrap.json",
@@ -1713,5 +1716,101 @@
     "consumer_abi_proven": false,
     "stack_ownership_proven": false,
     "gameplay_verified": false
+  },
+  "native_fileload_callsite_constants": {
+    "state": "VERIFIED_CI_STATIC_ONLY",
+    "code_commit": "0e84462e75faa2912bca6a5698987d38d23920eb",
+    "parent_sha": "cf4fe8985bae1a76f3abe6d71b822cd54036a0a5",
+    "foundation": {
+      "run_id": 46009242285,
+      "job_id": 140540193791,
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "artifact_id": 15202721886
+    },
+    "factory": {
+      "run_id": 46009242146,
+      "job_id": 140540193654,
+      "conclusion": "success",
+      "raw_job_log_inspected": true
+    },
+    "compressed_prm": {
+      "run_id": 46009242342,
+      "job_id": 140540194218,
+      "conclusion": "success",
+      "raw_job_log_inspected": true
+    },
+    "movesetplus": {
+      "run_id": 46009242288,
+      "job_id": 140540193634,
+      "conclusion": "success",
+      "raw_job_log_inspected": true
+    },
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "consumer_abi_verified": false,
+    "uzuy_verified": false
+  },
+  "native_fileload_status_service_edges": {
+    "state": "PENDING_CI",
+    "parent_sha": "0e84462e75faa2912bca6a5698987d38d23920eb",
+    "source": "tools/portlib/native_fileload_status.py",
+    "test": "tests/test_native_fileload_status.py",
+    "graph_source": "tools/portlib/native_cpk_graph.py",
+    "graph_test": "tests/test_native_cpk_graph.py",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "status_helper": {
+      "entry": "0x120661c",
+      "window_start": "0x120661c",
+      "window_end_exclusive": "0x12066bc",
+      "window_bytes": 160,
+      "window_sha256": "fa5826cdfc6d88ea3e974578e266caad79e83b604eae441fd12840bba27b9bfa",
+      "status_field_offset": "0x68",
+      "lock_argument_offset": "0x18",
+      "requested_status": 5
+    },
+    "service_targets": [
+      {
+        "name": "status_helper_direct_call_candidate",
+        "address": "0x1215358",
+        "required_direct_callers": [
+          "0x1206634",
+          "0x12066a8",
+          "0x1206bf4"
+        ]
+      },
+      {
+        "name": "status_helper_tail_branch_candidate",
+        "address": "0x1215374",
+        "required_direct_callers": [
+          [
+            "0x1206654",
+            "B"
+          ],
+          [
+            "0x1206668",
+            "B"
+          ],
+          [
+            "0x1206c44",
+            "BL"
+          ]
+        ]
+      }
+    ],
+    "service_window": {
+      "start": "0x1215358",
+      "end_exclusive": "0x12153d8",
+      "bytes": 128,
+      "sha256": "PENDING_CI_ARTIFACT"
+    },
+    "consumer_abi_verified": false,
+    "ownership_lifecycle_verified": false,
+    "lock_unlock_semantics_verified": false,
+    "service_function_boundaries_verified": false,
+    "archive_precedence_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect the 128-byte service window and full-text xrefs from the authentic CI artifact; only identify lock/unlock if code and symbol/call evidence prove it."
   }
 }

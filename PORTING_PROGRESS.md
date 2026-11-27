@@ -1233,3 +1233,6 @@ Evidence note: `handoff/evidence_fileload_indexed_memory_20261127.md`. Foundatio
 
 
 Evidence note: `handoff/evidence_fileload_indexed_memory_20261127.md`. The Foundation workflow already executes `tests/test_native_fileload_sp_cfg.py`; its step name now explicitly includes indexed memory. The fixture instruction words were assembled with Clang 17 and verified by LLVM objdump. CI is pending for the code commit. No runtime hooks or release flags changed.
+
+
+2026-11-27 PENDING_CI — FileLoad status-service evidence. Added a 128-byte exact-main disassembly window at 0x1215358..0x12153d8 (not a function boundary), register/memory operand capture, and full-text direct xref census for 0x1215358/0x1215374. Regressions require the known status-helper and FileLoad-request direct edges and reject unaligned, reversed, or out-of-bounds synthetic windows. Research-first resolved the ModManager pin 276116eb as a child of the 2.1.2.1 tag 502c38d; relevant Toolbox SkillEditorViewModel/SkillEditorModel/Program parser blobs are unchanged between 2.1.2.0 and 2.1.2.1, so no Event236 ID or Switch ABI is inferred. Parent 0e84462e75faa2912bca6a5698987d38d23920eb; CI pending. Lock/unlock semantics, function boundaries, ownership/lifecycle, async/rollback/unbind/destructor, archive precedence and Uzuy remain unresolved. All three release flags remain false.

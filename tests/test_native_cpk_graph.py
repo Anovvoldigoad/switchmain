@@ -18,6 +18,18 @@ def run(main,out):
     assert all(a['name'] in ANCHORS and a['first_word_le'] for a in report['anchors'])
     assert report['text_bytes_scanned']>max(ANCHORS.values())+0x100
     assert report['candidate_direct_branches']>0
+    anchors={row['name']:row for row in report['anchors']}
+    call_service=anchors['fileload_status_service_call_candidate']
+    tail_service=anchors['fileload_status_service_tail_candidate']
+    assert call_service['offset']=='0x1215358'
+    assert tail_service['offset']=='0x1215374'
+    def has_edge(row,site,kind):
+        return any(edge['caller_offset']==site and edge['kind']==kind
+                   for edge in row['incoming_direct_edges'])
+    for site in ('0x1206634','0x12066a8','0x1206bf4'):
+        assert has_edge(call_service,site,'BL'),(site,call_service['incoming_direct_edges'])
+    for site,kind in (('0x1206654','B'),('0x1206668','B'),('0x1206c44','BL')):
+        assert has_edge(tail_service,site,kind),(site,tail_service['incoming_direct_edges'])
     assert not report['native_abi_or_lifecycle_established']
     assert not report['async_completion_verified']
     assert not report['gameplay_verified']

@@ -51,7 +51,7 @@ jobs:
         run: python tests/test_cpk_overlaps.py --output proof-work
       - name: Execute native CPK registration and retry branches
         run: python tests/test_native_cpk.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --elf exlaunch/runtime_r183.elf --output proof-work
-      - name: Enumerate read-only native CPK and fileload call edges
+      - name: Enumerate read-only native CPK, FileLoad and status-service direct xrefs
         run: python tests/test_native_cpk_graph.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Inspect pinned CPK indirect address references and RELA slots
         run: python tests/test_native_cpk_indirect.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
@@ -73,7 +73,7 @@ jobs:
         run: python tests/test_native_fileload_failure.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Prove potential original FileLoad 0x100000-offset correction and named call/error branches
         run: python tests/test_native_fileload_corrected_entry.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
-      - name: Trace verified native FileLoad status5 argument branches and actual setter code
+      - name: Trace verified native FileLoad status5 arguments, helper and service-entry windows
         run: python tests/test_native_fileload_status.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Trace SHA-pinned FileLoad SP/indexed operands, exact MOV immediates, and callsite reaching definitions (no consumer ABI)
         run: python tests/test_native_fileload_sp_cfg.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work

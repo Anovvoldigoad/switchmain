@@ -20,6 +20,8 @@ ANCHORS={
     'fileload_request': 0x1206B4C,
     'fileload_create': 0x1206C9C,
     'fileload_status': 0x1207EFC,
+    'fileload_status_service_call_candidate': 0x1215358,
+    'fileload_status_service_tail_candidate': 0x1215374,
     'fileload_process': 0x106F404,
     'file_open_request': 0x1170FB0,
 }
@@ -71,6 +73,7 @@ def analyze(nso):
             'first_word_le':text[at:at+4].hex(),
             'incoming_count':len(incoming[name]),
             'incoming_samples':incoming[name][:32],
+            'incoming_direct_edges':incoming[name],
             'bounded_window_bytes':0x100,
             'outgoing_edges_in_bounded_window':out,
             'function_boundary_proven':False,
