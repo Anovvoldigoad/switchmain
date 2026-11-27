@@ -51,3 +51,25 @@ For every stub the ADRP+LDR-derived slot must equal the ADRP+ADD-derived address
 - Added \`tools/portlib/native_fileload_imports.py\` and \`tests/test_native_fileload_imports.py\`.
 - Foundation workflow executes the original-main analyzer and writes \`native_fileload_imports.json\` into the existing proof artifact.
 - Local host checks: Python syntax compilation passed; synthetic PLT address derivation, malformed PLT rejection, relocation-name resolution, missing-slot handling, duplicate relocation rejection, non-RELA rejection, symbol-bound rejection and unknown-relocation handling passed using a minimal isolated helper harness. Authentic NSO integration is pending GitHub Actions.
+
+
+## Authentic original-main result — Foundation CI 46025160592
+
+Foundation job \`140594557183\` completed SUCCESS and its raw log was inspected. It emitted \`PINNED_FILELOAD_PLT_GOT_IMPORTS_PASS\`. The uploaded artifact is ID \`15210669622\`, 294,528 bytes, ZIP SHA256 \`c65fa78688060b689524193f1f7648c85ab80f4fa59afcb278c60709af503412\`. The extracted \`native_fileload_imports.json\` independently reproduces all four GOT slots and dynamic symbols:
+
+| Role candidate | GOT slot | DT_JMPREL record | Symbol index | Original mangled symbol | Demangled |
+|---|---:|---:|---:|---|---|
+| thread context provider | 0x2142a28 | 0x1991750 | 216 | \`_ZN2nn2os16GetCurrentThreadEv\` | \`nn::os::GetCurrentThread()\` |
+| acquire-side import | 0x2142a78 | 0x1991840 | 418 | \`_ZN2nn2os9LockMutexEPNS0_9MutexTypeE\` | \`nn::os::LockMutex(nn::os::MutexType*)\` |
+| release-side import | 0x2142a80 | 0x1991858 | 414 | \`_ZN2nn2os11UnlockMutexEPNS0_9MutexTypeE\` | \`nn::os::UnlockMutex(nn::os::MutexType*)\` |
+| thread token provider | 0x2142c20 | 0x1991d38 | 466 | \`_ZN2nn2os11GetThreadIdEPKNS0_10ThreadTypeE\` | \`nn::os::GetThreadId(nn::os::ThreadType const*)\` |
+
+All four are unique \`R_AARCH64_JUMP_SLOT\` records in the original \`DT_JMPREL\`. The symbols have \`st_shndx=0\`, \`st_value=0\`, and \`st_size=0\`: they are undefined imports in \`main\`, not implementations in this binary. \`c++filt\` was used locally to verify the demangled names.
+
+The full-text direct B/BL census reports 20 callers of GetCurrentThread, 15 of GetThreadId, 30 of LockMutex, 36 of UnlockMutex, 57 callers of the local acquire adapter, and 60 callers of the local release adapter. These are static direct-edge counts, not execution counts.
+
+The bounded acquire window at \`0x1158c90\` calls GetCurrentThread, passes X0 to GetThreadId, compares the resulting W0 owner token with the stored W value at wrapper offset \`+0x8\`, conditionally calls the acquire adapter, increments the W count at \`+0xc\`, and stores owner/count together. The release window at \`0x1158d10\` decrements the count and reaches the release adapter when the count becomes zero. Each local adapter loads \`X0 = [X0]\` before tail-branching to the imported \`MutexType*\` API. These are bounded instruction/branch observations; function boundaries and the wrapper object's lifetime are not proven.
+
+All four push workflows for implementation commit \`0620f7dc5b532e11ef868926aa0a4777e763e40c\` completed SUCCESS with raw job logs inspected: Foundation run/job \`46025160592/140594557183\`, factory \`46025160498/140594557329\`, MovesetPlus \`46025160501/140594557158\`, compressed PRM \`46025160561/140594557217\`.
+
+This materially narrows the unknown dependency from generic leaf calls to four exact Nintendo \`nn::os\` imports and a thread-ID owner/count gate. It still does **not** prove which runtime module supplies them, actual import binding, implementation behavior, object allocation/destruction, concurrency, callbacks, async completion, rollback, unbind, archive precedence, native consumer ABI, or Uzuy behavior. No hook was added and all release flags remain false.

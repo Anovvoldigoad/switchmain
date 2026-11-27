@@ -1949,37 +1949,129 @@
     ]
   },
   "native_fileload_imports": {
-    "status": "pending_ci",
+    "status": "verified_static",
     "parent_head": "39fe92c5c8c45463ba3c9e34d84627480b5dbc45",
+    "implementation_commit": "0620f7dc5b532e11ef868926aa0a4777e763e40c",
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
     "evidence_note": "handoff/evidence_fileload_imports_20261127.md",
-    "targets": {
+    "ci": {
+      "implementation_commit": "0620f7dc5b532e11ef868926aa0a4777e763e40c",
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "workflows": [
+        {
+          "name": "Verify Switch port foundation",
+          "run_id": 46025160592,
+          "job_id": 140594557183,
+          "conclusion": "success",
+          "raw_job_log_inspected": true
+        },
+        {
+          "name": "Verify offline factory multi-mod composition",
+          "run_id": 46025160498,
+          "job_id": 140594557329,
+          "conclusion": "success",
+          "raw_job_log_inspected": true
+        },
+        {
+          "name": "Verify offline PC MovesetPlus multi-mod composition",
+          "run_id": 46025160501,
+          "job_id": 140594557158,
+          "conclusion": "success",
+          "raw_job_log_inspected": true
+        },
+        {
+          "name": "Offline compressed PRM candidate regression",
+          "run_id": 46025160561,
+          "job_id": 140594557217,
+          "conclusion": "success",
+          "raw_job_log_inspected": true
+        }
+      ],
+      "foundation_artifact": {
+        "artifact_id": 15210669622,
+        "name": "PORT_FOUNDATION_PROOFS_NOT_A_GAMEPLAY_RELEASE",
+        "size_bytes": 294528,
+        "zip_sha256": "c65fa78688060b689524193f1f7648c85ab80f4fa59afcb278c60709af503412"
+      },
+      "foundation_log_marker": "PINNED_FILELOAD_PLT_GOT_IMPORTS_PASS"
+    },
+    "symbols": {
       "thread_context_provider": {
+        "mangled": "_ZN2nn2os16GetCurrentThreadEv",
+        "demangled": "nn::os::GetCurrentThread()",
+        "got_slot": "0x2142a28",
+        "symbol_index": 216,
+        "relocation_record_offset": "0x1991750",
+        "relocation_type": "R_AARCH64_JUMP_SLOT",
         "plt": "0x12f4cf0",
-        "got_slot": "0x2142a28"
+        "plt_window_sha256": "6f776919ea971aa48f2212e1225172b7c299346d2a5c01c1db3424512528f035"
       },
       "lock_primitive_import": {
+        "mangled": "_ZN2nn2os9LockMutexEPNS0_9MutexTypeE",
+        "demangled": "nn::os::LockMutex(nn::os::MutexType*)",
+        "got_slot": "0x2142a78",
+        "symbol_index": 418,
+        "relocation_record_offset": "0x1991840",
+        "relocation_type": "R_AARCH64_JUMP_SLOT",
         "plt": "0x12f4d90",
-        "got_slot": "0x2142a78"
+        "plt_window_sha256": "9c3582161ce325d7f818e5dd7a67773f8bb0b0ea7ff124672106988eaf2cfb66"
       },
       "unlock_primitive_import": {
+        "mangled": "_ZN2nn2os11UnlockMutexEPNS0_9MutexTypeE",
+        "demangled": "nn::os::UnlockMutex(nn::os::MutexType*)",
+        "got_slot": "0x2142a80",
+        "symbol_index": 414,
+        "relocation_record_offset": "0x1991858",
+        "relocation_type": "R_AARCH64_JUMP_SLOT",
         "plt": "0x12f4da0",
-        "got_slot": "0x2142a80"
+        "plt_window_sha256": "d7bc314b686307e9aeea386148ce50e2dee5a0459a1606ff1e3c11fd0a98bda7"
       },
       "thread_token_provider": {
+        "mangled": "_ZN2nn2os11GetThreadIdEPKNS0_10ThreadTypeE",
+        "demangled": "nn::os::GetThreadId(nn::os::ThreadType const*)",
+        "got_slot": "0x2142c20",
+        "symbol_index": 466,
+        "relocation_record_offset": "0x1991d38",
+        "relocation_type": "R_AARCH64_JUMP_SLOT",
         "plt": "0x12f50e0",
-        "got_slot": "0x2142c20"
+        "plt_window_sha256": "90e5ce9415b2c04f5ce0b59c84715d65ed529490fb66cf1934913a3e048c393f"
       }
     },
-    "local_host_synthetic_checks": "passed",
-    "original_main_dynamic_symbol_resolution": "pending_ci",
-    "runtime_binding_verified": false,
-    "native_consumer_abi_verified": false,
-    "mutex_semantics_verified": false,
+    "incoming_direct_edge_counts": {
+      "thread_context_provider": 20,
+      "thread_token_provider": 15,
+      "lock_primitive_import": 30,
+      "unlock_primitive_import": 36,
+      "lock_adapter_wrapper": 57,
+      "unlock_adapter_wrapper": 60
+    },
+    "wrapper_static_observations": {
+      "acquire_window": "0x1158c90",
+      "release_window": "0x1158d10",
+      "thread_owner_token": "GetThreadId(GetCurrentThread())",
+      "owner_token_field_offset_from_wrapper": "0x8",
+      "recursion_count_field_offset_from_wrapper": "0xc",
+      "lock_adapter_dereferences_wrapper_offset": "0x0",
+      "release_adapter_dereferences_wrapper_offset": "0x0",
+      "lock_call_branch_condition": "stored owner token differs from current thread id",
+      "unlock_call_branch_condition": "decremented count becomes zero",
+      "function_boundaries_proven": false
+    },
+    "imported_implementation_proven": false,
+    "runtime_import_binding_verified": false,
+    "thread_context_provider_runtime_semantics_verified": false,
+    "thread_token_provider_runtime_semantics_verified": false,
+    "mutex_runtime_semantics_verified": false,
     "concurrency_verified": false,
+    "native_consumer_abi_verified": false,
     "ownership_lifecycle_async_rollback_unbind_destructor_verified": false,
     "archive_precedence_verified": false,
     "native_hook_added": false,
-    "next_step": "Inspect authenticated CI artifact symbol names; only pursue provider semantics if dynamic symbols and additional pinned call-site evidence agree."
+    "release_flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next_step": "Identify the original Switch import provider module from loader metadata and trace the bounded wrapper object's allocation/destruction; do not install a hook without runtime binding and lifecycle proof."
   }
 }

@@ -1269,3 +1269,12 @@ Parent HEAD: \`39fe92c5c8c45463ba3c9e34d84627480b5dbc45\`. Research pins: ModMan
 Implemented a SHA-pinned analyzer for four FileLoad PLT stubs. It checks the original wrapper callsites and two pointer-dereference adapters, verifies each ADRP/LDR/ADD/BR sequence, computes the GOT slot independently from LDR and ADD, then resolves a unique original DT_RELA/DT_JMPREL record and ELF64 dynamic symbol name when possible. Slots: \`0x2142a28\`, \`0x2142a78\`, \`0x2142a80\`, \`0x2142c20\`. The output deliberately distinguishes a dynamic symbol name from the imported implementation and runtime binding.
 
 Local syntax and isolated synthetic positive/negative/boundary checks passed. Authentic original-main integration and Actions are pending. No native hook or runtime flag changed. No consumer ABI, lock concurrency, provider semantics, ownership/lifecycle, archive precedence, or Uzuy claim.
+
+
+## 2026-11-27 — FileLoad leaf imports resolved to original Nintendo nn::os symbols
+
+Implementation commit \`0620f7dc5b532e11ef868926aa0a4777e763e40c\` passed all four push workflows. Foundation run/job \`46025160592/140594557183\` passed the new analyzer and produced artifact \`15210669622\` (ZIP SHA256 \`c65fa78688060b689524193f1f7648c85ab80f4fa59afcb278c60709af503412\`). Raw logs for Foundation, factory, MovesetPlus, and compressed PRM were inspected.
+
+The original main's four unique \`R_AARCH64_JUMP_SLOT\` records resolve to \`nn::os::GetCurrentThread()\`, \`nn::os::GetThreadId(nn::os::ThreadType const*)\`, \`nn::os::LockMutex(nn::os::MutexType*)\`, and \`nn::os::UnlockMutex(nn::os::MutexType*)\`. Relocation records and symbol indices are in \`handoff/evidence_fileload_imports_20261127.md\`. The bounded wrapper code passes the current-thread pointer into GetThreadId, uses its W0 result as the owner token at wrapper offset +0x8, keeps a count at +0xc, and calls the acquire/release adapters on owner mismatch / count reaching zero. This is static flow only; imported symbols are undefined in main (st_shndx=0), and their runtime provider, implementation, object lifetime and true concurrency semantics remain unresolved.
+
+The analyzer and tests are committed. No hook, runtime patch, or release flag changed. Next: identify the actual Switch loader provider module for these imports, then trace the wrapper object's allocation and destruction before any runtime integration.
