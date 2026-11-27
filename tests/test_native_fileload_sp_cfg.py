@@ -176,6 +176,13 @@ def run(main,out):
     call_index=call_row["state_observations"][0]["index"]
     assert call_index["call_clobbered"]
     assert call_index["reaching_definitions"][0]["kind"]=="call_clobber"
+    # X19 is conventionally callee-saved in AAPCS64, but this target ABI is
+    # not established; do not carry it across an opaque native call.
+    callee_saved_origin=b"".join(map(word,[0xaa0303f3,0x94000001,0xf8736904,0xd65f03c0]))
+    saved_row=trace(callee_saved_origin,0x8c00)["indexed_register_origins"][0]
+    saved_index=saved_row["state_observations"][0]["index"]
+    assert saved_index["call_clobbered"]
+    assert saved_index["reaching_definitions"][0]["kind"]=="call_clobber"
     # A branch merge keeps both reaching definitions instead of selecting one.
     branch_origin=b"".join(map(word,[0xb4000060,0xaa0103ea,0x14000002,
                                      0xaa0203ea,0xf86a6904,0xd65f03c0]))
