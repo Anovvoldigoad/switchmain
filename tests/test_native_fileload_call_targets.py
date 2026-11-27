@@ -60,8 +60,16 @@ def synthetic():
     # Out-of-window branches and indirect terminals remain explicit unknowns.
     outside = analyze_window(_words(0x14000040, 0xD65F03C0), 0, 8)
     assert outside["other_or_out_of_window_exits"] == [
-        {"from": "0x0", "kind": "jump", "target": "0x100"}
+        {"from": "0x0", "kind": "unconditional", "target": "0x100"}
     ]
+    assert outside["return_sites"] == []
+    # A conditional edge outside the window remains an exit while its
+    # in-window fallthrough is still explored.
+    conditional_outside = analyze_window(_words(0xB4000060, 0xD65F03C0), 0, 8)
+    assert conditional_outside["other_or_out_of_window_exits"] == [
+        {"from": "0x0", "kind": "conditional", "target": "0xc"}
+    ]
+    assert conditional_outside["return_sites"] == ["0x4"]
     indirect = analyze_window(_words(0xD61F0060, 0xD65F03C0), 0, 8)
     assert indirect["indirect_terminators"] == ["0x0"]
 
