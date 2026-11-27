@@ -606,6 +606,17 @@ def analyze_stack_register_restore(
                     "reason": child["reason"],
                     "window_sha256": child.get("window_sha256"),
                     "reachable_instructions": len(child.get("reachable_instructions", [])),
+                    "input_register_offsets": dict(pointer_offsets),
+                    "input_sp_delta": next_delta,
+                    "input_sp_trusted": next_trusted,
+                    "protected_slots_at_call": sorted(
+                        set(protected_slots) | set(slots.keys())
+                    ),
+                    "child_initial_register_offsets": dict(child["initial_register_offsets"]),
+                    "child_entry_sp_delta": child["entry_sp_delta"],
+                    "child_instruction_evidence": child["reachable_instructions"],
+                    "child_return_states": child["return_states"],
+                    "child_unresolved_control_flow_edges": child["unresolved_control_flow_edges"],
                     "sp_balanced_on_all_returns": child["sp_balanced_on_all_returns"],
                     "sp_delta_trusted_on_all_returns": child["sp_delta_trusted_on_all_returns"],
                     "unknown_memory_write_count": len(child["unknown_memory_writes_while_saved"]),

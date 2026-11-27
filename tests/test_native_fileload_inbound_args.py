@@ -259,6 +259,18 @@ def synthetic_x19_stack_restore():
     assert report["unknown_memory_writes_while_saved"] == []
     assert report["protected_slot_clobbers"] == []
     assert report["nested_call_proofs"][0]["preserved"] is True
+    child_proof = report["nested_call_proofs"][0]
+    assert child_proof["input_register_offsets"] == {"x0": 0x30, "x19": 0x30}
+    assert child_proof["child_initial_register_offsets"] == child_proof["input_register_offsets"]
+    assert child_proof["input_sp_delta"] == child_proof["child_entry_sp_delta"] == 0
+    assert child_proof["protected_slots_at_call"] == [-8]
+    assert [row["pc"] for row in child_proof["child_instruction_evidence"]] == ["0x100", "0x104"]
+    assert child_proof["child_instruction_evidence"][0]["word_le"] == "081000f9"
+    assert child_proof["child_return_states"] == [{
+        "pc": "0x104", "sp_delta": 0, "sp_delta_trusted": True,
+        "register_origin": "entry", "saved_entry_slots": []
+    }]
+    assert child_proof["child_unresolved_control_flow_edges"] == []
 
     # Exact overlap with the saved slot is rejected through a nested pointer.
     overlap = bytearray(nested)
@@ -409,6 +421,12 @@ def run(main, output):
         assert proof["protected_slot_clobber_count"] == len(
             proof["protected_slot_clobbers"]
         )
+        assert proof["child_initial_register_offsets"] == proof["input_register_offsets"]
+        assert proof["child_entry_sp_delta"] == proof["input_sp_delta"]
+        assert isinstance(proof["child_instruction_evidence"], list)
+        assert all(len(row["word_le"]) == 8 for row in proof["child_instruction_evidence"])
+        assert isinstance(proof["child_return_states"], list)
+        assert isinstance(proof["child_unresolved_control_flow_edges"], list)
         assert isinstance(proof["child_nested_call_proofs"], list)
     assert any(proof["child_nested_call_proofs"]
                for proof in stack_restore["nested_call_proofs"])
