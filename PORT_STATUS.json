@@ -101,7 +101,8 @@
     "2026-11-27 PENDING_CI: Extend SHA-pinned FileLoad status evidence with a 128-byte disassembly window covering direct service-target candidates 0x1215358 and 0x1215374, full-text direct BL/B xref census, cross-checks for the status helper and FileLoad request path, and synthetic aligned-window positive/negative/boundary tests. No lock/unlock interpretation is promoted; function extents and service semantics remain unresolved. Parent 0e84462e75faa2912bca6a5698987d38d23920eb; CI pending.",
     "2026-11-27 PENDING_HEAD_CI: FileLoad status-service evidence now follows the four exact direct dependencies of the 0x1158c90/0x1158d10 wrappers, records SHA-pinned bounded disassembly/CFG/xrefs, and adds an emulated-ARM64 test that executes the original wrapper bodies while modeling only four leaf targets. Regressions cover first/reentrant acquire, non-final/final release, underflow, zero provider result, different owner token and 32 status-helper cases. This proves only the literal wrapper owner/count transitions under modeled leaf returns; no OS mutex semantics, concurrency, native consumer ABI, lifecycle, archive precedence or Uzuy proof. Parent 5efd93a9d5d23ab96f3fd7a4404a46e50153c6ac; CI pending. Research pins ModManager 2.1.2.1 tag 502c38d (pinned project commit 276116e is its direct child), Toolbox 2.1.2.1 tag 789fe96 (relevant parser blobs unchanged from 2.1.2.0), PyCriCodecs 755055ee, REA 0386efd1. Original main blob 8af900db, SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. No hooks; preserve Sakura aura107, both Event236 forms and all three false flags.",
     "2026-11-27 CI_REPAIR: Foundation run 46021414045/job 140581709219 failed in synthetic_service_dependency_window because entry 0x8 is NOP and falls through to RET at 0xc; expected return corrected to 0xc. Review of pinned dispatch bytes also caught ADD X0,X0,#8 at 0x1215360/0x121537c; the emulated wrapper now writes owner/count at the adjusted wrapper base (original status object +0x28/+0x2c), not the pre-adjustment subobject. Raw Foundation log inspected. New HEAD CI pending; no mutex/concurrency/consumer ABI or Uzuy claim.",
-    "2026-11-27 CI_REPAIR_2: Foundation run 46022245151/job 140584543848 failed in test_native_fileload_status.py because the report omitted service_target_semantics_verified after the new dispatch-offset fields were inserted. The missing explicit false field is restored. Raw job log inspected. The three other workflows for code HEAD 4c83d56 completed successfully and their raw logs were read; Foundation must be rerun."
+    "2026-11-27 CI_REPAIR_2: Foundation run 46022245151/job 140584543848 failed in test_native_fileload_status.py because the report omitted service_target_semantics_verified after the new dispatch-offset fields were inserted. The missing explicit false field is restored. Raw job log inspected. The three other workflows for code HEAD 4c83d56 completed successfully and their raw logs were read; Foundation must be rerun.",
+    "2026-11-28 PENDING_CI: Added SHA-pinned registration target CFG analysis from the single DT_RELA R_AARCH64_RELATIVE pointer cell 0x215d2b0 -> text offset 0x116b888. The 0x100-byte bounded CFG records reachable instructions, register/memory operands, direct/indirect call barriers, returns, out-of-window edges, raw aligned-text B/BL word candidates and window SHA. Synthetic CFG positive/negative/boundary/budget regressions plus original-main SHA/relocation tests added. Not callback/destructor identity, function extent, runtime relocated pointer, ABI, ownership or Uzuy proof."
   ],
   "blocking_gaps": [
     "At FileLoad caller 0x116f280 -> 0x120a6c8, local X19 save/restore at entry-SP-8 is proven but recursive SP trust remains false. The 0x116b7b0 child has two relocation-backed __cxa_guard imports and a bounded 0x290 registration-helper candidate; exact guard/object BSS addresses and explicit store ranges are pending CI. Opaque import side effects, helper table target/callback identity, other unknown X0 stores, consumer ABI, ownership/lifecycle and archive precedence remain unresolved; do not relax the call barrier.",
@@ -1099,7 +1100,7 @@
     "new_commit_ci": "PENDING"
   },
   "latest_pending_code_commit": null,
-  "latest_pending_ci": "New FileLoad guard-state slice pending push CI; see native_fileload_guard_state_20261128.",
+  "latest_pending_ci": "New FileLoad registration target CFG slice pending push CI; see native_fileload_registration_target_20261128.",
   "multi_mod_pc_source_path_ownership_guard": "OFFLINE_ONLY_PENDING_CI_NO_ENGINE_ARCHIVE_PRECEDENCE",
   "crilayla_total_output_limit": {
     "status": "pending_ci",
@@ -1218,7 +1219,7 @@
     "consumer_abi_proven": false,
     "emulator_tested": false
   },
-  "pending_ci_note": "2026-11-11: Call-free bounded BR witness classification added: shortest syntactic paths which do not traverse opaque BL/BLR, with positive, call-only negative, bypass, and authentic main byte replay regressions. This is NOT actual call feasibility, consumer ABI, ownership, archive precedence or Uzuy. Parent 91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb; CI PENDING. Upstream ModManager release 2.1.2.1; Toolbox 6f780cb; REA b2f3dc81; cpktools eff288cf9. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; three release flags false.",
+  "pending_ci_note": "2026-11-28: registration target CFG code/test/workflow are pending push CI. Current guard-state slice is verified static-only on HEAD 9975550ae11657970ae8905a808aa0360ad36710; see native_fileload_guard_state_20261128. Do not identify callback/destructor or install a hook.",
   "native_fileopen_call_free_witness": {
     "status": "PENDING_CI",
     "parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
@@ -1655,7 +1656,7 @@
     "native_consumer_verified": false,
     "emulator_tested": false
   },
-  "latest_engineering_pending_ci": "2026-11-28 PENDING_CI: New SHA-pinned FileLoad guard-state slice. It decodes ADRP/ADD and ADRP/LDR pairs, classifies the guard/object and explicit store ranges against original NSO text/rodata/data/BSS, verifies the two __cxa_guard import relocations and records the 0x290 helper's atomic counter, pointer cells and 24-byte three-register record shape. This does not identify the helper, callback/destructor, imported implementations, table target, native consumer ABI or ownership. Synthetic negative/boundary cases plus exact original-main SHA test added; Foundation workflow step added. Parent HEAD 261e4aab417b1aebaaeddb9a83160a46dc812255; commit SHA and push CI pending.",
+  "latest_engineering_pending_ci": "New FileLoad registration target CFG slice pending push CI; see native_fileload_registration_target_20261128.",
   "ordered_factory_atomic_publication": {
     "state": "PENDING_HEAD_CI",
     "source_commit": "4a882d11426a7c55dfbb0c5468aa3375d165c190",
@@ -2167,55 +2168,25 @@
     "uzuy_verified": false,
     "next": "Inspect exact SP-relative X19 save/restore and all return paths in 0x120a6c8; require path-sensitive same-slot proof for every return and recursively apply only to exact direct targets. Preserve barriers for all unproven callees; no AAPCS64 assumption, no runtime hook."
   },
-  "latest_verified_code_commit": "261e4aab417b1aebaaeddb9a83160a46dc812255",
-  "latest_verified_code_parent": "10ca61ba88f0b328fc9e73daf9189ef8cc2333cc",
+  "latest_verified_code_commit": "9975550ae11657970ae8905a808aa0360ad36710",
+  "latest_verified_code_parent": "5a512e760c48a78cbe2e4f1b24ecfef2f6dd8be2",
   "latest_verified_code_ci": {
-    "head": "261e4aab417b1aebaaeddb9a83160a46dc812255",
-    "parent": "10ca61ba88f0b328fc9e73daf9189ef8cc2333cc",
-    "workflows": [
-      {
-        "name": "foundation",
-        "run_id": 46071621142,
-        "job_id": 140749655985,
-        "conclusion": "success",
-        "raw_log_inspected": true,
-        "artifact_id": 15233128327,
-        "artifact_sha256": "fbab9afc236c8a85356e9e7cf3f02e3f219ee208f003c00addadde7869dfc65b"
-      },
-      {
-        "name": "factory",
-        "run_id": 46071621080,
-        "job_id": 140749655836,
-        "conclusion": "success",
-        "raw_log_inspected": true
-      },
-      {
-        "name": "compressed_prm",
-        "run_id": 46071621075,
-        "job_id": 140749655778,
-        "conclusion": "success",
-        "raw_log_inspected": true
-      },
-      {
-        "name": "movesetplus",
-        "run_id": 46071621063,
-        "job_id": 140749655794,
-        "conclusion": "success",
-        "raw_log_inspected": true
-      }
+    "head": "9975550ae11657970ae8905a808aa0360ad36710",
+    "runs": [
+      46074524822,
+      46074524869,
+      46074524831,
+      46074524880
+    ],
+    "jobs": [
+      140759011008,
+      140759011097,
+      140759011286,
+      140759010994
     ],
     "all_completed_success": true,
     "raw_logs_inspected": true,
-    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-    "artifact_files": {
-      "native_fileload_imports_json_sha256": "2d6165fafb81c7ee90141def3aad8a3383aec528e87e2e479173907ced6f12f8",
-      "native_fileload_inbound_args_json_sha256": "df542a293c2ad5a1cc18defd9cdedd3b4e40b2e0cf3385f416a8eac070d093ba",
-      "native_fileload_call_targets_json_sha256": "ff165a8a94f42d19b9e70d9e9642250afcb76ccdba2f876cf1da77490413394d"
-    },
-    "consumer_abi_verified": false,
-    "ownership_lifecycle_verified": false,
-    "archive_precedence_verified": false,
-    "uzuy_verified": false
+    "foundation_artifact_id": 15233949208
   },
   "native_fileload_x19_stack_restore_20261128": {
     "state": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
@@ -2393,7 +2364,7 @@
     "next": "Continue from 0x116b698 and nested 0x116b6c0 -> 0x116b7b0. Prove exact pointer/stack alias provenance for X1/X19 and each unknown store; investigate 0x12f3690/0x12f36a0 bounded control-flow exits without assuming function extent. Keep 0x116f280 -> 0x120a6c8 as a call barrier until every nested stack/alias condition is proven."
   },
   "native_fileload_guard_state_20261128": {
-    "state": "PENDING_CI",
+    "state": "VERIFIED_CI_STATIC_ONLY",
     "parent_sha": "261e4aab417b1aebaaeddb9a83160a46dc812255",
     "source": "tools/portlib/native_fileload_guard_state.py",
     "test": "tests/test_native_fileload_guard_state.py",
@@ -2426,6 +2397,62 @@
     "ownership_lifecycle_verified": false,
     "archive_precedence_verified": false,
     "uzuy_verified": false,
-    "next": "Read the new Foundation artifact's pointer-cell values and relocation records; trace the candidate callback only if the exact value resolves to an original-main code address. Keep opaque __cxa_guard imports and the parent X19 call barrier unresolved."
+    "next": "Trace the exact R_AARCH64_RELATIVE addend in registration cell 0x215d2b0 to bounded text target 0x116b888; do not identify a destructor or authorize a hook.",
+    "code_commit": "9975550ae11657970ae8905a808aa0360ad36710",
+    "code_parent": "5a512e760c48a78cbe2e4f1b24ecfef2f6dd8be2",
+    "ci": {
+      "head": "9975550ae11657970ae8905a808aa0360ad36710",
+      "runs": [
+        46074524822,
+        46074524869,
+        46074524831,
+        46074524880
+      ],
+      "jobs": [
+        140759011008,
+        140759011097,
+        140759011286,
+        140759010994
+      ],
+      "all_completed_success": true,
+      "raw_job_logs_inspected": true,
+      "foundation_marker": "PINNED_FILELOAD_GUARD_STATE_PASS",
+      "foundation_artifact_id": 15233949208,
+      "foundation_artifact_zip_sha256": "53075cb3fbadba6548a2dc0080f429b3aedadb66d898164aebb971860deb04ff",
+      "guard_json_sha256": "c04f854b2be460035599ed07355ed9993183a5c0e544e828f0f9f7bf43e649bb"
+    }
+  },
+  "native_fileload_registration_target_20261128": {
+    "state": "PENDING_CI_STATIC_ONLY",
+    "parent_sha": "9975550ae11657970ae8905a808aa0360ad36710",
+    "code_commit": null,
+    "source": "tools/portlib/native_fileload_registration_target.py",
+    "source_blob": "8ee881958c72de9bc1fa14feea1a2806265ce952",
+    "test": "tests/test_native_fileload_registration_target.py",
+    "test_blob": "10b77976b8af26ef1c6720a30028c67cf7b96bd9",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "workflow_blob": "c087b353eb4dbbe5512f49ba821fc92974a89db0",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_size": 27701509,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "registration_pointer_cell": "0x215d2b0",
+    "relocation_record_offset": "0x1976d80",
+    "relocation_type": "R_AARCH64_RELATIVE",
+    "relocation_addend_text_offset": "0x116b888",
+    "analysis_window_bytes": 256,
+    "function_extent_verified": false,
+    "callback_identity_verified": false,
+    "destructor_identity_verified": false,
+    "native_consumer_abi_verified": false,
+    "ownership_lifecycle_verified": false,
+    "archive_precedence_verified": false,
+    "native_hook_added": false,
+    "uzuy_verified": false,
+    "release_flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next": "Verify all four push workflows on the new code HEAD, inspect Foundation raw log and artifact, then refine only if bounded original-main CFG evidence supports a falsifiable next step."
   }
 }

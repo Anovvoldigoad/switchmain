@@ -105,6 +105,8 @@ jobs:
         run: python tests/test_native_fileload_imports.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Trace pinned FileLoad guard object and bounded registration-helper stores (static only)
         run: python tests/test_native_fileload_guard_state.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Trace SHA-pinned FileLoad registration pointer target CFG (static only)
+        run: python tests/test_native_fileload_registration_target.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Trace original FileOpen native X0 plus 0x18 tail-target and W0 return compare
         run: python tests/test_native_fileopen_tail.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Disassemble eight exact native FileOpen tail callees and W0 return provenance

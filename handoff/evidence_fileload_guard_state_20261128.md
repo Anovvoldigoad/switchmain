@@ -1,4 +1,4 @@
-# FileLoad guard state and registration-helper candidate — PENDING_CI
+# FileLoad guard state and registration-helper candidate — VERIFIED_CI_STATIC_ONLY
 
 Date: 2026-11-28  
 Branch: `port/full-api-v170`  
@@ -54,3 +54,16 @@ No runtime hook, ownership claim, destructor claim, callback claim, lock semanti
 ## CI
 
 PENDING: the new code/test commit and Foundation push run must complete; inspect the raw job log and proof artifact before promoting this note to verified.
+
+
+## Verified CI correction — 2026-11-28
+
+The first code revision at `5a512e760c48a78cbe2e4f1b24ecfef2f6dd8be2` failed Foundation run/job `46074175347/140757895808`. The raw log showed a report/test key mismatch: the analyzer emitted `explicit_guarded_object_stores_do_not_address_parent_entry_sp_minus_8`, while the test requested the obsolete `explicit_bss_stores_do_not_address_parent_entry_sp_minus_8`. The report field was aligned with the regression contract at `9975550ae11657970ae8905a808aa0360ad36710`.
+
+All four direct push workflows on HEAD `9975550ae11657970ae8905a808aa0360ad36710` completed SUCCESS; each original job log was read:
+- Foundation run/job `46074524822/140759011008`, marker `PINNED_FILELOAD_GUARD_STATE_PASS 0x43717d8 0x43717e0 explicit_bss_stores 3 registration_stride 24 NO_ABI_NO_DESTRUCTOR_CLAIM`.
+- Factory `46074524869/140759011097`.
+- Compressed PRM `46074524831/140759011286`.
+- MovesetPlus `46074524880/140759010994`.
+
+Foundation artifact `15233949208`, 507,080 bytes, ZIP SHA256 `53075cb3fbadba6548a2dc0080f429b3aedadb66d898164aebb971860deb04ff`; guard JSON SHA256 `c04f854b2be460035599ed07355ed9993183a5c0e544e828f0f9f7bf43e649bb`. Original-main SHA guard passed. Helper/table/callback semantics remain unresolved.

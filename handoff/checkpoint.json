@@ -2782,7 +2782,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Continue from 0x116b698 and nested 0x116b6c0 -> 0x116b7b0. Prove exact pointer/stack alias provenance for X1/X19 and each unknown store; investigate 0x12f3690/0x12f36a0 bounded control-flow exits without assuming function extent. Keep 0x116f280 -> 0x120a6c8 as a call barrier until every nested stack/alias condition is proven.",
+  "next_action": "Verify the new code commit's four push workflows and inspect the Foundation raw log/artifact. Pointer cell 0x215d2b0 has one R_AARCH64_RELATIVE addend 0x116b888; inspect only the bounded text CFG, preserve call/indirect barriers, and do not infer destructor identity or runtime ABI.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -2796,7 +2796,7 @@
     "ci": "PENDING"
   },
   "latest_pending_code_commit": null,
-  "latest_pending_ci": null,
+  "latest_pending_ci": "FileLoad registration target CFG slice is pending push CI; see native_fileload_registration_target_20261128.",
   "crilayla_total_output_limit": {
     "status": "pending_ci",
     "parent_sha": "e4e08cc748b18d9ae8576862d1cd509a27f684b0",
@@ -3753,45 +3753,37 @@
     "next": "Inspect HEAD Foundation job log and resolve failures; trace original consumer lifecycle before hooks."
   },
   "latest_pending_head_ci": {
-    "parent_sha": "5187073633307e43985684325ebdce9821948849",
-    "code_commit": "ac71215f23bd645119f830cc4c63d0b5b2f1974b",
-    "topic": "fileload_caller_x19_raw_bl_inventory_and_reaching_definitions",
-    "source": "tools/portlib/native_fileload_inbound_args.py",
-    "test": "tests/test_native_fileload_inbound_args.py",
-    "status": "VERIFIED_STATIC_CI_ONLY_X19_UNRESOLVED_AT_SINK",
-    "ci_run_ids": [
-      46048379870,
-      46048379872,
-      46048379855,
-      46048379836
-    ],
-    "ci_job_ids": [
-      140673240478,
-      140673240433,
-      140673240097,
-      140673240368
-    ],
-    "ci_log_inspected": true,
+    "parent_sha": "9975550ae11657970ae8905a808aa0360ad36710",
+    "code_commit": null,
+    "topic": "fileload_registration_relative_relocation_target_cfg",
+    "source": "tools/portlib/native_fileload_registration_target.py",
+    "test": "tests/test_native_fileload_registration_target.py",
+    "status": "PENDING_PUSH_CI",
+    "ci_run_ids": [],
+    "ci_job_ids": [],
+    "ci_log_inspected": false,
     "consumer_abi_proven": false,
     "uzuy_tested": false
   },
   "latest_execution": {
-    "status": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
-    "code_commit": "dbc23b155335c61602437c72e7f1ceabbe35553d",
-    "parent_sha": "255adab51824809ca8920c4b65dba6a3d326fb41",
-    "raw_job_logs_inspected": true,
-    "artifact_id": 15231780092,
-    "artifact_sha256": "598559d70ee9d2911c52fc6109b722465b87b96d3e5b9b77f2de8b99f38fc7aa",
-    "summary": "Recursive nested FileLoad proof tree now serializes; local X19 SP-8 save/restore is proven, but four nested callees keep SP trust/preservation unresolved.",
-    "next": "Continue from 0x116b698 and nested 0x116b6c0 -> 0x116b7b0. Prove exact pointer/stack alias provenance for X1/X19 and each unknown store; investigate 0x12f3690/0x12f36a0 bounded control-flow exits without assuming function extent. Keep 0x116f280 -> 0x120a6c8 as a call barrier until every nested stack/alias condition is proven."
+    "status": "PENDING_CI_STATIC_ONLY_REGISTRATION_TARGET_CFG",
+    "code_commit": null,
+    "parent_sha": "9975550ae11657970ae8905a808aa0360ad36710",
+    "source": "tools/portlib/native_fileload_registration_target.py",
+    "test": "tests/test_native_fileload_registration_target.py",
+    "summary": "Follow the exact DT_RELA R_AARCH64_RELATIVE addend from registration pointer cell 0x215d2b0 to text offset 0x116b888; emit bounded 0x100-byte CFG, all register/memory operands, direct/indirect call barriers, raw aligned-text B/BL word candidates and window hash. No function extent, callback/destructor identity, runtime relocated pointer, ABI, ownership or hook claim.",
+    "ci_run_ids": [],
+    "ci_job_ids": [],
+    "raw_job_logs_inspected": false,
+    "next": "Inspect direct push Foundation, factory, compressed PRM and MovesetPlus runs/jobs/logs for the code commit; repair failures before recording VERIFIED_CI_STATIC_ONLY."
   },
   "latest_slice": {
-    "state": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
-    "code_commit": "dbc23b155335c61602437c72e7f1ceabbe35553d",
-    "parent_sha": "255adab51824809ca8920c4b65dba6a3d326fb41",
-    "description": "Correct recursive nested-call proof serialization and expose original-main X19 stack/call failure tree without weakening barriers",
-    "source": "tools/portlib/native_fileload_call_targets.py",
-    "test": "tests/test_native_fileload_inbound_args.py",
+    "state": "PENDING_CI_STATIC_ONLY_REGISTRATION_TARGET_CFG",
+    "code_commit": null,
+    "parent_sha": "9975550ae11657970ae8905a808aa0360ad36710",
+    "description": "SHA-pinned FileLoad registration code-pointer target trace and bounded CFG",
+    "source": "tools/portlib/native_fileload_registration_target.py",
+    "test": "tests/test_native_fileload_registration_target.py",
     "consumer_abi_verified": false,
     "uzuy_verified": false
   },
@@ -4509,24 +4501,24 @@
     },
     "next": "Prove exact stack slot save/restore for 0x120a6c8 and other X19-writing direct callees; require all-return path proof and explicit SP delta; retain barriers otherwise. Do not infer AAPCS64, pointer type, ownership or ABI."
   },
-  "latest_verified_code_commit": "dbc23b155335c61602437c72e7f1ceabbe35553d",
+  "latest_verified_code_commit": "9975550ae11657970ae8905a808aa0360ad36710",
   "latest_verified_ci_runs": {
-    "head": "dbc23b155335c61602437c72e7f1ceabbe35553d",
+    "head": "9975550ae11657970ae8905a808aa0360ad36710",
     "runs": [
-      46066250617,
-      46066250621,
-      46066250642,
-      46066250702
+      46074524822,
+      46074524869,
+      46074524831,
+      46074524880
     ],
     "jobs": [
-      140732155719,
-      140732155517,
-      140732155515,
-      140732155859
+      140759011008,
+      140759011097,
+      140759011286,
+      140759010994
     ],
     "all_completed_success": true,
     "raw_logs_inspected": true,
-    "foundation_artifact_id": 15231780092
+    "foundation_artifact_id": 15233949208
   },
   "native_fileload_x19_stack_restore_20261128": {
     "state": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
@@ -4928,7 +4920,7 @@
     "next": "Continue from 0x116b698 and nested 0x116b6c0 -> 0x116b7b0. Prove exact pointer/stack alias provenance for X1/X19 and each unknown store; investigate 0x12f3690/0x12f36a0 bounded control-flow exits without assuming function extent. Keep 0x116f280 -> 0x120a6c8 as a call barrier until every nested stack/alias condition is proven."
   },
   "native_fileload_guard_state_20261128": {
-    "state": "PENDING_CI",
+    "state": "VERIFIED_CI_STATIC_ONLY",
     "parent_sha": "261e4aab417b1aebaaeddb9a83160a46dc812255",
     "source": "tools/portlib/native_fileload_guard_state.py",
     "test": "tests/test_native_fileload_guard_state.py",
@@ -4961,7 +4953,30 @@
     "ownership_lifecycle_verified": false,
     "archive_precedence_verified": false,
     "uzuy_verified": false,
-    "next": "Read the new Foundation artifact's pointer-cell values and relocation records; trace the candidate callback only if the exact value resolves to an original-main code address. Keep opaque __cxa_guard imports and the parent X19 call barrier unresolved."
+    "next": "Trace the exact R_AARCH64_RELATIVE addend in registration cell 0x215d2b0 to bounded text target 0x116b888; do not identify a destructor or authorize a hook.",
+    "code_commit": "9975550ae11657970ae8905a808aa0360ad36710",
+    "code_parent": "5a512e760c48a78cbe2e4f1b24ecfef2f6dd8be2",
+    "ci": {
+      "head": "9975550ae11657970ae8905a808aa0360ad36710",
+      "runs": [
+        46074524822,
+        46074524869,
+        46074524831,
+        46074524880
+      ],
+      "jobs": [
+        140759011008,
+        140759011097,
+        140759011286,
+        140759010994
+      ],
+      "all_completed_success": true,
+      "raw_job_logs_inspected": true,
+      "foundation_marker": "PINNED_FILELOAD_GUARD_STATE_PASS",
+      "foundation_artifact_id": 15233949208,
+      "foundation_artifact_zip_sha256": "53075cb3fbadba6548a2dc0080f429b3aedadb66d898164aebb971860deb04ff",
+      "guard_json_sha256": "c04f854b2be460035599ed07355ed9993183a5c0e544e828f0f9f7bf43e649bb"
+    }
   },
   "native_fileload_imports": {
     "status": "verified_static",
@@ -5080,5 +5095,38 @@
     "imported_implementations_proven": false,
     "ownership_lifecycle_verified": false,
     "uzuy_verified": false
+  },
+  "native_fileload_registration_target_20261128": {
+    "state": "PENDING_CI_STATIC_ONLY",
+    "parent_sha": "9975550ae11657970ae8905a808aa0360ad36710",
+    "code_commit": null,
+    "source": "tools/portlib/native_fileload_registration_target.py",
+    "source_blob": "8ee881958c72de9bc1fa14feea1a2806265ce952",
+    "test": "tests/test_native_fileload_registration_target.py",
+    "test_blob": "10b77976b8af26ef1c6720a30028c67cf7b96bd9",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "workflow_blob": "c087b353eb4dbbe5512f49ba821fc92974a89db0",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_size": 27701509,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "registration_pointer_cell": "0x215d2b0",
+    "relocation_record_offset": "0x1976d80",
+    "relocation_type": "R_AARCH64_RELATIVE",
+    "relocation_addend_text_offset": "0x116b888",
+    "analysis_window_bytes": 256,
+    "function_extent_verified": false,
+    "callback_identity_verified": false,
+    "destructor_identity_verified": false,
+    "native_consumer_abi_verified": false,
+    "ownership_lifecycle_verified": false,
+    "archive_precedence_verified": false,
+    "native_hook_added": false,
+    "uzuy_verified": false,
+    "release_flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next": "Verify all four push workflows on the new code HEAD, inspect Foundation raw log and artifact, then refine only if bounded original-main CFG evidence supports a falsifiable next step."
   }
 }
