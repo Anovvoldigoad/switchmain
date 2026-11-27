@@ -209,7 +209,8 @@ def synthetic_x19_stack_restore():
     bypass = bytes.fromhex("800000b4fe4fbfa9f30300aafe4fc1a8c0035fd6")
     report = analyze_stack_register_restore(bypass, 0, len(bypass), "x19")
     assert report["preservation_proven"] is True
-    assert len(report["return_states"]) == 2
+    assert len(report["return_states"]) == 1
+    assert len(report["reachable_instructions"]) == 5
 
     branch_clobber = bytes.fromhex("a00000b4fe4fbfa9f30301aafe4fc1a8c0035fd6f30300aac0035fd6")
     report = analyze_stack_register_restore(branch_clobber, 0, len(branch_clobber), "x19")

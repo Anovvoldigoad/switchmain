@@ -42,3 +42,9 @@ Initial state for this commit: PENDING_CI. Inspect the Foundation raw job log an
 - Foundation run 46058304370, job 140706108304, step 42 failed the first synthetic positive. The raw log showed the decoder correctly saw stp x30, x19, [sp, #-0x10]! at 0x0 and ldp x30, x19, [sp], #0x10 at 0x8; SP returned to delta 0 with trusted state, but no save/restore sites were recorded.
 - The repo pins Capstone 5.0.6 in tests/requirements.txt. Its register-name API uses the architectural aliases lr and fp for X30 and X29. The new width decoder accepted only xN/wN, so the first pair transfer returned unresolved and the X19 slot was never created. The correction accepts fp/lr as 8-byte registers; the synthetic positive still checks exact slot entry SP - 8, and negative tests still cover overwrite, wrong destination, nested calls, unknown aliases, branch clobber and unbalanced SP.
 - This correction does not prove Switch X19 preservation. Nested calls still invalidate SP trust and retain the call barrier.
+
+
+## Second CI correction
+
+- On HEAD 35da1c3a860c15bd7cd3b96b57129b3d40934042, Foundation run 46058845472/job 140707894811 passed the exact STP/MOV/LDP roundtrip, wrong destination, overwritten slot, nested-call barrier and unknown-base-store tests. It failed only the conditional bypass assertion: both branches converge at the same RET instruction and identical state, so the path-sensitive worklist correctly deduplicates to one return state. The test now expects one merged state and five reachable instructions while still requiring preservation_proven=true.
+- Companion push workflows on that HEAD succeeded: compressed candidate run/job 46058845542/140707894934, factory 46058845543/140707894897, MovesetPlus 46058845462/140707894631; all raw job logs were inspected.

@@ -290,3 +290,6 @@ NEXT: Inspect all four push workflow runs/jobs/raw logs for the new code HEAD, i
 
 
 2026-11-28 FIXED_PENDING_CI — Diagnostic Foundation run 46058304370/job 140706108304 raw log identified the bug: Capstone 5.0.6 exposed the saved/restored X30 operand as alias lr; reg_width rejected lr, so no STP/LDP slot was recorded. Fix accepts fp/lr as 8-byte aliases and removes temporary debug output. New code/test HEAD pending all four push workflows. Keep 0x116f280 -> 0x120a6c8 as a barrier unless authentic stack/call/alias proof succeeds.
+
+
+2026-11-28 TEST_EXPECTATION_FIX_PENDING_CI — On commit 35da1c3a860c15bd7cd3b96b57129b3d40934042, Foundation run 46058845472/job 140707894811 failed only because the synthetic bypass test expected two return states; both branches converge at one RET with identical state, so the worklist correctly deduplicated. The exact STP/MOV/LDP positive, mismatch, overwrite, nested-call and unknown-store cases had passed. Test now expects one merged return state and five reachable instructions. Three companion workflows succeeded and their raw logs were read. Rerun all four push workflows; do not claim ABI or Uzuy.

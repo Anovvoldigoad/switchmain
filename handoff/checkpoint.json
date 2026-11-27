@@ -1191,7 +1191,7 @@
     "ci": "PENDING"
   },
   "latest_pending_code_commit": null,
-  "latest_pending_ci": "Fixed Capstone fp/lr alias handling after diagnostic raw log; new push workflows pending.",
+  "latest_pending_ci": "Foundation bypass-test assertion corrected; new push workflows pending.",
   "crilayla_total_output_limit": {
     "status": "pending_ci",
     "parent_sha": "e4e08cc748b18d9ae8576862d1cd509a27f684b0",
@@ -2171,16 +2171,15 @@
     "uzuy_tested": false
   },
   "latest_execution": {
-    "status": "FIXED_PENDING_CI_X19_FP_LR_ALIAS",
-    "parent_sha": "7255d7b9e923df8857208c9b193a44e472a15e13",
-    "code_commit": null,
-    "test_commit": "7255d7b9e923df8857208c9b193a44e472a15e13",
+    "status": "TEST_EXPECTATION_FIX_PENDING_CI",
+    "parent_sha": "35da1c3a860c15bd7cd3b96b57129b3d40934042",
+    "code_commit": "35da1c3a860c15bd7cd3b96b57129b3d40934042",
     "raw_job_logs_inspected": true,
-    "failure_run": 46058304370,
-    "failure_job": 140706108304,
-    "root_cause": "Capstone 5.0.6 uses fp/lr aliases; register-width decoder omitted those 64-bit aliases.",
-    "fix": "Accept fp/lr as 8-byte transfers; remove diagnostic print; retain exact synthetic save/restore and negative cases.",
-    "next": "Rerun all four push workflows, inspect raw logs and Foundation artifact. If authentic 0x120a6c8 shows a local restore but nested call SP/stack effects remain unresolved, keep the caller barrier."
+    "failure_run": 46058845472,
+    "failure_job": 140707894811,
+    "root_cause": "Overstrict synthetic bypass test expected duplicate return states despite identical state merging at one RET.",
+    "fix": "Expect one deduplicated return state and five reachable instructions; preserve assertion that all paths prove X19 and SP unchanged.",
+    "next": "Rerun all four push workflows, inspect raw logs and Foundation artifact; keep authentic X19 barrier unless nested call stack effects are proven."
   },
   "latest_slice": {
     "state": "PENDING_CI_X19_STACK_SLOT_DATAFLOW",
@@ -2925,7 +2924,7 @@
     "foundation_artifact_id": 15223636352
   },
   "native_fileload_x19_stack_restore_20261128": {
-    "state": "FIXED_PENDING_CI",
+    "state": "TEST_EXPECTATION_FIX_PENDING_CI",
     "parent_sha": "ace04f5ea7a8a21b9a625eb69fdce3d95eb767e6",
     "source_commit": null,
     "source": "tools/portlib/native_fileload_call_targets.py",
@@ -2982,38 +2981,27 @@
     ],
     "ci": {
       "runs": {
-        "initial_foundation": 46057774996,
-        "diagnostic_foundation": 46058304370
+        "foundation": 46058845472,
+        "compressed_candidate": 46058845542,
+        "factory": 46058845543,
+        "moveset_plus": 46058845462
       },
       "jobs": {
-        "initial_foundation": 140704341842,
-        "diagnostic_foundation": 140706108304
+        "foundation": 140707894811,
+        "compressed_candidate": 140707894934,
+        "factory": 140707894897,
+        "moveset_plus": 140707894631
       },
-      "diagnostic_failure": {
+      "foundation_failure": {
         "step": 42,
         "raw_job_log_inspected": true,
-        "observed": {
-          "stp": {
-            "pc": "0x0",
-            "operand": "x30, x19, [sp, #-0x10]!",
-            "sp_delta": -16,
-            "writeback": true
-          },
-          "ldp": {
-            "pc": "0x8",
-            "operand": "x30, x19, [sp], #0x10",
-            "sp_delta_after": 0,
-            "writeback": true
-          },
-          "return_state": {
-            "pc": "0xc",
-            "sp_delta": 0,
-            "sp_delta_trusted": true
-          },
-          "save_sites": [],
-          "restore_sites": []
-        },
-        "root_cause": "Capstone 5.0.6 exposes X30/X29 aliases as lr/fp; reg_width accepted only xN/wN and rejected lr."
+        "failure": "synthetic_x19_stack_restore bypass test expected 2 return states but got 1",
+        "root_cause": "Both conditional CFG paths converge at the same RET PC with identical SP/register/slot state; the worklist deduplicates the equivalent state correctly. Preservation proof itself was true."
+      },
+      "companion_results": {
+        "compressed_candidate": "success",
+        "factory": "success",
+        "moveset_plus": "success"
       },
       "raw_job_logs_inspected": true,
       "foundation_artifact_id": null
