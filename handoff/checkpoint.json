@@ -1191,7 +1191,7 @@
     "ci": "PENDING"
   },
   "latest_pending_code_commit": null,
-  "latest_pending_ci": "X19 stack-slot dataflow code/test commit pending four push workflows; inspect raw logs and Foundation artifact.",
+  "latest_pending_ci": "Foundation failed on synthetic exact X19 save/restore at run 46057774996 job 140704341842 step 42; three companion push workflows succeeded. A diagnostic print is added for the next run.",
   "crilayla_total_output_limit": {
     "status": "pending_ci",
     "parent_sha": "e4e08cc748b18d9ae8576862d1cd509a27f684b0",
@@ -2171,15 +2171,20 @@
     "uzuy_tested": false
   },
   "latest_execution": {
-    "status": "PENDING_CI_X19_STACK_SLOT_DATAFLOW",
+    "status": "FAILED_CI_DIAGNOSTIC_RERUN",
     "parent_sha": "ace04f5ea7a8a21b9a625eb69fdce3d95eb767e6",
     "source_blob": "e7b12d87cee82c2f857f6e0f62493e894c72d1d2",
     "test_blob": "774f0e6bb08f24dbe4bb4e037fee1a831925c19f",
-    "code_commit": null,
+    "code_commit": "b58222f63414caf0dcb47a25add4d18dad434d70",
     "research_note": "handoff/evidence_fileload_x19_stack_restore_20261128.md",
-    "ci_runs": null,
-    "raw_job_logs_inspected": false,
-    "next": "Verify Foundation raw job log/artifact and all three companion push workflow logs; repair regressions before marking verified."
+    "ci_runs": {
+      "foundation": 46057774996,
+      "factory": 46057774990,
+      "compressed_candidate": 46057775108,
+      "moveset_plus": 46057774991
+    },
+    "raw_job_logs_inspected": true,
+    "next": "Diagnostic rerun prints the complete synthetic positive stack-restore report. Identify why exact STP/MOV/LDP is not accepted, fix root cause, then rerun all push workflows."
   },
   "latest_slice": {
     "state": "PENDING_CI_X19_STACK_SLOT_DATAFLOW",
@@ -2924,7 +2929,7 @@
     "foundation_artifact_id": 15223636352
   },
   "native_fileload_x19_stack_restore_20261128": {
-    "state": "PENDING_CI",
+    "state": "FAILED_CI_TEST",
     "parent_sha": "ace04f5ea7a8a21b9a625eb69fdce3d95eb767e6",
     "source_commit": null,
     "source": "tools/portlib/native_fileload_call_targets.py",
@@ -2980,9 +2985,22 @@
       "invalid boundaries"
     ],
     "ci": {
-      "runs": null,
-      "jobs": null,
-      "raw_job_logs_inspected": false,
+      "runs": {
+        "foundation": 46057774996,
+        "factory": 46057774990,
+        "compressed_candidate": 46057775108,
+        "moveset_plus": 46057774991
+      },
+      "jobs": {
+        "foundation": 140704341842,
+        "factory": 140704342069,
+        "compressed_candidate": 140704342091,
+        "moveset_plus": 140704342005
+      },
+      "failed_step": 42,
+      "failed_step_name": "Trace original FileLoad caller X1/X2 argument origins without ownership claims",
+      "failure": "synthetic_x19_stack_restore first positive assertion failed: preservation_proven was not true",
+      "raw_job_logs_inspected": true,
       "foundation_artifact_id": null
     },
     "consumer_abi_verified": false,

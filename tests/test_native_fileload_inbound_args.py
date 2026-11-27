@@ -174,6 +174,7 @@ def synthetic_x19_stack_restore():
 
     good = bytes.fromhex("fe4fbfa9f30300aafe4fc1a8c0035fd6")
     report = analyze_stack_register_restore(good, 0, len(good), "x19")
+    print("X19_STACK_RESTORE_SYNTHETIC_GOOD", json.dumps(report, sort_keys=True))
     assert report["preservation_proven"] is True
     assert report["save_sites"] == [{
         "pc": "0x0", "entry_sp_slot": "-0x8",
