@@ -71,10 +71,10 @@ def run(main,out):
     assert proof["register_traces"]["x22"]["sites"]["second_guard_X22_field_base"][
         "possible_reaching_writes"]
     assert [(x["source_register_at_capture"],x["destination_register"],
-             [o["site"] for o in x["observations"]])
+             x["capture_word_le"],[o["site"] for o in x["observations"]])
             for x in proof["original_caller_argument_register_alias_witnesses"]] == [
-                ("X2","X20",["0x116f51c","0x116f5bc"]),
-                ("X1","X22",["0x116f5ac"])]
+                ("X2","X20","f40302aa",["0x116f51c","0x116f5bc"]),
+                ("X1","X22","f60301aa",["0x116f5ac"])]
     for src,name in (("x1","X1_before_X22_capture"),
                      ("x2","X2_before_X20_capture")):
         origins=proof["register_traces"][src]["sites"][name]["possible_reaching_writes"]

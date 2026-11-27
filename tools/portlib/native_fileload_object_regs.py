@@ -177,8 +177,12 @@ def inspect(nso):
     ]
     alias_proofs = []
     for name, reg, at, phrase, src_reg, src_site, observations in capture_specs:
-        if at not in ins or ins[at].mnemonic != "mov" or ins[at].op_str != phrase:
-            raise ValueError("Pinned native capture instruction changed: " + name)
+        if at not in ins:
+            raise ValueError("Pinned native capture instruction is undecodable: " + name)
+        decoded = f"{ins[at].mnemonic} {ins[at].op_str}".strip()
+        if decoded != phrase:
+            raise ValueError("Pinned native capture instruction changed: " + name +
+                             " (" + decoded + ")")
         src_origins = traces[src_reg]["sites"][src_site]["possible_reaching_writes"]
         unchanged = (len(src_origins) == 1 and src_origins[0]["kind"] ==
                      "incoming_register_value" and src_origins[0]["at"] is None)
