@@ -1260,3 +1260,12 @@ See `handoff/evidence_fileload_service_wrapper_slice_20261127.md`. The new Unico
 
 
 2026-11-27 CI FAILURE ANALYSIS 2: Foundation run 46022245151/job 140584543848 failed in test_native_fileload_status.py with KeyError `service_target_semantics_verified`; the report field was inadvertently dropped when adding machine-readable dispatch offsets. Restored the explicit false field. Raw log inspected. Three non-Foundation workflows for that HEAD passed with raw logs inspected; corrected HEAD CI pending.
+
+
+## 2026-11-27 — FileLoad PLT/GOT dynamic-symbol resolver (PENDING_CI)
+
+Parent HEAD: \`39fe92c5c8c45463ba3c9e34d84627480b5dbc45\`. Research pins: ModManager 2.1.2.1 tag \`502c38d3ee832509f9ee3951b7d3339826538fec\`; Toolbox 2.1.2.1 tag \`789fe96f99cdaa77f952b90b563c6e3f49b6d697\`; PyCriCodecs \`755055ee7b056c9c1aefc6505a3daa3e45e2e111\`; REA \`0386efd1e1dfa41af41f804a6be56c6f5b7615d4\`. Source hashes and the Switch main blob/hash are recorded in \`handoff/evidence_fileload_imports_20261127.md\`.
+
+Implemented a SHA-pinned analyzer for four FileLoad PLT stubs. It checks the original wrapper callsites and two pointer-dereference adapters, verifies each ADRP/LDR/ADD/BR sequence, computes the GOT slot independently from LDR and ADD, then resolves a unique original DT_RELA/DT_JMPREL record and ELF64 dynamic symbol name when possible. Slots: \`0x2142a28\`, \`0x2142a78\`, \`0x2142a80\`, \`0x2142c20\`. The output deliberately distinguishes a dynamic symbol name from the imported implementation and runtime binding.
+
+Local syntax and isolated synthetic positive/negative/boundary checks passed. Authentic original-main integration and Actions are pending. No native hook or runtime flag changed. No consumer ABI, lock concurrency, provider semantics, ownership/lifecycle, archive precedence, or Uzuy claim.

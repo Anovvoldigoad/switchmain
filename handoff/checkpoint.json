@@ -2546,5 +2546,46 @@
         "correction": "Restore service_target_semantics_verified=false in the report."
       }
     ]
+  },
+  "native_fileload_imports_20261127": {
+    "status": "pending_ci",
+    "parent_head": "39fe92c5c8c45463ba3c9e34d84627480b5dbc45",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "evidence_note": "handoff/evidence_fileload_imports_20261127.md",
+    "exact_got_slots": {
+      "thread_context_provider": {
+        "plt": "0x12f4cf0",
+        "got_slot": "0x2142a28"
+      },
+      "lock_primitive_import": {
+        "plt": "0x12f4d90",
+        "got_slot": "0x2142a78"
+      },
+      "unlock_primitive_import": {
+        "plt": "0x12f4da0",
+        "got_slot": "0x2142a80"
+      },
+      "thread_token_provider": {
+        "plt": "0x12f50e0",
+        "got_slot": "0x2142c20"
+      }
+    },
+    "local_host_synthetic_checks": "passed",
+    "authentic_main_ci": "pending",
+    "unresolved": [
+      "dynamic symbol names not yet read from authentic CI artifact",
+      "runtime import binding and implementation",
+      "thread provider semantics",
+      "mutex concurrency and lifecycle",
+      "native consumer ABI",
+      "archive precedence",
+      "Uzuy runtime"
+    ],
+    "release_flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next_action": "Inspect the four original dynamic-symbol records from the Foundation artifact; do not infer semantics or install hooks."
   }
 }

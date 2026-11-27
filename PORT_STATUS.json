@@ -1947,5 +1947,39 @@
         "correction": "Restore the explicit false report field alongside the new dispatch X0/owner/count offsets."
       }
     ]
+  },
+  "native_fileload_imports": {
+    "status": "pending_ci",
+    "parent_head": "39fe92c5c8c45463ba3c9e34d84627480b5dbc45",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "evidence_note": "handoff/evidence_fileload_imports_20261127.md",
+    "targets": {
+      "thread_context_provider": {
+        "plt": "0x12f4cf0",
+        "got_slot": "0x2142a28"
+      },
+      "lock_primitive_import": {
+        "plt": "0x12f4d90",
+        "got_slot": "0x2142a78"
+      },
+      "unlock_primitive_import": {
+        "plt": "0x12f4da0",
+        "got_slot": "0x2142a80"
+      },
+      "thread_token_provider": {
+        "plt": "0x12f50e0",
+        "got_slot": "0x2142c20"
+      }
+    },
+    "local_host_synthetic_checks": "passed",
+    "original_main_dynamic_symbol_resolution": "pending_ci",
+    "runtime_binding_verified": false,
+    "native_consumer_abi_verified": false,
+    "mutex_semantics_verified": false,
+    "concurrency_verified": false,
+    "ownership_lifecycle_async_rollback_unbind_destructor_verified": false,
+    "archive_precedence_verified": false,
+    "native_hook_added": false,
+    "next_step": "Inspect authenticated CI artifact symbol names; only pursue provider semantics if dynamic symbols and additional pinned call-site evidence agree."
   }
 }

@@ -266,3 +266,6 @@ NEXT: Inspect all four push workflow runs/jobs/raw logs for the new code HEAD, i
 
 
 2026-11-27 CI FAILURE / REPAIR 2: Foundation run 46022245151/job 140584543848 failed because native_fileload_status.py omitted service_target_semantics_verified from the report after the dispatch offset fields were added. Restored the explicit false field; raw job log inspected. The three other workflows for that HEAD passed. NEXT verify all four workflows on the corrected HEAD and inspect Foundation artifact; no consumer ABI, concurrency or Uzuy claim.
+
+
+2026-11-27 NEXT SLICE — FileLoad PLT/GOT dynamic symbol resolution. Parent HEAD \`39fe92c5c8c45463ba3c9e34d84627480b5dbc45\`. Added a SHA-pinned resolver for four PLT entries and their GOT relocation slots (\`0x2142a28\`, \`0x2142a78\`, \`0x2142a80\`, \`0x2142c20\`), including exact caller edges and the two local pointer-dereference adapters. Local synthetic checks passed; original-main CI is pending. After CI, inspect the four symbol names and decide whether provider/lock semantics can be corroborated by further pinned callers. A symbol name is not runtime binding or implementation proof. Keep consumer ABI, ownership/lifecycle, concurrency, archive precedence, and Uzuy unresolved; keep all release flags false.
