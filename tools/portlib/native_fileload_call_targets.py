@@ -722,10 +722,10 @@ def analyze_stack_register_restore(
         reason = "ENTRY_REGISTER_NOT_RESTORED_ON_ALL_RETURNS"
     elif not sp_balanced:
         reason = "SP_NOT_BALANCED_ON_ALL_RETURNS"
-    elif not sp_trusted:
-        reason = "SP_DELTA_UNVERIFIED"
     elif nested_failed:
         reason = "NESTED_CALL_STACK_EFFECT_UNPROVEN"
+    elif not sp_trusted:
+        reason = "SP_DELTA_UNVERIFIED"
     elif unknown_writes:
         reason = "UNKNOWN_MEMORY_ALIAS_STORE"
     elif protected_clobbers:
@@ -777,9 +777,9 @@ def prove_register_preservation(code, target, reg, cache=None, active=(), depth=
     """Conservatively prove one register untouched across a bounded direct callee.
 
     No platform ABI is assumed. A proof requires every reachable path to return
-    inside the bounded window, no writes to the tracked register, no indirect or
-    out-of-window exits, and recursively proven direct callees. Spill/restore
-    patterns are intentionally unresolved until their stack effects are proven.
+    inside the bounded window, no indirect or out-of-window exits, balanced SP,
+    and recursively proven register restoration plus stack-alias disjointness.
+    Spill/restore patterns are accepted only when those bounded proofs succeed.
     """
     if reg not in TRACKED:
         raise ValueError("Register-preservation proof supports only tracked X19-X28")
