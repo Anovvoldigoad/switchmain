@@ -16,6 +16,10 @@ def trace(data, start, max_states=1024):
             raise ValueError("Undecodable instruction at " + hex(start+off))
         decoded[start+off] = ins[0]
     end = start+len(data)
+    def memory_index_register(ins, operand):
+        index = getattr(operand.mem, "index", 0)
+        return ins.reg_name(index) if index else None
+
     queue = deque([(start, 0)])
     visited = set()
     at = {}
@@ -42,8 +46,11 @@ def trace(data, start, max_states=1024):
             elif delta is not None:
                 next_delta += op[2].imm * (1 if ins.mnemonic == "add" else -1)
         elif ins.writeback and any(x.type == ARM64_OP_MEM and ins.reg_name(x.mem.base) == "sp" for x in op):
-            if "]!" in ins.op_str:
-                amount = next(x.mem.disp for x in op if x.type == ARM64_OP_MEM)
+            sp_memory = [x for x in op if x.type == ARM64_OP_MEM and ins.reg_name(x.mem.base) == "sp"]
+            if len(sp_memory) != 1 or getattr(sp_memory[0].mem, "index", 0):
+                amount = None
+            elif "]!" in ins.op_str:
+                amount = sp_memory[0].mem.disp
             elif "], #" in ins.op_str and op[-1].type == ARM64_OP_IMM:
                 amount = op[-1].imm
             else:
@@ -90,13 +97,30 @@ def trace(data, start, max_states=1024):
             return widths[0]
         return None
     accesses = []
+    indexed_memory_operands = []
     for pc,values in sorted(at.items()):
         ins = decoded[pc]
         for op in ins.operands:
-            if op.type != ARM64_OP_MEM or ins.reg_name(op.mem.base) != "sp":
+            if op.type != ARM64_OP_MEM:
                 continue
-            offsets = sorted({v+op.mem.disp for v in values if v is not None})
-            ambiguous = None in values or len(offsets) != 1
+            base_register = ins.reg_name(op.mem.base)
+            index_register = memory_index_register(ins, op)
+            if index_register is not None:
+                indexed_memory_operands.append({
+                    "pc":hex(pc),"word_le":data[pc-start:pc-start+4].hex(),
+                    "base_register":base_register,"index_register":index_register,
+                    "sp_displacement":op.mem.disp,
+                    "memory_direction":"read" if ins.mnemonic.startswith("ld") else ("write" if ins.mnemonic.startswith("st") else "unknown"),
+                    "observed_sp_deltas":sorted(v for v in values if v is not None),
+                    "unknown_path":None in values,
+                    "effective_address_resolved":False,
+                    "index_value_proven":False})
+            if base_register != "sp":
+                continue
+            indexed_address = index_register is not None
+            offsets = ([] if indexed_address else
+                       sorted({v+op.mem.disp for v in values if v is not None}))
+            ambiguous = indexed_address or None in values or len(offsets) != 1
             width = byte_width(ins)
             byte_range = ([offsets[0], offsets[0]+width]
                           if not ambiguous and width is not None else None)
@@ -105,6 +129,8 @@ def trace(data, start, max_states=1024):
                             "pc":hex(pc),"word_le":data[pc-start:pc-start+4].hex(),
                             "memory_direction": "read" if ins.mnemonic.startswith("ld") else ("write" if ins.mnemonic.startswith("st") else "unknown"),
                             "sp_displacement":op.mem.disp,
+                            "index_register":index_register,
+                            "indexed_address_unresolved":indexed_address,
                             "entry_sp_relative_offsets":offsets if not ambiguous else [],
                             "path_ambiguous":ambiguous,
                             "observed_sp_deltas":sorted(v for v in values if v is not None),
@@ -183,6 +209,7 @@ def trace(data, start, max_states=1024):
                             width = byte_width(intermediate)
                             offset = aliases.get(base)
                             if (offset is None or width is None or intermediate.writeback
+                                    or getattr(mem.mem, "index", 0)
                                     or max(slot[0], offset+mem.mem.disp)
                                        < min(slot[1], offset+mem.mem.disp+width)):
                                 break
@@ -236,7 +263,9 @@ def trace(data, start, max_states=1024):
     return {"possible_stack_write_read_pairs":candidates,
             "candidate_pairs_are_not_dataflow_proof":True,
             "reachable_states":len(visited),"reachable_instructions":len(at),
-            "accesses":accesses,"call_barriers":sorted(set(barriers)),
+            "accesses":accesses,"indexed_memory_operands":indexed_memory_operands,
+            "indexed_memory_operand_count":len(indexed_memory_operands),
+            "call_barriers":sorted(set(barriers)),
             "out_of_window_edges":exits[:32],"out_of_window_edges_truncated":len(exits)>32,
             "consumer_abi_proven":False,"stack_ownership_proven":False,
             "cross_call_sp_preservation_assumed":False}

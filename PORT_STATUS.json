@@ -7,6 +7,7 @@
   "pc_mod_manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
   "pc_api_source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
   "implemented_this_change": [
+    "2026-11-27 PENDING_HEAD_CI: FileLoad SP/FP alias evidence now recognizes AArch64 register-indexed memory operands. SP+[index]+disp is not reduced to displacement-only; unresolved indexed operands are emitted in machine-readable evidence, SP-derived alias stores with an unknown index kill candidate witnesses, and writeback fails closed if an indexed SP operand is decoded. Clang 17 byte fixtures cover indexed STR/LDR pair rejection, shifted-index inventory, and an indexed store through X3=SP+32 that could alias SP+8; existing immediate-only positive controls remain. Parent 840f92aa7d6dc5b812a07c2fc8c4ae8589b58ac3. Research pins: NSC-ModManager 2.1.2.0/2.1.2.1 tags a4a6e7e2/502c38d3; Toolbox dfe371dd/789fe96f with unchanged PRM parser blobs; PyCriCodecs CPK reference 755055ee; REA 0386efd1; original main tracked blob 8af900db, expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. Host/Actions for this HEAD pending; no native ABI, ownership/lifecycle, archive precedence, or Uzuy proof. No runtime hook or release-flag change.",
     "2026-11-23 PENDING_HEAD_CI: compressed batch independent verifier now reconstructs exact deterministic literal/runs CRILAYLA bitstream for changed Event236 candidates, rejecting a valid alternate encoder even when decoded bytes and updated SHA match; three encoder modes positive and alternate negative regressions. Code commit 28c95224bc9538dae9dcba85f1e1b437c3cf5500 parent aca1be0f02b7e334768d82d2483523507ff96ecc. Prior compressed push run 45157982290 job 137635718880 COMPLETED SUCCESS raw log inspected; new HEAD CI pending. Synthetic offline only. NSC-ModManager/Toolbox 2.1.2.1 upstream release 2026-08-30; no Switch ABI inference. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Sakura aura107, Event236 marked/unmarked and three false release flags preserved. NEXT inspect compressed workflow push run/job/log for new HEAD, repair failures, then authentic consumer evidence.",
     "2026-11-23 PENDING_HEAD_CI: compressed PRM batch now preserves the exact original CRILAYLA stored bytes for unchanged Event236 members across literal/runs/auto, while changed members still encode and independently roundtrip. New mixed-member, all-encoder, no-encode and SHA regressions; synthetic offline only. Parent 40f8de7c05c193a21b7fc799b28273bf663692c0. Upstream ModManager 2.1.2.1 README blob 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709, Toolbox README blob 657f161390c4abe8afe10cea11a2b9a28e6bf6b0; generic REA evidence only; pinned original main bytes not available for rehash. No native ABI/ownership/archive precedence/Uzuy proof. Preserve Sakura aura107, Event236 variants and false release flags.",
     "2026-11-23 PENDING_HEAD_CI: ordered factory source validation now rejects unknown source kinds before applying --exclude, preventing invalid excluded source from bypassing kind validation. Regression covers excluded unknown kind; host/Actions HEAD CI not yet verified. Parent cdfbd08e7241b3118506aff161ce8318bdd3a039. This is offline factory input correctness only; no original main rehash, Switch ABI, lifecycle, archive precedence, or Uzuy proof. Preserve Sakura aura107, both Event236 forms and all three false release flags.",
@@ -1658,5 +1659,18 @@
     "code_commit": "227fd1d8e593eb3d1955a1f59b4842b688ab6b15",
     "native_consumer_verified": false,
     "emulator_tested": false
+  },
+  "last_static_evidence": {
+    "slice": "fileload_indexed_memory_alias_20261127",
+    "state": "PENDING_HEAD_CI",
+    "parent_sha": "840f92aa7d6dc5b812a07c2fc8c4ae8589b58ac3",
+    "source": "tools/portlib/native_fileload_sp_cfg.py",
+    "test": "tests/test_native_fileload_sp_cfg.py",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "consumer_abi_proven": false,
+    "stack_ownership_proven": false,
+    "gameplay_verified": false
   }
 }

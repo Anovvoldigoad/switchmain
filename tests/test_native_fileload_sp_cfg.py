@@ -139,6 +139,27 @@ def run(main,out):
     unrelated_read=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9400083,
                                         0xf94007e2,0xd65f03c0]))
     assert len(trace(unrelated_read,0x7700)["possible_stack_write_read_pairs"])==1
+    # Register-offset addresses are not displacement-only SP addresses.
+    # Words assembled with clang 17 --target=aarch64-linux-gnu:
+    # STR X1,[SP,X2]; LDR X3,[SP,X2]; LDR X4,[SP,X5,LSL #3].
+    indexed=b"".join(map(word,[0xd10043ff,0xf8226be1,0xf8626be3,0xd65f03c0]))
+    indexed_report=trace(indexed,0x8400)
+    indexed_sp=[a for a in indexed_report["accesses"] if a["pc"] in ("0x8404","0x8408")]
+    assert [a["index_register"] for a in indexed_sp]==["x2","x2"]
+    assert all(a["indexed_address_unresolved"] and a["path_ambiguous"] for a in indexed_sp)
+    assert all(a["entry_sp_relative_byte_range"] is None and
+               a["entry_sp_relative_offsets"]==[] for a in indexed_sp)
+    assert indexed_report["possible_stack_write_read_pairs"]==[]
+    assert [a["index_register"] for a in indexed_report["indexed_memory_operands"]]==["x2","x2"]
+    shifted=b"".join(map(word,[0xd10043ff,0xf8657be4,0xd65f03c0]))
+    shifted_report=trace(shifted,0x8500)
+    assert shifted_report["indexed_memory_operands"][0]["index_register"]=="x5"
+    assert shifted_report["indexed_memory_operands"][0]["effective_address_resolved"] is False
+    # An indexed store through a known SP-derived base can alias any slot:
+    # X3=SP+32 does not prove [X3,X5] is disjoint from SP+8.
+    alias_index=b"".join(map(word,[0xd10043ff,0xf90007e1,0x910083e3,
+                                    0xf8256864,0xf94007e2,0xd65f03c0]))
+    assert trace(alias_index,0x8600)["possible_stack_write_read_pairs"]==[]
     # A different load displacement must not be matched.
     different=b"".join(map(word,[0xd10043ff,0xf90007e1,0xf9400be2,0xd65f03c0]))
     assert trace(different,0x1800)["possible_stack_write_read_pairs"]==[]
