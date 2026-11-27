@@ -7,7 +7,8 @@ convention, function extent, ownership, or consumer ABI.
 import hashlib
 from collections import deque
 
-from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM, ARM64_OP_MEM, ARM64_OP_REG
+from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM
+from capstone.arm64_const import ARM64_OP_MEM, ARM64_OP_REG
 
 from .native_cpk_graph import MAIN_SHA256
 from .native_cpk_cfg import _edges

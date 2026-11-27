@@ -78,6 +78,14 @@ def run(main, output):
     raw = main.read_bytes()
     report = inspect(raw)
     assert report["original_main_sha256"] == MAIN_SHA256
+    tampered = bytearray(raw)
+    tampered[0] ^= 1
+    try:
+        inspect(bytes(tampered))
+    except ValueError as exc:
+        assert "SHA256" in str(exc)
+    else:
+        raise AssertionError("Accepted a mutated original-main image")
     expected = [
         ("0x116f43c", "0x116d3c0"),
         ("0x116f444", "0x11708d8"),
