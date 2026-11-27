@@ -239,6 +239,57 @@ def run(main,out):
     assert direct_row["register_origins"]["x19"]["reaching_definitions"][0]["pc"]=="0x6204"
     assert not direct_row["abi_register_semantics_assumed"]
     assert not direct_row["numeric_register_values_proven"]
+    # Exact MOV-immediate constants are proven with architectural W/X width.
+    constants = trace(b"".join(map(word,[
+        0x528000A1,  # mov w1, #5
+        0xd2824682,  # mov x2, #0x1234
+        0x12800003,  # mov w3, #-1
+        0x92800004,  # mov x4, #-1
+        0x529fffe5,  # mov w5, #0xffff
+        0x94000001,  # bl
+        0xd65f03c0,  # ret
+    ])),0x6500)
+    constant_row = constants["callsite_register_origins"][0]
+    assert constant_row["numeric_register_values_proven"]
+    assert constant_row["immediate_constants"]["x1"]["unsigned_value"] == 5
+    assert constant_row["immediate_constants"]["x1"]["width_bits"] == 32
+    assert constant_row["immediate_constants"]["x1"]["zero_extended_from_w"]
+    assert constant_row["immediate_constants"]["x2"]["unsigned_value"] == 0x1234
+    assert constant_row["immediate_constants"]["x2"]["width_bits"] == 64
+    assert constant_row["immediate_constants"]["x3"]["unsigned_value"] == 0xffffffff
+    assert constant_row["immediate_constants"]["x3"]["x_register_value"] == 0xffffffff
+    assert constant_row["immediate_constants"]["x4"]["unsigned_value"] == 0xffffffffffffffff
+    assert constant_row["immediate_constants"]["x5"]["unsigned_value"] == 0xffff
+    assert constant_row["abi_register_semantics_assumed"] is False
+
+    # Register-to-register MOV preserves origin metadata but is not relabeled
+    # as a direct immediate constant by this deliberately narrow pass.
+    copied_constant = trace(b"".join(map(word,[
+        0x528000A1, 0xaa0103e2, 0x94000001, 0xd65f03c0
+    ])),0x6600)["callsite_register_origins"][0]
+    assert not copied_constant["register_origins"]["x2"]["numeric_value_proven"]
+    assert copied_constant["register_origins"]["x2"]["constant_value"] is None
+    assert copied_constant["register_origins"]["x2"]["reaching_definitions"][0][
+        "source_register_origins"]["x1"][0]["immediate_constant"]["unsigned_value"] == 5
+
+    # Branch-merged immediate definitions are not collapsed to one value.
+    merged_constants = trace(b"".join(map(word,[
+        0xb4000060, 0x528000A1, 0x14000002,
+        0x528000E1, 0x94000001, 0xd65f03c0
+    ])),0x6700)["callsite_register_origins"][0]
+    assert not merged_constants["register_origins"]["x1"]["numeric_value_proven"]
+    assert merged_constants["register_origins"]["x1"]["constant_value"] is None
+    assert len(merged_constants["register_origins"]["x1"]["reaching_definitions"]) == 2
+
+    # A subsequent opaque call invalidates an earlier immediate value.
+    call_clobbered_constant = trace(b"".join(map(word,[
+        0x528000A1, 0x94000001, 0x94000001, 0xd65f03c0
+    ])),0x6800)["callsite_register_origins"]
+    second_constant_call = next(x for x in call_clobbered_constant if x["pc"]=="0x6808")
+    assert second_constant_call["register_origins"]["x1"]["call_clobbered"]
+    assert not second_constant_call["register_origins"]["x1"]["numeric_value_proven"]
+    assert second_constant_call["immediate_constants"] == {}
+
     # Two exclusive definitions merge at the callsite; neither wins by ordering.
     merged_regs = trace(b"".join(map(word,[0xb4000060,0xaa0103e0,
                                             0x14000002,0xaa0303e0,
@@ -319,12 +370,16 @@ def run(main,out):
                        for definition in row["register_origins"]["x1"]["reaching_definitions"])
                    for row in matching)
         assert all(not row["abi_register_semantics_assumed"]
-                   and not row["numeric_register_values_proven"]
+                   and row["numeric_register_values_proven"]
+                   and row["immediate_constants"]["x1"]["unsigned_value"] == 5
+                   and row["immediate_constants"]["x1"]["width_bits"] == 32
+                   and row["register_origins"]["x0"]["numeric_value_proven"] is False
                    for row in matching)
     out.mkdir(parents=True,exist_ok=True)
     (out/"native_fileload_sp_cfg.json").write_text(json.dumps(report,indent=2)+"\n")
     print("PINNED_FILELOAD_SP_CFG_PASS",report["reachable_states"],len(report["accesses"]),"NO_CONSUMER_ABI")
-    print("PINNED_FILELOAD_REGISTER_ORIGINS_PASS",len(report["indexed_register_origins"]),"NO_NUMERIC_VALUES_OR_ABI")
+    print("PINNED_FILELOAD_REGISTER_ORIGINS_PASS",len(report["indexed_register_origins"]),
+          "CALLSITE_IMMEDIATE_CONSTANTS",len(call_rows),"NO_ABI")
 if __name__=="__main__":
     p=argparse.ArgumentParser()
     p.add_argument("--main",type=Path,required=True)

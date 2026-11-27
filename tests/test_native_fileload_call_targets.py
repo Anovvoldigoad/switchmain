@@ -110,6 +110,30 @@ def run(main, output):
     assert [(x["site"], x["target"]) for x in report["pre_status_direct_calls"]] == expected
     assert len(report["target_reports"]) == 8
     assert all(x["bounded_window_not_function_extent"] for x in report["target_reports"])
+    expected_additional = [
+        ("0x116f520", "0x120661c"),
+        ("0x116f57c", "0x1215964"),
+        ("0x116f59c", "0x12164e4"),
+        ("0x116f5a8", "0x120a860"),
+        ("0x116f5c0", "0x120661c"),
+        ("0x116f5cc", "0x1216460"),
+        ("0x116f5d4", "0x1171080"),
+        ("0x116f5dc", "0x121598c"),
+        ("0x116f5e4", "0x1170550"),
+        ("0x116f5f4", "0x130b8"),
+        ("0x116f680", "0x1170930"),
+    ]
+    assert [(x["site"], x["target"])
+            for x in report["additional_reachable_direct_calls"]] == expected_additional
+    assert len(report["additional_unique_targets"]) == 9
+    assert len(report["additional_target_reports"]) == 9
+    setter = next(x for x in report["additional_target_reports"]
+                  if x["target"] == "0x120661c")
+    assert setter.get("status") != "UNRESOLVED"
+    assert setter["reachable_instructions"] > 0
+    assert len(setter["window_sha256"]) == 64
+    assert setter["bounded_window_not_function_extent"] is True
+    assert setter["preservation_proven"] is False
     assert all(not x["preservation_proven"] for x in report["target_reports"])
     assert report["register_preservation_proven"] is False
     assert report["consumer_abi_proven"] is False
@@ -122,8 +146,9 @@ def run(main, output):
         json.dumps(report, indent=2) + "\n"
     )
     print("PINNED_FILELOAD_DIRECT_CALLEE_INVENTORY_PASS",
-          len(report["pre_status_direct_calls"]), "calls",
-          len(report["unique_pre_status_targets"]), "targets",
+          len(report["pre_status_direct_calls"]), "pre-status calls",
+          len(report["additional_reachable_direct_calls"]), "additional calls",
+          len(report["additional_target_reports"]), "additional target windows",
           "NO_ABI_NO_OWNERSHIP")
 
 

@@ -83,6 +83,27 @@ def trace(data, start, max_states=1024):
             if 0 <= number <= 30:
                 return "x" + str(number)
         return None
+    def immediate_constant(ins):
+        """Exact MOV-immediate value only; no arithmetic or ABI propagation."""
+        if ins.mnemonic != "mov" or len(ins.operands) != 2:
+            return None
+        destination, source = ins.operands
+        if destination.type != ARM64_OP_REG or source.type != ARM64_OP_IMM:
+            return None
+        register = ins.reg_name(destination.reg)
+        if (not register.startswith(("w", "x"))
+                or not register[1:].isdigit()):
+            return None
+        width_bits = 32 if register.startswith("w") else 64
+        value = source.imm & ((1 << width_bits) - 1)
+        return {
+            "register": register,
+            "width_bits": width_bits,
+            "unsigned_value": value,
+            "hex": f"0x{value:0{width_bits // 4}x}",
+            "x_register_value": value,
+            "zero_extended_from_w": width_bits == 32,
+        }
     def register_origin_flow():
         # Track reaching definitions, not values or ABI-preserved registers.
         initial = {name: frozenset({("entry",)}) for name in gpr_names}
@@ -136,10 +157,14 @@ def trace(data, start, max_states=1024):
             return {"kind": "call_boundary", "pc": hex(token[1])}
         def_pc, def_delta = token[1], token[2]
         ins = decoded[def_pc]
-        return {"kind": "instruction_definition", "pc": hex(def_pc),
-                "sp_delta_before": def_delta,
-                "word_le": data[def_pc-start:def_pc-start+4].hex(),
-                "mnemonic": ins.mnemonic, "operands": ins.op_str}
+        summary = {"kind": "instruction_definition", "pc": hex(def_pc),
+                   "sp_delta_before": def_delta,
+                   "word_le": data[def_pc-start:def_pc-start+4].hex(),
+                   "mnemonic": ins.mnemonic, "operands": ins.op_str}
+        constant = immediate_constant(ins)
+        if constant is not None:
+            summary["immediate_constant"] = constant
+        return summary
     def detailed_origin(token):
         summary = origin_token_summary(token)
         if token[0] != "def":
@@ -162,12 +187,16 @@ def trace(data, start, max_states=1024):
         values = (register_origins.get(state, {}).get(name, frozenset())
                   if name is not None else frozenset())
         ordered = sorted(values, key=repr)
+        definitions = [detailed_origin(value) for value in ordered]
+        constant = (definitions[0].get("immediate_constant")
+                    if len(definitions) == 1 else None)
         return {"register": register,
-                "reaching_definitions": [detailed_origin(value) for value in ordered],
+                "reaching_definitions": definitions,
                 "single_reaching_definition": len(ordered) == 1,
                 "entry_value_only": values == frozenset({("entry",)}),
                 "call_clobbered": any(value[0] == "call" for value in values),
-                "numeric_value_proven": False}
+                "constant_value": constant,
+                "numeric_value_proven": constant is not None}
     def byte_width(ins):
         """Width of a recognized single/pair stack transfer; unknown is not proof."""
         if not (ins.mnemonic.startswith("ld") or ins.mnemonic.startswith("st")):
@@ -263,6 +292,15 @@ def trace(data, start, max_states=1024):
             continue
         direct_targets = sorted({hex(target) for kind, target in call_edges
                                  if kind == "call" and target is not None})
+        register_rows = {
+            name: register_evidence(state, name)
+            for name in callsite_register_names
+        }
+        immediate_constants = {
+            name: evidence["constant_value"]
+            for name, evidence in register_rows.items()
+            if evidence["numeric_value_proven"]
+        }
         callsite_register_origins.append({
             "pc": hex(pc),
             "word_le": data[pc-start:pc-start+4].hex(),
@@ -272,12 +310,10 @@ def trace(data, start, max_states=1024):
             "direct_targets": direct_targets,
             "target_unresolved": not bool(direct_targets),
             "sp_delta_before_call": delta,
-            "register_origins": {
-                name: register_evidence(state, name)
-                for name in callsite_register_names
-            },
+            "register_origins": register_rows,
+            "immediate_constants": immediate_constants,
             "abi_register_semantics_assumed": False,
-            "numeric_register_values_proven": False
+            "numeric_register_values_proven": bool(immediate_constants)
         })
     access_by_pc = {int(a["pc"],16): a for a in accesses}
     def advance_aliases(state, aliases):

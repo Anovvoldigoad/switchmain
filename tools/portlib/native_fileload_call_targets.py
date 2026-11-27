@@ -228,6 +228,27 @@ def inspect(nso):
     for target in targets:
         end = min(target + CALLEE_SPAN, len(code) & ~3)
         reports.append(analyze_window(code, target, end))
+    last_prefix_site = max(int(x["site"], 16) for x in prefix)
+    additional_calls = [x for x in calls
+                        if int(x["site"], 16) > last_prefix_site]
+    additional_targets = sorted(
+        {int(x["target"], 16) for x in additional_calls} - set(targets)
+    )
+    additional_reports = []
+    for target in additional_targets:
+        end = min(target + CALLEE_SPAN, len(code) & ~3)
+        try:
+            additional_reports.append(analyze_window(code, target, end))
+        except ValueError as exc:
+            # A direct BL target which cannot be decoded stays explicit and
+            # unresolved; it is never silently omitted from the call graph.
+            additional_reports.append({
+                "target": hex(target),
+                "status": "UNRESOLVED",
+                "reason": str(exc),
+                "bounded_window_not_function_extent": True,
+                "preservation_proven": False,
+            })
     return {
         "status": "PINNED_FILELOAD_DIRECT_CALLEE_REGISTER_EFFECT_INVENTORY_STATIC_ONLY",
         "original_main_sha256": digest,
@@ -237,6 +258,9 @@ def inspect(nso):
         "all_reachable_direct_calls": calls,
         "unique_pre_status_targets": [hex(x) for x in targets],
         "target_reports": reports,
+        "additional_reachable_direct_calls": additional_calls,
+        "additional_unique_targets": [hex(x) for x in additional_targets],
+        "additional_target_reports": additional_reports,
         "call_target_windows_are_not_function_boundaries": True,
         "register_preservation_proven": False,
         "consumer_abi_proven": False,
