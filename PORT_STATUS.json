@@ -1093,8 +1093,8 @@
     "reason": "test_pc_native_pack.py negatives counter referenced before assignment",
     "new_commit_ci": "PENDING"
   },
-  "latest_pending_code_commit": "b58222f63414caf0dcb47a25add4d18dad434d70",
-  "latest_pending_ci": "Run 46057774996 Foundation failed at job 140704341842 step 42 in synthetic_x19_stack_restore (AssertionError at preservation_proven); factory 46057774990/job 140704342069, compressed 46057775108/job 140704342091, MovesetPlus 46057774991/job 140704342005 completed success with raw logs read. Root-cause detail pending diagnostic rerun.",
+  "latest_pending_code_commit": "7255d7b9e923df8857208c9b193a44e472a15e13",
+  "latest_pending_ci": "Foundation diagnostic run 46058304370/job 140706108304 reproduced the synthetic failure: STP/LDP memory operands and SP delta were present, but no save/restore slots were recorded. Capstone 5.0.6 exposes LR/FP register aliases; reg_width rejected 'lr'. Fix adds 8-byte width for fp/lr and removes diagnostic print. Companion workflow logs are pending final verification.",
   "multi_mod_pc_source_path_ownership_guard": "OFFLINE_ONLY_PENDING_CI_NO_ENGINE_ARCHIVE_PRECEDENCE",
   "crilayla_total_output_limit": {
     "status": "pending_ci",
@@ -2210,7 +2210,7 @@
     "artifact_file_sha256": "28892246edbb718743c1f8bd4ea43d28086f7a65453ab41221aa6725fd57d3fd"
   },
   "native_fileload_x19_stack_restore_20261128": {
-    "state": "FAILED_CI_TEST",
+    "state": "FIXED_PENDING_CI",
     "parent_sha": "ace04f5ea7a8a21b9a625eb69fdce3d95eb767e6",
     "source": "tools/portlib/native_fileload_call_targets.py",
     "test": "tests/test_native_fileload_inbound_args.py",
@@ -2235,34 +2235,23 @@
     "archive_precedence_verified": false,
     "uzuy_verified": false,
     "ci_runs": {
-      "foundation": {
+      "initial_foundation": {
         "run_id": 46057774996,
         "job_id": 140704341842,
         "conclusion": "failure",
-        "failed_step": 42,
-        "failed_step_name": "Trace original FileLoad caller X1/X2 argument origins without ownership claims",
-        "failure": "synthetic_x19_stack_restore: report[preservation_proven] is not True"
-      },
-      "factory": {
-        "run_id": 46057774990,
-        "job_id": 140704342069,
-        "conclusion": "success",
         "raw_job_log_inspected": true
       },
-      "compressed_candidate": {
-        "run_id": 46057775108,
-        "job_id": 140704342091,
-        "conclusion": "success",
-        "raw_job_log_inspected": true
-      },
-      "moveset_plus": {
-        "run_id": 46057774991,
-        "job_id": 140704342005,
-        "conclusion": "success",
-        "raw_job_log_inspected": true
+      "diagnostic": {
+        "run_id": 46058304370,
+        "job_id": 140706108304,
+        "conclusion": "failure",
+        "raw_job_log_inspected": true,
+        "failed_step": 42
       }
     },
     "raw_job_logs_inspected": true,
-    "next": "Read the synthetic good report emitted by the diagnostic rerun; correct SP writeback/effective-address decoding before retrying Foundation. Do not relax X19 call barrier."
+    "next": "Run fixed code through all four push workflows, inspect raw logs and Foundation artifact. Keep authentic X19 call barrier unless nested call stack effects are proven.",
+    "diagnostic": "STP/LDP SP writeback and return SP delta were decoded correctly, but pair save/restore sites were empty because reg_width rejected Capstone alias lr for X30.",
+    "fix": "reg_width now accepts fp/lr as 8-byte aliases; temporary diagnostic print removed."
   }
 }

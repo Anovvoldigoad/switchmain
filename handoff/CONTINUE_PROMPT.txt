@@ -287,3 +287,6 @@ NEXT: Inspect all four push workflow runs/jobs/raw logs for the new code HEAD, i
 
 
 2026-11-28 FAILED_CI — commit b58222f63414caf0dcb47a25add4d18dad434d70: Foundation run 46057774996/job 140704341842 failed step 42 on the first synthetic exact X19 STP/MOV/LDP positive assertion; factory 46057774990/job 140704342069, compressed 46057775108/job 140704342091, MovesetPlus 46057774991/job 140704342005 succeeded. Raw logs read. Test now prints the complete synthetic proof JSON before asserting. Inspect that report, fix the actual addressing/writeback issue, rerun push CI, and keep 0x116f280 -> 0x120a6c8 as a barrier until proven. Do not claim runtime ABI or Uzuy.
+
+
+2026-11-28 FIXED_PENDING_CI — Diagnostic Foundation run 46058304370/job 140706108304 raw log identified the bug: Capstone 5.0.6 exposed the saved/restored X30 operand as alias lr; reg_width rejected lr, so no STP/LDP slot was recorded. Fix accepts fp/lr as 8-byte aliases and removes temporary debug output. New code/test HEAD pending all four push workflows. Keep 0x116f280 -> 0x120a6c8 as a barrier unless authentic stack/call/alias proof succeeds.

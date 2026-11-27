@@ -35,3 +35,10 @@ The new analyzer is a read-only static proof over the SHA-pinned original main p
 No pointer type, object identity, allocation, ownership/lifetime, destructor, callback, async completion, rollback, unbind, imported runtime provider, archive precedence, nine-parser native consumer ABI, or Uzuy gameplay is established. No hook or game byte is changed. Sakura aura107 and both Event236 variants are untouched. All three release flags remain false.
 
 Initial state for this commit: PENDING_CI. Inspect the Foundation raw job log and artifact, plus all other push workflow logs, before updating status to CI-verified.
+
+
+## Capstone 5.0.6 diagnostic and correction
+
+- Foundation run 46058304370, job 140706108304, step 42 failed the first synthetic positive. The raw log showed the decoder correctly saw stp x30, x19, [sp, #-0x10]! at 0x0 and ldp x30, x19, [sp], #0x10 at 0x8; SP returned to delta 0 with trusted state, but no save/restore sites were recorded.
+- The repo pins Capstone 5.0.6 in tests/requirements.txt. Its register-name API uses the architectural aliases lr and fp for X30 and X29. The new width decoder accepted only xN/wN, so the first pair transfer returned unresolved and the X19 slot was never created. The correction accepts fp/lr as 8-byte registers; the synthetic positive still checks exact slot entry SP - 8, and negative tests still cover overwrite, wrong destination, nested calls, unknown aliases, branch clobber and unbalanced SP.
+- This correction does not prove Switch X19 preservation. Nested calls still invalidate SP trust and retain the call barrier.

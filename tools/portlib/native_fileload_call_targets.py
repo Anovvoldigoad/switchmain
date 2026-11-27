@@ -231,6 +231,8 @@ def analyze_stack_register_restore(code, start, end, reg, max_states=4096):
         raise ValueError("Stack-restore target is not a decoded instruction")
 
     def reg_width(name):
+        if name in ("fp", "lr"):
+            return 8
         if name.startswith("x") and name[1:].isdigit():
             return 8
         if name.startswith("w") and name[1:].isdigit():
