@@ -2782,7 +2782,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Inspect the new direct-call/BR X2 dispatch-flow slice on this HEAD: all four push workflows, raw logs, and Foundation artifact. If it passes, use its bounded traces to choose one exact next target; do not infer callback/vtable/destructor or install a hook.",
+  "next_action": "Trace exact nested direct-call targets 0x12f3690, 0x290, 0x12f36a0 and 0x12155a0 plus alternate branch 0x12f49b0. First inspect exact callsites and symbols/relocations; keep BR X2 unresolved and do not install a runtime hook.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -4505,34 +4505,34 @@
     },
     "next": "Prove exact stack slot save/restore for 0x120a6c8 and other X19-writing direct callees; require all-return path proof and explicit SP delta; retain barriers otherwise. Do not infer AAPCS64, pointer type, ownership or ABI."
   },
-  "latest_verified_code_commit": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
+  "latest_verified_code_commit": "9c06a6bba6d5c69f49107ce3094cbee614d4f5df",
   "latest_verified_ci_runs": [
     {
       "name": "foundation",
-      "run_id": 46082949640,
-      "job_id": 140785901176,
+      "run_id": 46083883814,
+      "job_id": 140788864287,
       "conclusion": "success",
       "raw_log_inspected": true,
-      "artifact_id": 15238645422
+      "artifact_id": 15238396702
     },
     {
       "name": "factory",
-      "run_id": 46082949657,
-      "job_id": 140785901415,
+      "run_id": 46083883804,
+      "job_id": 140788864137,
       "conclusion": "success",
       "raw_log_inspected": true
     },
     {
       "name": "compressed_prm",
-      "run_id": 46082949728,
-      "job_id": 140785901575,
+      "run_id": 46083883928,
+      "job_id": 140788864729,
       "conclusion": "success",
       "raw_log_inspected": true
     },
     {
       "name": "movesetplus",
-      "run_id": 46082949502,
-      "job_id": 140785901019,
+      "run_id": 46083883860,
+      "job_id": 140788864262,
       "conclusion": "success",
       "raw_log_inspected": true
     }
@@ -4712,37 +4712,37 @@
     "uzuy_verified": false,
     "next": "Continue from 0x116b698 and nested 0x116b6c0 -> 0x116b7b0. Prove exact pointer/stack alias provenance for X1/X19 and each unknown store; investigate 0x12f3690/0x12f36a0 bounded control-flow exits without assuming function extent. Keep 0x116f280 -> 0x120a6c8 as a call barrier until every nested stack/alias condition is proven."
   },
-  "latest_verified_code_parent": "a859b4454fe7f8b1b18c5930bba38c483e7b7b6c",
+  "latest_verified_code_parent": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
   "latest_verified_code_ci": {
-    "head": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
-    "parent": "a859b4454fe7f8b1b18c5930bba38c483e7b7b6c",
+    "head": "9c06a6bba6d5c69f49107ce3094cbee614d4f5df",
+    "parent": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
     "workflows": [
       {
         "name": "foundation",
-        "run_id": 46082949640,
-        "job_id": 140785901176,
+        "run_id": 46083883814,
+        "job_id": 140788864287,
         "conclusion": "success",
         "raw_log_inspected": true,
-        "artifact_id": 15238645422
+        "artifact_id": 15238396702
       },
       {
         "name": "factory",
-        "run_id": 46082949657,
-        "job_id": 140785901415,
+        "run_id": 46083883804,
+        "job_id": 140788864137,
         "conclusion": "success",
         "raw_log_inspected": true
       },
       {
         "name": "compressed_prm",
-        "run_id": 46082949728,
-        "job_id": 140785901575,
+        "run_id": 46083883928,
+        "job_id": 140788864729,
         "conclusion": "success",
         "raw_log_inspected": true
       },
       {
         "name": "movesetplus",
-        "run_id": 46082949502,
-        "job_id": 140785901019,
+        "run_id": 46083883860,
+        "job_id": 140788864262,
         "conclusion": "success",
         "raw_log_inspected": true
       }
@@ -4750,11 +4750,10 @@
     "all_completed_success": true,
     "raw_job_logs_inspected": true,
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-    "foundation_artifact_id": 15238645422,
-    "foundation_artifact_size_bytes": 513005,
-    "foundation_artifact_zip_sha256": "0fd7633194afc59e31548bf8767ce2651776b79f2388fb3248d7695853512ed8",
-    "registration_callee_json_sha256": "2977741b1f6763aa3e80444607362c1f0429c2aa2bde486f071220e190b0103c",
-    "callee_window_sha256": "0c12e8360c74f94b501046964810bf996668d938fabcc87a93dd34e70a7afd55",
+    "foundation_artifact_id": 15238396702,
+    "foundation_artifact_size_bytes": 520490,
+    "foundation_artifact_zip_sha256": "d33b8fdc4bb728a9d1c7337674a87e6777dcd1a69e4752e36d6f08c51659966c",
+    "dispatch_json_sha256": "f2eed43777e1679e2948f0a43ef02c0022ac623586997545573c12949214ab1a",
     "host_static_test_pass": true,
     "emulated_arm64_for_new_analyzer": false,
     "uzuy_runtime_tested": false
@@ -5379,7 +5378,7 @@
     }
   },
   "native_fileload_registration_dispatch_20261128": {
-    "state": "PENDING_CI",
+    "state": "VERIFIED_CI_STATIC_ONLY",
     "parent_sha": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
     "source": "tools/portlib/native_fileload_registration_dispatch.py",
     "source_blob": "c8897caaacebb6d96eca351bcf775cd5cd468434",
@@ -5412,6 +5411,159 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Run all four direct push workflows for this HEAD, inspect raw logs and Foundation artifact. Keep BR X2 unresolved and add no hook."
+    "next": "Trace only the exact nested direct-call targets 0x12f3690, 0x290, 0x12f36a0 and 0x12155a0 plus alternate branch 0x12f49b0; keep BR X2 unresolved unless an exact relocation/symbol proves it.",
+    "code_commit": "9c06a6bba6d5c69f49107ce3094cbee614d4f5df",
+    "ci": {
+      "head": "9c06a6bba6d5c69f49107ce3094cbee614d4f5df",
+      "parent": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
+      "workflows": [
+        {
+          "name": "foundation",
+          "run_id": 46083883814,
+          "job_id": 140788864287,
+          "conclusion": "success",
+          "raw_log_inspected": true,
+          "artifact_id": 15238396702
+        },
+        {
+          "name": "factory",
+          "run_id": 46083883804,
+          "job_id": 140788864137,
+          "conclusion": "success",
+          "raw_log_inspected": true
+        },
+        {
+          "name": "compressed_prm",
+          "run_id": 46083883928,
+          "job_id": 140788864729,
+          "conclusion": "success",
+          "raw_log_inspected": true
+        },
+        {
+          "name": "movesetplus",
+          "run_id": 46083883860,
+          "job_id": 140788864262,
+          "conclusion": "success",
+          "raw_log_inspected": true
+        }
+      ],
+      "all_completed_success": true,
+      "raw_job_logs_inspected": true,
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "foundation_artifact_id": 15238396702,
+      "foundation_artifact_size_bytes": 520490,
+      "foundation_artifact_zip_sha256": "d33b8fdc4bb728a9d1c7337674a87e6777dcd1a69e4752e36d6f08c51659966c",
+      "dispatch_json_sha256": "f2eed43777e1679e2948f0a43ef02c0022ac623586997545573c12949214ab1a",
+      "host_static_test_pass": true,
+      "emulated_arm64_for_new_analyzer": false,
+      "uzuy_runtime_tested": false
+    },
+    "observations": {
+      "callee_target": "0x116b390",
+      "callee_window_sha256": "0c12e8360c74f94b501046964810bf996668d938fabcc87a93dd34e70a7afd55",
+      "entry_x0_to_x19_site": "0x116b398",
+      "direct_call_sequence": [
+        {
+          "site": "0x116b39c",
+          "target": "0x116b7b0"
+        },
+        {
+          "site": "0x116b3a4",
+          "target": "0x116d380"
+        },
+        {
+          "site": "0x116b3b0",
+          "target": "0x116b82c"
+        }
+      ],
+      "x8_load": {
+        "site": "0x116b3bc",
+        "base": "x0",
+        "displacement": 0
+      },
+      "x2_load": {
+        "site": "0x116b3c4",
+        "base": "x8",
+        "displacement": 88
+      },
+      "indirect_tail_branch": {
+        "site": "0x116b3d0",
+        "register": "x2",
+        "target_resolved": false
+      },
+      "x1_source": {
+        "site": "0x116b3c0",
+        "register": "x19"
+      },
+      "conditional_paths": [
+        {
+          "site": "0x116b3b4",
+          "condition": "CBZ X19",
+          "target": "0x116b3d4"
+        },
+        {
+          "site": "0x116b3b8",
+          "condition": "CBZ X0",
+          "target": "0x116b3e0"
+        }
+      ],
+      "alternate_branch": {
+        "site": "0x116b3ec",
+        "target": "0x116d820"
+      },
+      "observed_stack_frame_bytes": 32,
+      "bounded_target_traces": {
+        "0x116b7b0": {
+          "window_sha256": "1708f9d926faec286e9e8e54ec5e47cbcf893c21e9b77a79cd087e93ce27269f",
+          "reachable": 31,
+          "returns": [
+            "0x116b7d0",
+            "0x116b828"
+          ],
+          "direct_calls": [
+            "0x12f3690",
+            "0x290",
+            "0x12f36a0"
+          ],
+          "inbound_candidates": 68
+        },
+        "0x116d380": {
+          "window_sha256": "e6851fc84addca8a3e47e395dc7ec111d8b8fb9f225c50e48291074f93518e08",
+          "reachable": 15,
+          "returns": [
+            "0x116d3b8"
+          ],
+          "direct_calls": [],
+          "inbound_candidates": 104
+        },
+        "0x116b82c": {
+          "window_sha256": "6ee694349865c253b3e056bddddf6ff7005f05e274a295f274c9f35b79d4258a",
+          "reachable": 18,
+          "returns": [
+            "0x116b858",
+            "0x116b870"
+          ],
+          "direct_calls": [
+            "0x12155a0"
+          ],
+          "inbound_candidates": 26
+        },
+        "0x116d820": {
+          "window_sha256": "471d009788dafcda76e1a826dea37acc6cb619e141d792243e17c3abffda2159",
+          "reachable": 6,
+          "returns": [
+            "0x116d834"
+          ],
+          "direct_calls": [],
+          "inbound_candidates": 145
+        }
+      },
+      "callback_identity_verified": false,
+      "vtable_identity_verified": false,
+      "destructor_identity_verified": false,
+      "ownership_lifecycle_verified": false,
+      "native_consumer_abi_verified": false,
+      "archive_precedence_verified": false
+    }
   }
 }

@@ -1368,3 +1368,13 @@ All four direct push workflows on this code HEAD completed SUCCESS and raw job l
 ## 2026-11-28 — FileLoad registration callee dispatch-flow trace (PENDING_CI)
 
 New source tools/portlib/native_fileload_registration_dispatch.py and test tests/test_native_fileload_registration_dispatch.py validate the exact X0->X19 move, three direct calls, CBZ exits, 0x20 stack save/restore, X8<-*[X0], X2<-*[X8+0x58], X1<-X19 and indirect BR X2 at 0x116b3d0. The analyzer records four bounded 0x100-byte target windows for 0x116b7b0, 0x116d380, 0x116b82c and 0x116d820. It does not resolve the BR X2 target or identify a callback, vtable, destructor, object type, ownership/lifecycle, lock/unlock, async, rollback/unbind, ABI, archive precedence or Uzuy behavior. No hook. Parent HEAD dffbf1bd2fc5257a72279186545bbd8d956ab0fe; CI pending.
+
+## 2026-11-28 — FileLoad registration callee dispatch flow (VERIFIED_CI_STATIC_ONLY)
+
+Code commit 9c06a6bba6d5c69f49107ce3094cbee614d4f5df (parent dffbf1bd2fc5257a72279186545bbd8d956ab0fe). The original-main SHA256 guard passed. The analyzer verified X19<-X0 at 0x116b398; BL edges 0x116b39c->0x116b7b0, 0x116b3a4->0x116d380 and 0x116b3b0->0x116b82c; X8<-*[X0] at 0x116b3bc; X2<-*[X8+0x58] at 0x116b3c4; X1<-X19 at 0x116b3c0; and BR X2 at 0x116b3d0. CBZ X19 branches to 0x116b3d4; CBZ X0 branches to 0x116b3e0; alternate B at 0x116b3ec targets 0x116d820. Local stack save/restore spans 0x20 bytes.
+
+Four bounded 0x100-byte windows: 0x116b7b0 (31 reachable, RET at 0x116b7d0/0x116b828, direct calls to 0x12f3690, 0x290 and 0x12f36a0); 0x116d380 (15 reachable, RET 0x116d3b8, no direct calls); 0x116b82c (18 reachable, RET 0x116b858/0x116b870, direct call 0x116b864->0x12155a0); 0x116d820 (6 reachable, RET 0x116d834, no direct calls). These are bounded code windows, not full function extents. BR X2 remains unresolved.
+
+All four direct push workflows on code HEAD 9c06a6bba6d5c69f49107ce3094cbee614d4f5df completed SUCCESS and raw job logs were inspected: Foundation 46083883814/job 140788864287; Factory 46083883804/job 140788864137; Compressed PRM 46083883928/job 140788864729; MovesetPlus 46083883860/job 140788864262. Foundation marker PINNED_FILELOAD_REGISTRATION_DISPATCH_PASS targets 4 indirect_branch 0x116b3d0 NO_CALLBACK_NO_DESTRUCTOR_NO_ABI_CLAIM. Artifact 15238396702 (520490 bytes), ZIP SHA256 d33b8fdc4bb728a9d1c7337674a87e6777dcd1a69e4752e36d6f08c51659966c; dispatch JSON SHA256 f2eed43777e1679e2948f0a43ef02c0022ac623586997545573c12949214ab1a. Static/host only; no new ARM64 execution or Uzuy test. Release flags remain false.
+
+Next exact targets to inspect are 0x12f3690, 0x290, 0x12f36a0, 0x12155a0 and alternate branch 0x12f49b0; do not infer lock/unlock or callback semantics from addresses alone.

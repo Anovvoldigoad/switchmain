@@ -106,7 +106,7 @@
     "2026-11-28 FIXED_PENDING_CI: Foundation run 46076828184/job 140766410479 exposed that Capstone 5.0.6 Arm64Op has no .size. The analyzer now derives only explicit AArch64 memory widths from mnemonic/data-register class and leaves ambiguous widths null; tests add W, byte, register-pair and signed-word cases. Other three workflows on c62ff2e passed. Rerun Foundation and all push workflows before promotion.",
     "2026-11-28 VERIFIED_CI_STATIC_ONLY: The registration pointer cell 0x215d2b0's single DT_RELA R_AARCH64_RELATIVE addend resolves to text offset 0x116b888. Bounded CFG on original main SHA reached 33 words, one direct call 0x116b8a4 -> 0x116b390, return 0x116b908, no indirect call/terminator or out-of-window edge; it loops 64 pointer-sized entries from 0x4371800 and clears a 0x200-byte table. Artifact 15234858334, JSON SHA256 7f70068c..., all four push workflows success and raw logs inspected. Callback/destructor/ABI/ownership still NOT proven.",
     "2026-11-28 VERIFIED_CI_STATIC_ONLY: SHA-pinned FileLoad registration callee trace at 0x116b390 passed on code HEAD dffbf1bd2fc5257a72279186545bbd8d956ab0fe. Caller load 0x116b8a0 and BL 0x116b8a4 were verified against original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. The 0x200-byte callee window reached 24 instructions, one RET, three direct-call barriers, one BR X2 at 0x116b3d0, one out-of-window B to 0x116d820 and 114 raw aligned B/BL inbound candidates (not a function/call count). All four direct push workflows completed SUCCESS; raw logs inspected. Foundation artifact 15238645422, ZIP SHA256 0fd7633194afc59e31548bf8767ce2651776b79f2388fb3248d7695853512ed8; report JSON SHA256 2977741b1f6763aa3e80444607362c1f0429c2aa2bde486f071220e190b0103c; callee window SHA256 0c12e8360c74f94b501046964810bf996668d938fabcc87a93dd34e70a7afd55. Static/host only; no callback/destructor/object type/ownership/lock/async/rollback/unbind/ABI/archive precedence or Uzuy proof. No hook; release flags remain false.",
-    "2026-11-28 PENDING_CI: Added a byte-pinned dispatch-flow proof for the 0x116b390 registration callee. It validates X0->X19, three direct-call edges, conditional exits, 0x20 stack frame, X8<-*[X0], X2<-*[X8+0x58], X1<-X19 and BR X2 at 0x116b3d0, then traces four bounded 0x100-byte targets. Synthetic boundary and original-main SHA tests added. BR X2 target, callback/vtable/destructor identity, object type, ownership, lock/unlock, async, rollback/unbind, native ABI and archive precedence remain unresolved. Parent HEAD dffbf1bd2fc5257a72279186545bbd8d956ab0fe; CI pending."
+    "2026-11-28 VERIFIED_CI_STATIC_ONLY: Dispatch-flow trace of the pinned 0x116b390 FileLoad callee passed on code HEAD 9c06a6bba6d5c69f49107ce3094cbee614d4f5df. It proves the local instruction chain X19<-X0; three direct calls; X8<-*[X0]; X2<-*[X8+0x58]; X1<-X19; and BR X2 at 0x116b3d0, plus CBZ exits and a 0x20-byte stack frame. Four 0x100-byte target windows were traced: 0x116b7b0 (31 reachable, 3 direct calls), 0x116d380 (15, no calls), 0x116b82c (18, one direct call to 0x12155a0), 0x116d820 (6, no calls). All four direct push workflows completed SUCCESS and raw logs were inspected. Foundation marker PINNED_FILELOAD_REGISTRATION_DISPATCH_PASS targets 4; artifact 15238396702 ZIP SHA256 d33b8fdc4bb728a9d1c7337674a87e6777dcd1a69e4752e36d6f08c51659966c; report JSON SHA256 f2eed43777e1679e2948f0a43ef02c0022ac623586997545573c12949214ab1a. BR X2 target, callback/vtable/destructor identity, object type, ownership, lock/unlock, async, rollback/unbind, ABI and archive precedence remain unproven. Static/host only; no Uzuy/new-analyzer ARM64. No hook; flags false."
   ],
   "blocking_gaps": [
     "At FileLoad caller 0x116f280 -> 0x120a6c8, local X19 save/restore at entry-SP-8 is proven but recursive SP trust remains false. The 0x116b7b0 child has two relocation-backed __cxa_guard imports and a bounded 0x290 registration-helper candidate; exact guard/object BSS addresses and explicit store ranges are pending CI. Opaque import side effects, helper table target/callback identity, other unknown X0 stores, consumer ABI, ownership/lifecycle and archive precedence remain unresolved; do not relax the call barrier.",
@@ -2705,7 +2705,7 @@
     }
   },
   "native_fileload_registration_dispatch_20261128": {
-    "state": "PENDING_CI",
+    "state": "VERIFIED_CI_STATIC_ONLY",
     "parent_sha": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
     "source": "tools/portlib/native_fileload_registration_dispatch.py",
     "source_blob": "c8897caaacebb6d96eca351bcf775cd5cd468434",
@@ -2738,6 +2738,159 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Run all four direct push workflows for this HEAD, inspect raw logs and Foundation artifact. Keep BR X2 unresolved and add no hook."
+    "next": "Trace only the exact nested direct-call targets 0x12f3690, 0x290, 0x12f36a0 and 0x12155a0 plus alternate branch 0x12f49b0; keep BR X2 unresolved unless an exact relocation/symbol proves it.",
+    "code_commit": "9c06a6bba6d5c69f49107ce3094cbee614d4f5df",
+    "ci": {
+      "head": "9c06a6bba6d5c69f49107ce3094cbee614d4f5df",
+      "parent": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
+      "workflows": [
+        {
+          "name": "foundation",
+          "run_id": 46083883814,
+          "job_id": 140788864287,
+          "conclusion": "success",
+          "raw_log_inspected": true,
+          "artifact_id": 15238396702
+        },
+        {
+          "name": "factory",
+          "run_id": 46083883804,
+          "job_id": 140788864137,
+          "conclusion": "success",
+          "raw_log_inspected": true
+        },
+        {
+          "name": "compressed_prm",
+          "run_id": 46083883928,
+          "job_id": 140788864729,
+          "conclusion": "success",
+          "raw_log_inspected": true
+        },
+        {
+          "name": "movesetplus",
+          "run_id": 46083883860,
+          "job_id": 140788864262,
+          "conclusion": "success",
+          "raw_log_inspected": true
+        }
+      ],
+      "all_completed_success": true,
+      "raw_job_logs_inspected": true,
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "foundation_artifact_id": 15238396702,
+      "foundation_artifact_size_bytes": 520490,
+      "foundation_artifact_zip_sha256": "d33b8fdc4bb728a9d1c7337674a87e6777dcd1a69e4752e36d6f08c51659966c",
+      "dispatch_json_sha256": "f2eed43777e1679e2948f0a43ef02c0022ac623586997545573c12949214ab1a",
+      "host_static_test_pass": true,
+      "emulated_arm64_for_new_analyzer": false,
+      "uzuy_runtime_tested": false
+    },
+    "observations": {
+      "callee_target": "0x116b390",
+      "callee_window_sha256": "0c12e8360c74f94b501046964810bf996668d938fabcc87a93dd34e70a7afd55",
+      "entry_x0_to_x19_site": "0x116b398",
+      "direct_call_sequence": [
+        {
+          "site": "0x116b39c",
+          "target": "0x116b7b0"
+        },
+        {
+          "site": "0x116b3a4",
+          "target": "0x116d380"
+        },
+        {
+          "site": "0x116b3b0",
+          "target": "0x116b82c"
+        }
+      ],
+      "x8_load": {
+        "site": "0x116b3bc",
+        "base": "x0",
+        "displacement": 0
+      },
+      "x2_load": {
+        "site": "0x116b3c4",
+        "base": "x8",
+        "displacement": 88
+      },
+      "indirect_tail_branch": {
+        "site": "0x116b3d0",
+        "register": "x2",
+        "target_resolved": false
+      },
+      "x1_source": {
+        "site": "0x116b3c0",
+        "register": "x19"
+      },
+      "conditional_paths": [
+        {
+          "site": "0x116b3b4",
+          "condition": "CBZ X19",
+          "target": "0x116b3d4"
+        },
+        {
+          "site": "0x116b3b8",
+          "condition": "CBZ X0",
+          "target": "0x116b3e0"
+        }
+      ],
+      "alternate_branch": {
+        "site": "0x116b3ec",
+        "target": "0x116d820"
+      },
+      "observed_stack_frame_bytes": 32,
+      "bounded_target_traces": {
+        "0x116b7b0": {
+          "window_sha256": "1708f9d926faec286e9e8e54ec5e47cbcf893c21e9b77a79cd087e93ce27269f",
+          "reachable": 31,
+          "returns": [
+            "0x116b7d0",
+            "0x116b828"
+          ],
+          "direct_calls": [
+            "0x12f3690",
+            "0x290",
+            "0x12f36a0"
+          ],
+          "inbound_candidates": 68
+        },
+        "0x116d380": {
+          "window_sha256": "e6851fc84addca8a3e47e395dc7ec111d8b8fb9f225c50e48291074f93518e08",
+          "reachable": 15,
+          "returns": [
+            "0x116d3b8"
+          ],
+          "direct_calls": [],
+          "inbound_candidates": 104
+        },
+        "0x116b82c": {
+          "window_sha256": "6ee694349865c253b3e056bddddf6ff7005f05e274a295f274c9f35b79d4258a",
+          "reachable": 18,
+          "returns": [
+            "0x116b858",
+            "0x116b870"
+          ],
+          "direct_calls": [
+            "0x12155a0"
+          ],
+          "inbound_candidates": 26
+        },
+        "0x116d820": {
+          "window_sha256": "471d009788dafcda76e1a826dea37acc6cb619e141d792243e17c3abffda2159",
+          "reachable": 6,
+          "returns": [
+            "0x116d834"
+          ],
+          "direct_calls": [],
+          "inbound_candidates": 145
+        }
+      },
+      "callback_identity_verified": false,
+      "vtable_identity_verified": false,
+      "destructor_identity_verified": false,
+      "ownership_lifecycle_verified": false,
+      "native_consumer_abi_verified": false,
+      "archive_precedence_verified": false
+    }
   }
 }
