@@ -103,7 +103,8 @@
     "2026-11-27 CI_REPAIR: Foundation run 46021414045/job 140581709219 failed in synthetic_service_dependency_window because entry 0x8 is NOP and falls through to RET at 0xc; expected return corrected to 0xc. Review of pinned dispatch bytes also caught ADD X0,X0,#8 at 0x1215360/0x121537c; the emulated wrapper now writes owner/count at the adjusted wrapper base (original status object +0x28/+0x2c), not the pre-adjustment subobject. Raw Foundation log inspected. New HEAD CI pending; no mutex/concurrency/consumer ABI or Uzuy claim.",
     "2026-11-27 CI_REPAIR_2: Foundation run 46022245151/job 140584543848 failed in test_native_fileload_status.py because the report omitted service_target_semantics_verified after the new dispatch-offset fields were inserted. The missing explicit false field is restored. Raw job log inspected. The three other workflows for code HEAD 4c83d56 completed successfully and their raw logs were read; Foundation must be rerun.",
     "2026-11-28 PENDING_CI: Added SHA-pinned registration target CFG analysis from the single DT_RELA R_AARCH64_RELATIVE pointer cell 0x215d2b0 -> text offset 0x116b888. The 0x100-byte bounded CFG records reachable instructions, register/memory operands, direct/indirect call barriers, returns, out-of-window edges, raw aligned-text B/BL word candidates and window SHA. Synthetic CFG positive/negative/boundary/budget regressions plus original-main SHA/relocation tests added. Not callback/destructor identity, function extent, runtime relocated pointer, ABI, ownership or Uzuy proof.",
-    "2026-11-28 FIXED_PENDING_CI: Foundation run 46076828184/job 140766410479 exposed that Capstone 5.0.6 Arm64Op has no .size. The analyzer now derives only explicit AArch64 memory widths from mnemonic/data-register class and leaves ambiguous widths null; tests add W, byte, register-pair and signed-word cases. Other three workflows on c62ff2e passed. Rerun Foundation and all push workflows before promotion."
+    "2026-11-28 FIXED_PENDING_CI: Foundation run 46076828184/job 140766410479 exposed that Capstone 5.0.6 Arm64Op has no .size. The analyzer now derives only explicit AArch64 memory widths from mnemonic/data-register class and leaves ambiguous widths null; tests add W, byte, register-pair and signed-word cases. Other three workflows on c62ff2e passed. Rerun Foundation and all push workflows before promotion.",
+    "2026-11-28 VERIFIED_CI_STATIC_ONLY: The registration pointer cell 0x215d2b0's single DT_RELA R_AARCH64_RELATIVE addend resolves to text offset 0x116b888. Bounded CFG on original main SHA reached 33 words, one direct call 0x116b8a4 -> 0x116b390, return 0x116b908, no indirect call/terminator or out-of-window edge; it loops 64 pointer-sized entries from 0x4371800 and clears a 0x200-byte table. Artifact 15234858334, JSON SHA256 7f70068c..., all four push workflows success and raw logs inspected. Callback/destructor/ABI/ownership still NOT proven."
   ],
   "blocking_gaps": [
     "At FileLoad caller 0x116f280 -> 0x120a6c8, local X19 save/restore at entry-SP-8 is proven but recursive SP trust remains false. The 0x116b7b0 child has two relocation-backed __cxa_guard imports and a bounded 0x290 registration-helper candidate; exact guard/object BSS addresses and explicit store ranges are pending CI. Opaque import side effects, helper table target/callback identity, other unknown X0 stores, consumer ABI, ownership/lifecycle and archive precedence remain unresolved; do not relax the call barrier.",
@@ -1101,7 +1102,7 @@
     "new_commit_ci": "PENDING"
   },
   "latest_pending_code_commit": null,
-  "latest_pending_ci": "FileLoad registration target CFG width fix is ready but pending push CI; previous Foundation failure c62ff2e537d845f6410b009045de423c103e0dce was caused by unsupported Capstone Arm64Op.size.",
+  "latest_pending_ci": null,
   "multi_mod_pc_source_path_ownership_guard": "OFFLINE_ONLY_PENDING_CI_NO_ENGINE_ARCHIVE_PRECEDENCE",
   "crilayla_total_output_limit": {
     "status": "pending_ci",
@@ -1220,7 +1221,7 @@
     "consumer_abi_proven": false,
     "emulator_tested": false
   },
-  "pending_ci_note": "FileLoad registration target CFG width fix is ready but pending push CI; previous Foundation failure c62ff2e537d845f6410b009045de423c103e0dce was caused by unsupported Capstone Arm64Op.size.",
+  "pending_ci_note": "No pending CI for the latest static-analysis code commit. The registration target CFG is VERIFIED_CI_STATIC_ONLY on HEAD b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e; runtime ABI, ownership, destructor, archive precedence and Uzuy remain unresolved.",
   "native_fileopen_call_free_witness": {
     "status": "PENDING_CI",
     "parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
@@ -1657,7 +1658,7 @@
     "native_consumer_verified": false,
     "emulator_tested": false
   },
-  "latest_engineering_pending_ci": "FileLoad registration target CFG width fix is ready but pending push CI; previous Foundation failure c62ff2e537d845f6410b009045de423c103e0dce was caused by unsupported Capstone Arm64Op.size.",
+  "latest_engineering_pending_ci": null,
   "ordered_factory_atomic_publication": {
     "state": "PENDING_HEAD_CI",
     "source_commit": "4a882d11426a7c55dfbb0c5468aa3375d165c190",
@@ -2169,25 +2170,39 @@
     "uzuy_verified": false,
     "next": "Inspect exact SP-relative X19 save/restore and all return paths in 0x120a6c8; require path-sensitive same-slot proof for every return and recursively apply only to exact direct targets. Preserve barriers for all unproven callees; no AAPCS64 assumption, no runtime hook."
   },
-  "latest_verified_code_commit": "9975550ae11657970ae8905a808aa0360ad36710",
-  "latest_verified_code_parent": "5a512e760c48a78cbe2e4f1b24ecfef2f6dd8be2",
+  "latest_verified_code_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
+  "latest_verified_code_parent": "c62ff2e537d845f6410b009045de423c103e0dce",
   "latest_verified_code_ci": {
-    "head": "9975550ae11657970ae8905a808aa0360ad36710",
+    "head": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
     "runs": [
-      46074524822,
-      46074524869,
-      46074524831,
-      46074524880
+      46077330193,
+      46077330238,
+      46077330215,
+      46077330236
     ],
     "jobs": [
-      140759011008,
-      140759011097,
-      140759011286,
-      140759010994
+      140768008713,
+      140768008784,
+      140768008716,
+      140768008350
+    ],
+    "statuses": [
+      "success",
+      "success",
+      "success",
+      "success"
     ],
     "all_completed_success": true,
-    "raw_logs_inspected": true,
-    "foundation_artifact_id": 15233949208
+    "raw_job_logs_inspected": true,
+    "foundation_marker": "PINNED_FILELOAD_REGISTRATION_TARGET_PASS 0x116b888 reachable 33 direct_calls 1 NO_CALLBACK_NO_DESTRUCTOR_NO_ABI_CLAIM",
+    "foundation_artifact_id": 15234858334,
+    "foundation_artifact_size_bytes": 509805,
+    "foundation_artifact_zip_sha256": "7dad9c43345b5094a7cc3531df03c11c10dc01fd5b86c145585952551eb3207a",
+    "registration_json_sha256": "7f70068cb9a900f95a40ed1adc9520a8441f635523acaf6c11b8a94fe43750e0",
+    "target_window_sha256": "877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec",
+    "host_static_test_pass": true,
+    "emulated_arm64_for_new_analyzer": false,
+    "uzuy_runtime_tested": false
   },
   "native_fileload_x19_stack_restore_20261128": {
     "state": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
@@ -2424,9 +2439,9 @@
     }
   },
   "native_fileload_registration_target_20261128": {
-    "state": "FIXED_PENDING_CI",
+    "state": "VERIFIED_CI_STATIC_ONLY",
     "parent_sha": "c62ff2e537d845f6410b009045de423c103e0dce",
-    "code_commit": null,
+    "code_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
     "source": "tools/portlib/native_fileload_registration_target.py",
     "source_blob": "8ee881958c72de9bc1fa14feea1a2806265ce952",
     "test": "tests/test_native_fileload_registration_target.py",
@@ -2454,7 +2469,7 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Push the width fix and rerun all four direct push workflows. The Foundation raw log is authoritative; do not mark the target slice verified until its new job and artifact succeed.",
+    "next": "Trace direct-call target 0x116b390 in a separate bounded window; verify what X0 points to, whether it invokes an indirect callback, and its ownership/lock/unlock behavior. Do not identify destructor semantics or install a hook until the full lifecycle is proven.",
     "last_failed_commit": "c62ff2e537d845f6410b009045de423c103e0dce",
     "failure": {
       "commit": "c62ff2e537d845f6410b009045de423c103e0dce",
@@ -2462,11 +2477,8 @@
       "job_id": 140766410479,
       "conclusion": "failure",
       "exception": "AttributeError: 'Arm64Op' object has no attribute 'size'",
-      "file": "tools/portlib/native_fileload_registration_target.py",
-      "line": 90,
-      "cause": "Capstone 5.0.6 Arm64Op exposes memory operands but not a size attribute.",
       "raw_log_inspected": true,
-      "artifact_created": false
+      "fixed_in_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e"
     },
     "fix": {
       "source_blob": "99044155b3ddb50c4bbbae4154baac730f2187ed",
@@ -2474,24 +2486,87 @@
       "summary": "Replace unsupported operand.size with fail-closed width derivation from AArch64 mnemonic/data-register class; explicit widths for byte/halfword/signed word, register pairs and LDPSW; unknown width stays null. Add W-register, byte, pair and signed-word regressions."
     },
     "ci": {
+      "head": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
       "runs": [
-        46076828184,
-        46076828715,
-        46076828130,
-        46076828159
+        46077330193,
+        46077330238,
+        46077330215,
+        46077330236
       ],
       "jobs": [
-        140766410479,
-        140766412164,
-        140766410292,
-        140766410251
+        140768008713,
+        140768008784,
+        140768008716,
+        140768008350
       ],
-      "foundation": "failure",
-      "factory": "success",
-      "compressed_prm": "success",
-      "movesetplus": "success",
-      "all_raw_job_logs_inspected": true,
-      "foundation_artifact_created": false
+      "statuses": [
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "all_completed_success": true,
+      "raw_job_logs_inspected": true,
+      "foundation_marker": "PINNED_FILELOAD_REGISTRATION_TARGET_PASS 0x116b888 reachable 33 direct_calls 1 NO_CALLBACK_NO_DESTRUCTOR_NO_ABI_CLAIM",
+      "foundation_artifact_id": 15234858334,
+      "foundation_artifact_size_bytes": 509805,
+      "foundation_artifact_zip_sha256": "7dad9c43345b5094a7cc3531df03c11c10dc01fd5b86c145585952551eb3207a",
+      "registration_json_sha256": "7f70068cb9a900f95a40ed1adc9520a8441f635523acaf6c11b8a94fe43750e0",
+      "target_window_sha256": "877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec",
+      "host_static_test_pass": true,
+      "emulated_arm64_for_new_analyzer": false,
+      "uzuy_runtime_tested": false
+    },
+    "observations": {
+      "target_text_offset": "0x116b888",
+      "window": "[0x116b888,0x116b988)",
+      "window_bytes": 256,
+      "window_sha256": "877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec",
+      "reachable_decoded_words": 33,
+      "return_sites": [
+        "0x116b908"
+      ],
+      "direct_calls_not_walked": [
+        {
+          "site": "0x116b8a4",
+          "target": "0x116b390"
+        }
+      ],
+      "unresolved_indirect_calls": [],
+      "indirect_terminators": [],
+      "out_of_window_edges": [],
+      "raw_aligned_text_B_BL_candidates_to_target": [],
+      "table_loop": {
+        "base_address": "0x43717d8",
+        "entry_start": "0x4371800",
+        "entry_count": 64,
+        "entry_stride_bytes": 8,
+        "loop_limit_bytes": "0x200",
+        "load_site": "0x116b8a0",
+        "load_operand": "ldr x0, [x8, #0x28]",
+        "call_site": "0x116b8a4",
+        "call_target": "0x116b390",
+        "index_increment": "0x8",
+        "index_compare": "0x200"
+      },
+      "clear_sequence": {
+        "first_store_site": "0x116b8c4",
+        "last_store_site": "0x116b900",
+        "instruction_count": 16,
+        "instruction": "stp q0, q0",
+        "covered_address_start": "0x4371800",
+        "covered_bytes": 512,
+        "interpretation": "bounded static store pattern only; no destructor/ownership identity"
+      },
+      "memory_operands_count": 21,
+      "callback_identity_verified": false,
+      "destructor_identity_verified": false,
+      "function_extent_verified": false,
+      "registration_table_runtime_target_verified": false,
+      "object_ownership_lifecycle_verified": false,
+      "async_rollback_unbind_verified": false,
+      "archive_precedence_verified": false,
+      "native_consumer_abi_verified": false
     }
   },
   "latest_failed_code_commit": "c62ff2e537d845f6410b009045de423c103e0dce",
@@ -2499,6 +2574,7 @@
     "run_id": 46076828184,
     "job_id": 140766410479,
     "exception": "AttributeError: 'Arm64Op' object has no attribute 'size'",
-    "raw_log_inspected": true
+    "raw_log_inspected": true,
+    "fixed_in_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e"
   }
 }

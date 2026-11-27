@@ -2782,7 +2782,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Push the Capstone width fix via create_tree/create_commit/update_ref(expected_sha=HEAD, force=false). Verify direct push run IDs via commit check-runs and branch Actions API; inspect raw Foundation traceback/marker/artifact and other job logs. Do not mark callback/destructor/ABI/ownership or gameplay as PASS.",
+  "next_action": "Trace direct-call target 0x116b390 in a separate bounded window; verify what X0 points to, whether it invokes an indirect callback, and its ownership/lock/unlock behavior. Do not identify destructor semantics or install a hook until the full lifecycle is proven.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -2796,7 +2796,7 @@
     "ci": "PENDING"
   },
   "latest_pending_code_commit": null,
-  "latest_pending_ci": "FileLoad registration target CFG width fix is ready but pending push CI; previous Foundation failure c62ff2e537d845f6410b009045de423c103e0dce was caused by unsupported Capstone Arm64Op.size.",
+  "latest_pending_ci": null,
   "crilayla_total_output_limit": {
     "status": "pending_ci",
     "parent_sha": "e4e08cc748b18d9ae8576862d1cd509a27f684b0",
@@ -3752,61 +3752,43 @@
     "original_main_rehashed": false,
     "next": "Inspect HEAD Foundation job log and resolve failures; trace original consumer lifecycle before hooks."
   },
-  "latest_pending_head_ci": {
-    "parent_sha": "c62ff2e537d845f6410b009045de423c103e0dce",
-    "code_commit": null,
-    "topic": "fileload_registration_relative_relocation_target_cfg_width_fix",
-    "source": "tools/portlib/native_fileload_registration_target.py",
-    "test": "tests/test_native_fileload_registration_target.py",
-    "status": "PENDING_PUSH_CI_AFTER_FIX",
-    "ci_run_ids": [],
-    "ci_job_ids": [],
-    "ci_log_inspected": false,
-    "consumer_abi_proven": false,
-    "uzuy_tested": false
-  },
+  "latest_pending_head_ci": null,
   "latest_execution": {
-    "status": "FIXED_PENDING_CI_AFTER_CAPSTONE_WIDTH_API_MISMATCH",
-    "code_commit": null,
+    "status": "VERIFIED_CI_STATIC_ONLY_REGISTRATION_TARGET_CFG",
+    "code_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
     "parent_sha": "c62ff2e537d845f6410b009045de423c103e0dce",
-    "previous_failed_commit": "c62ff2e537d845f6410b009045de423c103e0dce",
     "source": "tools/portlib/native_fileload_registration_target.py",
     "test": "tests/test_native_fileload_registration_target.py",
-    "failure": {
-      "run_id": 46076828184,
-      "job_id": 140766410479,
-      "exception": "AttributeError: 'Arm64Op' object has no attribute 'size'",
-      "line": 90,
-      "raw_log_inspected": true
-    },
-    "fix": {
-      "source_blob": "99044155b3ddb50c4bbbae4154baac730f2187ed",
-      "test_blob": "1b298593ac37bf4da039fb27b197464d0fb949b3"
-    },
+    "summary": "Pinned relative relocation cell 0x215d2b0 -> text 0x116b888; bounded CFG identifies a 64-entry pointer-table loop, one direct call to 0x116b390 and a 0x200-byte zeroing sequence. No callback/destructor/function extent/ownership/runtime ABI claim.",
     "ci_run_ids": [
-      46076828184,
-      46076828715,
-      46076828130,
-      46076828159
+      46077330193,
+      46077330238,
+      46077330215,
+      46077330236
     ],
     "ci_job_ids": [
-      140766410479,
-      140766412164,
-      140766410292,
-      140766410251
+      140768008713,
+      140768008784,
+      140768008716,
+      140768008350
     ],
+    "all_completed_success": true,
     "raw_job_logs_inspected": true,
-    "next": "Push the fix and inspect new Foundation raw log/artifact plus all other direct push workflow runs. Only promote to VERIFIED_CI_STATIC_ONLY after success."
+    "foundation_artifact_id": 15234858334,
+    "foundation_artifact_zip_sha256": "7dad9c43345b5094a7cc3531df03c11c10dc01fd5b86c145585952551eb3207a",
+    "registration_json_sha256": "7f70068cb9a900f95a40ed1adc9520a8441f635523acaf6c11b8a94fe43750e0",
+    "target_window_sha256": "877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec",
+    "next": "Trace direct-call target 0x116b390 in a separate bounded window; verify what X0 points to, whether it invokes an indirect callback, and its ownership/lock/unlock behavior. Do not identify destructor semantics or install a hook until the full lifecycle is proven."
   },
   "latest_slice": {
-    "state": "FIXED_PENDING_CI",
-    "code_commit": null,
+    "state": "VERIFIED_CI_STATIC_ONLY_REGISTRATION_TARGET_CFG",
+    "code_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
     "parent_sha": "c62ff2e537d845f6410b009045de423c103e0dce",
-    "previous_failed_commit": "c62ff2e537d845f6410b009045de423c103e0dce",
-    "description": "FileLoad registration code-pointer target bounded CFG with Capstone 5.0.6-compatible memory width evidence",
+    "description": "SHA-pinned FileLoad registration code-pointer target trace and bounded AArch64 CFG",
     "source": "tools/portlib/native_fileload_registration_target.py",
     "test": "tests/test_native_fileload_registration_target.py",
     "consumer_abi_verified": false,
+    "ownership_lifecycle_verified": false,
     "uzuy_verified": false
   },
   "compressed_prm_noop_20261123": {
@@ -4523,24 +4505,38 @@
     },
     "next": "Prove exact stack slot save/restore for 0x120a6c8 and other X19-writing direct callees; require all-return path proof and explicit SP delta; retain barriers otherwise. Do not infer AAPCS64, pointer type, ownership or ABI."
   },
-  "latest_verified_code_commit": "9975550ae11657970ae8905a808aa0360ad36710",
+  "latest_verified_code_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
   "latest_verified_ci_runs": {
-    "head": "9975550ae11657970ae8905a808aa0360ad36710",
+    "head": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
     "runs": [
-      46074524822,
-      46074524869,
-      46074524831,
-      46074524880
+      46077330193,
+      46077330238,
+      46077330215,
+      46077330236
     ],
     "jobs": [
-      140759011008,
-      140759011097,
-      140759011286,
-      140759010994
+      140768008713,
+      140768008784,
+      140768008716,
+      140768008350
+    ],
+    "statuses": [
+      "success",
+      "success",
+      "success",
+      "success"
     ],
     "all_completed_success": true,
-    "raw_logs_inspected": true,
-    "foundation_artifact_id": 15233949208
+    "raw_job_logs_inspected": true,
+    "foundation_marker": "PINNED_FILELOAD_REGISTRATION_TARGET_PASS 0x116b888 reachable 33 direct_calls 1 NO_CALLBACK_NO_DESTRUCTOR_NO_ABI_CLAIM",
+    "foundation_artifact_id": 15234858334,
+    "foundation_artifact_size_bytes": 509805,
+    "foundation_artifact_zip_sha256": "7dad9c43345b5094a7cc3531df03c11c10dc01fd5b86c145585952551eb3207a",
+    "registration_json_sha256": "7f70068cb9a900f95a40ed1adc9520a8441f635523acaf6c11b8a94fe43750e0",
+    "target_window_sha256": "877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec",
+    "host_static_test_pass": true,
+    "emulated_arm64_for_new_analyzer": false,
+    "uzuy_runtime_tested": false
   },
   "native_fileload_x19_stack_restore_20261128": {
     "state": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
@@ -5119,9 +5115,9 @@
     "uzuy_verified": false
   },
   "native_fileload_registration_target_20261128": {
-    "state": "FIXED_PENDING_CI",
+    "state": "VERIFIED_CI_STATIC_ONLY",
     "parent_sha": "c62ff2e537d845f6410b009045de423c103e0dce",
-    "code_commit": null,
+    "code_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
     "source": "tools/portlib/native_fileload_registration_target.py",
     "source_blob": "8ee881958c72de9bc1fa14feea1a2806265ce952",
     "test": "tests/test_native_fileload_registration_target.py",
@@ -5149,7 +5145,7 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Verify all four new push runs and raw logs; the previous Foundation run failed at synthetic STR width access before authentic-main inspection.",
+    "next": "Trace direct-call target 0x116b390 in a separate bounded window; verify what X0 points to, whether it invokes an indirect callback, and its ownership/lock/unlock behavior. Do not identify destructor semantics or install a hook until the full lifecycle is proven.",
     "last_failed_commit": "c62ff2e537d845f6410b009045de423c103e0dce",
     "failure": {
       "commit": "c62ff2e537d845f6410b009045de423c103e0dce",
@@ -5169,24 +5165,95 @@
       "summary": "Use mnemonic/data-register width derivation; never access Capstone Arm64Op.size. Add W, byte, pair and signed-word synthetic tests."
     },
     "ci": {
+      "head": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
       "runs": [
-        46076828184,
-        46076828715,
-        46076828130,
-        46076828159
+        46077330193,
+        46077330238,
+        46077330215,
+        46077330236
       ],
       "jobs": [
-        140766410479,
-        140766412164,
-        140766410292,
-        140766410251
+        140768008713,
+        140768008784,
+        140768008716,
+        140768008350
       ],
-      "foundation": "failure",
-      "factory": "success",
-      "compressed_prm": "success",
-      "movesetplus": "success",
+      "statuses": [
+        "success",
+        "success",
+        "success",
+        "success"
+      ],
+      "all_completed_success": true,
       "raw_job_logs_inspected": true,
-      "foundation_artifact_created": false
+      "foundation_marker": "PINNED_FILELOAD_REGISTRATION_TARGET_PASS 0x116b888 reachable 33 direct_calls 1 NO_CALLBACK_NO_DESTRUCTOR_NO_ABI_CLAIM",
+      "foundation_artifact_id": 15234858334,
+      "foundation_artifact_size_bytes": 509805,
+      "foundation_artifact_zip_sha256": "7dad9c43345b5094a7cc3531df03c11c10dc01fd5b86c145585952551eb3207a",
+      "registration_json_sha256": "7f70068cb9a900f95a40ed1adc9520a8441f635523acaf6c11b8a94fe43750e0",
+      "target_window_sha256": "877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec",
+      "host_static_test_pass": true,
+      "emulated_arm64_for_new_analyzer": false,
+      "uzuy_runtime_tested": false
+    },
+    "observations": {
+      "target_text_offset": "0x116b888",
+      "window": "[0x116b888,0x116b988)",
+      "window_bytes": 256,
+      "window_sha256": "877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec",
+      "reachable_decoded_words": 33,
+      "return_sites": [
+        "0x116b908"
+      ],
+      "direct_calls_not_walked": [
+        {
+          "site": "0x116b8a4",
+          "target": "0x116b390"
+        }
+      ],
+      "unresolved_indirect_calls": [],
+      "indirect_terminators": [],
+      "out_of_window_edges": [],
+      "raw_aligned_text_B_BL_candidates_to_target": [],
+      "table_loop": {
+        "base_address": "0x43717d8",
+        "entry_start": "0x4371800",
+        "entry_count": 64,
+        "entry_stride_bytes": 8,
+        "loop_limit_bytes": "0x200",
+        "load_site": "0x116b8a0",
+        "load_operand": "ldr x0, [x8, #0x28]",
+        "call_site": "0x116b8a4",
+        "call_target": "0x116b390",
+        "index_increment": "0x8",
+        "index_compare": "0x200"
+      },
+      "clear_sequence": {
+        "first_store_site": "0x116b8c4",
+        "last_store_site": "0x116b900",
+        "instruction_count": 16,
+        "instruction": "stp q0, q0",
+        "covered_address_start": "0x4371800",
+        "covered_bytes": 512,
+        "interpretation": "bounded static store pattern only; no destructor/ownership identity"
+      },
+      "memory_operands_count": 21,
+      "callback_identity_verified": false,
+      "destructor_identity_verified": false,
+      "function_extent_verified": false,
+      "registration_table_runtime_target_verified": false,
+      "object_ownership_lifecycle_verified": false,
+      "async_rollback_unbind_verified": false,
+      "archive_precedence_verified": false,
+      "native_consumer_abi_verified": false
     }
+  },
+  "latest_failed_code_commit": "c62ff2e537d845f6410b009045de423c103e0dce",
+  "latest_failed_ci": {
+    "run_id": 46076828184,
+    "job_id": 140766410479,
+    "exception": "AttributeError: 'Arm64Op' object has no attribute 'size'",
+    "raw_log_inspected": true,
+    "fixed_in_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e"
   }
 }

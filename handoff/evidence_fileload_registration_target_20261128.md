@@ -305,3 +305,41 @@ NEXT: Inspect all four push workflow runs/jobs/raw logs for the new code HEAD, i
 
 
 2026-11-28 FIXED_PENDING_CI — The FileLoad registration target CFG's first Foundation run failed in synthetic STR width analysis because Capstone 5.0.6 Arm64Op has no .size attribute (raw log run/job 46076828184/140766410479). Fixed width derivation from mnemonic/data-register class, with unknown widths null, and added W/byte/pair/signed-word cases. Source/test blob SHAs 99044155b3ddb50c4bbbae4154baac730f2187ed / 1b298593ac37bf4da039fb27b197464d0fb949b3. Other workflows on failed HEAD succeeded; Foundation artifact was not created. Next: push this fix, inspect all direct push run/job logs and Foundation artifact; only then promote state. Keep all callback/destructor/runtime pointer/ABI/ownership/archive precedence and Uzuy flags unresolved; no hook; preserve original main SHA, Sakura aura107 and Event236 marker/no-marker invariants.
+
+
+## Latest REA and full release-delta byte check
+
+Latest REA HEAD observed during this run: `morluto/rea@f43cacb61b16d2d8128088480f4140ee0c8d7a5c`; README blob `d6f1a07a6bb47f0e9a137c7c014d4cc5f4e72ac9`, `docs/ci-analysis.md` blob `f262d7e9e9d5f58e5c58a137f2d63e7d57a30b50`. Its retained-evidence/CI guidance is methodology, not game-specific FileLoad ABI evidence. PyCriCodecs latest commit remains `755055ee7b056c9c1aefc6505a3daa3e45e2e111`.
+
+Complete tag compare confirms the release notes do not expose a parser ABI delta:
+- ModManager 2.1.2.0 -> 2.1.2.1: 1 commit / 140 changed paths; only non-generated C# source file changed is `ViewModel/TitleViewModel.cs` (charsel page count, xcmn_menu.gfx and motion-blur asset handling). No SkillCustomizeParam or XFBIN parser source changes.
+- Toolbox 2.1.2.0 -> 2.1.2.1: source changes are localization and costume editor UI/model; no SkillEditor, PRM editor, ConditionPrmModel or XFBIN parser source changes. The inspected SkillEditorModel/SkillEditorViewModel have projectile/TargetDir fields but no `SwitchProjectilesTarget`, `StartDeflect`, or `StopDeflect` identifiers.
+- The changed PC `conditionprmManager.xfbin` blob is `3dcf64148cfb386d479a7b588fbf03d7e6e180a5` (57,232 bytes) in 2.1.2.0 and `0e7133223f10eb2dbbb39d2166fdca9352e84c3e` (57,344 bytes) in 2.1.2.1. Both begin with ASCII `DUMMY`; a byte-level comparison found 55 changed runs and no ASCII strings `SwitchProjectilesTarget`, `StartDeflect`, `StopDeflect`, `ProjectileTarget`, `Deflect`, or `targetDir`. The changed placeholder is not usable feature/ABI evidence.
+- The 2.1.2.1 `config.ini` diff contains camera settings only; no projectile/deflect keys. The branch pins `NSC-ModManager@276116ebf5ba398a867793cb02ee6c33c0927645` and `NSC-Toolbox@6f780cb`, each one commit after the 2.1.2.1 tag with no changed source-code files in the compare.
+
+## Original-main target findings
+
+Artifact `15234858334` (509,805 bytes), ZIP SHA256 `7dad9c43345b5094a7cc3531df03c11c10dc01fd5b86c145585952551eb3207a`; JSON `native_fileload_registration_target.json` is 32,275 bytes, SHA256 `7f70068cb9a900f95a40ed1adc9520a8441f635523acaf6c11b8a94fe43750e0`. Original main SHA256 remains `2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9`.
+
+The bounded `[0x116b888,0x116b988)` window SHA256 is `877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec`. It reaches 33 decoded words, returns at `0x116b908`, has one direct call at `0x116b8a4 -> 0x116b390`, no unresolved indirect calls/terminators, no out-of-window edges, and no raw aligned-text B/BL word candidates to the relocation target.
+
+Observed register/loop pattern (static only):
+- `ADRP/ADD` forms base `0x43717d8`; X19 starts at 0, advances by 8, and is compared with `0x200`.
+- `0x116b8a0` loads X0 from `[X8,#0x28]`, giving 64 pointer-sized table slots beginning at `0x4371800`.
+- `0x116b8a4` directly calls `0x116b390` with the loaded value in X0. The callee is deliberately not walked in this slice.
+- Sixteen `STP Q0,Q0` stores cover a 0x200-byte range beginning at `0x4371800`; this is an observed zero-store pattern, not proof of destructor or object lifetime semantics.
+- The relationship between this 0x200-byte pointer table, the helper's 24-byte registration records and the X1 object candidate `0x43717e0` is unresolved.
+
+## CI completion — 2026-11-28
+
+Code commit: `b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e`, parent `c62ff2e537d845f6410b009045de423c103e0dce`. All four direct push workflows on this exact HEAD completed SUCCESS; each original job log was fetched and inspected:
+- Foundation `46077330193 / 140768008713` — marker `PINNED_FILELOAD_REGISTRATION_TARGET_PASS 0x116b888 reachable 33 direct_calls 1 NO_CALLBACK_NO_DESTRUCTOR_NO_ABI_CLAIM`.
+- Factory `46077330238 / 140768008784`.
+- Compressed PRM `46077330215 / 140768008716`.
+- MovesetPlus `46077330236 / 140768008350`.
+
+The earlier Foundation failure on `c62ff2e537d845f6410b009045de423c103e0dce` (`46076828184/140766410479`) was caused by Capstone 5.0.6 lacking `Arm64Op.size`; raw log inspected. The width inference was corrected to use mnemonic/data-register class, with ambiguous widths left null, and positive width regressions added. The corrected HEAD passed all workflows. New analyzer/test run on the host/static CI path; no Uzuy runtime test. The Foundation workflow's existing ARM64/emulated checks do not establish this target as a native game consumer.
+
+## Remaining blocker / next slice
+
+Trace the direct-call target `0x116b390` in a separate bounded window, recording X0/X1/X2, indirect callback edges, memory ownership, locks, cleanup and error/rollback paths. Only after those are proven can this target be identified as a destructor/registration finalizer or be considered for any hook. Keep all release/gameplay flags false.

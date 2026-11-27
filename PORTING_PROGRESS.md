@@ -1347,3 +1347,14 @@ The verified guard-state artifact resolves pointer cell `0x215d2b0` through one 
 ## 2026-11-28 — Registration target CFG width fix (PENDING_CI)
 
 The first target-trace commit `c62ff2e537d845f6410b009045de423c103e0dce` had Factory, Compressed PRM and MovesetPlus workflows SUCCESS, but Foundation failed in the new synthetic memory-width test: Capstone 5.0.6 `Arm64Op` has no `.size` attribute. Raw job log `46076828184/140766410479` was read; the failure occurred before authentic-main analysis and no Foundation artifact was created. Fixed by deriving only widths supported by mnemonic/data-register class (signed byte/halfword/word, register pair, LDPSW), leaving unknown widths null. Added W-register, byte, pair and signed-word regressions. New source/test blobs: `99044155b3ddb50c4bbbae4154baac730f2187ed` / `1b298593ac37bf4da039fb27b197464d0fb949b3`. Push and verify the corrected Foundation workflow plus all three other direct push workflows; do not mark this slice PASS yet.
+
+
+## 2026-11-28 — FileLoad registration pointer target CFG (VERIFIED_CI_STATIC_ONLY)
+
+Code commit `b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e` (parent `c62ff2e537d845f6410b009045de423c103e0dce`). The original-main SHA256 guard and exact `DT_RELA R_AARCH64_RELATIVE` cell `0x215d2b0` -> text addend `0x116b888` passed. Bounded window `[0x116b888,0x116b988)` SHA256 `877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec`; 33 reachable instructions, return at `0x116b908`, one direct call `0x116b8a4 -> 0x116b390`, no indirect calls/terminators or out-of-window edges. Static register flow shows a 64-entry pointer-sized table loop starting at `0x4371800`, then 16 `STP Q0,Q0` stores clearing 0x200 bytes. The direct callee `0x116b390` is not yet analyzed; no destructor/ownership/ABI claim.
+
+All four direct push workflows on this exact code HEAD completed SUCCESS and raw job logs were inspected: Foundation `46077330193/140768008713`, Factory `46077330238/140768008784`, Compressed PRM `46077330215/140768008716`, MovesetPlus `46077330236/140768008350`. Foundation artifact `15234858334`, ZIP SHA256 `7dad9c43345b5094a7cc3531df03c11c10dc01fd5b86c145585952551eb3207a`, report JSON SHA256 `7f70068cb9a900f95a40ed1adc9520a8441f635523acaf6c11b8a94fe43750e0`.
+
+Research-first full release comparison found no upstream parser source delta between NSC-ModManager/Toolbox 2.1.2.0 and 2.1.2.1; the changed PC `conditionprmManager.xfbin` begins with `DUMMY` in both versions and contains no feature identifiers. Latest REA HEAD and PyCriCodecs CPK/UTF references are recorded in `handoff/evidence_fileload_registration_target_20261128.md`.
+
+This is host/static evidence only. No new ARM64 runtime consumer or Uzuy test. No hook. Preserve original main SHA, Sakura aura107, Event236 marker `0x4E53 +0x2A`, and unmarked Event236. `full_moddingapi=false`, `ready_for_gameplay_test=false`, `emulator_tested=false`.
