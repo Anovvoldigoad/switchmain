@@ -20,7 +20,7 @@ ENTRY = NEW_CANDIDATE
 CALLSITE = 0x116F29C
 WINDOW_START = CALLSITE - 0x200
 WINDOW_END = CALLSITE + 4
-TRACKED = ("x1", "x2", "x19")
+TRACKED = ("x0", "x1", "x2", "x19")
 MAX_EXTERNAL_INBOUND = 256
 
 
@@ -82,6 +82,21 @@ def _origin_kind(row):
         return "pc_relative_address"
     return "instruction_definition"
 
+
+
+def _stack_relative_offset(row):
+    parts = [part.strip() for part in row["operands"].split(",")]
+    if len(parts) != 3 or parts[1] != "sp":
+        return None
+    try:
+        amount = int(parts[2].lstrip("#"), 0)
+    except ValueError:
+        return None
+    if row["mnemonic"] == "add":
+        return amount
+    if row["mnemonic"] == "sub":
+        return -amount
+    return None
 
 def analyze_caller_window(code, start, end, callsite, sink_target=None,
                           external_inbound=(), call_preservation=None):
@@ -153,6 +168,7 @@ def analyze_caller_window(code, start, end, callsite, sink_target=None,
     if not roots:
         roots = {min(decoded)}
     origin_info = {}
+    call_input_register_origins = {}
 
     def add_origin(key, info):
         origin_info[key] = info
@@ -180,6 +196,10 @@ def analyze_caller_window(code, start, end, callsite, sink_target=None,
         row = rows[pc]
         outgoing = {reg: set(state_in[pc][reg]) for reg in TRACKED}
         if _is_call(row["mnemonic"]):
+            call_input_register_origins[hex(pc)] = {
+                reg: [origin_info[key] for key in sorted(state_in[pc][reg])]
+                for reg in TRACKED
+            }
             direct_targets = [
                 target for kind, target in _edges(pc, row["mnemonic"], row["operands"])
                 if kind == "call" and target is not None
@@ -205,13 +225,19 @@ def analyze_caller_window(code, start, end, callsite, sink_target=None,
             for reg in TRACKED:
                 if reg in row["written_registers"]:
                     key = f"definition:{reg}:{pc:x}"
-                    add_origin(key, {
+                    definition_kind = _origin_kind(row)
+                    info = {
                         "kind": "definition",
                         "register": reg,
                         "at": hex(pc),
-                        "definition_kind": _origin_kind(row),
+                        "definition_kind": definition_kind,
                         "instruction": row,
-                    })
+                    }
+                    if definition_kind == "stack_relative_address":
+                        stack_offset = _stack_relative_offset(row)
+                        if stack_offset is not None:
+                            info["stack_relative_offset"] = stack_offset
+                    add_origin(key, info)
                     outgoing[reg] = {key}
         for successor in graph[pc]:
             changed = False
@@ -256,6 +282,7 @@ def analyze_caller_window(code, start, end, callsite, sink_target=None,
         "undecodable_branch_targets": undecodable_targets[:64],
         "bounded_window_complete": complete,
         "possible_reaching_definitions": sink_origins,
+        "call_input_register_origins": call_input_register_origins,
         "single_definition_proven_within_window": {
             reg: complete and len(sink_origins[reg]) == 1
                  and sink_origins[reg][0]["kind"] == "definition"
@@ -265,7 +292,7 @@ def analyze_caller_window(code, start, end, callsite, sink_target=None,
         "tracked_registers": list(TRACKED),
         "source_identity_proven": False,
         "source_register_origins_not_traced": True,
-        "x19_scope": "X19 reaching definitions survive a call only when that exact direct callee passes bounded recursive no-write/all-return proof; otherwise a call barrier is emitted",
+        "x19_scope": "X19 reaching definitions survive a direct call only when bounded recursive analysis proves register restore, balanced SP, and no writes aliasing protected caller stack slots; otherwise a call barrier is emitted",
         "pointer_type_verified": False,
         "allocation_or_destructor_verified": False,
         "ownership_verified": False,
@@ -297,6 +324,21 @@ def inspect(nso):
             external.append({"source": pc, "target": target, "kind": kind})
     if incoming != [{"source": CALLSITE, "kind": "BL", "word_le": code[CALLSITE:CALLSITE + 4].hex()}]:
         raise ValueError("Original FileLoad direct caller census changed")
+    caller_inputs = analyze_caller_window(
+        code, WINDOW_START, WINDOW_END, CALLSITE, ENTRY, external
+    )
+    x0_inputs = caller_inputs["call_input_register_origins"].get(
+        "0x116f280", {}
+    ).get("x0", [])
+    callee_initial_register_offsets = {}
+    if (len(x0_inputs) == 1
+            and x0_inputs[0].get("kind") == "definition"
+            and x0_inputs[0].get("definition_kind") == "stack_relative_address"
+            and x0_inputs[0].get("stack_relative_offset") is not None):
+        callee_initial_register_offsets = {
+            "x0": x0_inputs[0]["stack_relative_offset"]
+        }
+
     preservation_cache = {}
     call_preservation = {}
     call_preservation_proofs = []
@@ -305,14 +347,18 @@ def inspect(nso):
         if edge is None or edge[0] != "BL":
             continue
         target = edge[1]
+        initial_offsets = (callee_initial_register_offsets
+                           if pc == 0x116f280 and target == 0x120a6c8 else None)
         proof = prove_register_preservation(
-            code, target, "x19", preservation_cache
+            code, target, "x19", preservation_cache,
+            initial_register_offsets=initial_offsets,
         )
         call_preservation[pc] = {"x19": proof}
         call_preservation_proofs.append({
             "site": hex(pc),
             "target": hex(target),
             "register": "x19",
+            "initial_register_offsets": dict(initial_offsets or {}),
             "proof": proof,
         })
     caller = analyze_caller_window(
@@ -329,6 +375,12 @@ def inspect(nso):
             for x in incoming
         ],
         "caller_window": caller,
+        "fileload_predecessor_call": {
+            "site": "0x116f280",
+            "target": "0x120a6c8",
+            "x0_input_origins": x0_inputs,
+            "initial_register_offsets": callee_initial_register_offsets,
+        },
         "caller_call_preservation_proofs": call_preservation_proofs,
         "caller_x19_numeric_value_proven": False,
         "caller_x19_pointer_type_verified": False,

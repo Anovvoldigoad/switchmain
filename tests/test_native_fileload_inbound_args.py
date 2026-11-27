@@ -83,7 +83,7 @@ def synthetic():
     report = analyze_caller_window(code, 0, 12, 8, 0x2000)
     assert [x["at"] for x in report["possible_reaching_definitions"]["x1"]] == ["0x0"]
     assert [x["at"] for x in report["possible_reaching_definitions"]["x2"]] == ["0x4"]
-    assert report["single_definition_proven_within_window"] == {"x1": True, "x2": True, "x19": False}
+    assert report["single_definition_proven_within_window"] == {"x0": False, "x1": True, "x2": True, "x19": False}
 
     # An earlier call is a hard barrier for X1/X2; a later definition supersedes it.
     code = _bl(0, 0x2100) + bytes.fromhex("e10313aa") + _bl(8, 0x2200)
@@ -223,6 +223,104 @@ def synthetic_x19_stack_restore():
     assert report["sp_balanced_on_all_returns"] is False
     assert report["preservation_proven"] is False
 
+
+    # The caller passes an SP-relative object pointer through X0. A nested
+    # callee may write through that pointer only when the exact range is
+    # proven disjoint from the saved incoming-X19 slot.
+    def put(code, address, word):
+        struct.pack_into("<I", code, address, word)
+
+    def bl_word(site, target):
+        delta = target - site
+        assert delta % 4 == 0
+        return 0x94000000 | ((delta >> 2) & 0x03ffffff)
+
+    nested = bytearray(0x400)
+    put(nested, 0x00, 0xA9BF4FFE)  # stp x30, x19, [sp, #-0x10]!
+    put(nested, 0x04, 0xAA0003F3)  # mov x19, x0
+    put(nested, 0x08, bl_word(0x08, 0x100))
+    put(nested, 0x0c, 0xF9001268)  # str x8, [x19, #0x20]
+    put(nested, 0x10, 0xA8C14FFE)  # ldp x30, x19, [sp], #0x10
+    put(nested, 0x14, 0xD65F03C0)  # ret
+    put(nested, 0x100, 0xF9001008) # str x8, [x0, #0x20]
+    put(nested, 0x104, 0xD65F03C0)
+    report = analyze_stack_register_restore(
+        bytes(nested), 0, 0x200, "x19",
+        initial_register_offsets={"x0": 0x30},
+    )
+    assert report["preservation_proven"] is True
+    assert report["sp_balanced_on_all_returns"] is True
+    assert report["sp_delta_trusted_on_all_returns"] is True
+    assert report["unknown_memory_writes_while_saved"] == []
+    assert report["protected_slot_clobbers"] == []
+    assert report["nested_call_proofs"][0]["preserved"] is True
+
+    # Exact overlap with the saved slot is rejected through a nested pointer.
+    overlap = bytearray(nested)
+    put(overlap, 0x100, 0xF9000008)  # str x8, [x0], X0 == entry SP - 8
+    report = analyze_stack_register_restore(
+        bytes(overlap), 0, 0x200, "x19",
+        initial_register_offsets={"x0": -8},
+    )
+    assert report["preservation_proven"] is False
+    assert report["nested_call_proofs"][0]["preserved"] is False
+    assert report["nested_call_proofs"][0]["reason"] == "PROTECTED_CALLER_STACK_SLOT_CLOBBERED"
+
+    # A one-byte write into the last byte of the protected slot is also rejected.
+    partial = bytearray(nested)
+    put(partial, 0x100, 0x3900001F)  # strb wzr, [x0], X0 == entry SP - 1
+    report = analyze_stack_register_restore(
+        bytes(partial), 0, 0x200, "x19",
+        initial_register_offsets={"x0": -1},
+    )
+    assert report["preservation_proven"] is False
+    assert report["nested_call_proofs"][0]["protected_slot_clobber_count"] == 1
+
+    # Pair stores use the full 16-byte range; the second XZR element overlaps.
+    pair = bytearray(nested)
+    put(pair, 0x100, 0xA9007C1F)  # stp xzr, xzr, [x0], X0 == entry SP - 0x10
+    report = analyze_stack_register_restore(
+        bytes(pair), 0, 0x200, "x19",
+        initial_register_offsets={"x0": -0x10},
+    )
+    assert report["preservation_proven"] is False
+    assert report["nested_call_proofs"][0]["protected_slot_clobber_count"] == 1
+
+    # A write beginning exactly after the protected 8-byte slot is disjoint.
+    boundary = bytearray(nested)
+    put(boundary, 0x100, 0xF9000008)  # str x8, [x0], X0 == entry SP
+    report = analyze_stack_register_restore(
+        bytes(boundary), 0, 0x200, "x19",
+        initial_register_offsets={"x0": 0},
+    )
+    assert report["preservation_proven"] is True
+
+    # Unknown pointer provenance and an unbalanced nested stack remain barriers.
+    unknown = analyze_stack_register_restore(bytes(nested), 0, 0x200, "x19")
+    assert unknown["preservation_proven"] is False
+    assert unknown["nested_call_proofs"][0]["preserved"] is False
+
+    unbalanced = bytearray(nested)
+    put(unbalanced, 0x100, 0xD10043FF)  # sub sp, sp, #0x10
+    put(unbalanced, 0x104, 0xD65F03C0)
+    report = analyze_stack_register_restore(
+        bytes(unbalanced), 0, 0x200, "x19",
+        initial_register_offsets={"x0": 0x30},
+    )
+    assert report["preservation_proven"] is False
+    assert report["nested_call_proofs"][0]["sp_balanced_on_all_returns"] is False
+
+    # A nested direct-call cycle is never accepted.
+    cycle = bytearray(nested)
+    put(cycle, 0x100, bl_word(0x100, 0x00))
+    put(cycle, 0x104, 0xD65F03C0)
+    report = analyze_stack_register_restore(
+        bytes(cycle), 0, 0x200, "x19",
+        initial_register_offsets={"x0": 0x30},
+    )
+    assert report["preservation_proven"] is False
+    assert report["nested_call_proofs"][0]["reason"] == "NESTED_CALL_STACK_EFFECT_UNPROVEN"
+
     for start, end in ((1, 16), (0, 15), (0, len(good) + 4)):
         try:
             analyze_stack_register_restore(good, start, end, "x19")
@@ -244,7 +342,7 @@ def run(main, output):
     assert report["incoming_direct_calls"][0]["source"] == hex(CALLSITE)
     assert report["incoming_direct_calls"][0]["kind"] == "BL"
     caller = report["caller_window"]
-    assert caller["tracked_registers"] == ["x1", "x2", "x19"]
+    assert caller["tracked_registers"] == ["x0", "x1", "x2", "x19"]
     assert caller["callsite"] == hex(CALLSITE)
     assert caller["sink_target"] == hex(ENTRY)
     assert caller["sink_reachable_from_bounded_window"]
@@ -267,12 +365,19 @@ def run(main, output):
     assert all(x["proof"]["register"] == "x19" for x in proofs)
     assert all(isinstance(x["proof"]["preserved"], bool) for x in proofs)
     assert all(x["proof"]["bounded_window_not_function_extent"] is True for x in proofs)
-    x19_sink_call = next(x for x in proofs if x["site"] == "0x116f280")
+    x0_input = caller["call_input_register_origins"]["0x116f280"]["x0"]
+    assert len(x0_input) == 1
+    assert x0_input[0]["at"] == "0x116f278"
+    assert x0_input[0]["instruction"]["word_le"] == "e0c30091"
+    assert x0_input[0]["stack_relative_offset"] == 0x30
+    assert report["fileload_predecessor_call"]["initial_register_offsets"] == {"x0": 0x30}
+    assert report["caller_x19_numeric_value_proven"] is False
+    assert report["caller_x19_pointer_type_verified"] is False
+    x19_sink_call = next(x for x in report["caller_call_preservation_proofs"]
+                         if x["site"] == "0x116f280")
     assert x19_sink_call["target"] == "0x120a6c8"
-    assert x19_sink_call["proof"]["preserved"] is False
     stack_restore = x19_sink_call["proof"]["stack_restore_analysis"]
-    assert stack_restore["target"] == "0x120a6c8"
-    assert stack_restore["bounded_window_not_function_extent"] is True
+    assert stack_restore["initial_register_offsets"] == {"x0": 0x30}
     assert len(stack_restore["reachable_instructions"]) == 25
     assert stack_restore["nested_calls"] == [
         {"site": "0x120a6d0", "target": "0x116b698"},
@@ -280,12 +385,21 @@ def run(main, output):
         {"site": "0x120a6f0", "target": "0x1170f7c"},
         {"site": "0x120a6f8", "target": "0x1160c64"},
     ]
-    assert len(stack_restore["return_states"]) == 1
-    assert stack_restore["return_states"][0]["pc"] == "0x120a728"
-    assert isinstance(stack_restore["local_restore_on_all_returns"], bool)
-    assert stack_restore["preservation_proven"] is False
-    assert report["caller_x19_numeric_value_proven"] is False
-    assert report["caller_x19_pointer_type_verified"] is False
+    assert len(stack_restore["nested_call_proofs"]) == 4
+    assert x19_sink_call["proof"]["preserved"] == stack_restore["preservation_proven"]
+    assert isinstance(stack_restore["preservation_proven"], bool)
+    if stack_restore["preservation_proven"]:
+        assert stack_restore["all_return_paths_restore_entry_register"] is True
+        assert stack_restore["sp_balanced_on_all_returns"] is True
+        assert stack_restore["sp_delta_trusted_on_all_returns"] is True
+        assert stack_restore["unknown_memory_writes_while_saved"] == []
+        assert stack_restore["protected_slot_clobbers"] == []
+        assert all(x["preserved"] for x in stack_restore["nested_call_proofs"])
+        assert not any(x["kind"] == "call_barrier" and x["at"] == "0x116f280"
+                       for x in caller["possible_reaching_definitions"]["x19"])
+    else:
+        assert any(x["kind"] == "call_barrier" and x["at"] == "0x116f280"
+                   for x in caller["possible_reaching_definitions"]["x19"])
     for key in (
         "caller_function_extent_verified",
         "caller_argument_identity_verified",
