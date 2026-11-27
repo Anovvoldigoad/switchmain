@@ -584,6 +584,11 @@ def analyze_stack_register_restore(
             if kind == "call":
                 nested_calls[(pc, target)] = True
                 child = failed("BOUNDED_WINDOW_OUT_OF_RANGE")
+                child["initial_register_offsets"] = dict(pointer_offsets)
+                child["entry_sp_delta"] = next_delta
+                child["protected_slots"] = sorted(
+                    set(protected_slots) | set(slots.keys())
+                )
                 if (target is not None and next_delta is not None
                         and 0 <= target and not (target & 3)
                         and target + CALLEE_SPAN <= len(code)):

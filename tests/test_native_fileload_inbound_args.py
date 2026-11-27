@@ -203,6 +203,10 @@ def synthetic_x19_stack_restore():
     # reports the higher-level nested-call barrier.
     assert report["nested_call_proofs"][0]["target"] == "0x14"
     assert report["nested_call_proofs"][0]["reason"] == "BOUNDED_WINDOW_OUT_OF_RANGE"
+    assert report["nested_call_proofs"][0]["input_register_offsets"] == {}
+    assert report["nested_call_proofs"][0]["child_initial_register_offsets"] == {}
+    assert report["nested_call_proofs"][0]["input_sp_delta"] == -16
+    assert report["nested_call_proofs"][0]["child_entry_sp_delta"] == -16
     assert report["reason"] == "NESTED_CALL_STACK_EFFECT_UNPROVEN"
 
     unknown_store = bytes.fromhex("fe4fbfa9f30300aa410000f9fe4fc1a8c0035fd6")
@@ -262,12 +266,12 @@ def synthetic_x19_stack_restore():
     child_proof = report["nested_call_proofs"][0]
     assert child_proof["input_register_offsets"] == {"x0": 0x30, "x19": 0x30}
     assert child_proof["child_initial_register_offsets"] == child_proof["input_register_offsets"]
-    assert child_proof["input_sp_delta"] == child_proof["child_entry_sp_delta"] == 0
+    assert child_proof["input_sp_delta"] == child_proof["child_entry_sp_delta"] == -16
     assert child_proof["protected_slots_at_call"] == [-8]
     assert [row["pc"] for row in child_proof["child_instruction_evidence"]] == ["0x100", "0x104"]
     assert child_proof["child_instruction_evidence"][0]["word_le"] == "081000f9"
     assert child_proof["child_return_states"] == [{
-        "pc": "0x104", "sp_delta": 0, "sp_delta_trusted": True,
+        "pc": "0x104", "sp_delta": -16, "sp_delta_trusted": True,
         "register_origin": "entry", "saved_entry_slots": []
     }]
     assert child_proof["child_unresolved_control_flow_edges"] == []
