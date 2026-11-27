@@ -167,10 +167,75 @@ def synthetic_x19_call_preservation():
     assert merged["single_definition_proven_within_window"]["x19"] is False
 
 
+
+
+def synthetic_x19_stack_restore():
+    from tools.portlib.native_fileload_call_targets import analyze_stack_register_restore
+
+    good = bytes.fromhex("fe4fbfa9f30300aafe4fc1a8c0035fd6")
+    report = analyze_stack_register_restore(good, 0, len(good), "x19")
+    assert report["preservation_proven"] is True
+    assert report["save_sites"] == [{
+        "pc": "0x0", "entry_sp_slot": "-0x8",
+        "width": 8, "saved_register_origin": "entry"
+    }]
+    assert report["restore_sites"] == [{
+        "pc": "0x8", "entry_sp_slot": "-0x8", "width": 8
+    }]
+    assert report["sp_balanced_on_all_returns"] is True
+
+    mismatch = bytes.fromhex("fe4fbfa9f30300aafe53c1a8c0035fd6")
+    report = analyze_stack_register_restore(mismatch, 0, len(mismatch), "x19")
+    assert report["preservation_proven"] is False
+    assert report["all_return_paths_restore_entry_register"] is False
+
+    overwrite = bytes.fromhex("fe4fbfa9f30300aae00700f9fe4fc1a8c0035fd6")
+    report = analyze_stack_register_restore(overwrite, 0, len(overwrite), "x19")
+    assert report["preservation_proven"] is False
+    assert report["all_return_paths_restore_entry_register"] is False
+
+    with_call = bytes.fromhex("fe4fbfa9f30300aa03000094fe4fc1a8c0035fd6c0035fd6")
+    report = analyze_stack_register_restore(with_call, 0, len(with_call), "x19")
+    assert report["local_restore_on_all_returns"] is True
+    assert report["preservation_proven"] is False
+    assert report["reason"] == "NESTED_CALL_STACK_EFFECT_UNPROVEN"
+
+    unknown_store = bytes.fromhex("fe4fbfa9f30300aa410000f9fe4fc1a8c0035fd6")
+    report = analyze_stack_register_restore(unknown_store, 0, len(unknown_store), "x19")
+    assert report["local_restore_on_all_returns"] is True
+    assert report["preservation_proven"] is False
+    assert report["reason"] == "UNKNOWN_MEMORY_ALIAS_STORE"
+
+    bypass = bytes.fromhex("800000b4fe4fbfa9f30300aafe4fc1a8c0035fd6")
+    report = analyze_stack_register_restore(bypass, 0, len(bypass), "x19")
+    assert report["preservation_proven"] is True
+    assert len(report["return_states"]) == 2
+
+    branch_clobber = bytes.fromhex("a00000b4fe4fbfa9f30301aafe4fc1a8c0035fd6f30300aac0035fd6")
+    report = analyze_stack_register_restore(branch_clobber, 0, len(branch_clobber), "x19")
+    assert report["preservation_proven"] is False
+    assert report["all_return_paths_restore_entry_register"] is False
+
+    unbalanced = bytes.fromhex("fe4fbfa9f30300aafe4fc0a8c0035fd6")
+    report = analyze_stack_register_restore(unbalanced, 0, len(unbalanced), "x19")
+    assert report["all_return_paths_restore_entry_register"] is True
+    assert report["sp_balanced_on_all_returns"] is False
+    assert report["preservation_proven"] is False
+
+    for start, end in ((1, 16), (0, 15), (0, len(good) + 4)):
+        try:
+            analyze_stack_register_restore(good, start, end, "x19")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Invalid stack-restore window was accepted")
+
+
 def run(main, output):
     synthetic()
     synthetic_x19_call_preservation()
     synthetic_direct_bl_inventory()
+    synthetic_x19_stack_restore()
     raw = main.read_bytes()
     report = inspect(raw)
     assert report["original_main_sha256"] == MAIN_SHA256
@@ -201,6 +266,23 @@ def run(main, output):
     assert all(x["proof"]["register"] == "x19" for x in proofs)
     assert all(isinstance(x["proof"]["preserved"], bool) for x in proofs)
     assert all(x["proof"]["bounded_window_not_function_extent"] is True for x in proofs)
+    x19_sink_call = next(x for x in proofs if x["site"] == "0x116f280")
+    assert x19_sink_call["target"] == "0x120a6c8"
+    assert x19_sink_call["proof"]["preserved"] is False
+    stack_restore = x19_sink_call["proof"]["stack_restore_analysis"]
+    assert stack_restore["target"] == "0x120a6c8"
+    assert stack_restore["bounded_window_not_function_extent"] is True
+    assert len(stack_restore["reachable_instructions"]) == 25
+    assert stack_restore["nested_calls"] == [
+        {"site": "0x120a6d0", "target": "0x116b698"},
+        {"site": "0x120a6e8", "target": "0x1188104"},
+        {"site": "0x120a6f0", "target": "0x1170f7c"},
+        {"site": "0x120a6f8", "target": "0x1160c64"},
+    ]
+    assert len(stack_restore["return_states"]) == 1
+    assert stack_restore["return_states"][0]["pc"] == "0x120a728"
+    assert isinstance(stack_restore["local_restore_on_all_returns"], bool)
+    assert stack_restore["preservation_proven"] is False
     assert report["caller_x19_numeric_value_proven"] is False
     assert report["caller_x19_pointer_type_verified"] is False
     for key in (

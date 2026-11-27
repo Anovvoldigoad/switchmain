@@ -1191,7 +1191,7 @@
     "ci": "PENDING"
   },
   "latest_pending_code_commit": null,
-  "latest_pending_ci": "Source/test commit ac71215f23bd645119f830cc4c63d0b5b2f1974b has all four push workflows COMPLETED SUCCESS and raw logs inspected. This documentation-only sync commit will trigger a separate push CI set.",
+  "latest_pending_ci": "X19 stack-slot dataflow code/test commit pending four push workflows; inspect raw logs and Foundation artifact.",
   "crilayla_total_output_limit": {
     "status": "pending_ci",
     "parent_sha": "e4e08cc748b18d9ae8576862d1cd509a27f684b0",
@@ -2171,40 +2171,21 @@
     "uzuy_tested": false
   },
   "latest_execution": {
-    "status": "VERIFIED_STATIC_CI_ONLY_X19_UNRESOLVED_AT_SINK",
-    "implementation_parent_sha": "95dda35fb5424425a720ced7c95db1f9ea6fdbee",
-    "implementation_commit": "04cd926fe4af8144e53fc7eb92c9c5096ce38fd0",
-    "correction_parent_sha": "5187073633307e43985684325ebdce9821948849",
-    "correction_commit": "ac71215f23bd645119f830cc4c63d0b5b2f1974b",
-    "failed_run_id": 46046167094,
-    "failed_job_id": 140665868834,
-    "failed_raw_job_log_inspected": true,
-    "failure_reason": "First synthetic exact-map assertion omitted x19:false; after that correction, the hand-entered direct-call list was found incomplete (10 listed vs 23 decoded from raw A64 BL words).",
-    "correction": "Use an independent A64 BL immediate decoder over the original caller-window instruction words; compare all 23 site/target pairs to preservation proofs, with forward/backward/B-exclusion/malformed/boundary synthetic tests.",
-    "ci_run_ids": [
-      46048379870,
-      46048379872,
-      46048379855,
-      46048379836
-    ],
-    "ci_job_ids": [
-      140673240478,
-      140673240433,
-      140673240097,
-      140673240368
-    ],
-    "raw_job_logs_inspected": true,
-    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-    "foundation_artifact_id": 15223636352,
-    "foundation_artifact_zip_sha256": "389c894d70f8f8fda4186e9a86352944427caf22bfe302a5637f2ca1f210c2ee",
-    "next": "Trace exact X19 stack save/restore and all return paths in 0x120a6c8; no runtime hook or ABI inference."
+    "status": "PENDING_CI_X19_STACK_SLOT_DATAFLOW",
+    "parent_sha": "ace04f5ea7a8a21b9a625eb69fdce3d95eb767e6",
+    "source_blob": "e7b12d87cee82c2f857f6e0f62493e894c72d1d2",
+    "test_blob": "774f0e6bb08f24dbe4bb4e037fee1a831925c19f",
+    "code_commit": null,
+    "research_note": "handoff/evidence_fileload_x19_stack_restore_20261128.md",
+    "ci_runs": null,
+    "raw_job_logs_inspected": false,
+    "next": "Verify Foundation raw job log/artifact and all three companion push workflow logs; repair regressions before marking verified."
   },
   "latest_slice": {
-    "state": "VERIFIED_STATIC_CI_ONLY_X19_UNRESOLVED_AT_SINK",
-    "parent_sha": "5187073633307e43985684325ebdce9821948849",
-    "code_commit": "ac71215f23bd645119f830cc4c63d0b5b2f1974b",
-    "description": "Independent raw A64 BL inventory found 23 direct calls (not 10); four exact-target bounded callees preserve X19, but X19 at FileLoad remains a call barrier at 0x116f280 -> 0x120a6c8",
-    "source": "tools/portlib/native_fileload_inbound_args.py",
+    "state": "PENDING_CI_X19_STACK_SLOT_DATAFLOW",
+    "parent_sha": "ace04f5ea7a8a21b9a625eb69fdce3d95eb767e6",
+    "description": "Add path-sensitive exact SP-slot save/restore analysis for X19-writing bounded callees; preserve call barriers on any unproven nested call or alias",
+    "source": "tools/portlib/native_fileload_call_targets.py",
     "test": "tests/test_native_fileload_inbound_args.py",
     "consumer_abi_verified": false,
     "uzuy_verified": false
@@ -2941,5 +2922,73 @@
     "all_completed_success": true,
     "raw_logs_inspected": true,
     "foundation_artifact_id": 15223636352
+  },
+  "native_fileload_x19_stack_restore_20261128": {
+    "state": "PENDING_CI",
+    "parent_sha": "ace04f5ea7a8a21b9a625eb69fdce3d95eb767e6",
+    "source_commit": null,
+    "source": "tools/portlib/native_fileload_call_targets.py",
+    "test": "tests/test_native_fileload_inbound_args.py",
+    "target": "0x120a6c8",
+    "target_return": "0x120a728",
+    "prior_x19_write_sites": [
+      [
+        "0x120a6cc",
+        "mov x19,x0"
+      ],
+      [
+        "0x120a724",
+        "ldp x30,x19,[sp],#0x10"
+      ]
+    ],
+    "prior_nested_calls": [
+      [
+        "0x120a6d0",
+        "0x116b698"
+      ],
+      [
+        "0x120a6e8",
+        "0x1188104"
+      ],
+      [
+        "0x120a6f0",
+        "0x1170f7c"
+      ],
+      [
+        "0x120a6f8",
+        "0x1160c64"
+      ]
+    ],
+    "method": "path-sensitive SP delta, SP trust, X19 origin, exact 8-byte stack slots, pre/post-index addressing, all observed returns",
+    "fail_closed_conditions": [
+      "nested call stack effects unproven",
+      "unknown-base store while saved slot is live",
+      "indexed SP memory operand",
+      "untrusted or unbalanced SP",
+      "unresolved or out-of-window control flow",
+      "state budget exceeded"
+    ],
+    "synthetic_regressions": [
+      "positive exact roundtrip",
+      "wrong LDP register",
+      "saved-slot overwrite",
+      "nested BL remains unresolved",
+      "unknown-base store remains unresolved",
+      "conditional untouched path",
+      "conditional clobber path",
+      "unbalanced SP",
+      "invalid boundaries"
+    ],
+    "ci": {
+      "runs": null,
+      "jobs": null,
+      "raw_job_logs_inspected": false,
+      "foundation_artifact_id": null
+    },
+    "consumer_abi_verified": false,
+    "ownership_lifecycle_verified": false,
+    "archive_precedence_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect all four push workflow logs and the Foundation artifact. If local X19 restore is observed but nested call SP/stack effects remain unresolved, retain the caller barrier and next prove the four exact nested callees' stack frames without assuming AAPCS64."
   }
 }

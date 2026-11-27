@@ -1094,7 +1094,7 @@
     "new_commit_ci": "PENDING"
   },
   "latest_pending_code_commit": null,
-  "latest_pending_ci": "2026-11-28: X19 caller static-analysis code/test commit ac71215f23bd645119f830cc4c63d0b5b2f1974b is VERIFIED_CI_STATIC_ONLY across all four push workflows. This documentation sync records those code-commit runs; the documentation-only commit's push workflows must be checked separately. No runtime or gameplay claim.",
+  "latest_pending_ci": "X19 stack-slot dataflow implementation and synthetic regressions committed from parent ace04f5ea7a8a21b9a625eb69fdce3d95eb767e6; four push workflows and raw job logs pending.",
   "multi_mod_pc_source_path_ownership_guard": "OFFLINE_ONLY_PENDING_CI_NO_ENGINE_ARCHIVE_PRECEDENCE",
   "crilayla_total_output_limit": {
     "status": "pending_ci",
@@ -2208,5 +2208,34 @@
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
     "artifact_zip_sha256": "389c894d70f8f8fda4186e9a86352944427caf22bfe302a5637f2ca1f210c2ee",
     "artifact_file_sha256": "28892246edbb718743c1f8bd4ea43d28086f7a65453ab41221aa6725fd57d3fd"
+  },
+  "native_fileload_x19_stack_restore_20261128": {
+    "state": "PENDING_CI",
+    "parent_sha": "ace04f5ea7a8a21b9a625eb69fdce3d95eb767e6",
+    "source": "tools/portlib/native_fileload_call_targets.py",
+    "test": "tests/test_native_fileload_inbound_args.py",
+    "target": "0x120a6c8",
+    "tracked_register": "x19",
+    "method": "path-sensitive bounded SP-delta, exact stack-slot and register-origin dataflow; no ABI assumption",
+    "synthetic_regressions": [
+      "exact_stp_mov_ldp_roundtrip",
+      "wrong_load_destination",
+      "overwritten_saved_slot",
+      "nested_call_barrier",
+      "unknown_base_store",
+      "conditional_untouched_return",
+      "conditional_clobber",
+      "unbalanced_sp",
+      "invalid_window"
+    ],
+    "expected_main_effect": "X19 remains a call barrier unless every return restores the entry value and all stack/call/alias conditions are proven",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "consumer_abi_verified": false,
+    "ownership_lifecycle_verified": false,
+    "archive_precedence_verified": false,
+    "uzuy_verified": false,
+    "ci_runs": null,
+    "raw_job_logs_inspected": false,
+    "next": "Inspect the exact new HEAD Foundation artifact and all four push job logs. Keep the X19 call barrier unless the authentic report proves all required conditions."
   }
 }
