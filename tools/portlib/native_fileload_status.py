@@ -42,6 +42,15 @@ SERVICE_REQUIRED_TARGET_EDGES=(
  (0x12153A8,"BL",0x1158D30),
 )
 
+# Direct dependencies observed in the bounded dispatch-target traces. These
+# are code addresses, not proven function starts or named OS primitives.
+SERVICE_DEPENDENCY_TARGETS=(0x12A35B4,0x12A35BC,0x12F4CF0,0x12F50E0)
+SERVICE_DEPENDENCY_WINDOWS=(
+ (0x12A35B4,0x12A36B4,(0x12A35B4,0x12A35BC)),
+ (0x12F4CF0,0x12F4DF0,(0x12F4CF0,)),
+ (0x12F50E0,0x12F51E0,(0x12F50E0,)),
+)
+
 
 def _words(code,start,end):
     cs=Cs(CS_ARCH_ARM64,CS_MODE_ARM)
@@ -268,8 +277,41 @@ def _service_target_window(text):
     }
 
 
-def _service_target_inbound_edges(text):
-    incoming={target:[] for target in SERVICE_TARGETS}
+def _service_dependency_window(text,start,end,entries):
+    instructions=_service_words(text,start,end)
+    by_at={int(row["at"],16):row for row in instructions}
+    if not entries or len(set(entries))!=len(entries):
+        raise ValueError("Invalid service dependency entry list")
+    entrypoints=[]
+    for at in entries:
+        row=by_at.get(at)
+        if row is None:
+            raise ValueError("Service dependency entry outside bounded window")
+        entrypoints.append({
+            "at":hex(at),"word_le":row["word_le"],
+            "mnemonic":row["mnemonic"],"operands":row["operands"]
+        })
+    traces=[_bounded_trace(text,start,end,at) for at in entries]
+    return {
+        "start":hex(start),"end_exclusive":hex(end),
+        "window_bytes":end-start,
+        "window_sha256":hashlib.sha256(text[start:end]).hexdigest(),
+        "entrypoints":entrypoints,"instructions":instructions,
+        "bounded_window_not_function_extent":True,
+        "bounded_traces":traces,
+        "function_boundaries_verified":False,
+        "dependency_semantics_verified":False
+    }
+
+
+def _service_dependency_windows(text):
+    return [_service_dependency_window(text,start,end,entries)
+            for start,end,entries in SERVICE_DEPENDENCY_WINDOWS]
+
+
+def _service_target_inbound_edges(text,targets=SERVICE_TARGETS):
+    targets=tuple(targets)
+    incoming={target:[] for target in targets}
     for pc in range(0,len(text)-3,4):
         word=struct.unpack_from("<I",text,pc)[0]
         branch=direct_branch(word,pc)
@@ -278,7 +320,7 @@ def _service_target_inbound_edges(text):
                 "caller":hex(pc),"kind":branch[0],
                 "word_le":text[pc:pc+4].hex()
             })
-    return {hex(target):incoming[target] for target in SERVICE_TARGETS}
+    return {hex(target):incoming[target] for target in targets}
 
 
 def inspect(nso):
@@ -287,7 +329,9 @@ def inspect(nso):
         raise ValueError("Exact pinned v1.70 original main required")
     rows=segments(nso)
     va,text,_=rows[0]
-    if va!=0 or max(HELPER_WINDOW[1],OPEN_CORRIDOR[1],SERVICE_WINDOW[1],SERVICE_TARGET_WINDOW[1])>len(text):
+    if va!=0 or max(HELPER_WINDOW[1],OPEN_CORRIDOR[1],SERVICE_WINDOW[1],
+                    SERVICE_TARGET_WINDOW[1],
+                    *(end for _,end,_ in SERVICE_DEPENDENCY_WINDOWS))>len(text):
         raise ValueError("Pinned original main geometry mismatch")
     witnesses=[]
     for at,(mnemonic,operands) in STATUS_CALL_WITNESSES.items():
@@ -306,11 +350,26 @@ def inspect(nso):
     opening=_words(text,*OPEN_CORRIDOR)
     service=_service_window(text)
     service_targets=_service_target_window(text)
-    target_edges=_service_target_inbound_edges(text)
+    dependency_windows=_service_dependency_windows(text)
+    all_targets=SERVICE_TARGETS+SERVICE_DEPENDENCY_TARGETS
+    all_edges=_service_target_inbound_edges(text,all_targets)
+    target_edges={hex(target):all_edges[hex(target)] for target in SERVICE_TARGETS}
+    dependency_edges={hex(target):all_edges[hex(target)]
+                      for target in SERVICE_DEPENDENCY_TARGETS}
     for caller,kind,target in SERVICE_REQUIRED_TARGET_EDGES:
         if not any(row["caller"]==hex(caller) and row["kind"]==kind
                    for row in target_edges[hex(target)]):
             raise ValueError("Required FileLoad service target edge absent at "+hex(caller))
+    required_dependency_edges=(
+        (0x1158CBC,"BL",0x12A35B4),
+        (0x1158D2C,"B",0x12A35BC),
+        (0x1158C9C,"BL",0x12F4CF0),
+        (0x1158CA4,"BL",0x12F50E0),
+    )
+    for caller,kind,target in required_dependency_edges:
+        if not any(row["caller"]==hex(caller) and row["kind"]==kind
+                   for row in dependency_edges[hex(target)]):
+            raise ValueError("Required FileLoad service dependency edge absent at "+hex(caller))
     return {
         "status":"PINNED_NATIVE_FILELOAD_STATUS_CALLSITE_WITNESSES_ONLY",
         "main_sha256":digest,
@@ -334,6 +393,12 @@ def inspect(nso):
         "service_code_window":service,
         "service_target_code_window":service_targets,
         "service_target_incoming_direct_edges":target_edges,
+        "service_dependency_code_windows":dependency_windows,
+        "service_dependency_incoming_direct_edges":dependency_edges,
+        "service_dependency_targets_are_function_boundaries":False,
+        "service_dependency_thread_token_semantics_verified":False,
+        "service_dependency_mutex_primitive_semantics_verified":False,
+        "service_dependency_lifecycle_semantics_verified":False,
         "service_target_semantics_verified":False,
         "service_target_lock_unlock_implementation_verified":False,
         "service_target_function_boundaries_verified":False,

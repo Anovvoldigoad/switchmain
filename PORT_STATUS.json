@@ -92,7 +92,8 @@
     "Exact SHA-pinned Switch 1.70 ARM64 Capstone code-window transcript (9 windows); 7 word-exact register/BLR witnesses, candidate 0x106F394 prolog from relocation, corrected former fileload_process 0x106F404 to mid-code BL to 0xFFF6A0. No CRI lifecycle proven.",
     "SHA-pinned bounded ARM64 CFG exploration of relocated 0x106F394 candidate (147 reachable words, zero direct B/BL inbound, one RELA pointer, 4 observed terminal addresses), 0x106EDB8 candidate (3 words), and file-open 0x1170FB0 (52 words, one direct caller); no CRI ABI/lifecycle proof",
     "2026-11-27 VERIFIED_CI_STATIC_ONLY: FileLoad immediate status argument constants and bounded direct-callee evidence recorded from exact original main. Code 0e84462e75faa2912bca6a5698987d38d23920eb (parent cf4fe8985bae1a76f3abe6d71b822cd54036a0a5). Foundation push run 46009242285/job 140540193791 COMPLETED SUCCESS; raw log inspected: NATIVE_STATUS5_CALLS_PASS and original main SHA guard; artifact 15202721886 contains native_fileload_status.json, native_fileload_call_targets.json and native_cpk_call_edges.json. Factory run 46009242146/job 140540193654 COMPLETED SUCCESS (13 tests); compressed PRM 46009242342/job 140540194218 COMPLETED SUCCESS (16 tests); MovesetPlus 46009242288/job 140540193634 COMPLETED SUCCESS (16 tests); raw logs inspected. This proves only static original-main callsite words and bounded target windows, not lock semantics, native consumer ABI, object ownership/lifecycle, async completion, archive precedence or Uzuy.",
-    "2026-11-27 PENDING_CI: Extend SHA-pinned FileLoad status evidence with a 128-byte disassembly window covering direct service-target candidates 0x1215358 and 0x1215374, full-text direct BL/B xref census, cross-checks for the status helper and FileLoad request path, and synthetic aligned-window positive/negative/boundary tests. No lock/unlock interpretation is promoted; function extents and service semantics remain unresolved. Parent 0e84462e75faa2912bca6a5698987d38d23920eb; CI pending."
+    "2026-11-27 PENDING_CI: Extend SHA-pinned FileLoad status evidence with a 128-byte disassembly window covering direct service-target candidates 0x1215358 and 0x1215374, full-text direct BL/B xref census, cross-checks for the status helper and FileLoad request path, and synthetic aligned-window positive/negative/boundary tests. No lock/unlock interpretation is promoted; function extents and service semantics remain unresolved. Parent 0e84462e75faa2912bca6a5698987d38d23920eb; CI pending.",
+    "2026-11-27 PENDING_HEAD_CI: FileLoad status-service evidence now follows the four exact direct dependencies of the 0x1158c90/0x1158d10 wrappers, records SHA-pinned bounded disassembly/CFG/xrefs, and adds an emulated-ARM64 test that executes the original wrapper bodies while modeling only four leaf targets. Regressions cover first/reentrant acquire, non-final/final release, underflow, zero provider result, different owner token and 32 status-helper cases. This proves only the literal wrapper owner/count transitions under modeled leaf returns; no OS mutex semantics, concurrency, native consumer ABI, lifecycle, archive precedence or Uzuy proof. Parent 5efd93a9d5d23ab96f3fd7a4404a46e50153c6ac; CI pending. Research pins ModManager 2.1.2.1 tag 502c38d (pinned project commit 276116e is its direct child), Toolbox 2.1.2.1 tag 789fe96 (relevant parser blobs unchanged from 2.1.2.0), PyCriCodecs 755055ee, REA 0386efd1. Original main blob 8af900db, SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. No hooks; preserve Sakura aura107, both Event236 forms and all three false flags."
   ],
   "blocking_gaps": [
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
@@ -1895,5 +1896,34 @@
         "correction": "Added positive 12-byte bounded-window/fallthrough assertion and changed the negative boundary to end=20."
       }
     ]
+  },
+  "native_fileload_service_wrapper_slice": {
+    "state": "PENDING_CI",
+    "parent_sha": "5efd93a9d5d23ab96f3fd7a4404a46e50153c6ac",
+    "source": "tools/portlib/native_fileload_status.py",
+    "static_test": "tests/test_native_fileload_status.py",
+    "emulated_arm64_test": "tests/test_native_fileload_service_slice.py",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "dependencies": [
+      "0x12a35b4",
+      "0x12a35bc",
+      "0x12f4cf0",
+      "0x12f50e0"
+    ],
+    "service_wrapper_owner_count_state_machine_verified": false,
+    "external_leaf_services_modeled": true,
+    "thread_token_provider_semantics_verified": false,
+    "mutex_primitive_semantics_verified": false,
+    "concurrent_behavior_verified": false,
+    "consumer_abi_verified": false,
+    "ownership_lifecycle_verified": false,
+    "archive_precedence_verified": false,
+    "uzuy_verified": false,
+    "ci_run_id": null,
+    "ci_job_id": null,
+    "raw_job_log_inspected": false,
+    "next": "Inspect all push workflow runs/jobs/logs for the new code HEAD, repair any failure, then record artifact window hashes and exact emulated ARM64 results."
   }
 }

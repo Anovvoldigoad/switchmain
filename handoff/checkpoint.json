@@ -1196,7 +1196,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "2026-11-27: The first Foundation attempt failed only because a 12-byte subwindow of a 16-byte synthetic buffer was incorrectly expected to raise. Raw log 46017177259/job 140567169891 inspected. The test now positively checks that boundary and rejects end=20. Verify the new HEAD's four push runs, repair any remaining failure, then inspect target-body artifact.",
+  "next_action": "2026-11-27: Verify the new FileLoad service dependency windows and emulated-ARM64 wrapper test on the exact new HEAD. Inspect all push workflow run/job logs and the Foundation artifact. Keep the leaf token/mutex services modeled; do not claim real lock concurrency, native consumer ABI, lifecycle, archive precedence, or Uzuy.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -2187,21 +2187,16 @@
     "uzuy_tested": false
   },
   "latest_execution": {
-    "status": "PENDING_CI_RETRY",
-    "parent_sha": "c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e",
-    "scope": "FileLoad status dispatch target code, bounded direct CFG and full-text inbound edges",
+    "status": "PENDING_CI",
+    "parent_sha": "5efd93a9d5d23ab96f3fd7a4404a46e50153c6ac",
+    "scope": "SHA-pinned FileLoad service dependency windows plus execution of original owner/count wrapper bodies with four modeled leaf targets",
     "ci_run_id": null,
     "ci_job_id": null,
     "raw_job_log_inspected": false,
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-    "consumer_abi_proven": false,
+    "emulated_arm64_test_intended": true,
     "uzuy_tested": false,
-    "next": "Inspect the new HEAD push runs/jobs/raw logs; require Foundation success and artifact before marking the target-body slice verified.",
-    "failed_run_id": 46017177259,
-    "failed_job_id": 140567169891,
-    "failed_raw_job_log_inspected": true,
-    "failure_reason": "The negative boundary test used [0,12) inside a 16-byte buffer; that range is valid.",
-    "correction": "Added a positive [0,12) case and moved the out-of-bounds negative to [0,20)."
+    "next": "Inspect exact HEAD push workflow runs/jobs/raw logs and Foundation artifact; repair failures."
   },
   "latest_slice": {
     "state": "PENDING_CI",
@@ -2489,5 +2484,45 @@
         "correction": "Added positive 12-byte bounded-window/fallthrough assertion and changed the negative boundary to end=20."
       }
     ]
+  },
+  "native_fileload_service_wrapper_slice": {
+    "state": "PENDING_CI",
+    "parent_sha": "5efd93a9d5d23ab96f3fd7a4404a46e50153c6ac",
+    "source": "tools/portlib/native_fileload_status.py",
+    "static_test": "tests/test_native_fileload_status.py",
+    "emulated_arm64_test": "tests/test_native_fileload_service_slice.py",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "dependency_targets": [
+      "0x12a35b4",
+      "0x12a35bc",
+      "0x12f4cf0",
+      "0x12f50e0"
+    ],
+    "intended_assertions": [
+      "first_acquire",
+      "same_token_recursive_acquire",
+      "nonfinal_release",
+      "final_release",
+      "zero_count_underflow",
+      "zero_context_result",
+      "different_owner_token",
+      "32_status_helper_trials"
+    ],
+    "external_leaf_services_modeled": true,
+    "wrapper_owner_count_state_machine_verified": false,
+    "thread_token_provider_semantics_verified": false,
+    "mutex_primitive_semantics_verified": false,
+    "concurrent_behavior_verified": false,
+    "consumer_abi_verified": false,
+    "ownership_lifecycle_verified": false,
+    "archive_precedence_verified": false,
+    "uzuy_verified": false,
+    "ci_run_id": null,
+    "ci_job_id": null,
+    "raw_job_log_inspected": false,
+    "artifact_id": null,
+    "next": "Verify all four push workflow runs for the new HEAD; inspect the Foundation raw job log and artifact. Repair any test or integration failure before updating this checkpoint to verified."
   }
 }

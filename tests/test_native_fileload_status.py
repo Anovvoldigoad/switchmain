@@ -5,7 +5,9 @@ R=Path(__file__).resolve().parents[1];sys.path.insert(0,str(R/"tools"))
 from portlib.native_fileload_status import (
     inspect,STATUS_CALL_WITNESSES,STATUS_HELPER,MAIN_SHA256,
     SERVICE_WINDOW,SERVICE_ENTRYPOINTS,SERVICE_TARGET_WINDOW,SERVICE_TARGETS,
-    SERVICE_REQUIRED_TARGET_EDGES,_service_words,_bounded_trace
+    SERVICE_REQUIRED_TARGET_EDGES,SERVICE_DEPENDENCY_TARGETS,
+    SERVICE_DEPENDENCY_WINDOWS,_service_words,_bounded_trace,
+    _service_dependency_window,_service_target_inbound_edges
 )
 
 
@@ -70,9 +72,34 @@ def synthetic_bounded_trace():
         else:raise AssertionError(("Invalid bounded trace accepted",start,end,entry))
 
 
+def synthetic_service_dependency_window():
+    # Whole-text direct B/BL xrefs are retained; indirect BR is never guessed.
+    code=struct.pack("<IIII",0x94000002,0x14000002,
+                     0xD503201F,0xD65F03C0)
+    window=_service_dependency_window(code,0,len(code),(0,8))
+    assert window["bounded_window_not_function_extent"]
+    assert [x["at"] for x in window["entrypoints"]]==["0x0","0x8"]
+    assert window["bounded_traces"][0]["direct_calls"]==[
+        {"at":"0x0","target":"0x8","kind":"BL"}]
+    assert window["bounded_traces"][1]["returns"]==["0x8"]
+    edges=_service_target_inbound_edges(code,(8,12,16))
+    assert edges["0x8"]==[{"caller":"0x0","kind":"BL","word_le":"02000094"}]
+    assert edges["0xc"]==[{"caller":"0x4","kind":"B","word_le":"02000014"}]
+    assert edges["0x10"]==[]
+    indirect=struct.pack("<I",0xD61F0100)
+    assert _service_target_inbound_edges(indirect,(0x100,))["0x100"]==[]
+    for start,end,entries in ((1,8,(1,)),(0,20,(0,)),(8,4,(8,)),
+                              (-4,4,(0,)),(0,4,(4,)),(0,4,())):
+        try:_service_dependency_window(code,start,end,entries)
+        except ValueError:pass
+        else:raise AssertionError(("Invalid dependency window accepted",
+                                   start,end,entries))
+
+
 def run(main,out):
     synthetic_service_window()
     synthetic_bounded_trace()
+    synthetic_service_dependency_window()
     raw=main.read_bytes()
     report=inspect(raw)
     assert report["main_sha256"]==MAIN_SHA256
@@ -117,7 +144,33 @@ def run(main,out):
     for caller,kind,target in SERVICE_REQUIRED_TARGET_EDGES:
         assert any(x["caller"]==hex(caller) and x["kind"]==kind
                    for x in target_edges[hex(target)])
-    for key in ("service_target_semantics_verified",
+    dependency_windows=report["service_dependency_code_windows"]
+    assert [int(x["start"],16) for x in dependency_windows]==[
+        start for start,_,_ in SERVICE_DEPENDENCY_WINDOWS]
+    for window,(_,end,entries) in zip(dependency_windows,SERVICE_DEPENDENCY_WINDOWS):
+        assert int(window["end_exclusive"],16)==end
+        assert window["window_bytes"]==end-int(window["start"],16)
+        assert window["bounded_window_not_function_extent"]
+        assert [int(x["at"],16) for x in window["entrypoints"]]==list(entries)
+        assert len(window["instructions"])==window["window_bytes"]//4
+        assert len(window["bounded_traces"])==len(entries)
+        for trace in window["bounded_traces"]:
+            assert trace["reachable_instruction_count"]>0
+            assert not trace["budget_exhausted"]
+            assert not trace["function_boundary_proven"]
+    dependency_edges=report["service_dependency_incoming_direct_edges"]
+    required_dependency_edges=((0x1158CBC,"BL",0x12A35B4),
+                               (0x1158D2C,"B",0x12A35BC),
+                               (0x1158C9C,"BL",0x12F4CF0),
+                               (0x1158CA4,"BL",0x12F50E0))
+    for caller,kind,target in required_dependency_edges:
+        assert any(x["caller"]==hex(caller) and x["kind"]==kind
+                   for x in dependency_edges[hex(target)])
+    for key in ("service_dependency_targets_are_function_boundaries",
+                "service_dependency_thread_token_semantics_verified",
+                "service_dependency_mutex_primitive_semantics_verified",
+                "service_dependency_lifecycle_semantics_verified",
+                "service_target_semantics_verified",
                 "service_target_lock_unlock_implementation_verified",
                 "service_target_function_boundaries_verified",
                 "service_target_ownership_lifecycle_verified",
@@ -155,6 +208,15 @@ def run(main,out):
            for x in target_window["bounded_traces"]],"NO_FUNCTION_OR_LOCK_CLAIM")
     for target,edges in report["service_target_incoming_direct_edges"].items():
         print("PINNED_FILELOAD_SERVICE_TARGET_XREFS",target,edges)
+    print("PINNED_FILELOAD_SERVICE_DEPENDENCIES_PASS",
+          [(x["start"],x["end_exclusive"],x["window_sha256"],
+            [(t["entry"],t["reachable_instruction_count"],
+              len(t["direct_calls"]),len(t["indirect_calls"]),
+              len(t["returns"]),len(t["out_of_window_edges"]))
+             for t in x["bounded_traces"]]) for x in dependency_windows],
+          "NO_FUNCTION_OR_PRIMITIVE_SEMANTICS_CLAIM")
+    for target,edges in dependency_edges.items():
+        print("PINNED_FILELOAD_SERVICE_DEPENDENCY_XREFS",target,edges)
     for group in ("helper_code","file_open_return_handling_near_call"):
         for ins in report[group]["instructions"]:
             print("NATIVE_STATUS_PATH_WORD",group,ins["at"],ins["mnemonic"],ins["operands"])
