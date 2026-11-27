@@ -69,9 +69,11 @@ def _decode_adrp_ldr_words(pc, adrp_word, ldr_word, expected_base_register):
     return page + imm12 * 8, rt
 
 
-def _adrp_ldr_cell(text, pc, expected_base_register):
+def _adrp_ldr_cell(text, adrp_pc, ldr_pc, expected_base_register):
+    # ADRP and its consuming LDR need not be adjacent; intervening instructions
+    # may use other registers while preserving the page register.
     return _decode_adrp_ldr_words(
-        pc, _word(text, pc), _word(text, pc + 4), expected_base_register
+        adrp_pc, _word(text, adrp_pc), _word(text, ldr_pc), expected_base_register
     )
 
 
@@ -211,18 +213,18 @@ def inspect(nso):
     object_extent_region = _classify_range(object_from_early_return, 0x20, regions)
 
     registration_arg_cell, registration_arg_register = _adrp_ldr_cell(
-        text, 0x116B7FC, 0
+        text, 0x116B7FC, 0x116B804, 0
     )
     registration_context = _adrp_add_target(text, 0x116B808, 2)
     counter_load_cell, counter_load_register = _adrp_ldr_cell(
-        text, 0x029C, 10
+        text, 0x029C, 0x02A8, 10
     )
     counter_update_cell = _adrp_add_target(text, 0x02D8, 12)
     table_base_cell, table_base_register = _adrp_ldr_cell(
-        text, 0x02A0, 9
+        text, 0x02A0, 0x02A4, 9
     )
     table_limit_cell, table_limit_register = _adrp_ldr_cell(
-        text, 0x02AC, 10
+        text, 0x02AC, 0x02B4, 10
     )
     if counter_load_cell != counter_update_cell:
         raise ValueError("Atomic counter load/update addresses disagree")
