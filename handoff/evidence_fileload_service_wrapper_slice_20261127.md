@@ -32,7 +32,7 @@
 - Git blob: `8af900db0d7003255b4ddb3cbd1289cd5a15458e` (27,701,509 bytes)
 - Required whole-file SHA256: `2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9`
 
-The already SHA-pinned status helper at `0x120661c` passes X0+0x18 to dispatch entries `0x1215358` and `0x1215374`. The bounded dispatch window `0x1215358..0x12153d8` (128 bytes, SHA256 `57ceb7351df052e968a1431e70c39812c323d0880d00d36380c01814af58976e`) contains:
+The already SHA-pinned status helper at `0x120661c` passes X0+0x18 to dispatch entries `0x1215358` and `0x1215374`. Both dispatch paths then execute `ADD X0,X0,#8` before tail-branching to their wrapper targets, so the wrapper's X0 is the original status object +0x20. The wrapper's owner/count fields are therefore at original object +0x28/+0x2c, while the dispatch gate is read at original object +0x40. The bounded dispatch window `0x1215358..0x12153d8` (128 bytes, SHA256 `57ceb7351df052e968a1431e70c39812c323d0880d00d36380c01814af58976e`) contains:
 - `0x1215364 B 0x1158c90`
 - `0x1215380 B 0x1158d10`
 - `0x12153a8 BL 0x1158d30`
@@ -51,6 +51,7 @@ These instructions support a falsifiable *owner-token/count wrapper* hypothesis.
   - `0x12f4cf0..0x12f4df0`
   - `0x12f50e0..0x12f51e0`
 - Record exact bytes, disassembly, register/memory operands, bounded CFG traces, and whole-text direct B/BL inbound edges for all four dependency addresses. Never infer function extent or semantics from the chosen windows.
+- The emulated test models the dispatch's observed +8 X0 adjustment: wrapper X0 = caller subobject +8; owner/count are wrapper X0 +8/+12. The first test attempt incorrectly used the pre-adjustment subobject as the owner/count base; this was corrected.
 - Add a Unicorn test that executes the original dispatch and wrapper instructions at `0x1215358`, `0x1215374`, `0x1158c90`, and `0x1158d10`. Only four leaf targets (`0x12f4cf0`, `0x12f50e0`, `0x12a35b4`, `0x12a35bc`) are intercepted with deterministic test stubs.
 - Regressions cover first acquisition, same-token recursive acquisition, non-final release, final release, zero-count underflow, zero context result, different owner token, and 32 status-helper trials. This verifies the literal owner/count wrapper state machine under modeled leaf returns; it is not a multithreaded lock test.
 

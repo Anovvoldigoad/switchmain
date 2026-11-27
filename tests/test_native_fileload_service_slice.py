@@ -14,14 +14,19 @@ from arm64_module import M,H,align,call,module
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"tools"))
 from portlib.nso_profile import segments
-from portlib.native_fileload_status import MAIN_SHA256,inspect
+from portlib.native_fileload_status import (
+    MAIN_SHA256,inspect,SERVICE_DISPATCH_X0_ADJUSTMENT,
+    SERVICE_WRAPPER_OWNER_OFFSET,SERVICE_WRAPPER_COUNT_OFFSET
+)
 
 OBJECT=H+0x18000
 SUBOBJECT=OBJECT+0x18
+# Dispatch adds eight before entering the wrapper; its X0 is OBJECT+0x20.
+LOCK_OBJECT=SUBOBJECT+SERVICE_DISPATCH_X0_ADJUSTMENT
 STATUS_OFFSET=0x68
 GATE_OFFSET=0x28
-OWNER_OFFSET=0x08
-COUNT_OFFSET=0x0c
+OWNER_OFFSET=SERVICE_WRAPPER_OWNER_OFFSET
+COUNT_OFFSET=SERVICE_WRAPPER_COUNT_OFFSET
 STATUS_HELPER=0x120661c
 LOCK_DISPATCH=0x1215358
 UNLOCK_DISPATCH=0x1215374
@@ -92,8 +97,8 @@ def run(main,elf,out):
 
     def reset_state():
         write32(u,SUBOBJECT+GATE_OFFSET,1)
-        write32(u,SUBOBJECT+OWNER_OFFSET,0)
-        write32(u,SUBOBJECT+COUNT_OFFSET,0)
+        write32(u,LOCK_OBJECT+OWNER_OFFSET,0)
+        write32(u,LOCK_OBJECT+COUNT_OFFSET,0)
         state.update({
             "thread_context_calls":0,"thread_token_calls":0,
             "lock_calls":[],"unlock_calls":[],
@@ -103,36 +108,36 @@ def run(main,elf,out):
 
     reset_state()
     call(u,M+LOCK_DISPATCH,[SUBOBJECT],instruction_budget=5000)
-    assert read32(u,SUBOBJECT+OWNER_OFFSET)==0x1234
-    assert read32(u,SUBOBJECT+COUNT_OFFSET)==1
-    assert state["lock_calls"]==[SUBOBJECT]
+    assert read32(u,LOCK_OBJECT+OWNER_OFFSET)==0x1234
+    assert read32(u,LOCK_OBJECT+COUNT_OFFSET)==1
+    assert state["lock_calls"]==[LOCK_OBJECT]
     assert state["thread_context_calls"]==1 and state["thread_token_calls"]==1
     scenarios.append({"case":"first_acquire","owner":0x1234,"count":1,
                       "lock_calls":len(state["lock_calls"])})
     call(u,M+LOCK_DISPATCH,[SUBOBJECT],instruction_budget=5000)
-    assert read32(u,SUBOBJECT+OWNER_OFFSET)==0x1234
-    assert read32(u,SUBOBJECT+COUNT_OFFSET)==2
-    assert state["lock_calls"]==[SUBOBJECT]
+    assert read32(u,LOCK_OBJECT+OWNER_OFFSET)==0x1234
+    assert read32(u,LOCK_OBJECT+COUNT_OFFSET)==2
+    assert state["lock_calls"]==[LOCK_OBJECT]
     scenarios.append({"case":"same_token_recursive_acquire","owner":0x1234,
                       "count":2,"lock_calls":len(state["lock_calls"])})
     call(u,M+UNLOCK_DISPATCH,[SUBOBJECT],instruction_budget=5000)
-    assert read32(u,SUBOBJECT+OWNER_OFFSET)==0x1234
-    assert read32(u,SUBOBJECT+COUNT_OFFSET)==1
+    assert read32(u,LOCK_OBJECT+OWNER_OFFSET)==0x1234
+    assert read32(u,LOCK_OBJECT+COUNT_OFFSET)==1
     assert state["unlock_calls"]==[]
     scenarios.append({"case":"nonfinal_release","owner":0x1234,"count":1,
                       "unlock_calls":0})
     call(u,M+UNLOCK_DISPATCH,[SUBOBJECT],instruction_budget=5000)
-    assert read32(u,SUBOBJECT+OWNER_OFFSET)==0
-    assert read32(u,SUBOBJECT+COUNT_OFFSET)==0
-    assert state["unlock_calls"]==[SUBOBJECT]
+    assert read32(u,LOCK_OBJECT+OWNER_OFFSET)==0
+    assert read32(u,LOCK_OBJECT+COUNT_OFFSET)==0
+    assert state["unlock_calls"]==[LOCK_OBJECT]
     scenarios.append({"case":"final_release","owner":0,"count":0,
                       "unlock_calls":len(state["unlock_calls"])})
 
     reset_state()
-    write32(u,SUBOBJECT+OWNER_OFFSET,0x777)
+    write32(u,LOCK_OBJECT+OWNER_OFFSET,0x777)
     call(u,M+UNLOCK_DISPATCH,[SUBOBJECT],instruction_budget=5000)
-    assert read32(u,SUBOBJECT+OWNER_OFFSET)==0x777
-    assert read32(u,SUBOBJECT+COUNT_OFFSET)==0
+    assert read32(u,LOCK_OBJECT+OWNER_OFFSET)==0x777
+    assert read32(u,LOCK_OBJECT+COUNT_OFFSET)==0
     assert state["unlock_calls"]==[]
     scenarios.append({"case":"zero_count_release_underflow","owner":0x777,
                       "count":0,"unlock_calls":0})
@@ -142,23 +147,23 @@ def run(main,elf,out):
     call(u,M+LOCK_DISPATCH,[SUBOBJECT],instruction_budget=5000)
     assert state["thread_context_calls"]==1
     assert state["thread_token_calls"]==0
-    assert read32(u,SUBOBJECT+OWNER_OFFSET)==0
-    assert read32(u,SUBOBJECT+COUNT_OFFSET)==1
+    assert read32(u,LOCK_OBJECT+OWNER_OFFSET)==0
+    assert read32(u,LOCK_OBJECT+COUNT_OFFSET)==1
     assert state["lock_calls"]==[]
     call(u,M+UNLOCK_DISPATCH,[SUBOBJECT],instruction_budget=5000)
-    assert read32(u,SUBOBJECT+COUNT_OFFSET)==0
+    assert read32(u,LOCK_OBJECT+COUNT_OFFSET)==0
     assert len(state["unlock_calls"])==1
     scenarios.append({"case":"zero_context_result","owner":0,"count":0,
                       "token_provider_calls":0,"unlock_calls":1})
 
     reset_state()
     state["thread_context_result"]=1
-    write32(u,SUBOBJECT+OWNER_OFFSET,0x777)
-    write32(u,SUBOBJECT+COUNT_OFFSET,1)
+    write32(u,LOCK_OBJECT+OWNER_OFFSET,0x777)
+    write32(u,LOCK_OBJECT+COUNT_OFFSET,1)
     call(u,M+LOCK_DISPATCH,[SUBOBJECT],instruction_budget=5000)
-    assert state["lock_calls"]==[SUBOBJECT]
-    assert read32(u,SUBOBJECT+OWNER_OFFSET)==0x1234
-    assert read32(u,SUBOBJECT+COUNT_OFFSET)==2
+    assert state["lock_calls"]==[LOCK_OBJECT]
+    assert read32(u,LOCK_OBJECT+OWNER_OFFSET)==0x1234
+    assert read32(u,LOCK_OBJECT+COUNT_OFFSET)==2
     scenarios.append({"case":"different_owner_token","owner":0x1234,
                       "count":2,"modeled_lock_return":"immediate"})
 
@@ -179,8 +184,8 @@ def run(main,elf,out):
             actual=read32(u,OBJECT+STATUS_OFFSET)
             expected=previous if previous in (3,5) else requested
             assert actual==expected,(previous,requested,actual,expected)
-            assert read32(u,SUBOBJECT+OWNER_OFFSET)==0
-            assert read32(u,SUBOBJECT+COUNT_OFFSET)==0
+            assert read32(u,LOCK_OBJECT+OWNER_OFFSET)==0
+            assert read32(u,LOCK_OBJECT+COUNT_OFFSET)==0
             assert len(state["lock_calls"])==before_lock+1
             assert len(state["unlock_calls"])==before_unlock+1
             trials.append({
@@ -196,6 +201,11 @@ def run(main,elf,out):
         "original_main_sha256":MAIN_SHA256,
         "dispatch_entrypoints":[hex(LOCK_DISPATCH),hex(UNLOCK_DISPATCH)],
         "wrapper_targets":["0x1158c90","0x1158d10"],
+        "dispatch_x0_adjustment":SERVICE_DISPATCH_X0_ADJUSTMENT,
+        "wrapper_x0_relative_to_status_object":0x20,
+        "owner_field_relative_to_status_object":0x28,
+        "count_field_relative_to_status_object":0x2c,
+        "dispatch_gate_field_relative_to_status_object":0x40,
         "leaf_targets_modeled":[hex(THREAD_CONTEXT),hex(THREAD_TOKEN),
                                 hex(LOCK_PRIMITIVE),hex(UNLOCK_PRIMITIVE)],
         "actual_original_wrapper_instructions_executed":True,

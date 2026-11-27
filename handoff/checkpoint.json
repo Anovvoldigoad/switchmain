@@ -1196,7 +1196,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "2026-11-27: Verify the new FileLoad service dependency windows and emulated-ARM64 wrapper test on the exact new HEAD. Inspect all push workflow run/job logs and the Foundation artifact. Keep the leaf token/mutex services modeled; do not claim real lock concurrency, native consumer ABI, lifecycle, archive precedence, or Uzuy.",
+  "next_action": "2026-11-27: Re-run all four push workflows after correcting the synthetic return-PC expectation and dispatch +8 wrapper base. Inspect authentic logs and Foundation artifact. Keep all runtime flags false.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -2187,16 +2187,18 @@
     "uzuy_tested": false
   },
   "latest_execution": {
-    "status": "PENDING_CI",
-    "parent_sha": "5efd93a9d5d23ab96f3fd7a4404a46e50153c6ac",
-    "scope": "SHA-pinned FileLoad service dependency windows plus execution of original owner/count wrapper bodies with four modeled leaf targets",
+    "status": "PENDING_CI_RETRY",
+    "parent_sha": "91cdd76c91876440ee52c261e6fa802199c57deb",
+    "failed_run_id": 46021414045,
+    "failed_job_id": 140581709219,
+    "failed_raw_job_log_inspected": true,
+    "failure_reason": "Synthetic entry 0x8 is NOP and falls through to RET at 0xc.",
+    "correction": "Expect 0xc; honor dispatch ADD X0,#8 when emulating owner/count fields.",
     "ci_run_id": null,
     "ci_job_id": null,
     "raw_job_log_inspected": false,
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-    "emulated_arm64_test_intended": true,
-    "uzuy_tested": false,
-    "next": "Inspect exact HEAD push workflow runs/jobs/raw logs and Foundation artifact; repair failures."
+    "next": "Inspect new HEAD push workflow runs/jobs/raw logs and Foundation artifact."
   },
   "latest_slice": {
     "state": "PENDING_CI",
@@ -2486,7 +2488,7 @@
     ]
   },
   "native_fileload_service_wrapper_slice": {
-    "state": "PENDING_CI",
+    "state": "PENDING_CI_RETRY",
     "parent_sha": "5efd93a9d5d23ab96f3fd7a4404a46e50153c6ac",
     "source": "tools/portlib/native_fileload_status.py",
     "static_test": "tests/test_native_fileload_status.py",
@@ -2523,6 +2525,17 @@
     "ci_job_id": null,
     "raw_job_log_inspected": false,
     "artifact_id": null,
-    "next": "Verify all four push workflow runs for the new HEAD; inspect the Foundation raw job log and artifact. Repair any test or integration failure before updating this checkpoint to verified."
+    "next": "Inspect all four new HEAD push workflow runs/jobs/logs and Foundation artifact; repair remaining failure before marking verified.",
+    "ci_attempts": [
+      {
+        "run_id": 46021414045,
+        "job_id": 140581709219,
+        "conclusion": "failure",
+        "raw_job_log_inspected": true,
+        "failing_step": "Trace pinned FileLoad status5 arguments, service-entry windows and bounded dispatch-target CFGs",
+        "failure": "Synthetic entry 0x8 is NOP; fallthrough reaches RET at 0xc, not 0x8.",
+        "correction": "Expect 0xc; assert dispatch ADD X0,#8 and use adjusted wrapper X0 for owner/count."
+      }
+    ]
   }
 }

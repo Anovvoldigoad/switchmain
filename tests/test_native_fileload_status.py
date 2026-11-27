@@ -6,7 +6,9 @@ from portlib.native_fileload_status import (
     inspect,STATUS_CALL_WITNESSES,STATUS_HELPER,MAIN_SHA256,
     SERVICE_WINDOW,SERVICE_ENTRYPOINTS,SERVICE_TARGET_WINDOW,SERVICE_TARGETS,
     SERVICE_REQUIRED_TARGET_EDGES,SERVICE_DEPENDENCY_TARGETS,
-    SERVICE_DEPENDENCY_WINDOWS,_service_words,_bounded_trace,
+    SERVICE_DEPENDENCY_WINDOWS,SERVICE_DISPATCH_X0_ADJUSTMENT,
+    SERVICE_WRAPPER_OWNER_OFFSET,SERVICE_WRAPPER_COUNT_OFFSET,
+    _service_words,_bounded_trace,
     _service_dependency_window,_service_target_inbound_edges
 )
 
@@ -81,7 +83,7 @@ def synthetic_service_dependency_window():
     assert [x["at"] for x in window["entrypoints"]]==["0x0","0x8"]
     assert window["bounded_traces"][0]["direct_calls"]==[
         {"at":"0x0","target":"0x8","kind":"BL"}]
-    assert window["bounded_traces"][1]["returns"]==["0x8"]
+    assert window["bounded_traces"][1]["returns"]==["0xc"]
     edges=_service_target_inbound_edges(code,(8,12,16))
     assert edges["0x8"]==[{"caller":"0x0","kind":"BL","word_le":"02000094"}]
     assert edges["0xc"]==[{"caller":"0x4","kind":"B","word_le":"02000014"}]
@@ -121,6 +123,13 @@ def run(main,out):
     assert service["end_exclusive"]==hex(SERVICE_WINDOW[1])
     assert service["window_bytes"]==SERVICE_WINDOW[1]-SERVICE_WINDOW[0]
     assert service["bounded_window_not_function_extent"]
+    service_by_at={int(x["at"],16):x for x in service["instructions"]}
+    for at in (0x1215360,0x121537c):
+        assert (service_by_at[at]["mnemonic"],service_by_at[at]["operands"])==(
+            "add","x0, x0, #8")
+    assert report["service_dispatch_x0_adjustment"]==SERVICE_DISPATCH_X0_ADJUSTMENT
+    assert report["service_wrapper_owner_field_offset"]==SERVICE_WRAPPER_OWNER_OFFSET
+    assert report["service_wrapper_count_field_offset"]==SERVICE_WRAPPER_COUNT_OFFSET
     assert [int(x["at"],16) for x in service["entrypoints"]]==list(SERVICE_ENTRYPOINTS)
     assert len(service["instructions"])==service["window_bytes"]//4
     assert all(len(x["word_le"])==8 for x in service["instructions"])
