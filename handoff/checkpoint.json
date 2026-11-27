@@ -37,100 +37,17 @@
     "pc_mod_manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
     "pc_api_source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
     "implemented_this_change": [
+      "2026-11-28 PENDING_CI: New SHA-pinned FileLoad guard-state slice. It decodes ADRP/ADD and ADRP/LDR pairs, classifies the guard/object and explicit store ranges against original NSO text/rodata/data/BSS, verifies the two __cxa_guard import relocations and records the 0x290 helper's atomic counter, pointer cells and 24-byte three-register record shape. This does not identify the helper, callback/destructor, imported implementations, table target, native consumer ABI or ownership. Synthetic negative/boundary cases plus exact original-main SHA test added; Foundation workflow step added. Parent HEAD 261e4aab417b1aebaaeddb9a83160a46dc812255; commit SHA and push CI pending.",
+      "2026-11-28 VERIFIED_CI_STATIC_ONLY: Branch HEAD 261e4aab417b1aebaaeddb9a83160a46dc812255 resolves six FileLoad PLT/GOT imports from original main. Four workflows completed SUCCESS; raw job logs inspected. Foundation run/job 46071621142/140749655985 artifact 15233128327, ZIP SHA256 fbab9afc236c8a85356e9e7cf3f02e3f219ee208f003c00addadde7869dfc65b; imports JSON SHA256 2d6165fafb81c7ee90141def3aad8a3383aec528e87e2e479173907ced6f12f8. Factory 46071621080/140749655836, compressed PRM 46071621075/140749655778, MovesetPlus 46071621063/140749655794. The two nested FileLoad imports resolve to __cxa_guard_acquire/__cxa_guard_release names only; implementations/provider and all runtime semantics remain unresolved. A prior Foundation failure on 42d91238 was a stale synthetic SP-delta expectation (-16 vs 0); 10ca61ba corrected it and all four workflows passed.",
+      "2026-11-28 VERIFIED_CI_STATIC_ONLY: Branch HEAD 261e4aab417b1aebaaeddb9a83160a46dc812255 resolves six FileLoad PLT/GOT imports from original main. Four workflows completed SUCCESS; raw job logs inspected. Foundation run/job 46071621142/140749655985 artifact 15233128327, ZIP SHA256 fbab9afc236c8a85356e9e7cf3f02e3f219ee208f003c00addadde7869dfc65b; imports JSON SHA256 2d6165fafb81c7ee90141def3aad8a3383aec528e87e2e479173907ced6f12f8. Factory 46071621080/140749655836, compressed PRM 46071621075/140749655778, MovesetPlus 46071621063/140749655794. The two nested FileLoad imports resolve to __cxa_guard_acquire/__cxa_guard_release names only; implementations/provider and all runtime semantics remain unresolved. A prior Foundation failure on 42d91238 was a stale synthetic SP-delta expectation (-16 vs 0); 10ca61ba corrected it and all four workflows passed.",
+      "2026-11-28 PENDING_CI: New SHA-pinned FileLoad guard-state slice. It decodes ADRP/ADD and ADRP/LDR pairs, classifies the guard/object and explicit store ranges against original NSO text/rodata/data/BSS, verifies the two __cxa_guard import relocations and records the 0x290 helper's atomic counter, pointer cells and 24-byte three-register record shape. This does not identify the helper, callback/destructor, imported implementations, table target, native consumer ABI or ownership. Synthetic negative/boundary cases plus exact original-main SHA test added; Foundation workflow step added. Parent HEAD 261e4aab417b1aebaaeddb9a83160a46dc812255; commit SHA and push CI pending.",
       "2026-11-28 VERIFIED_CI_STATIC_ONLY: Fixed recursive FileLoad X19 proof-tree serialization. `analyze_stack_register_restore()` returns `nested_call_proofs` as a list; the parent serializer incorrectly called `.values()`, causing Foundation step 42 to raise AttributeError. Changed it to copy the list directly. Existing regression covers list shape, nested-call failure and cycle evidence. Code commit dbc23b155335c61602437c72e7f1ceabbe35553d (parent 255adab51824809ca8920c4b65dba6a3d326fb41). All four push workflows COMPLETED SUCCESS with raw logs inspected. Foundation artifact 15231780092 (336355 bytes, SHA256 598559d70ee9d2911c52fc6109b722465b87b96d3e5b9b77f2de8b99f38fc7aa); inbound-args JSON SHA256 d3a1ece8b05743da15643babe98d77fffa0995532477f0bf6e769bbec66102e5. Authentic original main SHA256 guard passed. Exact local X19 save/restore at SP-8 is proven, but nested call stack effects and unknown-base writes keep X19 at 0x116f280 -> 0x120a6c8 unresolved. Static proof only; no consumer ABI, ownership/lifecycle, archive precedence or Uzuy claim. All three release flags remain false.",
       "2026-11-28 VERIFIED_CI_STATIC_ONLY: FileLoad caller X19 reaching-definition analysis and complete raw-word direct-BL inventory are verified on original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. The previous manual list had 10 calls; independent A64 BL decoding finds 23, of which four pass strict exact-target bounded no-write/all-return preservation. At the unique FileLoad caller 0x116f29c, X19 remains unresolved behind a call barrier at 0x116f280 -> 0x120a6c8; its bounded callee writes X19 at 0x120a6cc and 0x120a724, and stack restore is not yet proven. Test correction commit ac71215f23bd645119f830cc4c63d0b5b2f1974b (source implementation 04cd926fe4af8144e53fc7eb92c9c5096ce38fd0). Four push workflows on ac71215 COMPLETED SUCCESS; raw logs inspected: Foundation 46048379870/140673240478, factory 46048379872/140673240433, compressed PRM 46048379855/140673240097, MovesetPlus 46048379836/140673240368. Foundation artifact 15223636352, ZIP SHA256 389c894d70f8f8fda4186e9a86352944427caf22bfe302a5637f2ca1f210c2ee. This is original-main static evidence only; no ABI/ownership/lifecycle/archive-precedence/Uzuy proof. Keep all three release flags false.",
       "2026-11-27 VERIFIED_CI_STATIC_ONLY: FileLoad SP/FP alias evidence now records AArch64 register-indexed memory operands and refuses displacement-only stack claims when the index is unresolved. Synthetic regressions prove indexed SP STR/LDR pairs do not create constant stack candidates, shifted index operands are inventoried unresolved, and indexed stores through SP-derived aliases invalidate apparently disjoint witnesses; existing immediate-only positives remain. Code df9a3e1e41db4d1b2063f2ac7b31e5adc6ef3dea (parent 840f92aa7d6dc5b812a07c2fc8c4ae8589b58ac3). Foundation push run 45976679056 job 140430025592 COMPLETED SUCCESS; raw job log inspected: PINNED_FILELOAD_SP_CFG_PASS 166 10 NO_CONSUMER_ABI and RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF. Other HEAD workflows also COMPLETED SUCCESS with raw logs inspected: compressed 45976679041/job 140430025502, factory 45976679120/job 140430025333, MovesetPlus 45976679117/job 140430026222. Foundation proof artifact 15187631793 (263930 bytes). Host/static and original-main SHA-guarded test passed; this slice is not an emulated ARM64 runtime test or Uzuy test. Native consumer ABI, ownership/lifecycle, callback, async, rollback/unbind/destructor, archive precedence and gameplay remain unresolved; all release flags remain false.",
-      "2026-11-23 PENDING_HEAD_CI: compressed batch independent verifier now reconstructs exact deterministic literal/runs CRILAYLA bitstream for changed Event236 candidates, rejecting a valid alternate encoder even when decoded bytes and updated SHA match; three encoder modes positive and alternate negative regressions. Code commit 28c95224bc9538dae9dcba85f1e1b437c3cf5500 parent aca1be0f02b7e334768d82d2483523507ff96ecc. Prior compressed push run 45157982290 job 137635718880 COMPLETED SUCCESS raw log inspected; new HEAD CI pending. Synthetic offline only. NSC-ModManager/Toolbox 2.1.2.1 upstream release 2026-08-30; no Switch ABI inference. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Sakura aura107, Event236 marked/unmarked and three false release flags preserved. NEXT inspect compressed workflow push run/job/log for new HEAD, repair failures, then authentic consumer evidence.",
-      "2026-11-23 PENDING_HEAD_CI: compressed PRM batch now preserves the exact original CRILAYLA stored bytes for unchanged Event236 members across literal/runs/auto, while changed members still encode and independently roundtrip. New mixed-member, all-encoder, no-encode and SHA regressions; synthetic offline only. Parent 40f8de7c05c193a21b7fc799b28273bf663692c0. Upstream ModManager 2.1.2.1 README blob 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709, Toolbox README blob 657f161390c4abe8afe10cea11a2b9a28e6bf6b0; generic REA evidence only; pinned original main bytes not available for rehash. No native ABI/ownership/archive precedence/Uzuy proof. Preserve Sakura aura107, Event236 variants and false release flags.",
-      "2026-11-23 PENDING_HEAD_CI: ordered factory source validation now rejects unknown source kinds before applying --exclude, preventing invalid excluded source from bypassing kind validation. Regression covers excluded unknown kind; host/Actions HEAD CI not yet verified. Parent cdfbd08e7241b3118506aff161ce8318bdd3a039. This is offline factory input correctness only; no original main rehash, Switch ABI, lifecycle, archive precedence, or Uzuy proof. Preserve Sakura aura107, both Event236 forms and all three false release flags.",
-      "2026-11-23 PENDING_HEAD_CI: shared native CPK/FileLoad ARM64 CFG now classifies BLRAA/BLRAB/BLRAAZ/BLRABZ as unresolved authenticated calls and BRAAZ/BRABZ as terminal jumps. FileLoad uses shared edge classification, retains opaque-call SP barrier; regression covers four call and six terminal mnemonics plus existing original-main SHA-guarded CFG tests. Parent d225194e6b18d3b540f12ea3c99adccda350dd5c; local Capstone unavailable (DNS), HEAD Actions log not yet inspected. Upstream ModManager 2.1.2.1 release 502c38d (Switch Projectiles Target), 2.1.2.0 Start/Stop Deflect; Toolbox 2.1.2.1 789fe96; generic REA/CRI references do not prove Switch ABI. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. No native consumer ABI, lifecycle, archive precedence or Uzuy proof; Sakura aura107, both Event236 variants and three false release flags untouched. NEXT inspect authentic Foundation push run/job/log for new HEAD; if failing repair; authenticate original main for native consumer proof.",
-      "2026-11-23 PENDING_HEAD_CI: ARMv8.3 authenticated indirect BLRAA/BLRAB calls in read-only FileLoad CFG now act as opaque call barriers instead of falsely allowing SP stack witness across call. Positive negative synthetic BLRAA regression uses clang-assembled word 0xd73f092a. Parent 2da3c6f97aa4cdc9856d1686c05062bad761de12; host Capstone unavailable; HEAD push Actions job/log unverified. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Native consumer ABI/ownership/lifecycle/CPK precedence/Uzuy unresolved; Sakura aura107 and both Event236 forms untouched; full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. NEXT run Foundation CI for HEAD and inspect authentic job logs, then source-pinned native proof.",
-      "2026-11-22 PENDING_HEAD_CI: FileLoad CFG backward-edge witness now considers lower-address readers reached after a stack writer, instead of filtering by numeric PC order; synthetic positive backward branch and negative disconnected edge added. Parent a4f9056bc09985362c96065bdccab8b2867a2fce; host Capstone unavailable; HEAD Actions job/log not verified. Read-only static possibility only, no consumer ABI, ownership, lifecycle, archive precedence or Uzuy proof. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Sakura aura107, marked/unmarked Event236 untouched; full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. NEXT inspect Foundation push job log for new HEAD and fix failures; continue original main consumer proof.",
-      "2026-11-21 PENDING_HEAD_CI: ordered factory now accepts SHA256-pinned --baseline-report alongside --baseline-profile and records same-selector source transfers (operation=transfer), with baseline report/profile cross-check and complete unique effective-owner validation. Source commit 981bc6cba42c58e88a1f9eecc2c5fbb9fc65e2ff; test commit d51d309ca047c57e196df4dde5478eaea1c2fddb; parent 3f98581455a71d688b889901a95633da777dbfb6. Added regression for transfer, replay, tampered report, missing baseline. GitHub Actions push runs/logs for new HEAD not verified; local clone blocked by DNS, no PASS. Upstream ModManager/Toolbox 2.1.2.1 referenced, no Switch ABI proof; original main pinned SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Sakura aura107, marked/unmarked Event236 untouched. full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. NEXT read exact HEAD push Actions job logs, fix regressions, prove native consumer ABI/lifecycle before hooks.",
-      "2026-11-21 PENDING_HEAD_CI: ordered mixed raw PC/profile factory composer now supports --exclude LABEL to remove any mod and deterministically replay surviving sources in original order, restoring shadowed selectors. Every excluded source remains SHA256-authenticated, unknown/duplicate exclusions fail closed, provenance records excluded status. 3 positive/negative/CLI tests added. Parent ecf1e9099c2821fad2050becd1c0032ca4ecae25; host/Actions HEAD CI not yet verified. Upstream ModManager 2.1.2.1 release 502c38d, Toolbox 2.1.2.1 release 789fe96, REA generic reference; no native Switch ABI inference. Pinned original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Sakura aura107, Event236 marked/unmarked untouched; full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. NEXT inspect exact HEAD Actions ordered-factory job authentic log; fix if failing. Native consumer ownership/lifecycle/archive precedence/Uzuy remain unresolved.",
-      "2026-11-21 PENDING_HEAD_CI: explicit interleaved raw PC specialCondParam and SHA256-authenticated factory.profile multi-mod order implemented in tools/compose_ordered_factory.py; positive/negative/boundary/CLI regressions in tests/test_factory_ordered_sources.py. Parent de5aeaf7c31a2ec73fd0cb7f750028e0105b6fd5; code 766dedb0e81ece2828ca16fd72fb6fdba9d81a16. Existing compiler grouped raw before profile and could not represent profile -> raw priority. New standalone CLI processes exact source order; no native consumer. Primary references: https://github.com/TheLeonX/NSC-ModManager/releases/tag/2.1.2.1 (release 502c38d, current source 276116e), https://github.com/TheLeonX/NSC-Toolbox/releases/tag/2.1.2.1 (789fe96), REA reference from previous pinned evidence only; no original main rehash this run. Switch original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; ABI, ownership, archive precedence, Uzuy unresolved. Sakura aura107, Event236 marked/unmarked untouched. full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. HEAD CI pending; inspect authentic workflow job log before PASS.",
-      "2026-11-21 PENDING_HEAD_CI: mixed factory composition now accepts authenticated --profile LABEL PATH SHA256 after raw PC specialCondParam inputs; deterministic last-wins or reject, provenance and positive/negative/boundary regression. Code 622d65c890359be4dbaaac2d2b32c29bd5953ee6 parent 66847664b781ae31f5b7a35e2ddbfdbb66a71736. Parent HEAD four push workflows COMPLETED SUCCESS, authentic logs inspected: Foundation 44855979418/136698177683; factory 44855979405/136698177499; compressed 44855979396/136698177373; MovesetPlus 44855979480/136698177758. New HEAD workflow pending. Offline class-selector composition only; no Switch native consumer, original main rehash or Uzuy. SHA guard, Sakura aura107, Event236 variants and three false flags preserved. NEXT inspect new HEAD factory job log and fix failures; prove consumer ABI from original bytes before hooks.",
-      "2026-11-21 PENDING_HEAD_CI: raw PC factory compiler authenticates ordered --param-sha256 inputs and records SHA256 provenance, rejecting missing/swapped/tampered sources before publication. Code b378773d0b6917f16e3b1a016ff222bf8dab5863 parent 94069ee01aa1873173a5c3d49f5ad69df6744bd9. Prior HEAD factory 44836719730/136634842690 and foundation 44836719662/136634842448 COMPLETED SUCCESS authentic logs inspected. New HEAD pending CI; offline only. ModManager 2.1.2.1 commit 276116eb, Toolbox 6f780cb. Original main SHA pinned not rehashed; no consumer ABI/Uzuy. Sakura aura107, Event236 variants, three false flags untouched.",
-      "2026-11-21 PENDING_HEAD_CI: code 8292c004bffc5bedc44f34aad5672552c3941fc3 (parent 13249b458ca4bc9c5f3f5a327791b6c87822b497) adds --conflicts reject/last to raw PC specialCondParam factory compiler. Strict mode rejects duplicate final Switch owners across/within sources and owner-map collisions before output; default last-wins preserved. New regression tests/test_factory_raw_conflicts.py + factory workflow step. Prior HEAD Foundation 44828270273/job 136606336221 and factory 44828270332/job 136606337206 COMPLETED SUCCESS; authentic logs inspected. Current code HEAD push Actions log unavailable, NOT PASS. Upstream ModManager 2.1.2.1 and Toolbox 2.1.2.1, REA generic reference do not prove Switch ABI. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed; Sakura aura107, Event236 marked/unmarked and all three false flags untouched. NEXT obtain HEAD factory push run/job/log; fix if failing; native consumer ownership/lifecycle remains unresolved.",
-      "2026-11-21 PENDING_CI: parent 531305c83b1effdb28313078c15a46c521af450d; code 78c7b01c6bdc2cbbfa3d4e65b5e6ddfd59c40209 adds reassemble_owner_partitions, a reversible editor-only inverse of explicit-owner MovesetPlus partitions preserving global event order. It validates source partition ordering, per-part SHA256, event-owner ledger, missing/extra events, final merged byte SHA and event count; regression covers positive, tampered SHA, reversed partitions/ledger, missing part, and empty losing-owner partition. Upstream ModManager 2.1.2.1 README SHA 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709 (Steam-only), Toolbox README SHA 657f161390c4abe8afe10cea11a2b9a28e6bf6b0; REA generic reference from prior evidence, not refreshed this run. Previous HEAD 531305c CI completed success and authentic job logs read: MovesetPlus 44782462393/136448455336, Foundation 44782462286/136448455226, compressed PRM 44782462660/136448456498. New code HEAD CI not verified; no original main byte rehash, Switch consumer ABI, ownership, CPK precedence or Uzuy proof. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; Sakura aura107, marked/unmarked Event236 unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT: obtain push Actions run/job/log for final HEAD, fix regression if needed; then source-pinned consumer analysis.",
-      "2026-11-21 PENDING_CI: code f5ad7cfd8bc1526f9021e43e08ffd7d4a99610d6 (parent 1dce633b87d215bfe8631092934bb0fea4c48892) adds read-only --verify-partition-directory exact source replay of standalone selected-owner editor files/index; positive, altered index, altered part, unexpected file, altered source and CLI regression. GitHub Actions push run/job/raw log for this code not yet available. ModManager tag 2.1.2.1 README 8e9560b2; Toolbox 6f780cb README 657f1613; REA README 93e1e272 are PC/generic only. No native Switch consumer ABI/ownership/Uzuy proof. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 pinned; Sakura aura107, Event236 marked/unmarked and all three false release flags untouched. NEXT inspect exact HEAD push Actions job raw logs, repair failures, then authenticate original main consumer ownership.",
-      "2026-11-20 PENDING_CI: code b72be2698cc5c46027446860c5fb69a3b06498d9 (parent 316e8342b30232671d21c59f95e083fc47e073b5) adds --verify-resolved --partition-directory to publish SHA-replayed selected-owner PC editor manifests as individual numbered JSON files plus SHA256 index using staged directory rename; no engine ABI. Direct regression tests positive owner selection, unsafe source names (not used as paths), SHA integrity, existing destination, mutated proof/source rollback. Local tests not run (GitHub DNS unavailable); HEAD push workflow run/job/authentic log not obtained, NOT PASS. Primary sources: ModManager tag 2.1.2.1 README blob 8e9560b2; NSC-Toolbox 6f780cb README blob 657f1613; REA main README blob 93e1e272; none proves Switch ABI. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not independently rehashed; no consumer ownership/lifecycle/CPK precedence/Uzuy proof. Sakura aura107, Event236 marker 0x4E53 +0x2A and unmarked variant untouched; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT obtain HEAD MovesetPlus push run and raw job logs, fix any failure; then authentic native consumer proof.",
-      "2026-11-20 PENDING_CI: resolved PC editor multi-mod output now emits per-event selected-source provenance for every event, including unique and explicitly resolved collisions. Read-only replay verifier compares complete provenance and exact bytes; regression asserts ordered owners and rejects tampered owner ledger. Parent 876c7c9f5cfe50ff993e0f074953c98d94d3b8c5. No engine archive precedence or native ABI claim; original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, both Event236 variants, and three false flags untouched. Host/HEAD CI job log pending.",
-      "2026-11-20 PENDING_CI: explicit-owner MovesetPlus editor output now supports read-only --verify-resolved replay from SHA-pinned PC manifests, comparing exact payload and full provenance; source 4eaff6c515090061c66a010695a771927370c9d1, regression d5c62c1aba9f46154653cfdb0cf5e3f194c002c3, parent f1f5ab0f324cee774a196293c5240878d5f42fa5. No host/HEAD Actions raw log verified. Original main pinned SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; Sakura aura107, Event236 marked/unmarked and three false release flags unchanged. No Switch ABI/ownership/Uzuy proof. NEXT execute new regression, inspect authentic HEAD Actions job logs, fix failures.",
-      "2026-11-20 PENDING_CI explicit PC editor collision owner resolution: parent 21ae9996be9e92af2bf3a986150b243b683cdf7e; source 5b79d6ffa15be4bbe0968acd730b1d27ecbec62d, tests 66de632b7ad2bbb6992b15d518dd3a1c3f827f2c, newline fix 96276d87edc423eb4f8a17ed6b40b9d4dbee1549. New --resolve JSON event_id->source owner selects authenticated PC editor event rows only when every collision has exactly one explicit owner, preserves first-occurrence event order, rejects missing/extra/unknown owners and tampered source; SHA-pinned provenance output and CLI positive/negative/rollback tests. Host tests NOT executed; HEAD Actions push runs/job raw logs NOT obtained; PENDING_CI NOT PASS. Research ModManager tag 2.1.2.1 README blob 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709 (Steam-only), Toolbox README 657f161390c4abe8afe10cea11a2b9a28e6bf6b0, REA README 6cbd8d77f786b2f71b952a1282fda93a2fbdc13d; none proves Switch consumer ABI. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107 and both Event236 variants unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT verify HEAD Actions original job logs, repair failures; authenticate original main native consumer ownership before any hook.",
-      "2026-11-20 PENDING_CI: code 813669ded6e4c7afdc28e7eb1cbc4181210adccf parent ff37c40425fe9a240c163830a309b79235d3cadd exposes SHA-authenticated PC editor event-ID collision report through --collisions-only CLI; JSON report and independent evidence SHA256, no merge or engine precedence; subprocess positive, tampered-source and preexisting-output fail-closed regressions. GitHub Git tree/commit/ref update succeeded; host tests and HEAD Actions push-run/job/raw logs NOT verified (GitHub DNS unavailable from container, connector commit runs PR-only). NOT PASS. Original main pinned SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; Sakura aura107, marked/unmarked Event236 unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT obtain authentic HEAD Actions logs, fix any failures; prove consumer ownership/lifecycle before runtime hooks.",
-      "2026-11-20 PENDING_CI: code f6dc2c829463061b74ae8faa3fbadf6d937b05a0 parent 18d55757a9ecf0dd99e4dc783ca4239a03cdcc9c implements SHA-pinned PC MovesetPlus multi-mod editor index reorder with source replay before/after, bijective order validation, CLI two-file publication, positive/negative/tamper tests and workflow integration. Evidence handoff/evidence_pc_moveset_reorder_20261120.md. HEAD Actions run/job/raw log pending, NOT PASS. No Switch ABI, CPK precedence or Uzuy proof; original main SHA256 pinned, Sakura aura107 and marked/unmarked Event236 unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT inspect HEAD push Actions jobs and raw logs, fix failures; then prove native consumer ownership.",
-      "2026-11-19 PENDING_CI: implementation 856f8c7d3b9a300e2a529af0c3fecbb2325fcbe9 adds offline source-SHA-bound compressed Event236 conversion through exact-size independently verified CPK publication, with real synthetic parser positive/negative/integrity regression and no-op/size-change fail-closed. CI HEAD authentic job log pending; not native consumer or Uzuy proof. Evidence handoff/evidence_compressed_same_size_20261119.md. Original main pinned; Sakura aura107 and both Event236 variants untouched; all three release flags false.",
-      "2026-11-19 PENDING_CI code 1a8c1b590142c45699af496a7e7e74a0cf62ac43 parent bbad993399ea563843092d1afb364f762bed5428: compressed PRM zero-change path preserves original CRILAYLA stored bytes bit-for-bit; offline CLI now calls shared validated reencode_candidate and verifies stored SHA, instead of duplicating encoder path. Added zero-change export identity/size and changed-payload evidence regressions. Prior HEAD bbad993 GitHub push runs 44479125643/44479125629/44479125726 COMPLETED SUCCESS, authentic jobs 135406786399/135406786200/135406786684 logs read. New HEAD run/log NOT YET VERIFIED, no PASS claim. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 pinned, Sakura aura107 and Event236 marked/unmarked untouched; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. Research upstream ModManager 2.1.2.1 2026-08-30, NSC-Toolbox 6f780cb6814f07e03c16b3e78d97dde4e4368983, REA 93c8e0c0c8e80e3c2379a1c7d2c2a956331cc8e8 (not game ABI). NEXT retrieve new HEAD push runs via REST actions/runs branch, raw job logs, fix any failure; then pursue consumer ownership/CPK precedence.",
-      "2026-11-19 PENDING_CI: compressed PRM offline CRILAYLA payload re-encoding added with independent decode roundtrip, stored size delta and SHA256, source CPK immutable. Positive marker/zero-change, invalid SHA, missing entry, decoded budget regressions. NOT a CPK repacker or engine consumer; original main SHA256 pinned 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; Sakura aura107/Event236 both variants untouched; three release flags false. NEXT inspect HEAD Actions authentic compressed PRM/Foundation logs, repair failures; prove native ABI/ownership before hooks.",
-      "2026-11-19 PENDING_CI: code 96c14d38f8f2897d48583aa4893b6d93b5d6ebd9 parent cbf830a162e483a209c4e6f3d42e8242d130f61d propagates path-local SP-derived aliases through MOV and ADD/SUB immediate, with synthetic positive MOV+ADD disjoint, negative SUB overlap, and negative source-clobber regressions. Upstream primary README blobs: ModManager 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709 (Steam only), NSC-Toolbox 657f161390c4abe8afe10cea11a2b9a28e6bf6b0 (PC editor), REA bb4828fb62da9283985a16b2051cc98efac8c7ec (generic RE). No Switch ABI proof. Local Capstone unavailable due DNS, authentic HEAD Actions push-run/job/log not obtained; NOT PASS. No hook, no Uzuy test, original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; Sakura aura107 and both Event236 variants unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT inspect Foundation push-run authentic log, fix any regression, then advance consumer ownership evidence from pinned main.",
-      "2026-11-19 PENDING_CI: FileLoad CFG witness now tracks path-local ADD Xn,SP,#imm aliases, permits a non-SP-base store only when its recognized byte range is provably disjoint, and kills aliases on register writes. Synthetic positive disjoint, negative overlap, negative clobber regressions added. Code 49e8081e873140520120a90b887af2e92b64db94 parent 18685003b34cc6e5f0673667646183d769fb5440. Upstream ModManager 2.1.2.1 README blob 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709; NSC-Toolbox 6f780cb README 657f161390c4abe8afe10cea11a2b9a28e6bf6b0; REA main README bb4828fb62da9283985a16b2051cc98efac8c7ec. None establishes Switch consumer ABI. No local Capstone or original runtime test; HEAD Actions log unverified, NOT PASS. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 pinned; Sakura aura107/Event236 both variants untouched; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT inspect Foundation push-run original job log for code HEAD, repair failures, then extend path-sensitive provenance and native consumer ownership evidence.",
-      "2026-11-19: Recovered authentic Foundation push-run 44390924739 job 135108023312 for parent ee1b77baab796b63e2164b5cb39d226f29de59c0: COMPLETED FAILURE, raw log proves Python SyntaxError at tools/portlib/native_fileload_sp_cfg.py line 130 (missing closing parenthesis). Fixed one-line syntax in code 8ff037581cd49ebfe50be905876687c8e61127e9 (parent ee1b77baab796b63e2164b5cb39d226f29de59c0). New Foundation run 44419953534 job 135209989291 pending at checkpoint; MovesetPlus 44419953656 job 135209988828 and compressed PRM 44419953633 job 135209989361 COMPLETED SUCCESS, authentic logs read. This fixes a real import blocker, not ABI/ownership/lifecycle/Uzuy. No runtime hooks; three release flags false. NEXT inspect Foundation 44419953534 original job log and repair any failure, then pursue register provenance.",
-      "2026-11-19 PENDING_CI: ARM64 FileLoad byte-width semantics now distinguish byte/halfword/signed-word loads from destination register width, and fail closed on unsupported transfer mnemonics; synthetic narrow-load negative regressions added. Code eab7be2e9ca1c98a5c838c09bce01948508a107d parent 1c31307b3ce53ffe8fc3161496c3d10631a27474. Local Capstone install blocked by DNS, no HEAD authentic Actions run/job/log yet. This is static alias evidence, not consumer ABI, ownership, or Uzuy. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 both variants unchanged; three release flags false. NEXT obtain Foundation push-run raw log, repair any failure, then pursue register provenance and actual native consumer lifecycle.",
-      "2026-11-19 PENDING_CI: FileLoad CFG path witness excludes partial byte-range overlap (STR W over prior STR X) and preserves adjacent nonoverlap; synthetic regressions added. Code e629afe31fccb8230d5111775cd1614a4396ffbc, tests dd7632afde07a6952765128ffefeeef6fb50d4da; parent 477ac57ea4e420a54833d0ab8a34d078eef5bc65. HEAD Actions authentic log not obtained; local Capstone absent. No consumer ABI/ownership/Uzuy, no runtime hook; original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 and Sakura aura107/Event236 both variants unchanged; all three release flags false. NEXT inspect Foundation push-run original job logs and repair failures before PASS; then register provenance.",
-      "2026-11-18 PENDING_CI: FileLoad CFG now emits possible stack write/read address-equality candidates only when each instruction has a unique entry-SP-relative offset; ambiguous paths are excluded. Candidate does NOT establish same executed path, register value, pointer ownership, ABI, lifecycle, or engine consumer. Positive same-offset, negative different-offset and ambiguous-path synthetic regressions added. Parent 0396cef291485e617db4f108d13edda60287cdbb; local Capstone unavailable, HEAD Actions job logs pending. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; Sakura aura107 and Event236 variants unchanged. Upstream ModManager tag 2.1.2.1 README blob 8e9560b2, Toolbox blob 657f1613, REA blob 4ccd45ed; none establishes Switch ABI. Release flags false. NEXT inspect authentic HEAD Foundation job logs and then prove path-sensitive register provenance before runtime integration.",
-      "2026-11-18 VERIFIED_CI_STATIC_ONLY: bounded FileLoad CFG SP-relative offset propagation across conditional/unconditional paths, conservative ambiguous merge and opaque-call barrier. SHA-pinned original main; synthetic linear, join, call, truncated and budget regressions. Code b9bed4840db45d1a0d0eb725fa0a41ce768a5179; foundation run 44294505825 job 134767889692 COMPLETED SUCCESS, raw log PINNED_FILELOAD_SP_CFG_PASS 166 10 NO_CONSUMER_ABI; compressed 44294505944 job 134767889225 and MovesetPlus 44294505872 job 134767888993 COMPLETED SUCCESS, authentic logs read. No native consumer ABI, ownership, archive precedence, runtime or Uzuy proof; all three release flags false.",
-      "2026-11-18 PENDING_CI: new SHA-pinned FileLoad SP/FP memory operand census (original instruction words, exact offsets, writeback, negative mutated main, synthetic STR/LDR test); no stack-slot dataflow, pointer ownership, consumer ABI or runtime claims. Parent b56ae5e70769b400597ec1e9ffd8fdc9bc62519f. Upstream ModManager 2.1.2.1, Toolbox 6f780cb6814f07e03c16b3e78d97dde4e4368983, REA 4995018d3a492aa6627929e1d45ea35c95170970 are not Switch ABI evidence. All release flags false. NEXT verify HEAD Actions authentic log; investigate original FileLoad SP delta and control-flow before claiming stack aliases.",
-      "2026-11-18 VERIFIED OFFLINE SYNTHETIC: code 61403b49750938ff7710cc5b04bf38d0c2b29c39 extends CRILAYLA match distance to 258 with 4-byte prefilter; 6 encoder tests PASS incl 127/251 periodic payloads. Foundation push run 44189015312 job 134413108606 COMPLETED SUCCESS and authentic log read (6/6). MovesetPlus run 44189015390 job 134413110690 and compressed PRM run 44189015431 job 134413108835 COMPLETED SUCCESS; both authentic logs read. Synthetic/offline only; original game archive and native consumer ABI/lifecycle/Uzuy unverified. No hooks or release flags changed. This documentation followup HEAD CI is pending.",
-      "2026-11-18 PENDING_CI: offline CRILAYLA encoder expanded deterministic match search from distances 3..34 to 3..258 with four-byte candidate prefilter, plus periods 127/251 roundtrip, deterministic replay and compression-ratio regressions. Parent e4f132a6487066f970f965cc2505ce2b083f0912. Synthetic only; CI HEAD run/job/log not yet verified. Original main blob 8af900db0d7003255b4ddb3cbd1289cd5a15458e is tracked in repository (27,701,509 bytes), but SHA256 not independently checked in this session; do not infer native consumer ABI. Upstream NSC-ModManager release 2.1.2.1 published 2026-08-30; NSC-Toolbox HEAD 6f780cb6814f07e03c16b3e78d97dde4e4368983; REA HEAD c78e6e3aa54facde2d7610f203dd740e47611090; none proves Switch ABI. No runtime hooks; Sakura aura107/Event236 marked/unmarked untouched; three release flags false.",
-      "2026-11-18 VERIFIED OFFLINE SYNTHETIC: bounded-distance CRILAYLA encoder code 05e376d01731eaf60b83fc09108c97561ef6b14c; foundation run 44179052280 job 134378140592 COMPLETED SUCCESS, authentic raw job log read (5/5 encoder tests including periodic 5/7/13/31, random, deterministic replay, long run). Compressed run 44179052253 job 134378140460 SUCCESS, MovesetPlus run 44179052312 job 134378141078 SUCCESS; both raw logs read. Workflow step description updated only in this followup; new HEAD CI pending. Synthetic only, no authentic game PRM or engine consumer ABI/Uzuy; all release flags false.",
-      "2026-11-18: Offline CRILAYLA bounded-distance encoding slice. Parent c6625cb95730fd521d55a02499543f87c19551fe. Replace distance-3-only greedy selection with deterministic best-length search over distances 3..34, max match 1024; no game CPK writes. Positive periodic 5/7/13/31, random and long-run roundtrip, size reduction, exact deterministic replay. Independent local prototype passed 49 synthetic decode roundtrips; repository tests and HEAD Actions PENDING. Upstream anchors: NSC-ModManager 2.1.2.1 (release 2026-08-30, PC Switch Projectiles Target/Start-Stop Deflect; no Switch ABI); NSC-Toolbox 6f780cb6814f07e03c16b3e78d97dde4e4368983 README blob 657f161390c4abe8afe10cea11a2b9a28e6bf6b0; REA 237b1ea5b39ea9fc5373aa08a9f54d25715c4873 README blob a01452f5e21b50d1b6233a1761e1536a22b1271d (not engine ABI). Original main pinned SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not changed. Synthetic only, no authentic PRM, native consumer ownership/lifecycle/archive precedence, or Uzuy. All three release flags false. NEXT: inspect HEAD foundation push-run and raw job logs; fix CI if necessary.",
-      "2026-11-17 PENDING_CI: commit 47bf6df1eda645679745b159716f525e21e1db35 (parent b288d3a7711870231a5b6ba62abebf3267b21f8d) adds source-authenticated selective PC editor manifest restoration (--name) preserving original numeric index and untouched neighboring files. Two synthetic positive/negative tests added. No local tests executed (GitHub DNS inaccessible in container); commit-scoped GitHub Actions connector returns PR-only empty list, so push CI run/job/log NOT verified. ModManager 2.1.2.1 README blob 8e9560b2, NSC-Toolbox 6f780cb README blob 657f1613, REA b2f3dc81 README blob 4e525c0c; none establishes Switch ABI. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 marked/unmarked unchanged. Native consumer/ownership/lifecycle/archive precedence and Uzuy unverified; all release flags false. NEXT obtain HEAD push-run via direct Actions REST and inspect raw job logs, fix failures before PASS.",
-      "2026-11-17 VERIFIED OFFLINE CPK: code ab7caf471b7303ccb73ef88da77fe05d73373c9b (parent 3062e83cda93426339d856f2bcb427ac8b5fab73) maps every packed candidate read-only via ExitStack rather than Path.read_bytes; validate_many_same_size accepts mmap payloads and validates CRILAYLA against source-bound Event236; output streaming, independent disk verification and exclusive publication remain. Two-member synthetic regression and no-read_bytes assertion. GitHub Actions CPK push run 43986842680 job 133717069114 COMPLETED SUCCESS; authentic job log inspected: 39 tests OK. MovesetPlus run 43986842799 job 133717069869 and compressed PRM run 43986842723 job 133717069130 SUCCESS with original logs inspected. Foundation run 43986843402 still pending at checkpoint. Earlier code d238ae7c CPK run 43978999838 job 133690273906 COMPLETED SUCCESS 38 tests with original log inspected. Upstream ModManager release 2.1.2.1 published 2026-08-30, Toolbox HEAD 6f780cb6814f07e03c16b3e78d97dde4e4368983, REA HEAD d5a942177fad030d3caf0f8d39856c116e3e5cda; these are PC/generic references and DO NOT prove Switch engine ABI. Original pinned main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 and authentic CPK unavailable in this run; no native consumer/ownership/lifecycle/archive precedence or Uzuy proof. Sakura aura107 and Event236 marked/unmarked untouched. full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT authenticate original main and CPK bytes, establish consumer ABI/lifecycle before hooks.",
-      "2026-11-17 PENDING_CI: code 31c692a45ee31c268110b0f904e4a42a16aded90 (parent 32df22134713b3e73fa8f9de9d2dd9685e6ea05e) independently verifies staged on-disk same-size CPK bytes using source/output SHA-pinned read-only mmap and semantic verifier before exclusive hard-link publication. Negative regression forces verifier failure and asserts no published output or staging residue. GitHub Actions push run/job/raw log for this code NOT VERIFIED; local tests not executed; no PASS. Earlier run 43928815687 job 133515411235 SUCCESS only for earlier code. Original Switch CPK and pinned main bytes unavailable for consumer ABI/ownership/lifecycle/async/rollback/archive precedence; no Uzuy. Preserve main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 marked/unmarked; three release flags false. NEXT retrieve new push run and raw job logs, repair any failure, authenticate original game assets before native hooks.",
-      "2026-11-17 VERIFIED OFFLINE CPK: code 9b3e82940976c0befef16cca44a03409c072c5cf (parent 6bd9e03710bd213cc17fcc6f50118ad48f397ee2) uses read-only mmap source in same-size multi-member CPK publisher instead of source_path.read_bytes(), reducing peak Android archive copies; one regression proves source Path.read_bytes is never called. GitHub Actions push run 43928815687, job 133515411235 COMPLETED SUCCESS; raw job log inspected: 36 real-parser synthetic tests OK including new mmap publisher test. Prior code 15701b3c run 43877214874 job 133333273151 also SUCCESS 35 tests, authentic log inspected; prior PENDING_CI notes are historical. Original Switch CPK not tested; original pinned main bytes not available in this session for ABI; no native engine consumer/lifecycle/precedence or Uzuy proof. Upstream ModManager tag 2.1.2.1 commit 502c38d3ee832509f9ee3951b7d3339826538fec, Toolbox 6f780cb6814f07e03c16b3e78d97dde4e4368983, REA 26d88826cc36c5513ce8977346c0e4f15bb25169; no cross-OS ABI inference. Preserve main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 both variants and three false release flags. NEXT verify final HEAD foundation workflow log, authenticate original game CPK/main and prove consumer lifecycle before any hook.",
-      "2026-11-16 PENDING_CI: Fixed an actual Python SyntaxError in tools/portlib/cpk_same_size_verify.py: the call to _extract_validated_candidate contained literal backslash-n characters instead of a newline, preventing module import and therefore all independent verifier tests. Code commit 15701b3cfb5326645d59c08da81b4ebefd11e530 (parent 3db3a0209d34b9861fbca4fcb2442c5f1d805bb1), one source file only; existing workflow unittest imports module and is the regression gate. Verified GitHub compare only changed this file; no local tests or authentic Actions push run/job/log confirmed (REST DNS failure). Upstream README anchors NSC-ModManager 2.1.2.1 blob 8e9560b2, NSC-Toolbox blob 657f1613, REA blob 5ea33378; none prove Switch ABI. No authentic original main/CPK bytes, consumer ABI/lifecycle, archive precedence or Uzuy proof. Keep SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 marked/unmarked, and all three release flags false. NEXT obtain Actions push-run and raw job log, fix remaining test failures, validate authentic CPK before runtime hooks.",
-      "2026-11-16 PENDING_CI: Code 3067e6af1faa6aba2f4acf4faf24d52278ee26bc (parent d594906903bfe2da270753468c880123b028356a) adds read-only mmap verification for source/output CPK, avoiding full-file read_bytes copies on Android; direct verifier accepts mmap and bytes, positive and wrong-hash mmap regressions added. GitHub compare: 1 ahead, 0 behind; PR-filtered workflow lookup empty and combined statuses empty, NOT evidence of push-run absence. Push Actions run/job/authentic log NOT verified; local tests NOT executed. Primary source anchors: NSC-ModManager tag 2.1.2.1 README blob 8e9560b2 (Steam-only), NSC-Toolbox README 657f1613 (PC editor), REA README 5ea33378 (generic reverse engineering). No original Switch CPK or pinned original main bytes available here for ABI proof; no native consumer/ownership/lifecycle/archive precedence/Uzuy proof. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; Sakura aura107, Event236 marked/unmarked preserved. full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT: obtain push-run via Actions REST and inspect authentic job logs, repair failures, test genuine CPK; do not hook runtime.",
-      "2026-11-16 PENDING_CI: Added read-only offline CLI tools/verify_same_size_cpk.py wrapping independent SHA-pinned CPK output verifier, with four real-parser synthetic subprocess regressions (valid, wrong SHA, unselected tamper with recomputed SHA, unknown member) and push workflow trigger. Parent 77b2ee97e0a37c071b5cc6443abcef216d0b2691, code f9261cc3d9a080388467405166eba71e9ba2686a. GitHub Actions push-run/job/log unavailable; no PASS. Research anchors NSC-ModManager tag 2.1.2.1 README blob 8e9560b2, NSC-Toolbox 6f780cb README blob 657f1613, REA README blob 5ea33378; no cross-OS ABI proof. Pinned main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107 and Event236 marked/unmarked unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. Next authenticate HEAD Actions job logs, repair any failures, then test genuine Switch CPK; do not hook native consumers.",
-      "2026-11-16 PENDING_CI: Added independent read-only verification of SHA-pinned source/output CPK, TOC equality, every nonselected byte, selected Event236 decoded semantics, and synthetic positive/negative regressions. No authentic Switch archive or native consumer ABI/ownership/lifecycle/archive precedence; no Uzuy. Upstream anchors NSC-ModManager 2.1.2.1 README 8e9560b2, NSC-Toolbox 6f780cb README 657f1613, REA README 5ea33378 (not Switch ABI). Parent b80b93c69fd40a651baf04a9fd60c33ce45ecea0; final HEAD CI run/job/log not yet authenticated. Preserve pinned main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 marked/unmarked; all three release flags false.",
-      "2026-11-16 PENDING_CI: Fixed offline same-size CPK multi-member collision handling: casefold duplicate member names now rejected before candidate processing; publisher JSON duplicate object keys (exact/casefold) fail closed rather than silently overwriting a candidate. Added real-parser integration negative regression and CLI publication regressions for both cases. Parent bf4d91e9b7921780754f4e15b8554ebaa560bedd; CI run/job/log not verified; no authentic Switch CPK, original-main consumer ABI, ownership, lifecycle, archive precedence or Uzuy. Primary evidence: NSC-ModManager 2.1.2.1 README blob 8e9560b2 (Steam-only), NSC-Toolbox 6f780cb README blob 657f1613 (editor), REA README blob 5ea33378 (general RE). Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; Sakura aura107 and Event236 marked/unmarked unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. Next obtain push-run and authentic job log; repair test failures; then authenticate real v1.70 archive and native consumer before any runtime hook.",
-      "2026-11-16 PENDING_CI: atomic multi-member same-size CRILAYLA replacement implemented in ddf52047a1a09a777164b1cafa45ee7a1324205a (parent 4dec5b1e71cf0c293f39168660c175425595736e). One SHA-authenticated original CPK and original TOC; all selected decoded Event236 candidates validated against original before any archive bytes are published; byte-exact untouched spans and unchanged TOC verified. Two synthetic real-parser regressions added for two-member conversion, unaffected third entry, wrong SHA, empty mapping, wrong semantic candidate and size mismatch. NOT executed locally (GitHub DNS unavailable), push Actions run/job/log NOT verified; no authentic CPK, native ABI/ownership/lifecycle/archive precedence or Uzuy proof. Research refs: NSC-ModManager 2.1.2.1 README blob 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709 (Steam only), NSC-Toolbox README blob 657f161390c4abe8afe10cea11a2b9a28e6bf6b0, REA generic reverse engineering reference (not game ABI). Next inspect HEAD push Actions run and full job log, fix any regressions; then authenticate real v1.70 CPK before installation. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 untouched; Sakura aura107 and both Event236 variants preserved; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false.",
-      "2026-11-15 PENDING_CI: Added offline source-authenticated batch remove/replace for PC MovesetPlus editor indices (one replayed composition, conflict rejection, five synthetic regressions); no native consumer, CPK installation or Uzuy proof. Research: NSC-ModManager 2.1.2.1 README blob 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709 (Steam-only), NSC-Toolbox 6f780cb6814f07e03c16b3e78d97dde4e4368983 README blob 657f161390c4abe8afe10cea11a2b9a28e6bf6b0, REA README blob 056af5e87775520a72fd8609f88edd074a5e7498 (not game ABI). Pinned original main 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; Sakura aura107, Event236 marked/unmarked preserved; all release flags false. Next verify HEAD Actions logs, then authenticate consumer lifecycle and archive precedence.",
-      "2026-11-15 PENDING_CI: Added SHA-pinned PC MovesetPlus editor source replacement (original source replay, full recomposition, collision rejection, 4 synthetic regressions); no binary consumer or Uzuy evidence.",
-      "2026-11-15 PENDING_CI: source-replayable PC-only multi-mod editor removal; no binary/consumer/Uzuy proof",
-      "2026-11-15 pending CI: original PC source replay verification of merged editor indices, offline only",
-      "2026-11-15 pending CI: offline PC editor multi-mod restore CLI with exclusive rollback and SHA-verified per-source provenance; synthetic only",
-      "2026-11-15 pending CI: reversible source-range provenance for offline PC MovesetPlus multi-mod editor index composition; synthetic-only, no Switch ABI",
-      "SHA256 gate for exact stock/R180 text before game writes",
-      "33-word RAM patch with consistent 1024 PRM/spcload loop bounds",
-      "raw condition lookup bounded by observed native allocation count",
-      "condition storage retirement on native reload and both destructor free paths",
-      "bounded configurable factory selector registry; 228 charcode-matched selectors; unknown placeholders rejected",
-      "PC specialCondParam reader and Python-only Android NSO data-profile packer",
-      "native factory hook preserves caller roster identity in tested initialization slices",
-      "explicit converted-PRM ownership marker for Event236, independent of roster ID",
-      "native reader-verified PRM conversion; original enemy-hide preserved for unmarked events",
-      "native enable/disable writers for all 20 source control selectors; compiled callback and 20 native consumer slices tested",
-      "CPK ownership-marker conversion for explicitly selected uncompressed PRMs with exact preservation of other archive bytes",
-      "explicit SHA256-validated CPK profiles, capacity 32 with distinct priorities; default empty",
-      "native result plus bind-ID validation; failed-only retry and reentry/concurrent duplicate suppression",
-      "Python-only CPK NSO profile packaging composes with factory profile edits without changing text/rodata",
-      "append-only PC conditionprmManager compiler preserves native 512-row descriptor prefix, including Switch-specific Sakura aura value",
-      "configurable 0..512 additional descriptors; four native loop bounds use the validated startup count; no hardcoded Tobi descriptor table",
-      "compiled descriptor getter and native name/hash/reaction/state/icon/status/aura consumers tested; 21 installer fingerprint failures reject before hooks",
-      "optional hash-pinned raw176 companion validation: every descriptor/raw ordinal name must match; malformed, reordered or count-mismatched companions rejected before output; review copy preserves all input bytes",
-      "single-archive condition bundle compiler validates actual CPK companion, converts only selected PC API PRMs, emits paired condition/CPK profiles, and optionally configures both NSO profiles without dropping unrelated registrations",
-      "safe condition-bundle module composition appends one CPK registration to pre-existing valid entries (max 32); rejects case/priority collisions and different pre-existing condition descriptors without overwriting either",
-      "hash-pinned raw176 stock-vs-candidate byte audit reports exact per-ordinal differing byte offsets and added row hashes; tested only with synthetic inputs",
-      "hash-pinned mmap-based multi-CPK path overlap audit with exact/casefold and stored-byte identity; conflict reject-before-output; no runtime winner inference",
-      "direct hash-pinned CPK-to-CPK conditionprm raw176 audit invokes existing manager/ordinal comparator without extracting files manually; synthetic integration PASS only",
-      "multi-archive condition batch compiler: one explicit global conditionprm owner, independent CPK PRM marking, source SHA256 pins, disjoint TOC path guard, atomic component output and composed NSO condition/CPK registration; synthetic CI PASS only",
-      "read-only exact SHA-pinned Switch 1.70 native CPK/file-load ARM64 direct-call census: 493563 direct B/BL candidate instructions and 10 verified source anchor windows; indirect callbacks, async completion, unbind and archive precedence remain unverified",
-      "SHA-pinned native NSO RELA/ADR/adjacent ADRP address-materialization audit for 10 CPK/fileloader anchors; CI verified 288312 relocation records, no exact-anchor address candidates in the supported patterns; indirect callbacks and function boundaries still unknown",
-      "PC ModdingAPI raw32 parameter payload readers for susanooCondParam and partnerSlotParam grounded in pinned upstream C++ source; validated exact public upstream 160-byte/256-byte NSC templates with matching Git blob SHA and observed SHA256; no native Switch reader or factory binding implemented",
-      "Three more PC source-verified raw parameter stream readers, with byte-authenticated public NSC Ougi (1 uint32), GudoBall (2 uint32) and CharRelation (30 variable-length records); CI PASS only, no native Switch integration",
-      "Pinned original v1.70 main static nearby file-load CPK B/BL/BR/BLR neighborhood census and adjacent R_AARCH64_RELATIVE executable-target relocation cluster grouping; 8 candidate adjacent tables, four witnessed slots reproducible; no vtable/async/unbind claim",
-      "All nine previously uncovered PC ModdingAPI parameter families now have source-pinned read-only format readers, validated with exact public raw samples; newest four: TUJ pairSpSkill (55x0x18), BGM (1x0x68), SpecialInteraction (4 count-prefixed records), GuardEffect (2x0xF8). 14 invalid inputs rejected. No Switch ABI/hook proof.",
-      "Exact SHA-pinned Switch 1.70 ARM64 Capstone code-window transcript (9 windows); 7 word-exact register/BLR witnesses, candidate 0x106F394 prolog from relocation, corrected former fileload_process 0x106F404 to mid-code BL to 0xFFF6A0. No CRI lifecycle proven.",
-      "SHA-pinned bounded ARM64 CFG exploration of relocated 0x106F394 candidate (147 reachable words, zero direct B/BL inbound, one RELA pointer, 4 observed terminal addresses), 0x106EDB8 candidate (3 words), and file-open 0x1170FB0 (52 words, one direct caller); no CRI ABI/lifecycle proof",
-      "2026-11-27 VERIFIED_CI_STATIC_ONLY: FileLoad immediate status argument constants and bounded direct-callee evidence recorded from exact original main. Code 0e84462e75faa2912bca6a5698987d38d23920eb (parent cf4fe8985bae1a76f3abe6d71b822cd54036a0a5). Foundation push run 46009242285/job 140540193791 COMPLETED SUCCESS; raw log inspected: NATIVE_STATUS5_CALLS_PASS and original main SHA guard; artifact 15202721886 contains native_fileload_status.json, native_fileload_call_targets.json and native_cpk_call_edges.json. Factory run 46009242146/job 140540193654 COMPLETED SUCCESS (13 tests); compressed PRM 46009242342/job 140540194218 COMPLETED SUCCESS (16 tests); MovesetPlus 46009242288/job 140540193634 COMPLETED SUCCESS (16 tests); raw logs inspected. This proves only static original-main callsite words and bounded target windows, not lock semantics, native consumer ABI, object ownership/lifecycle, async completion, archive precedence or Uzuy.",
-      "2026-11-27 PENDING_CI: Extend SHA-pinned FileLoad status evidence with a 128-byte disassembly window covering direct service-target candidates 0x1215358 and 0x1215374, full-text direct BL/B xref census, cross-checks for the status helper and FileLoad request path, and synthetic aligned-window positive/negative/boundary tests. No lock/unlock interpretation is promoted; function extents and service semantics remain unresolved. Parent 0e84462e75faa2912bca6a5698987d38d23920eb; CI pending.",
-      "2026-11-27 PENDING_HEAD_CI: FileLoad status-service evidence now follows the four exact direct dependencies of the 0x1158c90/0x1158d10 wrappers, records SHA-pinned bounded disassembly/CFG/xrefs, and adds an emulated-ARM64 test that executes the original wrapper bodies while modeling only four leaf targets. Regressions cover first/reentrant acquire, non-final/final release, underflow, zero provider result, different owner token and 32 status-helper cases. This proves only the literal wrapper owner/count transitions under modeled leaf returns; no OS mutex semantics, concurrency, native consumer ABI, lifecycle, archive precedence or Uzuy proof. Parent 5efd93a9d5d23ab96f3fd7a4404a46e50153c6ac; CI pending. Research pins ModManager 2.1.2.1 tag 502c38d (pinned project commit 276116e is its direct child), Toolbox 2.1.2.1 tag 789fe96 (relevant parser blobs unchanged from 2.1.2.0), PyCriCodecs 755055ee, REA 0386efd1. Original main blob 8af900db, SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. No hooks; preserve Sakura aura107, both Event236 forms and all three false flags.",
-      "2026-11-27 CI_REPAIR: Foundation run 46021414045/job 140581709219 failed in synthetic_service_dependency_window because entry 0x8 is NOP and falls through to RET at 0xc; expected return corrected to 0xc. Review of pinned dispatch bytes also caught ADD X0,X0,#8 at 0x1215360/0x121537c; the emulated wrapper now writes owner/count at the adjusted wrapper base (original status object +0x28/+0x2c), not the pre-adjustment subobject. Raw Foundation log inspected. New HEAD CI pending; no mutex/concurrency/consumer ABI or Uzuy claim.",
-      "2026-11-27 CI_REPAIR_2: Foundation run 46022245151/job 140584543848 failed in test_native_fileload_status.py because the report omitted service_target_semantics_verified after the new dispatch-offset fields were inserted. The missing explicit false field is restored. Raw job log inspected. The three other workflows for code HEAD 4c83d56 completed successfully and their raw logs were read; Foundation must be rerun."
+      "2026-11-23 PENDING_HEAD_CI: compressed batch independent verifier now reconstructs exact deterministic literal/runs CRILAYLA bitstream for changed Event236 candidates, rejecting a valid alternate encoder even when decoded bytes and updated SHA match; three encoder modes positive and alternate negative regressions. Code commit 28c95224bc9538dae9dcba85f1e1b437c3cf5500 parent aca1be0f02b7e334768d82d2483523507ff96ecc. Prior compressed push run 45157982290 job 137635718880 COMPLETED SUCCESS raw log inspected; new HEAD CI pending. Synthetic offline only. NSC-ModManager/Toolbox 2.1.2.1 upstream release 2026-08-30; no Switch ABI inference. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Sakura aura107, Event236 marked/unmarked and three false release flags preserved. NEXT inspect compressed workflow push run/job/log for new HEAD, repair failures, then authentic consumer evidence."
     ],
     "blocking_gaps": [
-      "At FileLoad caller 0x116f280 -> 0x120a6c8, exact local X19 save/restore is proven at entry-SP-8 (STP 0x120a6c8; LDP 0x120a724) and the observed return restores the entry register, but SP trust/preservation remains false because four nested direct callees are unresolved: 0x116b698 (nested 0x116b6c0 -> 0x116b7b0 with further unknown/no-return children), 0x1188104 (unknown X0 stores), 0x1170f7c (nested 0x11704c4 with unknown X0 stores), and 0x1160c64 (unknown X0 stores). Keep the call barrier until nested stack/alias effects are proven.",
+      "At FileLoad caller 0x116f280 -> 0x120a6c8, local X19 save/restore at entry-SP-8 is proven but recursive SP trust remains false. The 0x116b7b0 child has two relocation-backed __cxa_guard imports and a bounded 0x290 registration-helper candidate; exact guard/object BSS addresses and explicit store ranges are pending CI. Opaque import side effects, helper table target/callback identity, other unknown X0 stores, consumer ABI, ownership/lifecycle and archive precedence remain unresolved; do not relax the call barrier.",
       "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
       "remaining MovesetPlus operations shadowed or narrowed; complete control semantics/subclass overrides and legacy UJ latch lifetime unverified",
       "CPK directory discovery, async completion/unbind lifecycle and archive precedence unverified; parameter-family coverage remains partial",
@@ -1125,7 +1042,7 @@
       "new_commit_ci": "PENDING"
     },
     "latest_pending_code_commit": "35da1c3a860c15bd7cd3b96b57129b3d40934042",
-    "latest_pending_ci": "Foundation test expectation corrected after authentic raw log showed identical CFG states merge at one RET; rerun all four push workflows.",
+    "latest_pending_ci": "New FileLoad guard-state slice pending push CI; see native_fileload_guard_state_20261128.",
     "multi_mod_pc_source_path_ownership_guard": "OFFLINE_ONLY_PENDING_CI_NO_ENGINE_ARCHIVE_PRECEDENCE",
     "crilayla_total_output_limit": {
       "status": "pending_ci",
@@ -1983,50 +1900,18 @@
     },
     "native_fileload_imports": {
       "status": "verified_static",
-      "parent_head": "39fe92c5c8c45463ba3c9e34d84627480b5dbc45",
-      "implementation_commit": "0620f7dc5b532e11ef868926aa0a4777e763e40c",
+      "parent_head": "10ca61ba88f0b328fc9e73daf9189ef8cc2333cc",
+      "implementation_commit": "261e4aab417b1aebaaeddb9a83160a46dc812255",
       "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
       "evidence_note": "handoff/evidence_fileload_imports_20261127.md",
       "ci": {
-        "implementation_commit": "0620f7dc5b532e11ef868926aa0a4777e763e40c",
-        "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-        "workflows": [
-          {
-            "name": "Verify Switch port foundation",
-            "run_id": 46025160592,
-            "job_id": 140594557183,
-            "conclusion": "success",
-            "raw_job_log_inspected": true
-          },
-          {
-            "name": "Verify offline factory multi-mod composition",
-            "run_id": 46025160498,
-            "job_id": 140594557329,
-            "conclusion": "success",
-            "raw_job_log_inspected": true
-          },
-          {
-            "name": "Verify offline PC MovesetPlus multi-mod composition",
-            "run_id": 46025160501,
-            "job_id": 140594557158,
-            "conclusion": "success",
-            "raw_job_log_inspected": true
-          },
-          {
-            "name": "Offline compressed PRM candidate regression",
-            "run_id": 46025160561,
-            "job_id": 140594557217,
-            "conclusion": "success",
-            "raw_job_log_inspected": true
-          }
-        ],
-        "foundation_artifact": {
-          "artifact_id": 15210669622,
-          "name": "PORT_FOUNDATION_PROOFS_NOT_A_GAMEPLAY_RELEASE",
-          "size_bytes": 294528,
-          "zip_sha256": "c65fa78688060b689524193f1f7648c85ab80f4fa59afcb278c60709af503412"
-        },
-        "foundation_log_marker": "PINNED_FILELOAD_PLT_GOT_IMPORTS_PASS"
+        "head": "261e4aab417b1aebaaeddb9a83160a46dc812255",
+        "foundation_run_id": 46071621142,
+        "foundation_job_id": 140749655985,
+        "artifact_id": 15233128327,
+        "artifact_sha256": "fbab9afc236c8a85356e9e7cf3f02e3f219ee208f003c00addadde7869dfc65b",
+        "raw_log_inspected": true,
+        "all_four_workflows_success": true
       },
       "symbols": {
         "thread_context_provider": {
@@ -2105,7 +1990,31 @@
         "ready_for_gameplay_test": false,
         "emulator_tested": false
       },
-      "next_step": "Identify the original Switch import provider module from loader metadata and trace the bounded wrapper object's allocation/destruction; do not install a hook without runtime binding and lifecycle proof."
+      "next_step": "Identify the original Switch import provider module from loader metadata and trace the bounded wrapper object's allocation/destruction; do not install a hook without runtime binding and lifecycle proof.",
+      "state": "VERIFIED_STATIC_CI_ONLY_SIX_IMPORTS",
+      "nested_imports": {
+        "acquire": {
+          "callsite": "0x116b7e0",
+          "plt": "0x12f3690",
+          "got_slot": "0x2141ef8",
+          "relocation_record_offset": "0x198f5c0",
+          "type": "R_AARCH64_JUMP_SLOT",
+          "symbol": "__cxa_guard_acquire",
+          "symbol_index": 6
+        },
+        "release": {
+          "callsite": "0x116b818",
+          "plt": "0x12f36a0",
+          "got_slot": "0x2141f00",
+          "relocation_record_offset": "0x198f5d8",
+          "type": "R_AARCH64_JUMP_SLOT",
+          "symbol": "__cxa_guard_release",
+          "symbol_index": 7
+        }
+      },
+      "imported_implementations_proven": false,
+      "ownership_lifecycle_verified": false,
+      "uzuy_verified": false
     },
     "native_fileload_caller_x19": {
       "state": "VERIFIED_STATIC_CI_ONLY_X19_UNRESOLVED_AT_FILELOAD_CALLSITE",
@@ -2201,39 +2110,39 @@
       "uzuy_verified": false,
       "next": "Inspect exact SP-relative X19 save/restore and all return paths in 0x120a6c8; require path-sensitive same-slot proof for every return and recursively apply only to exact direct targets. Preserve barriers for all unproven callees; no AAPCS64 assumption, no runtime hook."
     },
-    "latest_verified_code_commit": "dbc23b155335c61602437c72e7f1ceabbe35553d",
-    "latest_verified_code_parent": "255adab51824809ca8920c4b65dba6a3d326fb41",
+    "latest_verified_code_commit": "261e4aab417b1aebaaeddb9a83160a46dc812255",
+    "latest_verified_code_parent": "10ca61ba88f0b328fc9e73daf9189ef8cc2333cc",
     "latest_verified_code_ci": {
-      "head": "dbc23b155335c61602437c72e7f1ceabbe35553d",
-      "parent": "255adab51824809ca8920c4b65dba6a3d326fb41",
+      "head": "261e4aab417b1aebaaeddb9a83160a46dc812255",
+      "parent": "10ca61ba88f0b328fc9e73daf9189ef8cc2333cc",
       "workflows": [
         {
           "name": "foundation",
-          "run_id": 46066250617,
-          "job_id": 140732155719,
+          "run_id": 46071621142,
+          "job_id": 140749655985,
           "conclusion": "success",
           "raw_log_inspected": true,
-          "artifact_id": 15231780092,
-          "artifact_sha256": "598559d70ee9d2911c52fc6109b722465b87b96d3e5b9b77f2de8b99f38fc7aa"
+          "artifact_id": 15233128327,
+          "artifact_sha256": "fbab9afc236c8a85356e9e7cf3f02e3f219ee208f003c00addadde7869dfc65b"
         },
         {
           "name": "factory",
-          "run_id": 46066250621,
-          "job_id": 140732155517,
+          "run_id": 46071621080,
+          "job_id": 140749655836,
           "conclusion": "success",
           "raw_log_inspected": true
         },
         {
           "name": "compressed_prm",
-          "run_id": 46066250642,
-          "job_id": 140732155515,
+          "run_id": 46071621075,
+          "job_id": 140749655778,
           "conclusion": "success",
           "raw_log_inspected": true
         },
         {
           "name": "movesetplus",
-          "run_id": 46066250702,
-          "job_id": 140732155859,
+          "run_id": 46071621063,
+          "job_id": 140749655794,
           "conclusion": "success",
           "raw_log_inspected": true
         }
@@ -2241,9 +2150,9 @@
       "all_completed_success": true,
       "raw_logs_inspected": true,
       "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-      "artifact_zip_sha256": "598559d70ee9d2911c52fc6109b722465b87b96d3e5b9b77f2de8b99f38fc7aa",
       "artifact_files": {
-        "native_fileload_inbound_args_json_sha256": "d3a1ece8b05743da15643babe98d77fffa0995532477f0bf6e769bbec66102e5",
+        "native_fileload_imports_json_sha256": "2d6165fafb81c7ee90141def3aad8a3383aec528e87e2e479173907ced6f12f8",
+        "native_fileload_inbound_args_json_sha256": "df542a293c2ad5a1cc18defd9cdedd3b4e40b2e0cf3385f416a8eac070d093ba",
         "native_fileload_call_targets_json_sha256": "ff165a8a94f42d19b9e70d9e9642250afcb76ccdba2f876cf1da77490413394d"
       },
       "consumer_abi_verified": false,
@@ -2425,6 +2334,42 @@
       "archive_precedence_verified": false,
       "uzuy_verified": false,
       "next": "Continue from 0x116b698 and nested 0x116b6c0 -> 0x116b7b0. Prove exact pointer/stack alias provenance for X1/X19 and each unknown store; investigate 0x12f3690/0x12f36a0 bounded control-flow exits without assuming function extent. Keep 0x116f280 -> 0x120a6c8 as a call barrier until every nested stack/alias condition is proven."
+    },
+    "native_fileload_guard_state_20261128": {
+      "state": "PENDING_CI",
+      "parent_sha": "261e4aab417b1aebaaeddb9a83160a46dc812255",
+      "source": "tools/portlib/native_fileload_guard_state.py",
+      "test": "tests/test_native_fileload_guard_state.py",
+      "workflow": ".github/workflows/verify-port-foundation.yml",
+      "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "exact_guard_address": "0x43717d8",
+      "expected_static_object_address": "0x43717e0",
+      "expected_explicit_store_ranges": [
+        [
+          "0x43717e0",
+          8
+        ],
+        [
+          "0x43717e8",
+          16
+        ],
+        [
+          "0x43717f8",
+          8
+        ]
+      ],
+      "registration_helper_candidate": "0x290",
+      "registration_record_stride_bytes": 24,
+      "registration_semantic_identity_verified": false,
+      "callback_or_destructor_identity_verified": false,
+      "imported_guard_implementations_verified": false,
+      "parent_x19_stack_preservation_proven": false,
+      "native_consumer_abi_verified": false,
+      "ownership_lifecycle_verified": false,
+      "archive_precedence_verified": false,
+      "uzuy_verified": false,
+      "next": "Read the new Foundation artifact's pointer-cell values and relocation records; trace the candidate callback only if the exact value resolves to an original-main code address. Keep opaque __cxa_guard imports and the parent X19 call barrier unresolved."
     }
   },
   "ci": {
@@ -2465,20 +2410,20 @@
     }
   ],
   "next_mvp": {
-    "name": "Verify original FileOpen return predicates, status-object type/lifetime and CRI callback chain",
-    "status": "PENDING_RUNTIME_PROVENANCE_AND_NATIVE_ABI",
+    "name": "Resolve FileLoad 0x290 registration-helper pointer cells and actual callback identity; identify the provider of __cxa_guard imports",
+    "status": "PENDING_STATIC_POINTER_PROVENANCE_AND_NATIVE_PROVIDER",
     "spec": "handoff/CONTINUE_PROMPT.txt",
     "acceptance": [
-      "Original 0x1170FB0 FileOpen local RET W0 values 1 and 0 are SHA-pinned, but original branch predicates and semantic source of its CRI return remain to be proven; never assume zero implies failure without external/native evidence.",
-      "Original FileLoad 0x116F434 X20<-X2 and 0x116F438 X22<-X1 and no earlier reached overwrites, but X2 object class and X1 +0x1D8 context class remain unknown. Trace xrefs, writes, consumers and teardown.",
-      "Prove callback dispatch, original native lock/unlock and CRI async completion, CPK precedence, unbind/destructor and failure rollback with byte-grounded code and runtime if available.",
-      "Independently authenticate true unmodified Switch v1.70 stock common.cpk, candidate CPK, original merged PC manager517; SHA256 and raw176 actual comparison with existing intake tool.",
-      "Integrate nine PC-only parameter family readers, unsupported factory selectors, MovesetPlus, models/effects/audio SFX JP voice only once native ABI/lifetime proven; keep release flags false."
+      "Use the new SHA-pinned guard-state artifact to inspect raw values and relocation records at 0x215d2b0, 0x2143460 and 0x2143468; follow a callback only if its value is proven to map to original-main executable bytes.",
+      "Keep helper 0x290 a bounded candidate, not a named function, until all control-flow exits and a symbol/provider identity are proven.",
+      "Identify the actual Switch import provider for __cxa_guard_acquire/release and prove implementation/return effects from bytes before relaxing nested-call barriers.",
+      "Continue exact X19/SP/alias proof for 0x1188104, 0x1170f7c -> 0x11704c4 and 0x1160c64; do not assume ABI or stack preservation.",
+      "No runtime hook until consumer ABI, ownership/lifecycle, callbacks, lock/unlock, async, rollback/unbind/destructor and archive precedence are all proven; keep all release flags false."
     ]
   },
-  "continuation": "Current code/test HEAD ac71215f23bd645119f830cc4c63d0b5b2f1974b passed all four push workflows; raw logs inspected. Caller window 0x116f09c..0x116f2a0 has 129 decoded instructions, 23 direct BLs, four strict X19 preservation positives, but X19 at FileLoad remains a barrier at 0x116f280 -> 0x120a6c8. The callee writes X19 at 0x120a6cc and 0x120a724; do not infer stack restoration until exact saved slot and all-return path are proven. Continue with bounded stack provenance for this target and other X19-writing callees. Keep consumer ABI, ownership/lifecycle, archive precedence and Uzuy false.",
-  "verified_component_commit": "4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4",
-  "progress_since_previous_handoff": "2026-11-27 PENDING_CI_RETRY: First Foundation run 46017177259/job 140567169891 failed at synthetic geometry boundary: [0,12) is valid for a 16-byte buffer. Raw log inspected. Added a positive 12-byte-window case and changed the invalid end to 20. Parent 1ecdea1a0f48542c869aadfd6903be3e8f1894db; retry CI pending. No semantic/ABI claim.",
+  "continuation": "Current verified code/test HEAD 261e4aab417b1aebaaeddb9a83160a46dc812255 has all four push workflows COMPLETED SUCCESS with raw logs inspected. The six-import FileLoad report resolves __cxa_guard_acquire/release by DT_JMPREL names only. New pending slice adds SHA-pinned guard/object address provenance and a bounded 0x290 registration-table candidate; do not infer callback/destructor or provider semantics. After CI, inspect pointer-cell raw values/relocations and continue the X19 child proof; keep 0x116f280 -> 0x120a6c8 as a barrier.",
+  "verified_component_commit": "261e4aab417b1aebaaeddb9a83160a46dc812255",
+  "progress_since_previous_handoff": "2026-11-27 PENDING_CI_RETRY: First Foundation run 46017177259/job 140567169891 failed at synthetic geometry boundary: [0,12) is valid for a 16-byte buffer. Raw log inspected. Added a positive 12-byte-window case and changed the invalid end to 20. Parent 1ecdea1a0f48542c869aadfd6903be3e8f1894db; retry CI pending. No semantic/ABI claim.\n\n2026-11-28 VERIFIED_CI_STATIC_ONLY: Branch HEAD 261e4aab417b1aebaaeddb9a83160a46dc812255 resolves six FileLoad PLT/GOT imports from original main. Four workflows completed SUCCESS; raw job logs inspected. Foundation run/job 46071621142/140749655985 artifact 15233128327, ZIP SHA256 fbab9afc236c8a85356e9e7cf3f02e3f219ee208f003c00addadde7869dfc65b; imports JSON SHA256 2d6165fafb81c7ee90141def3aad8a3383aec528e87e2e479173907ced6f12f8. Factory 46071621080/140749655836, compressed PRM 46071621075/140749655778, MovesetPlus 46071621063/140749655794. The two nested FileLoad imports resolve to __cxa_guard_acquire/__cxa_guard_release names only; implementations/provider and all runtime semantics remain unresolved. A prior Foundation failure on 42d91238 was a stale synthetic SP-delta expectation (-16 vs 0); 10ca61ba corrected it and all four workflows passed.\n\n2026-11-28 PENDING_CI: New SHA-pinned FileLoad guard-state slice. It decodes ADRP/ADD and ADRP/LDR pairs, classifies the guard/object and explicit store ranges against original NSO text/rodata/data/BSS, verifies the two __cxa_guard import relocations and records the 0x290 helper's atomic counter, pointer cells and 24-byte three-register record shape. This does not identify the helper, callback/destructor, imported implementations, table target, native consumer ABI or ownership. Synthetic negative/boundary cases plus exact original-main SHA test added; Foundation workflow step added. Parent HEAD 261e4aab417b1aebaaeddb9a83160a46dc812255; commit SHA and push CI pending.",
   "native_fileopen_branch_dependency_checkpoint": {
     "commit": "9a9b6cd755e19598735df3c85a5bb637254b36c6",
     "actions_run_id": 42016068823,
@@ -4981,5 +4926,159 @@
     "archive_precedence_verified": false,
     "uzuy_verified": false,
     "next": "Continue from 0x116b698 and nested 0x116b6c0 -> 0x116b7b0. Prove exact pointer/stack alias provenance for X1/X19 and each unknown store; investigate 0x12f3690/0x12f36a0 bounded control-flow exits without assuming function extent. Keep 0x116f280 -> 0x120a6c8 as a call barrier until every nested stack/alias condition is proven."
+  },
+  "native_fileload_guard_state_20261128": {
+    "state": "PENDING_CI",
+    "parent_sha": "261e4aab417b1aebaaeddb9a83160a46dc812255",
+    "source": "tools/portlib/native_fileload_guard_state.py",
+    "test": "tests/test_native_fileload_guard_state.py",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "exact_guard_address": "0x43717d8",
+    "expected_static_object_address": "0x43717e0",
+    "expected_explicit_store_ranges": [
+      [
+        "0x43717e0",
+        8
+      ],
+      [
+        "0x43717e8",
+        16
+      ],
+      [
+        "0x43717f8",
+        8
+      ]
+    ],
+    "registration_helper_candidate": "0x290",
+    "registration_record_stride_bytes": 24,
+    "registration_semantic_identity_verified": false,
+    "callback_or_destructor_identity_verified": false,
+    "imported_guard_implementations_verified": false,
+    "parent_x19_stack_preservation_proven": false,
+    "native_consumer_abi_verified": false,
+    "ownership_lifecycle_verified": false,
+    "archive_precedence_verified": false,
+    "uzuy_verified": false,
+    "next": "Read the new Foundation artifact's pointer-cell values and relocation records; trace the candidate callback only if the exact value resolves to an original-main code address. Keep opaque __cxa_guard imports and the parent X19 call barrier unresolved."
+  },
+  "native_fileload_imports": {
+    "status": "verified_static",
+    "parent_head": "10ca61ba88f0b328fc9e73daf9189ef8cc2333cc",
+    "implementation_commit": "261e4aab417b1aebaaeddb9a83160a46dc812255",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "evidence_note": "handoff/evidence_fileload_imports_20261127.md",
+    "ci": {
+      "head": "261e4aab417b1aebaaeddb9a83160a46dc812255",
+      "foundation_run_id": 46071621142,
+      "foundation_job_id": 140749655985,
+      "artifact_id": 15233128327,
+      "artifact_sha256": "fbab9afc236c8a85356e9e7cf3f02e3f219ee208f003c00addadde7869dfc65b",
+      "raw_log_inspected": true,
+      "all_four_workflows_success": true
+    },
+    "symbols": {
+      "thread_context_provider": {
+        "mangled": "_ZN2nn2os16GetCurrentThreadEv",
+        "demangled": "nn::os::GetCurrentThread()",
+        "got_slot": "0x2142a28",
+        "symbol_index": 216,
+        "relocation_record_offset": "0x1991750",
+        "relocation_type": "R_AARCH64_JUMP_SLOT",
+        "plt": "0x12f4cf0",
+        "plt_window_sha256": "6f776919ea971aa48f2212e1225172b7c299346d2a5c01c1db3424512528f035"
+      },
+      "lock_primitive_import": {
+        "mangled": "_ZN2nn2os9LockMutexEPNS0_9MutexTypeE",
+        "demangled": "nn::os::LockMutex(nn::os::MutexType*)",
+        "got_slot": "0x2142a78",
+        "symbol_index": 418,
+        "relocation_record_offset": "0x1991840",
+        "relocation_type": "R_AARCH64_JUMP_SLOT",
+        "plt": "0x12f4d90",
+        "plt_window_sha256": "9c3582161ce325d7f818e5dd7a67773f8bb0b0ea7ff124672106988eaf2cfb66"
+      },
+      "unlock_primitive_import": {
+        "mangled": "_ZN2nn2os11UnlockMutexEPNS0_9MutexTypeE",
+        "demangled": "nn::os::UnlockMutex(nn::os::MutexType*)",
+        "got_slot": "0x2142a80",
+        "symbol_index": 414,
+        "relocation_record_offset": "0x1991858",
+        "relocation_type": "R_AARCH64_JUMP_SLOT",
+        "plt": "0x12f4da0",
+        "plt_window_sha256": "d7bc314b686307e9aeea386148ce50e2dee5a0459a1606ff1e3c11fd0a98bda7"
+      },
+      "thread_token_provider": {
+        "mangled": "_ZN2nn2os11GetThreadIdEPKNS0_10ThreadTypeE",
+        "demangled": "nn::os::GetThreadId(nn::os::ThreadType const*)",
+        "got_slot": "0x2142c20",
+        "symbol_index": 466,
+        "relocation_record_offset": "0x1991d38",
+        "relocation_type": "R_AARCH64_JUMP_SLOT",
+        "plt": "0x12f50e0",
+        "plt_window_sha256": "90e5ce9415b2c04f5ce0b59c84715d65ed529490fb66cf1934913a3e048c393f"
+      }
+    },
+    "incoming_direct_edge_counts": {
+      "thread_context_provider": 20,
+      "thread_token_provider": 15,
+      "lock_primitive_import": 30,
+      "unlock_primitive_import": 36,
+      "lock_adapter_wrapper": 57,
+      "unlock_adapter_wrapper": 60
+    },
+    "wrapper_static_observations": {
+      "acquire_window": "0x1158c90",
+      "release_window": "0x1158d10",
+      "thread_owner_token": "GetThreadId(GetCurrentThread())",
+      "owner_token_field_offset_from_wrapper": "0x8",
+      "recursion_count_field_offset_from_wrapper": "0xc",
+      "lock_adapter_dereferences_wrapper_offset": "0x0",
+      "release_adapter_dereferences_wrapper_offset": "0x0",
+      "lock_call_branch_condition": "stored owner token differs from current thread id",
+      "unlock_call_branch_condition": "decremented count becomes zero",
+      "function_boundaries_proven": false
+    },
+    "imported_implementation_proven": false,
+    "runtime_import_binding_verified": false,
+    "thread_context_provider_runtime_semantics_verified": false,
+    "thread_token_provider_runtime_semantics_verified": false,
+    "mutex_runtime_semantics_verified": false,
+    "concurrency_verified": false,
+    "native_consumer_abi_verified": false,
+    "ownership_lifecycle_async_rollback_unbind_destructor_verified": false,
+    "archive_precedence_verified": false,
+    "native_hook_added": false,
+    "release_flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next_step": "Identify the original Switch import provider module from loader metadata and trace the bounded wrapper object's allocation/destruction; do not install a hook without runtime binding and lifecycle proof.",
+    "state": "VERIFIED_STATIC_CI_ONLY_SIX_IMPORTS",
+    "nested_imports": {
+      "acquire": {
+        "callsite": "0x116b7e0",
+        "plt": "0x12f3690",
+        "got_slot": "0x2141ef8",
+        "relocation_record_offset": "0x198f5c0",
+        "type": "R_AARCH64_JUMP_SLOT",
+        "symbol": "__cxa_guard_acquire",
+        "symbol_index": 6
+      },
+      "release": {
+        "callsite": "0x116b818",
+        "plt": "0x12f36a0",
+        "got_slot": "0x2141f00",
+        "relocation_record_offset": "0x198f5d8",
+        "type": "R_AARCH64_JUMP_SLOT",
+        "symbol": "__cxa_guard_release",
+        "symbol_index": 7
+      }
+    },
+    "imported_implementations_proven": false,
+    "ownership_lifecycle_verified": false,
+    "uzuy_verified": false
   }
 }
