@@ -30,3 +30,12 @@ Synthetic tests cover a positive preserved leaf, absent/negative proof, mismatch
 ## Evidence boundary
 
 Static host analysis over the SHA-pinned original main plus synthetic instruction fixtures only. It does not establish the loaded X19 value, pointer validity/type, caller function extent, object ownership/lifetime, destructor, callback, async completion, rollback, unbind, imported runtime provider, archive precedence, native consumer ABI for the nine parser families, or Uzuy gameplay. No hook, original main byte, CPK, Sakura aura107, Event236 marked/unmarked asset, or release flag is changed. CI state is pending until the new HEAD's authentic push job log and artifact are inspected.
+
+
+## CI failure analysis and regression correction — 2026-11-28
+
+The first X19 implementation HEAD `04cd926fe4af8144e53fc7eb92c9c5096ce38fd0` failed the synthetic map expectation; the corrected HEAD `5187073633307e43985684325ebdce9821948849` advanced through the original-main SHA check and X19 proof construction but failed at the hard-coded `expected_calls` list in `tests/test_native_fileload_inbound_args.py`. Exact push job: run `46046833811`, job `140668067037`; the raw log was inspected. The other three workflows on that HEAD completed successfully: factory run/job `46046833823/140668067179`, compressed PRM `46046833807/140668067777`, and MovesetPlus `46046833905/140668067827`; raw logs were inspected.
+
+The test no longer duplicates a manually transcribed call-target list. It independently decodes each original little-endian instruction word in the SHA-pinned caller window using the A64 `BL` encoding (`op[31:26] == 0b100101`, signed `imm26 << 2`) and compares that inventory with the per-call preservation proofs. Synthetic controls cover forward and backward BL, exclusion of unconditional B, malformed/unaligned rows, ordering, and invalid boundary. This retains exact callsite/target checking without trusting the same production helper or a stale transcription.
+
+The correction is pending push CI. No consumer ABI, pointer value/type, ownership/lifecycle, callback/async/rollback/unbind/destructor, archive precedence, or Uzuy claim is added. Release flags remain false.

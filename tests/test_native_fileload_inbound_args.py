@@ -24,6 +24,59 @@ def _b(pc, target):
     return struct.pack("<I", 0x14000000 | (imm & 0x03FFFFFF))
 
 
+def _direct_bl_inventory(instructions, end_exclusive):
+    if end_exclusive < 0 or end_exclusive & 3:
+        raise ValueError("Invalid direct-BL inventory boundary")
+    calls = []
+    previous_pc = None
+    for row in instructions:
+        try:
+            pc = int(row["pc"], 16)
+            raw = bytes.fromhex(row["word_le"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("Malformed instruction row in direct-BL inventory") from exc
+        if pc < 0 or pc & 3 or len(raw) != 4:
+            raise ValueError("Unaligned or partial instruction in direct-BL inventory")
+        if previous_pc is not None and pc <= previous_pc:
+            raise ValueError("Instruction rows are not strictly ordered")
+        previous_pc = pc
+        if pc >= end_exclusive:
+            continue
+        word = struct.unpack("<I", raw)[0]
+        # Independent A64 BL encoding decode: op[31:26] == 100101,
+        # signed imm26 scaled by four and added to the instruction PC.
+        if word & 0xFC000000 != 0x94000000:
+            continue
+        imm26 = word & 0x03FFFFFF
+        if imm26 & 0x02000000:
+            imm26 -= 0x04000000
+        calls.append((hex(pc), hex(pc + (imm26 << 2))))
+    return calls
+
+
+def synthetic_direct_bl_inventory():
+    # Positive forward/backward BLs; an unconditional B must not be inventoried.
+    code = _bl(0, 0x100) + _b(4, 0x200) + _bl(8, 0)
+    rows = [
+        {"pc": hex(pc), "word_le": code[pc:pc + 4].hex()}
+        for pc in range(0, len(code), 4)
+    ]
+    assert _direct_bl_inventory(rows, 12) == [("0x0", "0x100"), ("0x8", "0x0")]
+    for bad_rows, boundary in (
+        ([{"pc": "0x1", "word_le": _bl(0, 0x100).hex()}], 12),
+        ([{"pc": "0x0", "word_le": "abcd"}], 12),
+        ([{"pc": "0x4", "word_le": _bl(0, 0x100).hex()},
+          {"pc": "0x0", "word_le": _b(4, 0x200).hex()}], 12),
+        (rows, 10),
+    ):
+        try:
+            _direct_bl_inventory(bad_rows, boundary)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Malformed direct-BL inventory was accepted")
+
+
 def synthetic():
     # Two exact register copies reach the sink.
     code = bytes.fromhex("e10317aae20314aa") + _bl(8, 0x2000)
@@ -117,6 +170,7 @@ def synthetic_x19_call_preservation():
 def run(main, output):
     synthetic()
     synthetic_x19_call_preservation()
+    synthetic_direct_bl_inventory()
     raw = main.read_bytes()
     report = inspect(raw)
     assert report["original_main_sha256"] == MAIN_SHA256
@@ -134,15 +188,16 @@ def run(main, output):
     x2_origin = caller["possible_reaching_definitions"]["x2"][0]
     assert x2_origin["instruction"]["read_registers"] == ["x19"]
     assert caller["possible_reaching_definitions"]["x19"]
-    expected_calls = [
-        ("0x116f1c0", "0x116d3c0"), ("0x116f1cc", "0x120661c"),
-        ("0x116f1e8", "0x1215d28"), ("0x116f1f0", "0x116b698"),
-        ("0x116f22c", "0x1161030"), ("0x116f23c", "0x12f37f0"),
-        ("0x116f248", "0x12f3760"), ("0x116f254", "0x12f3760"),
-        ("0x116f25c", "0x12f36d0"), ("0x116f280", "0x120a6c8"),
-    ]
+    # Derive the expected call inventory independently from the original
+    # little-endian instruction words, rather than duplicating a hand-entered
+    # target list or the production direct_branch helper.
+    expected_calls = _direct_bl_inventory(caller["instructions"], CALLSITE)
     proofs = report["caller_call_preservation_proofs"]
-    assert [(x["site"], x["target"]) for x in proofs] == expected_calls
+    actual_calls = [(x["site"], x["target"]) for x in proofs]
+    assert actual_calls == expected_calls, (
+        "Caller BL proof inventory differs from independent A64 immediate decode: "
+        f"expected={expected_calls!r} actual={actual_calls!r}"
+    )
     assert all(x["proof"]["register"] == "x19" for x in proofs)
     assert all(isinstance(x["proof"]["preserved"], bool) for x in proofs)
     assert all(x["proof"]["bounded_window_not_function_extent"] is True for x in proofs)
