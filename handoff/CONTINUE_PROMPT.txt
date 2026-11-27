@@ -1,3 +1,27 @@
+# FileLoad registration-table callee trace — PENDING_CI
+
+Date: 2026-11-28
+Branch: port/full-api-v170
+Parent HEAD: a859b4454fe7f8b1b18c5930bba38c483e7b7b6c
+
+## Current vertical slice
+
+Research-first checks were performed against upstream ModManager/Toolbox 2.1.2.1 and 2.1.2.0, PyCriCodecs CPK/UTF, REA static-analysis guidance, and the pinned Switch v1.70 original main. Exact inspected upstream parser/editor blobs are unchanged across the 2.1.2.0 -> 2.1.2.1 tags; the release-note additions do not prove a Switch consumer ABI.
+
+New source: tools/portlib/native_fileload_registration_callee.py
+New test: tests/test_native_fileload_registration_callee.py
+New Foundation step: bounded trace of the exact 0x116b8a4 -> 0x116b390 BL target. The analyzer validates the 64-bit X0 load at 0x116b8a0 from [X8,#0x28], then records a bounded 0x200-byte callee CFG, register/argument-register access, X0 and stack memory use, direct/indirect call barriers, returns, out-of-window edges and raw aligned-text B/BL inbound candidates. It never treats the bounded window as a function extent.
+
+Original main: Git blob 8af900db0d7003255b4ddb3cbd1289cd5a15458e, 27,701,509 bytes, SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
+
+State: PENDING_CI. Inspect all four direct push workflow runs, raw job logs, and Foundation artifact for the new code HEAD. If any CI fails, read the original failing log and fix the root cause. Do not mark this slice verified before all required runs succeed and logs are inspected.
+
+No callback/destructor identity, object type, ownership/lifecycle, lock/unlock, async, rollback/unbind, native consumer ABI, archive precedence or Uzuy proof. No runtime hook. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. Preserve Sakura aura107, Event236 marker 0x4E53 +0x2A, and unmarked Event236.
+
+## Next action
+
+After CI, inspect the bounded callee output. Follow only a concrete, byte-backed direct/indirect edge in a separate static slice; never promote a reader or bounded CFG into a native consumer claim.
+
 # FileLoad registration code-pointer target trace — FIXED_PENDING_CI
 
 Date: 2026-11-28  

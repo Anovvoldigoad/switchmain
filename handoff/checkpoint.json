@@ -2782,7 +2782,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Trace direct-call target 0x116b390 in a separate bounded window; verify what X0 points to, whether it invokes an indirect callback, and its ownership/lock/unlock behavior. Do not identify destructor semantics or install a hook until the full lifecycle is proven.",
+  "next_action": "Inspect direct push Actions runs for the new 0x116b390 bounded callee trace and read every raw job log plus Foundation artifact. If the callee reveals an unresolved branch/call, follow one exact target in a separate bounded static slice; keep all release flags false and add no hook.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -5255,5 +5255,57 @@
     "exception": "AttributeError: 'Arm64Op' object has no attribute 'size'",
     "raw_log_inspected": true,
     "fixed_in_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e"
+  },
+  "native_fileload_registration_callee_20261128": {
+    "state": "PENDING_CI",
+    "parent_sha": "a859b4454fe7f8b1b18c5930bba38c483e7b7b6c",
+    "source": "tools/portlib/native_fileload_registration_callee.py",
+    "source_blob": "3bf733dc6d3368a7569d79853bef557fd330a03d",
+    "test": "tests/test_native_fileload_registration_callee.py",
+    "test_blob": "b5d6190d3dd8e50ad29f1507c45734f8a0767504",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "workflow_blob": "68320ad7f4e5b3a728fe06a55528cc6225d6376b",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_size": 27701509,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "caller_load_site": "0x116b8a0",
+    "caller_direct_call_site": "0x116b8a4",
+    "direct_callee_target": "0x116b390",
+    "callee_analysis_window_bytes": 512,
+    "function_extent_verified": false,
+    "callback_identity_verified": false,
+    "destructor_identity_verified": false,
+    "ownership_lifecycle_verified": false,
+    "lock_unlock_semantics_verified": false,
+    "async_rollback_unbind_verified": false,
+    "native_consumer_abi_verified": false,
+    "archive_precedence_verified": false,
+    "native_hook_added": false,
+    "uzuy_verified": false,
+    "release_flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next": "Inspect all four direct push runs, raw job logs and Foundation artifact for this exact HEAD. Use the callee CFG to choose the next bounded target only; do not infer callback/destructor/ownership/ABI.",
+    "code_commit": null,
+    "ci": {
+      "status": "pending",
+      "raw_job_logs_inspected": false,
+      "artifact_id": null
+    },
+    "research": {
+      "modmanager_latest_tag": "2.1.2.1",
+      "modmanager_latest_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+      "modmanager_prior_tag": "2.1.2.0",
+      "modmanager_prior_commit": "a4a6e7e2aeec79cffa7d477e4b1a8fcd05823983",
+      "toolbox_latest_tag": "2.1.2.1",
+      "toolbox_latest_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+      "toolbox_prior_tag": "2.1.2.0",
+      "toolbox_prior_commit": "dfe371dd4f1f0d1d1ad74a79e1bc8192a6d1fc31",
+      "pycricodecs_commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+      "rea_current_head": "c4bc2f7fcb73882f638b9d9a31fd49156bd902f6",
+      "rea_methodology_commit": "0386efd1e1dfa41af41f804a6be56c6f5b7615d4"
+    }
   }
 }

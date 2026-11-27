@@ -104,7 +104,8 @@
     "2026-11-27 CI_REPAIR_2: Foundation run 46022245151/job 140584543848 failed in test_native_fileload_status.py because the report omitted service_target_semantics_verified after the new dispatch-offset fields were inserted. The missing explicit false field is restored. Raw job log inspected. The three other workflows for code HEAD 4c83d56 completed successfully and their raw logs were read; Foundation must be rerun.",
     "2026-11-28 PENDING_CI: Added SHA-pinned registration target CFG analysis from the single DT_RELA R_AARCH64_RELATIVE pointer cell 0x215d2b0 -> text offset 0x116b888. The 0x100-byte bounded CFG records reachable instructions, register/memory operands, direct/indirect call barriers, returns, out-of-window edges, raw aligned-text B/BL word candidates and window SHA. Synthetic CFG positive/negative/boundary/budget regressions plus original-main SHA/relocation tests added. Not callback/destructor identity, function extent, runtime relocated pointer, ABI, ownership or Uzuy proof.",
     "2026-11-28 FIXED_PENDING_CI: Foundation run 46076828184/job 140766410479 exposed that Capstone 5.0.6 Arm64Op has no .size. The analyzer now derives only explicit AArch64 memory widths from mnemonic/data-register class and leaves ambiguous widths null; tests add W, byte, register-pair and signed-word cases. Other three workflows on c62ff2e passed. Rerun Foundation and all push workflows before promotion.",
-    "2026-11-28 VERIFIED_CI_STATIC_ONLY: The registration pointer cell 0x215d2b0's single DT_RELA R_AARCH64_RELATIVE addend resolves to text offset 0x116b888. Bounded CFG on original main SHA reached 33 words, one direct call 0x116b8a4 -> 0x116b390, return 0x116b908, no indirect call/terminator or out-of-window edge; it loops 64 pointer-sized entries from 0x4371800 and clears a 0x200-byte table. Artifact 15234858334, JSON SHA256 7f70068c..., all four push workflows success and raw logs inspected. Callback/destructor/ABI/ownership still NOT proven."
+    "2026-11-28 VERIFIED_CI_STATIC_ONLY: The registration pointer cell 0x215d2b0's single DT_RELA R_AARCH64_RELATIVE addend resolves to text offset 0x116b888. Bounded CFG on original main SHA reached 33 words, one direct call 0x116b8a4 -> 0x116b390, return 0x116b908, no indirect call/terminator or out-of-window edge; it loops 64 pointer-sized entries from 0x4371800 and clears a 0x200-byte table. Artifact 15234858334, JSON SHA256 7f70068c..., all four push workflows success and raw logs inspected. Callback/destructor/ABI/ownership still NOT proven.",
+    "2026-11-28 PENDING_CI: Added a SHA-pinned bounded trace of the direct FileLoad registration-table callee 0x116b390. It validates the 0x116b8a4 BL edge and immediately preceding 64-bit X0 load from [X8,#0x28], then records a 0x200-byte callee CFG, register/argument-register access counts, X0 and stack memory observations, direct/indirect call barriers, returns, out-of-window edges and raw aligned-text B/BL inbound candidates. Synthetic positive/negative/boundary tests and original-main SHA guard added. Static only: no function extent, callback/destructor identity, object type, ownership/lifecycle, lock/unlock, async/rollback/unbind, ABI, archive precedence or Uzuy claim. Parent HEAD a859b4454fe7f8b1b18c5930bba38c483e7b7b6c; CI pending."
   ],
   "blocking_gaps": [
     "At FileLoad caller 0x116f280 -> 0x120a6c8, local X19 save/restore at entry-SP-8 is proven but recursive SP trust remains false. The 0x116b7b0 child has two relocation-backed __cxa_guard imports and a bounded 0x290 registration-helper candidate; exact guard/object BSS addresses and explicit store ranges are pending CI. Opaque import side effects, helper table target/callback identity, other unknown X0 stores, consumer ABI, ownership/lifecycle and archive precedence remain unresolved; do not relax the call barrier.",
@@ -2576,5 +2577,38 @@
     "exception": "AttributeError: 'Arm64Op' object has no attribute 'size'",
     "raw_log_inspected": true,
     "fixed_in_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e"
+  },
+  "native_fileload_registration_callee_20261128": {
+    "state": "PENDING_CI",
+    "parent_sha": "a859b4454fe7f8b1b18c5930bba38c483e7b7b6c",
+    "source": "tools/portlib/native_fileload_registration_callee.py",
+    "source_blob": "3bf733dc6d3368a7569d79853bef557fd330a03d",
+    "test": "tests/test_native_fileload_registration_callee.py",
+    "test_blob": "b5d6190d3dd8e50ad29f1507c45734f8a0767504",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "workflow_blob": "68320ad7f4e5b3a728fe06a55528cc6225d6376b",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_size": 27701509,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "caller_load_site": "0x116b8a0",
+    "caller_direct_call_site": "0x116b8a4",
+    "direct_callee_target": "0x116b390",
+    "callee_analysis_window_bytes": 512,
+    "function_extent_verified": false,
+    "callback_identity_verified": false,
+    "destructor_identity_verified": false,
+    "ownership_lifecycle_verified": false,
+    "lock_unlock_semantics_verified": false,
+    "async_rollback_unbind_verified": false,
+    "native_consumer_abi_verified": false,
+    "archive_precedence_verified": false,
+    "native_hook_added": false,
+    "uzuy_verified": false,
+    "release_flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next": "Inspect all four direct push runs, raw job logs and Foundation artifact for this exact HEAD. Use the callee CFG to choose the next bounded target only; do not infer callback/destructor/ownership/ABI."
   }
 }
