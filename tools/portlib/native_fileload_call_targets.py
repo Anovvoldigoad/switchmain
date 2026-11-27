@@ -613,7 +613,7 @@ def analyze_stack_register_restore(
                     "unknown_memory_writes_while_saved": child["unknown_memory_writes_while_saved"],
                     "protected_slot_clobbers": child["protected_slot_clobbers"],
                     "all_return_paths_restore_entry_register": child["all_return_paths_restore_entry_register"],
-                    "child_nested_call_proofs": list(child["nested_call_proofs"].values()),
+                    "child_nested_call_proofs": list(child["nested_call_proofs"]),
                 }
                 if child["preservation_proven"]:
                     next_trusted = (next_trusted
