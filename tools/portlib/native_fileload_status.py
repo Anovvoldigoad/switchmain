@@ -12,8 +12,8 @@ eventual gameplay. No hooks or native storage bytes are changed.
 """
 import hashlib
 import struct
-from capstone import Cs,CS_ARCH_ARM64,CS_MODE_ARM
-from capstone.arm64_const import ARM64_OP_MEM
+from capstone import Cs,CS_ARCH_ARM64,CS_MODE_ARM,CS_GRP_CALL,CS_GRP_JUMP,CS_GRP_RET
+from capstone.arm64_const import ARM64_OP_IMM,ARM64_OP_MEM
 from .native_cpk_graph import MAIN_SHA256,direct_branch
 from .nso_profile import segments
 
@@ -34,6 +34,13 @@ STATUS_CALL_WITNESSES={
 FILE_OPEN_EDGE=(0x116F47C,0x1170FB0)
 SERVICE_WINDOW=(0x1215358,0x12153D8)
 SERVICE_ENTRYPOINTS=(0x1215358,0x1215374)
+SERVICE_TARGET_WINDOW=(0x1158C90,0x1158D90)
+SERVICE_TARGETS=(0x1158C90,0x1158D10,0x1158D30)
+SERVICE_REQUIRED_TARGET_EDGES=(
+ (0x1215364,"B",0x1158C90),
+ (0x1215380,"B",0x1158D10),
+ (0x12153A8,"BL",0x1158D30),
+)
 
 
 def _words(code,start,end):
@@ -124,13 +131,163 @@ def _service_window(text):
     }
 
 
+def _bounded_trace(text,start,end,entry,max_instructions=256):
+    """Trace direct control flow only inside a fixed byte window; never infer function extent."""
+    if (start<0 or end>len(text) or end<=start or (start&3) or (end&3)
+            or entry<start or entry>=end or (entry&3) or max_instructions<1):
+        raise ValueError("Invalid bounded target trace")
+    cs=Cs(CS_ARCH_ARM64,CS_MODE_ARM)
+    cs.detail=True
+    pending=[entry]
+    visited=set()
+    returns=[]
+    direct_calls=[]
+    indirect_calls=[]
+    direct_branches=[]
+    indirect_branches=[]
+    out_of_window=[]
+    decode_failures=[]
+    budget_exhausted=False
+
+    def enqueue(from_pc,target,kind):
+        if start<=target<end:
+            pending.append(target)
+        else:
+            out_of_window.append({
+                "from":hex(from_pc),"target":hex(target),"kind":kind
+            })
+
+    while pending:
+        pc=pending.pop()
+        if pc in visited:
+            continue
+        if len(visited)>=max_instructions:
+            budget_exhausted=True
+            break
+        raw=text[pc:pc+4]
+        decoded=list(cs.disasm(raw,pc))
+        if len(decoded)!=1 or decoded[0].size!=4:
+            decode_failures.append(hex(pc))
+            continue
+        ins=decoded[0]
+        visited.add(pc)
+        mnemonic=ins.mnemonic.lower()
+        target=next((int(op.imm) for op in ins.operands
+                     if op.type==ARM64_OP_IMM),None)
+
+        if mnemonic in ("ret","eret","drps") or ins.group(CS_GRP_RET):
+            returns.append(hex(pc))
+            continue
+        if (mnemonic in ("bl","blr","blraa","blrab","blraaz","blrabz")
+                or ins.group(CS_GRP_CALL)):
+            if target is None:
+                indirect_calls.append({
+                    "at":hex(pc),"mnemonic":mnemonic,"operands":ins.op_str
+                })
+            else:
+                direct_calls.append({
+                    "at":hex(pc),"target":hex(target),"kind":"BL"
+                })
+            enqueue(pc,pc+4,"fallthrough")
+            continue
+        if mnemonic=="b":
+            if target is None:
+                indirect_branches.append({
+                    "at":hex(pc),"mnemonic":mnemonic,"operands":ins.op_str
+                })
+            else:
+                direct_branches.append({
+                    "at":hex(pc),"target":hex(target),"kind":"B"
+                })
+                enqueue(pc,target,"B")
+            continue
+        if mnemonic.startswith("b.") or mnemonic in ("cbz","cbnz","tbz","tbnz"):
+            if target is None:
+                indirect_branches.append({
+                    "at":hex(pc),"mnemonic":mnemonic,"operands":ins.op_str
+                })
+            else:
+                direct_branches.append({
+                    "at":hex(pc),"target":hex(target),"kind":mnemonic
+                })
+                enqueue(pc,target,mnemonic)
+            enqueue(pc,pc+4,"fallthrough")
+            continue
+        if (mnemonic in ("br","braa","brab","braaz","brabz")
+                or ins.group(CS_GRP_JUMP)):
+            indirect_branches.append({
+                "at":hex(pc),"mnemonic":mnemonic,"operands":ins.op_str
+            })
+            continue
+        enqueue(pc,pc+4,"fallthrough")
+
+    return {
+        "entry":hex(entry),
+        "window_start":hex(start),
+        "window_end_exclusive":hex(end),
+        "reachable_addresses":[hex(x) for x in sorted(visited)],
+        "reachable_instruction_count":len(visited),
+        "direct_calls":direct_calls,
+        "indirect_calls":indirect_calls,
+        "direct_branches":direct_branches,
+        "indirect_branches":indirect_branches,
+        "returns":returns,
+        "out_of_window_edges":out_of_window,
+        "decode_failures":decode_failures,
+        "budget_exhausted":budget_exhausted,
+        "control_flow_is_bounded":True,
+        "function_boundary_proven":False
+    }
+
+
+def _service_target_window(text):
+    start,end=SERVICE_TARGET_WINDOW
+    instructions=_service_words(text,start,end)
+    by_at={int(row["at"],16):row for row in instructions}
+    entrypoints=[]
+    for at in SERVICE_TARGETS:
+        row=by_at.get(at)
+        if row is None:
+            raise ValueError("Required service dispatch target is outside bounded window")
+        entrypoints.append({
+            "at":hex(at),"word_le":row["word_le"],
+            "mnemonic":row["mnemonic"],"operands":row["operands"]
+        })
+    traces=[_bounded_trace(text,start,end,at) for at in SERVICE_TARGETS]
+    return {
+        "start":hex(start),"end_exclusive":hex(end),
+        "window_bytes":end-start,
+        "window_sha256":hashlib.sha256(text[start:end]).hexdigest(),
+        "entrypoints":entrypoints,
+        "instructions":instructions,
+        "bounded_window_not_function_extent":True,
+        "bounded_traces":traces,
+        "lock_unlock_semantics_verified":False,
+        "ownership_lifecycle_verified":False,
+        "async_completion_verified":False
+    }
+
+
+def _service_target_inbound_edges(text):
+    incoming={target:[] for target in SERVICE_TARGETS}
+    for pc in range(0,len(text)-3,4):
+        word=struct.unpack_from("<I",text,pc)[0]
+        branch=direct_branch(word,pc)
+        if branch and branch[1] in incoming:
+            incoming[branch[1]].append({
+                "caller":hex(pc),"kind":branch[0],
+                "word_le":text[pc:pc+4].hex()
+            })
+    return {hex(target):incoming[target] for target in SERVICE_TARGETS}
+
+
 def inspect(nso):
     digest=hashlib.sha256(nso).hexdigest()
     if digest!=MAIN_SHA256:
         raise ValueError("Exact pinned v1.70 original main required")
     rows=segments(nso)
     va,text,_=rows[0]
-    if va!=0 or max(HELPER_WINDOW[1],OPEN_CORRIDOR[1],SERVICE_WINDOW[1])>len(text):
+    if va!=0 or max(HELPER_WINDOW[1],OPEN_CORRIDOR[1],SERVICE_WINDOW[1],SERVICE_TARGET_WINDOW[1])>len(text):
         raise ValueError("Pinned original main geometry mismatch")
     witnesses=[]
     for at,(mnemonic,operands) in STATUS_CALL_WITNESSES.items():
@@ -148,6 +305,12 @@ def inspect(nso):
     helper=_words(text,*HELPER_WINDOW)
     opening=_words(text,*OPEN_CORRIDOR)
     service=_service_window(text)
+    service_targets=_service_target_window(text)
+    target_edges=_service_target_inbound_edges(text)
+    for caller,kind,target in SERVICE_REQUIRED_TARGET_EDGES:
+        if not any(row["caller"]==hex(caller) and row["kind"]==kind
+                   for row in target_edges[hex(target)]):
+            raise ValueError("Required FileLoad service target edge absent at "+hex(caller))
     return {
         "status":"PINNED_NATIVE_FILELOAD_STATUS_CALLSITE_WITNESSES_ONLY",
         "main_sha256":digest,
@@ -169,6 +332,13 @@ def inspect(nso):
             "instructions":opening
         },
         "service_code_window":service,
+        "service_target_code_window":service_targets,
+        "service_target_incoming_direct_edges":target_edges,
+        "service_target_semantics_verified":False,
+        "service_target_lock_unlock_implementation_verified":False,
+        "service_target_function_boundaries_verified":False,
+        "service_target_ownership_lifecycle_verified":False,
+        "service_target_async_completion_verified":False,
         "service_semantics_verified":False,
         "mutex_lock_unlock_implementation_verified":False,
         "service_function_boundaries_verified":False,

@@ -73,7 +73,7 @@ jobs:
         run: python tests/test_native_fileload_failure.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Prove potential original FileLoad 0x100000-offset correction and named call/error branches
         run: python tests/test_native_fileload_corrected_entry.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
-      - name: Trace verified native FileLoad status5 arguments, helper and service-entry windows
+      - name: Trace pinned FileLoad status5 arguments, service-entry windows and bounded dispatch-target CFGs
         run: python tests/test_native_fileload_status.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Trace SHA-pinned FileLoad SP/indexed operands, exact MOV immediates, and callsite reaching definitions (no consumer ABI)
         run: python tests/test_native_fileload_sp_cfg.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work

@@ -1236,3 +1236,12 @@ Evidence note: `handoff/evidence_fileload_indexed_memory_20261127.md`. The Found
 
 
 2026-11-27 PENDING_CI — FileLoad status-service evidence. Added a 128-byte exact-main disassembly window at 0x1215358..0x12153d8 (not a function boundary), register/memory operand capture, and full-text direct xref census for 0x1215358/0x1215374. Regressions require the known status-helper and FileLoad-request direct edges and reject unaligned, reversed, or out-of-bounds synthetic windows. Research-first resolved the ModManager pin 276116eb as a child of the 2.1.2.1 tag 502c38d; relevant Toolbox SkillEditorViewModel/SkillEditorModel/Program parser blobs are unchanged between 2.1.2.0 and 2.1.2.1, so no Event236 ID or Switch ABI is inferred. Parent 0e84462e75faa2912bca6a5698987d38d23920eb; CI pending. Lock/unlock semantics, function boundaries, ownership/lifecycle, async/rollback/unbind/destructor, archive precedence and Uzuy remain unresolved. All three release flags remain false.
+
+
+## 2026-11-27 — FileLoad service dispatch target bodies (PENDING HEAD CI)
+
+The prior service-entry slice is now confirmed by Foundation push run 46013548161/job 140554824874 (COMPLETED SUCCESS; raw log inspected), artifact 15205855931. The exact 128-byte service window SHA256 is 57ceb7351df052e968a1431e70c39812c323d0880d00d36380c01814af58976e. It proves direct dispatches 0x1215364 B 0x1158c90, 0x1215380 B 0x1158d10, and cleanup call 0x12153a8 BL 0x1158d30; it does not prove lock/unlock.
+
+New implementation extends tools/portlib/native_fileload_status.py and tests/test_native_fileload_status.py with a 256-byte exact-main target window 0x1158c90..0x1158d90, bounded direct CFG traces rooted at all three targets, and whole-text direct B/BL inbound edges. Synthetic regressions cover B/conditional branch, BL non-recursion, indirect BR, out-of-window edges, trace budget, and invalid boundaries. Parent c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e; current code commit is pending CI. See handoff/evidence_fileload_status_target_bodies_20261127.md.
+
+The trace deliberately does not infer function boundaries, lock/unlock, ownership, async completion, rollback, unbind/destructor, archive precedence, or consumer ABI. The ModManager 2.1.2.1 release advertises Switch Projectiles Target, but the relevant Toolbox SkillEditorViewModel and SkillEditorModel parser blobs are unchanged between 2.1.2.0 and 2.1.2.1. No new Event236 numeric ID or Switch ABI is inferred. Preserve original main SHA256, Sakura aura107, both Event236 variants and all three false release flags.

@@ -837,7 +837,7 @@
     ]
   },
   "verified_component_commit": "4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4",
-  "progress_since_previous_handoff": "2026-11-27 PENDING_CI: Extend SHA-pinned FileLoad status evidence with a 128-byte disassembly window covering direct service-target candidates 0x1215358 and 0x1215374, full-text direct BL/B xref census, cross-checks for the status helper and FileLoad request path, and synthetic aligned-window positive/negative/boundary tests. No lock/unlock interpretation is promoted; function extents and service semantics remain unresolved. Parent 0e84462e75faa2912bca6a5698987d38d23920eb; CI pending.",
+  "progress_since_previous_handoff": "2026-11-27 PENDING_CI: Trace exact-main FileLoad dispatch targets 0x1158c90, 0x1158d10 and 0x1158d30 with 256-byte disassembly, bounded direct CFG and whole-text direct B/BL inbound edges. Prior service-entry slice verified by run 46013548161/job 140554824874, artifact 15205855931, service-window SHA256 57ceb7351df052e968a1431e70c39812c323d0880d00d36380c01814af58976e. Parent c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e; new CI pending. No lock/unlock or ABI claim.",
   "native_fileopen_branch_dependency_checkpoint": {
     "commit": "9a9b6cd755e19598735df3c85a5bb637254b36c6",
     "actions_run_id": 42016068823,
@@ -1196,7 +1196,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "2026-11-27: Inspect the new Foundation push run/job/raw log and machine-readable service-window artifact for 0x1215358/0x1215374. Verify exact instructions, xrefs and service code hashes; only infer lock/unlock if call/import evidence proves it. Preserve no-hook invariant and all three false release flags.",
+  "next_action": "2026-11-27: Verify Foundation push run/job/raw log and target-body artifact for 0x1158c90/0x1158d10/0x1158d30. Inspect reachable instructions, direct/indirect calls and out-of-window edges. Only identify lock/unlock if exact instruction/call/import evidence proves acquire/release; preserve no-hook invariant and all release flags false.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -2188,20 +2188,20 @@
   },
   "latest_execution": {
     "status": "PENDING_HEAD_CI",
-    "parent_sha": "0e84462e75faa2912bca6a5698987d38d23920eb",
-    "scope": "FileLoad status-service target disassembly and full-text direct xrefs",
+    "parent_sha": "c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e",
+    "scope": "FileLoad status dispatch target code, bounded direct CFG and full-text inbound edges",
     "ci_run_id": null,
     "ci_job_id": null,
     "raw_job_log_inspected": false,
-    "original_main_rehashed_by_new_test": false,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
     "consumer_abi_proven": false,
     "uzuy_tested": false,
-    "next": "Inspect exact Foundation push run/job/raw log and artifact; fix any regression before updating checkpoint."
+    "next": "Inspect exact push Actions runs/jobs/logs for the implementation commit; repair any failure before final status synchronization."
   },
   "latest_slice": {
     "state": "PENDING_CI",
-    "parent_sha": "0e84462e75faa2912bca6a5698987d38d23920eb",
-    "description": "Exact-main 0x1215358..0x12153d8 service-window disassembly plus full-text direct xref census",
+    "parent_sha": "c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e",
+    "description": "256-byte exact-main dispatch target window, three bounded CFG traces and whole-text direct B/BL inbound census",
     "source": "tools/portlib/native_fileload_status.py",
     "test": "tests/test_native_fileload_status.py",
     "consumer_abi_verified": false,
@@ -2359,7 +2359,7 @@
     "uzuy_verified": false
   },
   "native_fileload_status_service_edges_20261127": {
-    "state": "PENDING_CI",
+    "state": "VERIFIED_CI_STATIC_ONLY",
     "parent_sha": "0e84462e75faa2912bca6a5698987d38d23920eb",
     "source": "tools/portlib/native_fileload_status.py",
     "test": "tests/test_native_fileload_status.py",
@@ -2373,7 +2373,7 @@
       "start": "0x1215358",
       "end_exclusive": "0x12153d8",
       "bytes": 128,
-      "sha256": null
+      "sha256": "57ceb7351df052e968a1431e70c39812c323d0880d00d36380c01814af58976e"
     },
     "required_edges": [
       [
@@ -2413,6 +2413,65 @@
     "service_function_boundaries_verified": false,
     "archive_precedence_verified": false,
     "uzuy_verified": false,
-    "next": "Inspect the service-window disassembly and direct-xref artifact. Trace any resolvable import/indirect targets before assigning lock/unlock semantics."
+    "next": "Trace the direct dispatch targets 0x1158c90/0x1158d10/0x1158d30 with bounded original-main CFG and full-text direct xrefs; do not infer lock/unlock from wrapper shape.",
+    "code_commit": "c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e",
+    "ci": {
+      "run_id": 46013548161,
+      "job_id": 140554824874,
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "artifact_id": 15205855931,
+      "artifact_sha256": "a9c1629821af7fdc6cf3826657ce2eaacc39b237f17576c6386e973eeee465e1"
+    }
+  },
+  "native_fileload_status_target_bodies_20261127": {
+    "state": "PENDING_CI",
+    "parent_sha": "c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e",
+    "source": "tools/portlib/native_fileload_status.py",
+    "test": "tests/test_native_fileload_status.py",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "target_window": {
+      "start": "0x1158c90",
+      "end_exclusive": "0x1158d90",
+      "bytes": 256,
+      "sha256": null
+    },
+    "targets": [
+      "0x1158c90",
+      "0x1158d10",
+      "0x1158d30"
+    ],
+    "required_edges": [
+      [
+        "0x1215364",
+        "B",
+        "0x1158c90"
+      ],
+      [
+        "0x1215380",
+        "B",
+        "0x1158d10"
+      ],
+      [
+        "0x12153a8",
+        "BL",
+        "0x1158d30"
+      ]
+    ],
+    "ci_run_id": null,
+    "ci_job_id": null,
+    "raw_job_log_inspected": false,
+    "artifact_id": null,
+    "function_boundaries_verified": false,
+    "lock_unlock_semantics_verified": false,
+    "ownership_lifecycle_verified": false,
+    "callback_async_completion_verified": false,
+    "rollback_unbind_destructor_verified": false,
+    "archive_precedence_verified": false,
+    "consumer_abi_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect the target-window artifact and raw Foundation job log; classify synchronization only if instructions and call/import evidence prove acquire/release."
   }
 }

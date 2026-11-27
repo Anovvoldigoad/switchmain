@@ -128,7 +128,8 @@
     "Nine PC source raw families are now parsed by compiled AArch64 C++ and verified against nine source-pinned public NSC templates (30 positive ARM64/19 negative); native acquisition/lifetime/owner class and consumer integration in real Switch 1.70 game remain NOT implemented/proven. MovesetPlus/factories/asset audio effects still incomplete.",
     "PC source-ZIP -> 9-family source pack is now byte/SHA-authenticated and callable in the built AArch64 module, but native Switch engine consumers and CRI resource ownership/lifecycle/async/teardown/precedence remain unconnected/unproven; not installable or Uzuy playable.",
     "Source-bound CRILAYLA candidate verifier has synthetic compressed CI proof only; original game PRM fixture, native consumer ABI, archive precedence and Uzuy remain unverified.",
-    "FileLoad status service targets 0x1215358/0x1215374 are direct call/branch candidates only; their lock/unlock semantics, function boundaries and runtime binding remain unproven."
+    "FileLoad status service targets 0x1215358/0x1215374 are direct call/branch candidates only; their lock/unlock semantics, function boundaries and runtime binding remain unproven.",
+    "FileLoad status service dispatch targets 0x1158c90/0x1158d10/0x1158d30 are now bounded read-only analysis candidates; actual lock/unlock semantics, function extents, object ownership/lifecycle and async teardown remain unresolved."
   ],
   "proofs": [
     "reports/port_foundation/bootstrap.json",
@@ -170,7 +171,8 @@
     "reports/port_foundation/native_fileload_result_flow_summary.json",
     "reports/port_foundation/native_fileopen_returns_summary.json",
     "reports/port_foundation/native_fileload_entry_register_summary.json",
-    "reports/port_foundation/pc_pack_staging_lease_summary.json"
+    "reports/port_foundation/pc_pack_staging_lease_summary.json",
+    "reports/port_foundation/native_fileload_status.json"
   ],
   "parameter_family_coverage": {
     "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -1643,7 +1645,7 @@
     "native_consumer_verified": false,
     "emulator_tested": false
   },
-  "latest_engineering_pending_ci": "2026-11-22 PENDING_HEAD_CI: fix ordered factory publication race via Linux renameat2 RENAME_NOREPLACE (unsupported hosts fail closed); regression creates destination after staging, asserts sentinel preservation and cleanup. Parent 346c2b698fbf181a2abcbbbf42973cd336a17602; HEAD CI/log not verified; native consumer ABI/lifecycle/archive precedence and Uzuy unresolved, original main not rehashed. Sakura aura107, both Event236 variants untouched; full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. NEXT verify HEAD Actions push log and fix failures.",
+  "latest_engineering_pending_ci": "2026-11-27 PENDING_CI: Trace exact-main FileLoad service dispatch targets 0x1158c90, 0x1158d10 and 0x1158d30 with a 256-byte disassembly window, bounded direct CFG traces, and whole-text direct B/BL inbound edges. Parent c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e. Prior service-entry slice is VERIFIED_CI_STATIC_ONLY from run 46013548161/job 140554824874, artifact 15205855931; target-body slice is pending. No lock/unlock, function-boundary, ownership, async, archive-precedence or ABI claim; all release flags false.",
   "ordered_factory_atomic_publication": {
     "state": "PENDING_HEAD_CI",
     "source_commit": "4a882d11426a7c55dfbb0c5468aa3375d165c190",
@@ -1751,7 +1753,7 @@
     "uzuy_verified": false
   },
   "native_fileload_status_service_edges": {
-    "state": "PENDING_CI",
+    "state": "VERIFIED_CI_STATIC_ONLY",
     "parent_sha": "0e84462e75faa2912bca6a5698987d38d23920eb",
     "source": "tools/portlib/native_fileload_status.py",
     "test": "tests/test_native_fileload_status.py",
@@ -1803,7 +1805,21 @@
       "start": "0x1215358",
       "end_exclusive": "0x12153d8",
       "bytes": 128,
-      "sha256": "PENDING_CI_ARTIFACT"
+      "sha256": "57ceb7351df052e968a1431e70c39812c323d0880d00d36380c01814af58976e",
+      "entrypoints": [
+        {
+          "at": "0x1215358",
+          "word_le": "082840b9",
+          "mnemonic": "ldr",
+          "operands": "w8, [x0, #0x28]"
+        },
+        {
+          "at": "0x1215374",
+          "word_le": "082840b9",
+          "mnemonic": "ldr",
+          "operands": "w8, [x0, #0x28]"
+        }
+      ]
     },
     "consumer_abi_verified": false,
     "ownership_lifecycle_verified": false,
@@ -1811,6 +1827,62 @@
     "service_function_boundaries_verified": false,
     "archive_precedence_verified": false,
     "uzuy_verified": false,
-    "next": "Inspect the 128-byte service window and full-text xrefs from the authentic CI artifact; only identify lock/unlock if code and symbol/call evidence prove it."
+    "next": "Trace the direct dispatch targets 0x1158c90/0x1158d10/0x1158d30 through bounded original-main CFG and full-text direct xrefs; do not infer lock/unlock from wrapper shape.",
+    "code_commit": "c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e",
+    "ci": {
+      "run_id": 46013548161,
+      "job_id": 140554824874,
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "artifact_id": 15205855931,
+      "artifact_sha256": "a9c1629821af7fdc6cf3826657ce2eaacc39b237f17576c6386e973eeee465e"
+    }
+  },
+  "native_fileload_status_target_bodies": {
+    "state": "PENDING_CI",
+    "parent_sha": "c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e",
+    "source": "tools/portlib/native_fileload_status.py",
+    "test": "tests/test_native_fileload_status.py",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "service_target_window": {
+      "start": "0x1158c90",
+      "end_exclusive": "0x1158d90",
+      "bytes": 256,
+      "sha256": "PENDING_CI_ARTIFACT"
+    },
+    "targets": [
+      "0x1158c90",
+      "0x1158d10",
+      "0x1158d30"
+    ],
+    "required_edges": [
+      [
+        "0x1215364",
+        "B",
+        "0x1158c90"
+      ],
+      [
+        "0x1215380",
+        "B",
+        "0x1158d10"
+      ],
+      [
+        "0x12153a8",
+        "BL",
+        "0x1158d30"
+      ]
+    ],
+    "analysis": "Read-only direct B/BL inbound census and bounded CFG rooted at three service dispatch targets; records register/memory operands and external/indirect edges.",
+    "function_boundaries_verified": false,
+    "lock_unlock_semantics_verified": false,
+    "ownership_lifecycle_verified": false,
+    "callback_async_completion_verified": false,
+    "rollback_unbind_destructor_verified": false,
+    "archive_precedence_verified": false,
+    "consumer_abi_verified": false,
+    "uzuy_verified": false,
+    "next": "Inspect the target-window artifact and raw job log. Classify atomic/lock operations only if exact instruction and caller evidence proves acquire/release; otherwise retain unresolved."
   }
 }
