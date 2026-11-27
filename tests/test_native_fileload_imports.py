@@ -19,6 +19,8 @@ def synthetic_plt():
         "lock_primitive_import": 0x2142A78,
         "unlock_primitive_import": 0x2142A80,
         "thread_token_provider": 0x2142C20,
+        "fileload_nested_import_0x116b7e0": 0x2141EF8,
+        "fileload_nested_import_0x116b818": 0x2141F00,
     }
     for role, spec in PLT_SPECS.items():
         text = bytearray(spec["plt"] + 16)
@@ -106,12 +108,23 @@ def run(main, output):
     raw = main.read_bytes()
     report = inspect(raw)
     assert report["original_main_sha256"] == MAIN_SHA256
-    assert len(report["imports"]) == 4
+    assert len(report["imports"]) == 6
     assert report["service_wrapper_callsites_verified"]
     assert report["imports"]["thread_context_provider"]["got_slot"] == "0x2142a28"
     assert report["imports"]["lock_primitive_import"]["got_slot"] == "0x2142a78"
     assert report["imports"]["unlock_primitive_import"]["got_slot"] == "0x2142a80"
     assert report["imports"]["thread_token_provider"]["got_slot"] == "0x2142c20"
+    for role, callsite, plt, slot in (
+        ("fileload_nested_import_0x116b7e0", "0x116b7e0", "0x12f3690", "0x2141ef8"),
+        ("fileload_nested_import_0x116b818", "0x116b818", "0x12f36a0", "0x2141f00"),
+    ):
+        item = report["imports"][role]
+        assert item["callsite"] == callsite
+        assert item["callsite_kind"] == "BL"
+        assert item["plt"] == plt
+        assert item["got_slot"] == slot
+        assert item["resolution"] == "DYNAMIC_SYMBOL_NAME_RESOLVED"
+        assert item["symbol"]["name"]
     for key in ("imported_implementations_proven", "runtime_import_binding_verified",
                 "thread_context_provider_semantics_verified",
                 "thread_token_provider_semantics_verified",

@@ -31,6 +31,16 @@ PLT_SPECS = {
         "plt": 0x12F50E0,
         "expected_words": (0xB0007270, 0xF9461211, 0x91308210, 0xD61F0220),
     },
+    "fileload_nested_import_0x116b7e0": {
+        "callsite": 0x116B7E0,
+        "plt": 0x12F3690,
+        "expected_words": (0xD0007270, 0xF9477E11, 0x913BE210, 0xD61F0220),
+    },
+    "fileload_nested_import_0x116b818": {
+        "callsite": 0x116B818,
+        "plt": 0x12F36A0,
+        "expected_words": (0xD0007270, 0xF9478211, 0x913C0210, 0xD61F0220),
+    },
 }
 
 SERVICE_WRAPPERS = {
@@ -99,6 +109,8 @@ def inspect(nso):
     # branch to the two imported PLT thunks.
     _require_branch(text, 0x1158C9C, "BL", 0x12F4CF0)
     _require_branch(text, 0x1158CA4, "BL", 0x12F50E0)
+    _require_branch(text, 0x116B7E0, "BL", 0x12F3690)
+    _require_branch(text, 0x116B818, "BL", 0x12F36A0)
     _require_branch(text, 0x1158CBC, "BL", 0x12A35B4)
     _require_branch(text, 0x1158D08, "B", 0x12A35BC)
     _require_branch(text, 0x1158D2C, "B", 0x12A35BC)
@@ -118,7 +130,9 @@ def inspect(nso):
         imports[role] = {
             "callsite": hex(spec["callsite"]),
             "callsite_kind": "BL" if role in
-                ("thread_context_provider", "thread_token_provider") else "B",
+                ("thread_context_provider", "thread_token_provider",
+                 "fileload_nested_import_0x116b7e0",
+                 "fileload_nested_import_0x116b818") else "B",
             "plt": hex(spec["plt"]),
             "plt_words_le": [text[spec["plt"] + i*4:spec["plt"] + i*4 + 4].hex()
                              for i in range(4)],
