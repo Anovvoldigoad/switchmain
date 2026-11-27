@@ -405,6 +405,7 @@ def inspect(nso):
         "service_dispatch_x0_adjustment":SERVICE_DISPATCH_X0_ADJUSTMENT,
         "service_wrapper_owner_field_offset":SERVICE_WRAPPER_OWNER_OFFSET,
         "service_wrapper_count_field_offset":SERVICE_WRAPPER_COUNT_OFFSET,
+        "service_target_semantics_verified":False,
         "service_target_lock_unlock_implementation_verified":False,
         "service_target_function_boundaries_verified":False,
         "service_target_ownership_lifecycle_verified":False,

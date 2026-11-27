@@ -58,3 +58,10 @@ These instructions support a falsifiable *owner-token/count wrapper* hypothesis.
 ## Explicit unresolved evidence
 
 `thread_token_provider_semantics_verified=false`, `mutex_primitive_semantics_verified=false`, `concurrent_behavior_verified=false`, `native_consumer_abi_verified=false`, `ownership_lifecycle_async_rollback_unbind_destructor_verified=false`, `archive_precedence_verified=false`, `Uzuy_tested=false`. No runtime hook is added. The three release flags remain false.
+
+
+## CI repair history
+
+- Run 46021414045/job 140581709219: synthetic entry 0x8 is NOP and falls through to RET at 0xc; corrected the expected return.
+- Run 46022245151/job 140584543848: missing `service_target_semantics_verified=false` report field after dispatch-offset insertion; restored it.
+- The dispatch `ADD X0,X0,#8` is explicitly asserted at 0x1215360 and 0x121537c; emulated wrapper owner/count base is caller subobject +8.

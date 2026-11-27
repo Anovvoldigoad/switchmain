@@ -1257,3 +1257,6 @@ See `handoff/evidence_fileload_service_wrapper_slice_20261127.md`. The new Unico
 
 
 2026-11-27 CI FAILURE ANALYSIS / REPAIR: Foundation run 46021414045/job 140581709219 failed at synthetic_service_dependency_window: entry 0x8 is NOP and falls through to RET at 0xc, so the expected return PC is corrected to 0xc. The exact dispatch window also shows ADD X0,X0,#8 at 0x1215360 and 0x121537c; wrapper X0 is caller subobject +8, so the emulated owner/count offsets are corrected to original status object +0x28/+0x2c. Raw job log inspected. New HEAD CI pending; no mutex/concurrency/consumer ABI or Uzuy claim.
+
+
+2026-11-27 CI FAILURE ANALYSIS 2: Foundation run 46022245151/job 140584543848 failed in test_native_fileload_status.py with KeyError `service_target_semantics_verified`; the report field was inadvertently dropped when adding machine-readable dispatch offsets. Restored the explicit false field. Raw log inspected. Three non-Foundation workflows for that HEAD passed with raw logs inspected; corrected HEAD CI pending.

@@ -1196,7 +1196,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "2026-11-27: Re-run all four push workflows after correcting the synthetic return-PC expectation and dispatch +8 wrapper base. Inspect authentic logs and Foundation artifact. Keep all runtime flags false.",
+  "next_action": "2026-11-27: Retry all four push workflows after restoring service_target_semantics_verified=false. Inspect authentic Foundation log and artifact; then verify the emulated wrapper state transitions. All runtime flags stay false.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -2188,17 +2188,17 @@
   },
   "latest_execution": {
     "status": "PENDING_CI_RETRY",
-    "parent_sha": "91cdd76c91876440ee52c261e6fa802199c57deb",
-    "failed_run_id": 46021414045,
-    "failed_job_id": 140581709219,
+    "parent_sha": "4c83d56c8cc8112c2d8f36a81cb3b856b98f7c75",
+    "failed_run_id": 46022245151,
+    "failed_job_id": 140584543848,
     "failed_raw_job_log_inspected": true,
-    "failure_reason": "Synthetic entry 0x8 is NOP and falls through to RET at 0xc.",
-    "correction": "Expect 0xc; honor dispatch ADD X0,#8 when emulating owner/count fields.",
+    "failure_reason": "The report omitted service_target_semantics_verified after dispatch-offset insertion.",
+    "correction": "Restore explicit false field; rerun all four workflows.",
     "ci_run_id": null,
     "ci_job_id": null,
     "raw_job_log_inspected": false,
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-    "next": "Inspect new HEAD push workflow runs/jobs/raw logs and Foundation artifact."
+    "next": "Inspect corrected HEAD push runs, Foundation raw log and artifact."
   },
   "latest_slice": {
     "state": "PENDING_CI",
@@ -2525,7 +2525,7 @@
     "ci_job_id": null,
     "raw_job_log_inspected": false,
     "artifact_id": null,
-    "next": "Inspect all four new HEAD push workflow runs/jobs/logs and Foundation artifact; repair remaining failure before marking verified.",
+    "next": "Inspect new HEAD all four workflow runs/jobs/logs and Foundation artifact; fix any remaining failure.",
     "ci_attempts": [
       {
         "run_id": 46021414045,
@@ -2535,6 +2535,15 @@
         "failing_step": "Trace pinned FileLoad status5 arguments, service-entry windows and bounded dispatch-target CFGs",
         "failure": "Synthetic entry 0x8 is NOP; fallthrough reaches RET at 0xc, not 0x8.",
         "correction": "Expect 0xc; assert dispatch ADD X0,#8 and use adjusted wrapper X0 for owner/count."
+      },
+      {
+        "run_id": 46022245151,
+        "job_id": 140584543848,
+        "conclusion": "failure",
+        "raw_job_log_inspected": true,
+        "failing_step": "Trace pinned FileLoad status5 arguments, service-entry windows and bounded dispatch-target CFGs",
+        "failure": "KeyError: service_target_semantics_verified after report-field insertion.",
+        "correction": "Restore service_target_semantics_verified=false in the report."
       }
     ]
   }

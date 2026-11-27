@@ -263,3 +263,6 @@ NEXT: Inspect all four push workflow runs/jobs/raw logs for the new code HEAD, i
 
 
 2026-11-27 CI FAILURE / REPAIR: Foundation run 46021414045/job 140581709219 failed only in synthetic_service_dependency_window: entry 0x8 is NOP and falls through to RET at 0xc. Corrected expected return to 0xc. Also honored ADD X0,X0,#8 at 0x1215360/0x121537c; owner/count fields are original status object +0x28/+0x2c. Raw log inspected. NEXT verify all four new HEAD push workflows and Foundation artifact; no mutex/concurrency/native consumer ABI or Uzuy claim.
+
+
+2026-11-27 CI FAILURE / REPAIR 2: Foundation run 46022245151/job 140584543848 failed because native_fileload_status.py omitted service_target_semantics_verified from the report after the dispatch offset fields were added. Restored the explicit false field; raw job log inspected. The three other workflows for that HEAD passed. NEXT verify all four workflows on the corrected HEAD and inspect Foundation artifact; no consumer ABI, concurrency or Uzuy claim.
