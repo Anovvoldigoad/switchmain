@@ -70,6 +70,104 @@ def trace(data, start, max_states=1024):
             successor = (target,next_delta)
             transitions[(pc,delta)].append((kind,successor))
             queue.append(successor)
+    gpr_names = tuple("x" + str(i) for i in range(31))
+    def canonical_gpr(name):
+        if name in ("sp", "wsp"):
+            return "sp"
+        if name == "fp":
+            return "x29"
+        if name == "lr":
+            return "x30"
+        if len(name) > 1 and name[0] in ("x", "w") and name[1:].isdigit():
+            number = int(name[1:])
+            if 0 <= number <= 30:
+                return "x" + str(number)
+        return None
+    def register_origin_flow():
+        # Track reaching definitions, not values or ABI-preserved registers.
+        initial = {name: frozenset({("entry",)}) for name in gpr_names}
+        initial["sp"] = frozenset({("entry_sp",)})
+        incoming = {(start, 0): initial}
+        pending = deque([(start, 0)])
+        updates = 0
+        while pending:
+            state = pending.popleft()
+            pc, delta = state
+            ins = decoded[pc]
+            current = dict(incoming[state])
+            edges = _edges(pc, ins.mnemonic, ins.op_str)
+            is_call = (any(kind == "call" for kind, _ in edges)
+                       or ins.mnemonic in ({"bl", "blr"} | AUTHENTICATED_CALLS))
+            if is_call:
+                for name in gpr_names:
+                    current[name] = frozenset({("call", pc, delta)})
+                current["sp"] = frozenset({("call_sp", pc, delta)})
+            else:
+                _, writes = ins.regs_access()
+                for reg in writes:
+                    name = canonical_gpr(ins.reg_name(reg))
+                    if name is not None:
+                        current[name] = frozenset({("def", pc, delta)})
+            for _, nxt in transitions.get(state, ()):
+                if nxt[0] not in decoded:
+                    continue
+                previous = incoming.get(nxt)
+                if previous is None:
+                    merged = current
+                else:
+                    merged = {name: previous[name] | current[name]
+                              for name in gpr_names + ("sp",)}
+                if previous is None or merged != previous:
+                    incoming[nxt] = merged
+                    pending.append(nxt)
+                    updates += 1
+                    if updates > max_states * 64:
+                        raise ValueError("Register-origin dataflow budget exceeded")
+        return incoming
+    register_origins = register_origin_flow()
+    def origin_token_summary(token):
+        if token[0] == "entry":
+            return {"kind": "entry_value"}
+        if token[0] == "entry_sp":
+            return {"kind": "entry_stack_pointer"}
+        if token[0] == "call":
+            return {"kind": "call_clobber", "pc": hex(token[1])}
+        if token[0] == "call_sp":
+            return {"kind": "call_boundary", "pc": hex(token[1])}
+        def_pc, def_delta = token[1], token[2]
+        ins = decoded[def_pc]
+        return {"kind": "instruction_definition", "pc": hex(def_pc),
+                "sp_delta_before": def_delta,
+                "word_le": data[def_pc-start:def_pc-start+4].hex(),
+                "mnemonic": ins.mnemonic, "operands": ins.op_str}
+    def detailed_origin(token):
+        summary = origin_token_summary(token)
+        if token[0] != "def":
+            return summary
+        def_state = (token[1], token[2])
+        ins = decoded[token[1]]
+        reads, _ = ins.regs_access()
+        names = sorted({name for reg in reads
+                        if (name := canonical_gpr(ins.reg_name(reg))) is not None})
+        sources = {}
+        for name in names:
+            source_tokens = register_origins.get(def_state, {}).get(name, frozenset())
+            sources[name] = [origin_token_summary(value)
+                             for value in sorted(source_tokens, key=repr)]
+        summary["read_registers"] = names
+        summary["source_register_origins"] = sources
+        return summary
+    def register_evidence(state, register):
+        name = canonical_gpr(register)
+        values = (register_origins.get(state, {}).get(name, frozenset())
+                  if name is not None else frozenset())
+        ordered = sorted(values, key=repr)
+        return {"register": register,
+                "reaching_definitions": [detailed_origin(value) for value in ordered],
+                "single_reaching_definition": len(ordered) == 1,
+                "entry_value_only": values == frozenset({("entry",)}),
+                "call_clobbered": any(value[0] == "call" for value in values),
+                "numeric_value_proven": False}
     def byte_width(ins):
         """Width of a recognized single/pair stack transfer; unknown is not proof."""
         if not (ins.mnemonic.startswith("ld") or ins.mnemonic.startswith("st")):
@@ -135,6 +233,22 @@ def trace(data, start, max_states=1024):
                             "path_ambiguous":ambiguous,
                             "observed_sp_deltas":sorted(v for v in values if v is not None),
                             "unknown_path":None in values})
+    indexed_register_origins = []
+    for operand in indexed_memory_operands:
+        pc = int(operand["pc"], 16)
+        states = sorted((state for state in register_origins if state[0] == pc),
+                        key=lambda state: (state[1] is None, state[1] if state[1] is not None else 0))
+        indexed_register_origins.append({
+            "pc": operand["pc"],
+            "base_register": operand["base_register"],
+            "index_register": operand["index_register"],
+            "state_observations": [
+                {"sp_delta": state[1],
+                 "base": register_evidence(state, operand["base_register"]),
+                 "index": register_evidence(state, operand["index_register"])}
+                for state in states
+            ]
+        })
     access_by_pc = {int(a["pc"],16): a for a in accesses}
     def advance_aliases(state, aliases):
         intermediate = decoded.get(state[0])
@@ -265,6 +379,8 @@ def trace(data, start, max_states=1024):
             "reachable_states":len(visited),"reachable_instructions":len(at),
             "accesses":accesses,"indexed_memory_operands":indexed_memory_operands,
             "indexed_memory_operand_count":len(indexed_memory_operands),
+            "indexed_register_origins":indexed_register_origins,
+            "register_origin_call_policy":"all x0-x30 and SP origins become unknown after calls; no callee-saved ABI assumption",
             "call_barriers":sorted(set(barriers)),
             "out_of_window_edges":exits[:32],"out_of_window_edges_truncated":len(exits)>32,
             "consumer_abi_proven":False,"stack_ownership_proven":False,

@@ -155,6 +155,46 @@ def run(main,out):
     shifted_report=trace(shifted,0x8500)
     assert shifted_report["indexed_memory_operands"][0]["index_register"]=="x5"
     assert shifted_report["indexed_memory_operands"][0]["effective_address_resolved"] is False
+    # Reaching-definition evidence distinguishes register origins from values.
+    origin_chain=b"".join(map(word,[0xb0021b88,0xf9453108,0xb9807058,
+                                     0xf8787913,0xd65f03c0]))
+    chain_report=trace(origin_chain,0x8700)
+    chain_row=chain_report["indexed_register_origins"][0]
+    chain_state=chain_row["state_observations"][0]
+    assert chain_state["base"]["single_reaching_definition"]
+    base_def=chain_state["base"]["reaching_definitions"][0]
+    assert (base_def["pc"],base_def["mnemonic"])==("0x8704","ldr")
+    assert base_def["source_register_origins"]["x8"][0]["pc"]=="0x8700"
+    index_def=chain_state["index"]["reaching_definitions"][0]
+    assert (index_def["pc"],index_def["mnemonic"])==("0x8708","ldrsw")
+    assert index_def["source_register_origins"]["x2"][0]["kind"]=="entry_value"
+    assert not chain_state["base"]["numeric_value_proven"]
+    assert not chain_state["index"]["numeric_value_proven"]
+    # No register-preservation convention is assumed across an opaque call.
+    call_origin=b"".join(map(word,[0xaa0303f8,0x94000001,0xf8786904,0xd65f03c0]))
+    call_row=trace(call_origin,0x8800)["indexed_register_origins"][0]
+    call_index=call_row["state_observations"][0]["index"]
+    assert call_index["call_clobbered"]
+    assert call_index["reaching_definitions"][0]["kind"]=="call_clobber"
+    # A branch merge keeps both reaching definitions instead of selecting one.
+    branch_origin=b"".join(map(word,[0xb4000060,0xaa0103ea,0x14000002,
+                                     0xaa0203ea,0xf86a6904,0xd65f03c0]))
+    branch_row=trace(branch_origin,0x8900)["indexed_register_origins"][0]
+    branch_index=branch_row["state_observations"][0]["index"]
+    assert not branch_index["single_reaching_definition"]
+    assert [x["pc"] for x in branch_index["reaching_definitions"]]==["0x8904","0x890c"]
+    # Wn writes replace the canonical Xn reaching definition (zero-extension).
+    w_origin=b"".join(map(word,[0xaa0303f8,0x2a0403f8,0xf8786904,0xd65f03c0]))
+    w_index=trace(w_origin,0x8a00)["indexed_register_origins"][0]["state_observations"][0]["index"]
+    assert [x["pc"] for x in w_index["reaching_definitions"]]==["0x8a04"]
+    assert w_index["reaching_definitions"][0]["operands"]=="w24, w4"
+    # SP-derived base provenance carries the actual path SP delta at its use.
+    sp_origin=b"".join(map(word,[0xd10043ff,0x910083e3,0xf8656864,0xd65f03c0]))
+    sp_row=trace(sp_origin,0x8b00)["indexed_register_origins"][0]
+    sp_state=sp_row["state_observations"][0]
+    assert sp_state["sp_delta"]==-16
+    sp_def=sp_state["base"]["reaching_definitions"][0]
+    assert sp_def["source_register_origins"]["sp"][0]["pc"]=="0x8b00"
     # An indexed store through a known SP-derived base can alias any slot:
     # X3=SP+32 does not prove [X3,X5] is disjoint from SP+8.
     alias_index=b"".join(map(word,[0xd10043ff,0xf90007e1,0x910083e3,
@@ -206,9 +246,25 @@ def run(main,out):
     report["original_main_sha256"]=MAIN_SHA256
     report["window_sha256"]=hashlib.sha256(window).hexdigest()
     assert not report["consumer_abi_proven"] and not report["stack_ownership_proven"]
+    origin_rows={x["pc"]:x for x in report["indexed_register_origins"]}
+    assert len(origin_rows)==5
+    first=origin_rows["0x116f430"]["state_observations"]
+    assert len(first)==1 and first[0]["sp_delta"]==-704
+    first_base=first[0]["base"]["reaching_definitions"]
+    first_index=first[0]["index"]["reaching_definitions"]
+    assert [x["pc"] for x in first_base]==["0x116f424"]
+    assert first_base[0]["source_register_origins"]["x8"][0]["pc"]=="0x116f418"
+    assert [x["pc"] for x in first_index]==["0x116f41c"]
+    assert first_index[0]["mnemonic"]=="ldrsw"
+    assert first_index[0]["source_register_origins"]["x2"][0]["kind"]=="entry_value"
+    assert all(not side["numeric_value_proven"]
+               for row in report["indexed_register_origins"]
+               for state in row["state_observations"]
+               for side in (state["base"],state["index"]))
     out.mkdir(parents=True,exist_ok=True)
     (out/"native_fileload_sp_cfg.json").write_text(json.dumps(report,indent=2)+"\n")
     print("PINNED_FILELOAD_SP_CFG_PASS",report["reachable_states"],len(report["accesses"]),"NO_CONSUMER_ABI")
+    print("PINNED_FILELOAD_REGISTER_ORIGINS_PASS",len(report["indexed_register_origins"]),"NO_NUMERIC_VALUES_OR_ABI")
 if __name__=="__main__":
     p=argparse.ArgumentParser()
     p.add_argument("--main",type=Path,required=True)
