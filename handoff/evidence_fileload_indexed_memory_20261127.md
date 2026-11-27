@@ -35,3 +35,15 @@ Falsifiable regressions:
 The analyzer now records indexed memory operands with base/index/displacement, leaves effective addresses unresolved, marks SP-indexed accesses ambiguous, and terminates candidate witnesses when an indexed store uses a non-SP SP-derived base. SP writeback is also made unknown if an indexed SP memory operand is ever surfaced. The original-main JSON report includes the indexed operand inventory.
 
 This is read-only static evidence only. It does not prove execution, register values, object ownership, allocator contracts, callback, locks, async completion, rollback, unbind/destructor, archive precedence, native consumer ABI, or Uzuy gameplay. No runtime hooks, original main edits, CPK writes, Sakura aura107 changes, or Event236 marker/unmarked changes.
+
+
+## CI verification — 2026-11-27
+
+Code commit `df9a3e1e41db4d1b2063f2ac7b31e5adc6ef3dea` (parent `840f92aa7d6dc5b812a07c2fc8c4ae8589b58ac3`) was verified by GitHub Actions push workflows on the exact code HEAD:
+- Foundation run [45976679056](https://github.com/Anovvoldigoad/switchmain/actions/runs/45976679056), job `140430025592`: COMPLETED SUCCESS; raw log inspected. It emitted `PINNED_FILELOAD_SP_CFG_PASS 166 10 NO_CONSUMER_ABI` and `RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF`. The FileLoad CFG step completed successfully.
+- Compressed PRM run [45976679041](https://github.com/Anovvoldigoad/switchmain/actions/runs/45976679041), job `140430025502`: COMPLETED SUCCESS; raw log inspected.
+- Factory multi-mod run [45976679120](https://github.com/Anovvoldigoad/switchmain/actions/runs/45976679120), job `140430025333`: COMPLETED SUCCESS; raw log inspected.
+- MovesetPlus multi-mod run [45976679117](https://github.com/Anovvoldigoad/switchmain/actions/runs/45976679117), job `140430026222`: COMPLETED SUCCESS; raw log inspected.
+- Foundation artifact `PORT_FOUNDATION_PROOFS_NOT_A_GAMEPLAY_RELEASE`, ID `15187631793`, 263930 bytes.
+
+This verifies host Python/Capstone static analysis and the original-main SHA guard only. It is not an emulated ARM64 test of this analyzer, native engine consumer proof, or Uzuy gameplay.
