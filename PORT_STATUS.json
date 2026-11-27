@@ -1091,7 +1091,7 @@
     "reason": "test_pc_native_pack.py negatives counter referenced before assignment",
     "new_commit_ci": "PENDING"
   },
-  "latest_pending_code_commit": "9b3e82940976c0befef16cca44a03409c072c5cf",
+  "latest_pending_code_commit": "04cd926fe4af8144e53fc7eb92c9c5096ce38fd0",
   "latest_pending_ci": "2026-11-19 PENDING_CI: code 96c14d38f8f2897d48583aa4893b6d93b5d6ebd9 parent cbf830a162e483a209c4e6f3d42e8242d130f61d propagates path-local SP-derived aliases through MOV and ADD/SUB immediate, with synthetic positive MOV+ADD disjoint, negative SUB overlap, and negative source-clobber regressions. Upstream primary README blobs: ModManager 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709 (Steam only), NSC-Toolbox 657f161390c4abe8afe10cea11a2b9a28e6bf6b0 (PC editor), REA bb4828fb62da9283985a16b2051cc98efac8c7ec (generic RE). No Switch ABI proof. Local Capstone unavailable due DNS, authentic HEAD Actions push-run/job/log not obtained; NOT PASS. No hook, no Uzuy test, original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; Sakura aura107 and both Event236 variants unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT inspect Foundation push-run authentic log, fix any regression, then advance consumer ownership evidence from pinned main.",
   "multi_mod_pc_source_path_ownership_guard": "OFFLINE_ONLY_PENDING_CI_NO_ENGINE_ARCHIVE_PRECEDENCE",
   "crilayla_total_output_limit": {
@@ -1648,7 +1648,7 @@
     "native_consumer_verified": false,
     "emulator_tested": false
   },
-  "latest_engineering_pending_ci": "2026-11-27 PENDING_CI_RETRY: First Foundation run 46017177259/job 140567169891 failed in the synthetic boundary test because [0,12) is valid within the 16-byte fixture. Raw log inspected; test corrected with a positive bounded-window case and an actual out-of-bounds end=20 negative. Target-body code remains read-only and all semantic/ABI flags false.",
+  "latest_engineering_pending_ci": "2026-11-28 PENDING_CI_RETRY: FileLoad caller X19 provenance commit 04cd926fe4af8144e53fc7eb92c9c5096ce38fd0; Foundation run 46046167094/job 140665868834 failed at the synthetic exact-map assertion because TRACKED now includes x19 but the expected dict still listed only x1/x2. Raw log inspected. Correcting expectation to include x19=false for the window-entry unknown. Factory, compressed PRM and MovesetPlus push jobs on this commit completed success and raw logs were inspected. No consumer ABI, ownership, archive precedence or Uzuy claim; release flags remain false.",
   "ordered_factory_atomic_publication": {
     "state": "PENDING_HEAD_CI",
     "source_commit": "4a882d11426a7c55dfbb0c5468aa3375d165c190",
@@ -2075,13 +2075,18 @@
     "next_step": "Identify the original Switch import provider module from loader metadata and trace the bounded wrapper object's allocation/destruction; do not install a hook without runtime binding and lifecycle proof."
   },
   "native_fileload_caller_x19": {
-    "state": "PENDING_CI",
+    "state": "PENDING_CI_RETRY",
     "source": "tools/portlib/native_fileload_inbound_args.py",
     "test": "tests/test_native_fileload_inbound_args.py",
     "proof_scope": "SHA-pinned caller X19 reaching definitions with exact direct-callee bounded preservation; static only",
     "consumer_abi_verified": false,
     "ownership_lifecycle_verified": false,
     "archive_precedence_verified": false,
-    "uzuy_verified": false
+    "uzuy_verified": false,
+    "failed_run_id": 46046167094,
+    "failed_job_id": 140665868834,
+    "failed_raw_log_inspected": true,
+    "failure_reason": "The first synthetic exact-map assertion still expected only X1/X2 after TRACKED expanded to include X19; the implementation reached the test, but the assertion omitted the expected X19 window-entry unknown.",
+    "correction": "Update the exact synthetic reaching-definition map to include x19:false; preserve the separate positive/negative X19 call-preservation tests."
   }
 }

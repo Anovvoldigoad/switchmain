@@ -275,3 +275,6 @@ NEXT: Inspect all four push workflow runs/jobs/raw logs for the new code HEAD, i
 
 
 2026-11-28 PENDING_CI — FileLoad caller X19 provenance. Track X1, X2 and X19 at the unique direct caller BL 0x116f29c. X2 is copied from X19 at 0x116f294; X19 may cross a direct BL only if that exact callee passes the existing bounded recursive no-write/all-return proof. Any failed/absent proof remains a call barrier. Evidence note: handoff/evidence_fileload_caller_x19_20261128.md. Verify new HEAD Foundation push log and artifact; do not claim numeric pointer value, object type/ownership, ABI, archive precedence or Uzuy. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false.
+
+
+2026-11-28 CI RETRY: commit 04cd926fe4af8144e53fc7eb92c9c5096ce38fd0 failed Foundation run 46046167094/job 140665868834 at the synthetic exact-map assertion; raw log inspected. The assertion expected only x1/x2 although TRACKED now also contains x19. Corrected to expect x19=false for the untouched window-entry value. The other three workflows on that commit passed and raw logs were inspected. Verify all four workflows and Foundation artifact on the new HEAD before changing PENDING_CI_RETRY.

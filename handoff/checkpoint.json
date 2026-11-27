@@ -2175,37 +2175,39 @@
     "next": "Inspect HEAD Foundation job log and resolve failures; trace original consumer lifecycle before hooks."
   },
   "latest_pending_head_ci": {
-    "parent_sha": "0e84462e75faa2912bca6a5698987d38d23920eb",
-    "topic": "fileload_status_service_window_and_xrefs",
-    "source": "tools/portlib/native_fileload_status.py",
-    "test": "tests/test_native_fileload_status.py",
-    "status": "PENDING_HEAD_CI",
+    "parent_sha": "04cd926fe4af8144e53fc7eb92c9c5096ce38fd0",
+    "topic": "fileload_caller_x19_exact_callee_preservation",
+    "source": "tools/portlib/native_fileload_inbound_args.py",
+    "test": "tests/test_native_fileload_inbound_args.py",
+    "status": "PENDING_CI_RETRY",
+    "failed_run_id": 46046167094,
+    "failed_job_id": 140665868834,
     "ci_run_id": null,
     "ci_job_id": null,
-    "ci_log_inspected": false,
+    "ci_log_inspected": true,
     "consumer_abi_proven": false,
     "uzuy_tested": false
   },
   "latest_execution": {
     "status": "PENDING_CI_RETRY",
-    "parent_sha": "4c83d56c8cc8112c2d8f36a81cb3b856b98f7c75",
-    "failed_run_id": 46022245151,
-    "failed_job_id": 140584543848,
+    "parent_sha": "04cd926fe4af8144e53fc7eb92c9c5096ce38fd0",
+    "failed_run_id": 46046167094,
+    "failed_job_id": 140665868834,
     "failed_raw_job_log_inspected": true,
-    "failure_reason": "The report omitted service_target_semantics_verified after dispatch-offset insertion.",
-    "correction": "Restore explicit false field; rerun all four workflows.",
+    "failure_reason": "The first synthetic exact-map assertion still expected only X1/X2 after TRACKED expanded to include X19; the implementation reached the test, but the assertion omitted the expected X19 window-entry unknown.",
+    "correction": "Update the exact synthetic reaching-definition map to include x19:false; preserve the separate positive/negative X19 call-preservation tests.",
     "ci_run_id": null,
     "ci_job_id": null,
     "raw_job_log_inspected": false,
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-    "next": "Inspect corrected HEAD push runs, Foundation raw log and artifact."
+    "next": "Push the corrected synthetic expectation, inspect all four new push runs and raw logs, then inspect the Foundation artifact for X19 origin results."
   },
   "latest_slice": {
-    "state": "PENDING_CI",
-    "parent_sha": "c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e",
-    "description": "256-byte exact-main dispatch target window, three bounded CFG traces and whole-text direct B/BL inbound census",
-    "source": "tools/portlib/native_fileload_status.py",
-    "test": "tests/test_native_fileload_status.py",
+    "state": "PENDING_CI_RETRY",
+    "parent_sha": "04cd926fe4af8144e53fc7eb92c9c5096ce38fd0",
+    "description": "FileLoad caller X19 reaching definitions with exact direct-callee preservation; one synthetic expectation omitted the newly tracked register",
+    "source": "tools/portlib/native_fileload_inbound_args.py",
+    "test": "tests/test_native_fileload_inbound_args.py",
     "consumer_abi_verified": false,
     "uzuy_verified": false
   },
@@ -2674,7 +2676,7 @@
     "next_action": "Resolve import provider module from original Switch loader metadata, then trace the wrapper object's allocation and destruction. Keep all runtime hooks disabled."
   },
   "native_fileload_caller_x19_20261128": {
-    "state": "PENDING_CI",
+    "state": "PENDING_CI_RETRY",
     "parent_sha": "95dda35fb5424425a720ced7c95db1f9ea6fdbee",
     "source": "tools/portlib/native_fileload_inbound_args.py",
     "test": "tests/test_native_fileload_inbound_args.py",
@@ -2745,6 +2747,35 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Inspect new HEAD Foundation push job raw log and artifact. If X19 survives only some calls, retain barriers for the rest; do not infer numeric value, pointer type or ownership. If X19 remains unknown, pivot to exact allocation/destructor evidence or provider-module bytes; no runtime hooks."
+    "next": "Inspect new HEAD Foundation push job raw log and artifact. If X19 survives only some calls, retain barriers for the rest; do not infer numeric value, pointer type or ownership. If X19 remains unknown, pivot to exact allocation/destructor evidence or provider-module bytes; no runtime hooks.",
+    "implementation_commit": "04cd926fe4af8144e53fc7eb92c9c5096ce38fd0",
+    "failed_run_id": 46046167094,
+    "failed_job_id": 140665868834,
+    "failed_raw_job_log_inspected": true,
+    "failure_reason": "The first synthetic exact-map assertion still expected only X1/X2 after TRACKED expanded to include X19; the implementation reached the test, but the assertion omitted the expected X19 window-entry unknown.",
+    "correction": "Update the exact synthetic reaching-definition map to include x19:false; preserve the separate positive/negative X19 call-preservation tests.",
+    "other_workflows": [
+      {
+        "name": "factory",
+        "run_id": 46046167081,
+        "job_id": 140665869136,
+        "conclusion": "success",
+        "raw_log_inspected": true
+      },
+      {
+        "name": "compressed_prm",
+        "run_id": 46046167126,
+        "job_id": 140665868803,
+        "conclusion": "success",
+        "raw_log_inspected": true
+      },
+      {
+        "name": "moveset_multimod",
+        "run_id": 46046167216,
+        "job_id": 140665868954,
+        "conclusion": "success",
+        "raw_log_inspected": true
+      }
+    ]
   }
 }

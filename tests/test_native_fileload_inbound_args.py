@@ -30,7 +30,7 @@ def synthetic():
     report = analyze_caller_window(code, 0, 12, 8, 0x2000)
     assert [x["at"] for x in report["possible_reaching_definitions"]["x1"]] == ["0x0"]
     assert [x["at"] for x in report["possible_reaching_definitions"]["x2"]] == ["0x4"]
-    assert report["single_definition_proven_within_window"] == {"x1": True, "x2": True}
+    assert report["single_definition_proven_within_window"] == {"x1": True, "x2": True, "x19": False}
 
     # An earlier call is a hard barrier for X1/X2; a later definition supersedes it.
     code = _bl(0, 0x2100) + bytes.fromhex("e10313aa") + _bl(8, 0x2200)
