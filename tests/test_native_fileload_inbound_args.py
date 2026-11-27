@@ -324,7 +324,10 @@ def synthetic_x19_stack_restore():
         initial_register_offsets={"x0": 0x30},
     )
     assert report["preservation_proven"] is False
-    assert report["nested_call_proofs"][0]["reason"] == "NESTED_CALL_STACK_EFFECT_UNPROVEN"
+    # The child sees the explicit recursion cycle; the parent reports that
+    # this unresolved child prevents a complete nested-call proof.
+    assert report["nested_call_proofs"][0]["reason"] == "CALL_GRAPH_CYCLE"
+    assert report["reason"] == "NESTED_CALL_STACK_EFFECT_UNPROVEN"
 
     for start, end in ((1, 16), (0, 15), (0, len(good) + 4)):
         try:
