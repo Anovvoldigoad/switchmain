@@ -225,6 +225,41 @@ def run(main,out):
     r=trace(call,0x3000)
     assert r["call_barriers"]==["0x3004"]
     assert r["accesses"][0]["unknown_path"]
+    # Raw callsite reaching definitions are not decoded into ABI arguments.
+    direct_regs = trace(b"".join(map(word,[0xaa0103e0,0xaa0203f3,
+                                           0x94000001,0xd65f03c0])),0x6200)
+    direct_rows = direct_regs["callsite_register_origins"]
+    assert len(direct_rows)==1
+    direct_row = direct_rows[0]
+    assert direct_row["pc"]=="0x6208"
+    assert direct_row["direct_targets"]==["0x620c"]
+    x0_defs = direct_row["register_origins"]["x0"]["reaching_definitions"]
+    assert [x["pc"] for x in x0_defs]==["0x6200"]
+    assert x0_defs[0]["source_register_origins"]["x1"][0]["kind"]=="entry_value"
+    assert direct_row["register_origins"]["x19"]["reaching_definitions"][0]["pc"]=="0x6204"
+    assert not direct_row["abi_register_semantics_assumed"]
+    assert not direct_row["numeric_register_values_proven"]
+    # Two exclusive definitions merge at the callsite; neither wins by ordering.
+    merged_regs = trace(b"".join(map(word,[0xb4000060,0xaa0103e0,
+                                            0x14000002,0xaa0303e0,
+                                            0x94000001,0xd65f03c0])),0x6300)
+    merged_row = merged_regs["callsite_register_origins"][0]
+    merged_x0 = merged_row["register_origins"]["x0"]
+    assert not merged_x0["single_reaching_definition"]
+    assert [x["pc"] for x in merged_x0["reaching_definitions"]]==["0x6304","0x630c"]
+    # An earlier opaque call clobbers even x19; do not import AAPCS64 preservation.
+    barrier_regs = trace(b"".join(map(word,[0xaa0203f3,0x94000001,
+                                             0x94000001,0xd65f03c0])),0x6400)
+    second_call = next(x for x in barrier_regs["callsite_register_origins"]
+                       if x["pc"]=="0x6408")
+    x19_after_call = second_call["register_origins"]["x19"]
+    assert x19_after_call["call_clobbered"]
+    assert x19_after_call["reaching_definitions"]==[
+        {"kind":"call_clobber","pc":"0x6404"}
+    ]
+    # No call instruction means no callsite row.
+    assert trace(b"".join(map(word,[0x14000001,0xd65f03c0])),0x6600)[
+        "callsite_register_origins"]==[]
     # ARMv8.3 BLRAA X9,X10: authenticated indirect call, not fallthrough.
     # Word assembled using clang --target=aarch64-linux-gnu -march=armv8.3-a+pauth.
     pac_call=b"".join(map(word,[0xd10043ff,0xf90007e1,0xd73f092a,
@@ -268,6 +303,24 @@ def run(main,out):
                for row in report["indexed_register_origins"]
                for state in row["state_observations"]
                for side in (state["base"],state["index"]))
+    call_rows = report["callsite_register_origins"]
+    assert report["callsite_register_origin_state_count"] == len(call_rows)
+    for site, x0_definition, x1_definition in (
+        ("0x116f520","0x116f51c","0x116f518"),
+        ("0x116f5c0","0x116f5bc","0x116f5b8")
+    ):
+        matching = [row for row in call_rows if row["pc"] == site]
+        assert matching and all(row["direct_targets"] == ["0x120661c"]
+                                for row in matching)
+        assert any(any(definition.get("pc") == x0_definition
+                       for definition in row["register_origins"]["x0"]["reaching_definitions"])
+                   for row in matching)
+        assert any(any(definition.get("pc") == x1_definition
+                       for definition in row["register_origins"]["x1"]["reaching_definitions"])
+                   for row in matching)
+        assert all(not row["abi_register_semantics_assumed"]
+                   and not row["numeric_register_values_proven"]
+                   for row in matching)
     out.mkdir(parents=True,exist_ok=True)
     (out/"native_fileload_sp_cfg.json").write_text(json.dumps(report,indent=2)+"\n")
     print("PINNED_FILELOAD_SP_CFG_PASS",report["reachable_states"],len(report["accesses"]),"NO_CONSUMER_ABI")

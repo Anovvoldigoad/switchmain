@@ -249,6 +249,36 @@ def trace(data, start, max_states=1024):
                 for state in states
             ]
         })
+    callsite_register_names = gpr_names + ("sp",)
+    callsite_register_origins = []
+    for state in sorted(register_origins,
+                        key=lambda item: (item[0], item[1] is None,
+                                          item[1] if item[1] is not None else 0)):
+        pc, delta = state
+        ins = decoded[pc]
+        edges = _edges(pc, ins.mnemonic, ins.op_str)
+        call_edges = [(kind, target) for kind, target in edges
+                      if kind in ("call", "indirect_call_unresolved")]
+        if not call_edges:
+            continue
+        direct_targets = sorted({hex(target) for kind, target in call_edges
+                                 if kind == "call" and target is not None})
+        callsite_register_origins.append({
+            "pc": hex(pc),
+            "word_le": data[pc-start:pc-start+4].hex(),
+            "mnemonic": ins.mnemonic,
+            "operands": ins.op_str,
+            "call_kind": "direct" if direct_targets else "indirect_unresolved",
+            "direct_targets": direct_targets,
+            "target_unresolved": not bool(direct_targets),
+            "sp_delta_before_call": delta,
+            "register_origins": {
+                name: register_evidence(state, name)
+                for name in callsite_register_names
+            },
+            "abi_register_semantics_assumed": False,
+            "numeric_register_values_proven": False
+        })
     access_by_pc = {int(a["pc"],16): a for a in accesses}
     def advance_aliases(state, aliases):
         intermediate = decoded.get(state[0])
@@ -380,6 +410,9 @@ def trace(data, start, max_states=1024):
             "accesses":accesses,"indexed_memory_operands":indexed_memory_operands,
             "indexed_memory_operand_count":len(indexed_memory_operands),
             "indexed_register_origins":indexed_register_origins,
+            "callsite_register_origin_state_count":len(callsite_register_origins),
+            "callsite_register_origins":callsite_register_origins,
+            "callsite_register_origin_policy":"raw reaching definitions at each reachable direct/indirect call; no AAPCS64 argument mapping, numeric value, or preservation assumption",
             "register_origin_call_policy":"all x0-x30 and SP origins become unknown after calls; no callee-saved ABI assumption",
             "call_barriers":sorted(set(barriers)),
             "out_of_window_edges":exits[:32],"out_of_window_edges_truncated":len(exits)>32,
