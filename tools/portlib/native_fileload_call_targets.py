@@ -610,6 +610,10 @@ def analyze_stack_register_restore(
                     "sp_delta_trusted_on_all_returns": child["sp_delta_trusted_on_all_returns"],
                     "unknown_memory_write_count": len(child["unknown_memory_writes_while_saved"]),
                     "protected_slot_clobber_count": len(child["protected_slot_clobbers"]),
+                    "unknown_memory_writes_while_saved": child["unknown_memory_writes_while_saved"],
+                    "protected_slot_clobbers": child["protected_slot_clobbers"],
+                    "all_return_paths_restore_entry_register": child["all_return_paths_restore_entry_register"],
+                    "child_nested_call_proofs": list(child["nested_call_proofs"].values()),
                 }
                 if child["preservation_proven"]:
                     next_trusted = (next_trusted
@@ -640,6 +644,10 @@ def analyze_stack_register_restore(
                     "sp_delta_trusted_on_all_returns": False,
                     "unknown_memory_write_count": 0,
                     "protected_slot_clobber_count": 0,
+                    "unknown_memory_writes_while_saved": [],
+                    "protected_slot_clobbers": [],
+                    "all_return_paths_restore_entry_register": False,
+                    "child_nested_call_proofs": [],
                 }
                 next_origin = "other"
                 next_trusted = False

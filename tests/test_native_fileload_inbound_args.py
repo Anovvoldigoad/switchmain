@@ -303,7 +303,13 @@ def synthetic_x19_stack_restore():
     # Unknown pointer provenance and an unbalanced nested stack remain barriers.
     unknown = analyze_stack_register_restore(bytes(nested), 0, 0x200, "x19")
     assert unknown["preservation_proven"] is False
-    assert unknown["nested_call_proofs"][0]["preserved"] is False
+    unknown_child = unknown["nested_call_proofs"][0]
+    assert unknown_child["preserved"] is False
+    assert unknown_child["unknown_memory_write_count"] == len(
+        unknown_child["unknown_memory_writes_while_saved"]
+    )
+    assert unknown_child["unknown_memory_writes_while_saved"][0]["base_register"] == "x0"
+    assert unknown_child["child_nested_call_proofs"] == []
 
     unbalanced = bytearray(nested)
     put(unbalanced, 0x100, 0xD10043FF)  # sub sp, sp, #0x10
@@ -326,7 +332,9 @@ def synthetic_x19_stack_restore():
     assert report["preservation_proven"] is False
     # The child returns with X19 clobbered after its recursive-call barrier;
     # the parent still rejects the nested preservation proof.
-    assert report["nested_call_proofs"][0]["reason"] == "ENTRY_REGISTER_NOT_RESTORED_ON_ALL_RETURNS"
+    cycle_child = report["nested_call_proofs"][0]
+    assert cycle_child["reason"] == "ENTRY_REGISTER_NOT_RESTORED_ON_ALL_RETURNS"
+    assert cycle_child["child_nested_call_proofs"][0]["reason"] == "CALL_GRAPH_CYCLE"
     assert report["reason"] == "NESTED_CALL_STACK_EFFECT_UNPROVEN"
 
     for start, end in ((1, 16), (0, 15), (0, len(good) + 4)):
@@ -394,6 +402,16 @@ def run(main, output):
         {"site": "0x120a6f8", "target": "0x1160c64"},
     ]
     assert len(stack_restore["nested_call_proofs"]) == 4
+    for proof in stack_restore["nested_call_proofs"]:
+        assert proof["unknown_memory_write_count"] == len(
+            proof["unknown_memory_writes_while_saved"]
+        )
+        assert proof["protected_slot_clobber_count"] == len(
+            proof["protected_slot_clobbers"]
+        )
+        assert isinstance(proof["child_nested_call_proofs"], list)
+    assert any(proof["child_nested_call_proofs"]
+               for proof in stack_restore["nested_call_proofs"])
     assert x19_sink_call["proof"]["preserved"] == stack_restore["preservation_proven"]
     assert isinstance(stack_restore["preservation_proven"], bool)
     if stack_restore["preservation_proven"]:
