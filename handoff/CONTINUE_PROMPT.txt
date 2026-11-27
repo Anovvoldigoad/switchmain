@@ -251,3 +251,6 @@ Scope: read-only FileLoad status-service target evidence. New code disassembles 
 
 
 2026-11-27 PENDING_CI — FileLoad status-service dispatch target bodies. Parent c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e. Trace original-main window 0x1158c90..0x1158d90 (256 bytes), bounded direct CFG from 0x1158c90, 0x1158d10, 0x1158d30, and whole-text direct B/BL incoming edges. Tests include conditional/unconditional branches, direct BL non-recursion, indirect BR, out-of-window edges, budget and invalid boundaries. Prior service-entry run 46013548161 job 140554824874 SUCCESS, raw log inspected, artifact 15205855931, 128-byte service window SHA256 57ceb7351df052e968a1431e70c39812c323d0880d00d36380c01814af58976e. New target-body CI pending. Do not label targets lock/unlock or infer function boundaries, ownership, async, teardown, archive precedence or ABI without exact evidence. Keep all release flags false; no runtime hooks.
+
+
+2026-11-27 CI RETRY: Foundation run 46017177259/job 140567169891 failed because the test incorrectly rejected valid [0,12) within 16 bytes. Raw log inspected. Fixed by asserting the positive bounded-window/fallthrough behavior and using end=20 for the out-of-bounds negative. Retry all HEAD push workflows and inspect Foundation artifact/log before any PASS update.

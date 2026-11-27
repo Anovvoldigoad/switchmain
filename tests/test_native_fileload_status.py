@@ -54,10 +54,17 @@ def synthetic_bounded_trace():
         {"from":"0x0","target":"0x100","kind":"B"}
     ]
 
+    # A valid shorter window ends after MOV and records its fallthrough as external.
+    bounded=_bounded_trace(code,0,12,0)
+    assert bounded["reachable_addresses"]==["0x0","0x8"]
+    assert bounded["out_of_window_edges"]==[
+        {"from":"0x8","target":"0xc","kind":"fallthrough"}
+    ]
+
     # Budget and malformed geometry are explicit, never silently truncated.
     row=_bounded_trace(code,0,len(code),0,max_instructions=1)
     assert row["budget_exhausted"]
-    for start,end,entry in ((1,8,1),(0,9,0),(8,4,8),(-4,4,0),(0,12,0),(0,4,4)):
+    for start,end,entry in ((1,8,1),(0,9,0),(8,4,8),(-4,4,0),(0,20,0),(0,4,4)):
         try:_bounded_trace(code,start,end,entry)
         except ValueError:pass
         else:raise AssertionError(("Invalid bounded trace accepted",start,end,entry))

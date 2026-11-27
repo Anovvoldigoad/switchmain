@@ -1645,7 +1645,7 @@
     "native_consumer_verified": false,
     "emulator_tested": false
   },
-  "latest_engineering_pending_ci": "2026-11-27 PENDING_CI: Trace exact-main FileLoad service dispatch targets 0x1158c90, 0x1158d10 and 0x1158d30 with a 256-byte disassembly window, bounded direct CFG traces, and whole-text direct B/BL inbound edges. Parent c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e. Prior service-entry slice is VERIFIED_CI_STATIC_ONLY from run 46013548161/job 140554824874, artifact 15205855931; target-body slice is pending. No lock/unlock, function-boundary, ownership, async, archive-precedence or ABI claim; all release flags false.",
+  "latest_engineering_pending_ci": "2026-11-27 PENDING_CI_RETRY: First Foundation run 46017177259/job 140567169891 failed in the synthetic boundary test because [0,12) is valid within the 16-byte fixture. Raw log inspected; test corrected with a positive bounded-window case and an actual out-of-bounds end=20 negative. Target-body code remains read-only and all semantic/ABI flags false.",
   "ordered_factory_atomic_publication": {
     "state": "PENDING_HEAD_CI",
     "source_commit": "4a882d11426a7c55dfbb0c5468aa3375d165c190",
@@ -1883,6 +1883,17 @@
     "archive_precedence_verified": false,
     "consumer_abi_verified": false,
     "uzuy_verified": false,
-    "next": "Inspect the target-window artifact and raw job log. Classify atomic/lock operations only if exact instruction and caller evidence proves acquire/release; otherwise retain unresolved."
+    "next": "Retry Foundation push CI after correcting the test's valid 12-byte subwindow boundary; then inspect target-body artifact and raw logs.",
+    "ci_attempts": [
+      {
+        "run_id": 46017177259,
+        "job_id": 140567169891,
+        "conclusion": "failure",
+        "raw_job_log_inspected": true,
+        "failing_step": "Trace pinned FileLoad status5 arguments, service-entry windows and bounded dispatch-target CFGs",
+        "failure": "Synthetic test incorrectly classified [0,12) as out-of-bounds for a 16-byte buffer; it is valid.",
+        "correction": "Added positive 12-byte bounded-window/fallthrough assertion and changed the negative boundary to end=20."
+      }
+    ]
   }
 }

@@ -837,7 +837,7 @@
     ]
   },
   "verified_component_commit": "4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4",
-  "progress_since_previous_handoff": "2026-11-27 PENDING_CI: Trace exact-main FileLoad dispatch targets 0x1158c90, 0x1158d10 and 0x1158d30 with 256-byte disassembly, bounded direct CFG and whole-text direct B/BL inbound edges. Prior service-entry slice verified by run 46013548161/job 140554824874, artifact 15205855931, service-window SHA256 57ceb7351df052e968a1431e70c39812c323d0880d00d36380c01814af58976e. Parent c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e; new CI pending. No lock/unlock or ABI claim.",
+  "progress_since_previous_handoff": "2026-11-27 PENDING_CI_RETRY: First Foundation run 46017177259/job 140567169891 failed at synthetic geometry boundary: [0,12) is valid for a 16-byte buffer. Raw log inspected. Added a positive 12-byte-window case and changed the invalid end to 20. Parent 1ecdea1a0f48542c869aadfd6903be3e8f1894db; retry CI pending. No semantic/ABI claim.",
   "native_fileopen_branch_dependency_checkpoint": {
     "commit": "9a9b6cd755e19598735df3c85a5bb637254b36c6",
     "actions_run_id": 42016068823,
@@ -1196,7 +1196,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "2026-11-27: Verify Foundation push run/job/raw log and target-body artifact for 0x1158c90/0x1158d10/0x1158d30. Inspect reachable instructions, direct/indirect calls and out-of-window edges. Only identify lock/unlock if exact instruction/call/import evidence proves acquire/release; preserve no-hook invariant and all release flags false.",
+  "next_action": "2026-11-27: The first Foundation attempt failed only because a 12-byte subwindow of a 16-byte synthetic buffer was incorrectly expected to raise. Raw log 46017177259/job 140567169891 inspected. The test now positively checks that boundary and rejects end=20. Verify the new HEAD's four push runs, repair any remaining failure, then inspect target-body artifact.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -2187,7 +2187,7 @@
     "uzuy_tested": false
   },
   "latest_execution": {
-    "status": "PENDING_HEAD_CI",
+    "status": "PENDING_CI_RETRY",
     "parent_sha": "c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e",
     "scope": "FileLoad status dispatch target code, bounded direct CFG and full-text inbound edges",
     "ci_run_id": null,
@@ -2196,7 +2196,12 @@
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
     "consumer_abi_proven": false,
     "uzuy_tested": false,
-    "next": "Inspect exact push Actions runs/jobs/logs for the implementation commit; repair any failure before final status synchronization."
+    "next": "Inspect the new HEAD push runs/jobs/raw logs; require Foundation success and artifact before marking the target-body slice verified.",
+    "failed_run_id": 46017177259,
+    "failed_job_id": 140567169891,
+    "failed_raw_job_log_inspected": true,
+    "failure_reason": "The negative boundary test used [0,12) inside a 16-byte buffer; that range is valid.",
+    "correction": "Added a positive [0,12) case and moved the out-of-bounds negative to [0,20)."
   },
   "latest_slice": {
     "state": "PENDING_CI",
@@ -2472,6 +2477,17 @@
     "archive_precedence_verified": false,
     "consumer_abi_verified": false,
     "uzuy_verified": false,
-    "next": "Inspect the target-window artifact and raw Foundation job log; classify synchronization only if instructions and call/import evidence prove acquire/release."
+    "next": "Retry Foundation push CI after fixing the valid-window test boundary; inspect raw logs and artifact before final verification.",
+    "ci_attempts": [
+      {
+        "run_id": 46017177259,
+        "job_id": 140567169891,
+        "conclusion": "failure",
+        "raw_job_log_inspected": true,
+        "failing_step": "Trace pinned FileLoad status5 arguments, service-entry windows and bounded dispatch-target CFGs",
+        "failure": "Synthetic test incorrectly classified [0,12) as out-of-bounds for a 16-byte buffer; it is valid.",
+        "correction": "Added positive 12-byte bounded-window/fallthrough assertion and changed the negative boundary to end=20."
+      }
+    ]
   }
 }

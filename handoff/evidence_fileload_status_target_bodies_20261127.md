@@ -32,3 +32,8 @@
 ## Execution boundary
 
 Implementation parent: c89d815a2a8e6004ff14d4dd7d950e9d95bfc35e. New target-body evidence is PENDING_CI until the Foundation push run's raw job log and machine-readable artifact are inspected.
+
+
+## CI attempt 1 correction
+
+Foundation push run 46017177259/job 140567169891 failed in the synthetic test only: the test incorrectly treated the aligned, in-bounds range [0,12) of a 16-byte fixture as invalid. The raw job log was inspected. The test now asserts this is a valid shorter window with an out-of-window fallthrough edge and uses end=20 for the invalid boundary. Production analyzer logic was not implicated. Retry CI is required.
