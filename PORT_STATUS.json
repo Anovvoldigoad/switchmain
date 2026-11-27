@@ -7,6 +7,7 @@
   "pc_mod_manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
   "pc_api_source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
   "implemented_this_change": [
+    "2026-11-28 VERIFIED_CI_STATIC_ONLY: Fixed recursive FileLoad X19 proof-tree serialization. `analyze_stack_register_restore()` returns `nested_call_proofs` as a list; the parent serializer incorrectly called `.values()`, causing Foundation step 42 to raise AttributeError. Changed it to copy the list directly. Existing regression covers list shape, nested-call failure and cycle evidence. Code commit dbc23b155335c61602437c72e7f1ceabbe35553d (parent 255adab51824809ca8920c4b65dba6a3d326fb41). All four push workflows COMPLETED SUCCESS with raw logs inspected. Foundation artifact 15231780092 (336355 bytes, SHA256 598559d70ee9d2911c52fc6109b722465b87b96d3e5b9b77f2de8b99f38fc7aa); inbound-args JSON SHA256 d3a1ece8b05743da15643babe98d77fffa0995532477f0bf6e769bbec66102e5. Authentic original main SHA256 guard passed. Exact local X19 save/restore at SP-8 is proven, but nested call stack effects and unknown-base writes keep X19 at 0x116f280 -> 0x120a6c8 unresolved. Static proof only; no consumer ABI, ownership/lifecycle, archive precedence or Uzuy claim. All three release flags remain false.",
     "2026-11-28 VERIFIED_CI_STATIC_ONLY: FileLoad caller X19 reaching-definition analysis and complete raw-word direct-BL inventory are verified on original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. The previous manual list had 10 calls; independent A64 BL decoding finds 23, of which four pass strict exact-target bounded no-write/all-return preservation. At the unique FileLoad caller 0x116f29c, X19 remains unresolved behind a call barrier at 0x116f280 -> 0x120a6c8; its bounded callee writes X19 at 0x120a6cc and 0x120a724, and stack restore is not yet proven. Test correction commit ac71215f23bd645119f830cc4c63d0b5b2f1974b (source implementation 04cd926fe4af8144e53fc7eb92c9c5096ce38fd0). Four push workflows on ac71215 COMPLETED SUCCESS; raw logs inspected: Foundation 46048379870/140673240478, factory 46048379872/140673240433, compressed PRM 46048379855/140673240097, MovesetPlus 46048379836/140673240368. Foundation artifact 15223636352, ZIP SHA256 389c894d70f8f8fda4186e9a86352944427caf22bfe302a5637f2ca1f210c2ee. This is original-main static evidence only; no ABI/ownership/lifecycle/archive-precedence/Uzuy proof. Keep all three release flags false.",
     "2026-11-27 VERIFIED_CI_STATIC_ONLY: FileLoad SP/FP alias evidence now records AArch64 register-indexed memory operands and refuses displacement-only stack claims when the index is unresolved. Synthetic regressions prove indexed SP STR/LDR pairs do not create constant stack candidates, shifted index operands are inventoried unresolved, and indexed stores through SP-derived aliases invalidate apparently disjoint witnesses; existing immediate-only positives remain. Code df9a3e1e41db4d1b2063f2ac7b31e5adc6ef3dea (parent 840f92aa7d6dc5b812a07c2fc8c4ae8589b58ac3). Foundation push run 45976679056 job 140430025592 COMPLETED SUCCESS; raw job log inspected: PINNED_FILELOAD_SP_CFG_PASS 166 10 NO_CONSUMER_ABI and RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF. Other HEAD workflows also COMPLETED SUCCESS with raw logs inspected: compressed 45976679041/job 140430025502, factory 45976679120/job 140430025333, MovesetPlus 45976679117/job 140430026222. Foundation proof artifact 15187631793 (263930 bytes). Host/static and original-main SHA-guarded test passed; this slice is not an emulated ARM64 runtime test or Uzuy test. Native consumer ABI, ownership/lifecycle, callback, async, rollback/unbind/destructor, archive precedence and gameplay remain unresolved; all release flags remain false.",
     "2026-11-23 PENDING_HEAD_CI: compressed batch independent verifier now reconstructs exact deterministic literal/runs CRILAYLA bitstream for changed Event236 candidates, rejecting a valid alternate encoder even when decoded bytes and updated SHA match; three encoder modes positive and alternate negative regressions. Code commit 28c95224bc9538dae9dcba85f1e1b437c3cf5500 parent aca1be0f02b7e334768d82d2483523507ff96ecc. Prior compressed push run 45157982290 job 137635718880 COMPLETED SUCCESS raw log inspected; new HEAD CI pending. Synthetic offline only. NSC-ModManager/Toolbox 2.1.2.1 upstream release 2026-08-30; no Switch ABI inference. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Sakura aura107, Event236 marked/unmarked and three false release flags preserved. NEXT inspect compressed workflow push run/job/log for new HEAD, repair failures, then authentic consumer evidence.",
@@ -99,7 +100,7 @@
     "2026-11-27 CI_REPAIR_2: Foundation run 46022245151/job 140584543848 failed in test_native_fileload_status.py because the report omitted service_target_semantics_verified after the new dispatch-offset fields were inserted. The missing explicit false field is restored. Raw job log inspected. The three other workflows for code HEAD 4c83d56 completed successfully and their raw logs were read; Foundation must be rerun."
   ],
   "blocking_gaps": [
-    "FileLoad caller X19 is still unresolved at 0x116f280 -> 0x120a6c8: the bounded callee writes X19 at 0x120a6cc and 0x120a724; an exact incoming-value stack save/restore proof is required before this register can be treated as preserved.",
+    "At FileLoad caller 0x116f280 -> 0x120a6c8, exact local X19 save/restore is proven at entry-SP-8 (STP 0x120a6c8; LDP 0x120a724) and the observed return restores the entry register, but SP trust/preservation remains false because four nested direct callees are unresolved: 0x116b698 (nested 0x116b6c0 -> 0x116b7b0 with further unknown/no-return children), 0x1188104 (unknown X0 stores), 0x1170f7c (nested 0x11704c4 with unknown X0 stores), and 0x1160c64 (unknown X0 stores). Keep the call barrier until nested stack/alias effects are proven.",
     "compressed PRM repacking and full package integration still missing; legacy helper-specific character filters still require review",
     "remaining MovesetPlus operations shadowed or narrowed; complete control semantics/subclass overrides and legacy UJ latch lifetime unverified",
     "CPK directory discovery, async completion/unbind lifecycle and archive precedence unverified; parameter-family coverage remains partial",
@@ -1650,7 +1651,7 @@
     "native_consumer_verified": false,
     "emulator_tested": false
   },
-  "latest_engineering_pending_ci": "2026-11-28 VERIFIED_CI_STATIC_ONLY: X19 call-origin analysis now uses an independent raw A64 BL decoder. Original-main caller window contains 23 direct BLs (not 10); four exact-target bounded callees pass no-write/all-return preservation. X19 at FileLoad remains a barrier at 0x116f280 -> 0x120a6c8 because the callee writes X19 and the matching stack restore is not proven. Code/test HEAD ac71215f23bd645119f830cc4c63d0b5b2f1974b; all four push workflows completed success and raw logs inspected. Next: prove stack save/restore on every return for this exact callee; no ABI or hook.",
+  "latest_engineering_pending_ci": "2026-11-28 VERIFIED_CI_STATIC_ONLY: Fixed recursive FileLoad X19 proof-tree serialization. `analyze_stack_register_restore()` returns `nested_call_proofs` as a list; the parent serializer incorrectly called `.values()`, causing Foundation step 42 to raise AttributeError. Changed it to copy the list directly. Existing regression covers list shape, nested-call failure and cycle evidence. Code commit dbc23b155335c61602437c72e7f1ceabbe35553d (parent 255adab51824809ca8920c4b65dba6a3d326fb41). All four push workflows COMPLETED SUCCESS with raw logs inspected. Foundation artifact 15231780092 (336355 bytes, SHA256 598559d70ee9d2911c52fc6109b722465b87b96d3e5b9b77f2de8b99f38fc7aa); inbound-args JSON SHA256 d3a1ece8b05743da15643babe98d77fffa0995532477f0bf6e769bbec66102e5. Authentic original main SHA256 guard passed. Exact local X19 save/restore at SP-8 is proven, but nested call stack effects and unknown-base writes keep X19 at 0x116f280 -> 0x120a6c8 unresolved. Static proof only; no consumer ABI, ownership/lifecycle, archive precedence or Uzuy claim. All three release flags remain false.",
   "ordered_factory_atomic_publication": {
     "state": "PENDING_HEAD_CI",
     "source_commit": "4a882d11426a7c55dfbb0c5468aa3375d165c190",
@@ -2170,112 +2171,229 @@
     "uzuy_verified": false,
     "next": "Inspect exact SP-relative X19 save/restore and all return paths in 0x120a6c8; require path-sensitive same-slot proof for every return and recursively apply only to exact direct targets. Preserve barriers for all unproven callees; no AAPCS64 assumption, no runtime hook."
   },
-  "latest_verified_code_commit": "ac71215f23bd645119f830cc4c63d0b5b2f1974b",
-  "latest_verified_code_parent": "5187073633307e43985684325ebdce9821948849",
+  "latest_verified_code_commit": "dbc23b155335c61602437c72e7f1ceabbe35553d",
+  "latest_verified_code_parent": "255adab51824809ca8920c4b65dba6a3d326fb41",
   "latest_verified_code_ci": {
-    "head": "ac71215f23bd645119f830cc4c63d0b5b2f1974b",
+    "head": "dbc23b155335c61602437c72e7f1ceabbe35553d",
+    "parent": "255adab51824809ca8920c4b65dba6a3d326fb41",
     "workflows": [
       {
         "name": "foundation",
-        "run_id": 46048379870,
-        "job_id": 140673240478,
+        "run_id": 46066250617,
+        "job_id": 140732155719,
         "conclusion": "success",
         "raw_log_inspected": true,
-        "artifact_id": 15223636352
+        "artifact_id": 15231780092,
+        "artifact_sha256": "598559d70ee9d2911c52fc6109b722465b87b96d3e5b9b77f2de8b99f38fc7aa"
       },
       {
         "name": "factory",
-        "run_id": 46048379872,
-        "job_id": 140673240433,
+        "run_id": 46066250621,
+        "job_id": 140732155517,
         "conclusion": "success",
         "raw_log_inspected": true
       },
       {
         "name": "compressed_prm",
-        "run_id": 46048379855,
-        "job_id": 140673240097,
+        "run_id": 46066250642,
+        "job_id": 140732155515,
         "conclusion": "success",
         "raw_log_inspected": true
       },
       {
         "name": "movesetplus",
-        "run_id": 46048379836,
-        "job_id": 140673240368,
+        "run_id": 46066250702,
+        "job_id": 140732155859,
         "conclusion": "success",
         "raw_log_inspected": true
       }
     ],
+    "all_completed_success": true,
+    "raw_logs_inspected": true,
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-    "artifact_zip_sha256": "389c894d70f8f8fda4186e9a86352944427caf22bfe302a5637f2ca1f210c2ee",
-    "artifact_file_sha256": "28892246edbb718743c1f8bd4ea43d28086f7a65453ab41221aa6725fd57d3fd"
-  },
-  "native_fileload_x19_stack_restore_20261128": {
-    "state": "TEST_EXPECTATION_FIX_PENDING_CI",
-    "parent_sha": "ace04f5ea7a8a21b9a625eb69fdce3d95eb767e6",
-    "source": "tools/portlib/native_fileload_call_targets.py",
-    "test": "tests/test_native_fileload_inbound_args.py",
-    "target": "0x120a6c8",
-    "tracked_register": "x19",
-    "method": "path-sensitive bounded SP-delta, exact stack-slot and register-origin dataflow; no ABI assumption",
-    "synthetic_regressions": [
-      "exact_stp_mov_ldp_roundtrip",
-      "wrong_load_destination",
-      "overwritten_saved_slot",
-      "nested_call_barrier",
-      "unknown_base_store",
-      "conditional_untouched_return",
-      "conditional_clobber",
-      "unbalanced_sp",
-      "invalid_window"
-    ],
-    "expected_main_effect": "X19 remains a call barrier unless every return restores the entry value and all stack/call/alias conditions are proven",
-    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "artifact_zip_sha256": "598559d70ee9d2911c52fc6109b722465b87b96d3e5b9b77f2de8b99f38fc7aa",
+    "artifact_files": {
+      "native_fileload_inbound_args_json_sha256": "d3a1ece8b05743da15643babe98d77fffa0995532477f0bf6e769bbec66102e5",
+      "native_fileload_call_targets_json_sha256": "ff165a8a94f42d19b9e70d9e9642250afcb76ccdba2f876cf1da77490413394d"
+    },
     "consumer_abi_verified": false,
     "ownership_lifecycle_verified": false,
     "archive_precedence_verified": false,
-    "uzuy_verified": false,
+    "uzuy_verified": false
+  },
+  "native_fileload_x19_stack_restore_20261128": {
+    "state": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
+    "code_commit": "dbc23b155335c61602437c72e7f1ceabbe35553d",
+    "parent_sha": "255adab51824809ca8920c4b65dba6a3d326fb41",
+    "source": "tools/portlib/native_fileload_call_targets.py",
+    "source_blob_before": "bc78752ebb7d8e6dd8d8f890d622ebfae6d8ec1c",
+    "source_blob_after": "3bbc79d69029ac58138844d12b57592a95ae79d1",
+    "test": "tests/test_native_fileload_inbound_args.py",
+    "test_blob": "6af075cdaf5f30dec3aed2c3d8556f473d86d2c6",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "workflow_step": 42,
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_size": 27701509,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "target": "0x120a6c8",
+    "target_return": "0x120a728",
+    "target_window_sha256": "60189963ab42120388f1b88d443ad722ae48275830ea07d2edd415140ee54f12",
+    "local_save_site": {
+      "pc": "0x120a6c8",
+      "entry_sp_slot": "-0x8",
+      "width": 8
+    },
+    "local_restore_site": {
+      "pc": "0x120a724",
+      "entry_sp_slot": "-0x8",
+      "width": 8
+    },
+    "local_return_proof": {
+      "all_return_paths_restore_entry_register": true,
+      "sp_balanced_on_all_returns": true,
+      "sp_delta_trusted_on_all_returns": false,
+      "preservation_proven": false,
+      "reason": "NESTED_CALL_STACK_EFFECT_UNPROVEN"
+    },
+    "nested_calls": [
+      {
+        "site": "0x120a6d0",
+        "target": "0x116b698",
+        "preserved": false,
+        "reason": "NESTED_CALL_STACK_EFFECT_UNPROVEN",
+        "unknown_memory_write_count": 1,
+        "nested": [
+          {
+            "site": "0x116b6c0",
+            "target": "0x116b7b0",
+            "preserved": false,
+            "reason": "NESTED_CALL_STACK_EFFECT_UNPROVEN",
+            "unknown_memory_write_count": 3,
+            "children": [
+              "0x116b7e0->0x12f3690:NO_REACHABLE_RETURN",
+              "0x116b810->0x290:UNKNOWN_MEMORY_ALIAS_STORE",
+              "0x116b818->0x12f36a0:NO_REACHABLE_RETURN"
+            ]
+          },
+          {
+            "site": "0x116b6c8",
+            "target": "0x116d380",
+            "preserved": true,
+            "reason": "REGISTER_UNCHANGED_ALL_RETURN_PATHS"
+          },
+          {
+            "site": "0x116b6d4",
+            "target": "0x116b82c",
+            "preserved": true,
+            "reason": "REGISTER_UNCHANGED_ALL_RETURN_PATHS",
+            "nested": [
+              {
+                "site": "0x116b864",
+                "target": "0x12155a0",
+                "preserved": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "site": "0x120a6e8",
+        "target": "0x1188104",
+        "preserved": false,
+        "reason": "UNKNOWN_MEMORY_ALIAS_STORE",
+        "unknown_memory_write_count": 5
+      },
+      {
+        "site": "0x120a6f0",
+        "target": "0x1170f7c",
+        "preserved": false,
+        "reason": "NESTED_CALL_STACK_EFFECT_UNPROVEN",
+        "unknown_memory_write_count": 3,
+        "nested": [
+          {
+            "site": "0x1170f84",
+            "target": "0x11704c4",
+            "preserved": false,
+            "reason": "UNKNOWN_MEMORY_ALIAS_STORE",
+            "unknown_memory_write_count": 6
+          }
+        ]
+      },
+      {
+        "site": "0x120a6f8",
+        "target": "0x1160c64",
+        "preserved": false,
+        "reason": "UNKNOWN_MEMORY_ALIAS_STORE",
+        "unknown_memory_write_count": 3
+      }
+    ],
+    "artifact": {
+      "id": 15231780092,
+      "name": "PORT_FOUNDATION_PROOFS_NOT_A_GAMEPLAY_RELEASE",
+      "size_bytes": 336355,
+      "sha256": "598559d70ee9d2911c52fc6109b722465b87b96d3e5b9b77f2de8b99f38fc7aa"
+    },
     "ci_runs": {
-      "previous_initial_foundation": {
-        "run_id": 46057774996,
-        "job_id": 140704341842,
-        "conclusion": "failure",
-        "raw_job_log_inspected": true
+      "prior_failing_head": {
+        "head": "255adab51824809ca8920c4b65dba6a3d326fb41",
+        "foundation": {
+          "run_id": 46065381856,
+          "job_id": 140729313554,
+          "conclusion": "failure",
+          "raw_job_log_inspected": true,
+          "failure": "AttributeError: list object has no attribute values at recursive child proof serialization"
+        }
       },
-      "previous_diagnostic_foundation": {
-        "run_id": 46058304370,
-        "job_id": 140706108304,
-        "conclusion": "failure",
-        "raw_job_log_inspected": true
-      },
-      "current_foundation": {
-        "run_id": 46058845472,
-        "job_id": 140707894811,
-        "conclusion": "failure",
-        "failed_step": 42,
-        "raw_job_log_inspected": true
-      },
-      "compressed_candidate": {
-        "run_id": 46058845542,
-        "job_id": 140707894934,
+      "foundation": {
+        "run_id": 46066250617,
+        "job_id": 140732155719,
         "conclusion": "success",
-        "raw_job_log_inspected": true
+        "raw_job_log_inspected": true,
+        "artifact_id": 15231780092
       },
       "factory": {
-        "run_id": 46058845543,
-        "job_id": 140707894897,
+        "run_id": 46066250621,
+        "job_id": 140732155517,
         "conclusion": "success",
         "raw_job_log_inspected": true
       },
-      "moveset_plus": {
-        "run_id": 46058845462,
-        "job_id": 140707894631,
+      "compressed_prm": {
+        "run_id": 46066250642,
+        "job_id": 140732155515,
+        "conclusion": "success",
+        "raw_job_log_inspected": true
+      },
+      "movesetplus": {
+        "run_id": 46066250702,
+        "job_id": 140732155859,
         "conclusion": "success",
         "raw_job_log_inspected": true
       }
     },
-    "raw_job_logs_inspected": true,
-    "next": "Correct the bypass test to expect one merged RET state and five reachable instructions; rerun all four push workflows; inspect authentic original-main stack report.",
-    "diagnostic": "The exact STP/MOV/LDP, wrong-destination, overwrite, nested-call and unknown-base-store synthetic cases passed after the fp/lr fix. The bypass case failed only because both branch paths converge at the same RET with identical state and the worklist correctly deduplicates that state.",
-    "fix": "reg_width now accepts fp/lr as 8-byte aliases; temporary diagnostic print removed."
+    "research": {
+      "modmanager_latest_tag": "2.1.2.1",
+      "modmanager_latest_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+      "modmanager_previous_tag": "2.1.2.0",
+      "modmanager_previous_commit": "a4a6e7e2aeec79cffa7d477e4b1a8fcd05823983",
+      "modmanager_pinned_pc_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+      "modmanager_relevant_blobs_identical": [
+        "6a891e237d27fdf01336f806dbef8767d609a304",
+        "ced6d805b207fae16cf68df87e23744608d6562b",
+        "2b518f6eeb9ef97895517582e393a2adf9ee6da0",
+        "dcfccabe2edb8dd1bc1f0a05be81bdaefb9d517e"
+      ],
+      "toolbox_latest_tag": "2.1.2.1",
+      "toolbox_latest_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+      "toolbox_previous_tag": "2.1.2.0",
+      "toolbox_previous_commit": "dfe371dd4f1f0d1d1ad74a79e1bc8192a6d1fc31",
+      "toolbox_skill_editor_blob": "e165471682e4a7aed91094ef07f92df271f31639",
+      "pycricodecs_commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+      "rea_commit": "0386efd1e1dfa41af41f804a6be56c6f5b7615d4"
+    },
+    "consumer_abi_verified": false,
+    "ownership_lifecycle_verified": false,
+    "archive_precedence_verified": false,
+    "uzuy_verified": false,
+    "next": "Continue from 0x116b698 and nested 0x116b6c0 -> 0x116b7b0. Prove exact pointer/stack alias provenance for X1/X19 and each unknown store; investigate 0x12f3690/0x12f36a0 bounded control-flow exits without assuming function extent. Keep 0x116f280 -> 0x120a6c8 as a call barrier until every nested stack/alias condition is proven."
   }
 }
