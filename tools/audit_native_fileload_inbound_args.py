@@ -2,7 +2,7 @@ import argparse
 import json
 from pathlib import Path
 
-from tools.portlib.native_fileload_inbound_args import inspect
+from portlib.native_fileload_inbound_args import inspect
 
 
 def main():
@@ -11,7 +11,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     report = inspect(args.main.read_bytes())
-    args.output.mkdir(parents=True, exist_ok=True)
+    args.output.mkdir(parents=True, exist_ok=False)
     path = args.output / "native_fileload_inbound_args.json"
     path.write_text(json.dumps(report, indent=2) + "\n")
     print("FILELOAD_INBOUND_ARGUMENTS", json.dumps({

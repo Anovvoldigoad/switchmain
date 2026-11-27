@@ -26,33 +26,33 @@ def _b(pc, target):
 
 def synthetic():
     # Two exact register copies reach the sink.
-    code = bytes.fromhex("e10317aae20314aa") + _bl(0x1008, 0x2000)
-    report = analyze_caller_window(code, 0x1000, 0x100C, 0x1008, 0x2000)
-    assert [x["at"] for x in report["possible_reaching_definitions"]["x1"]] == ["0x1000"]
-    assert [x["at"] for x in report["possible_reaching_definitions"]["x2"]] == ["0x1004"]
+    code = bytes.fromhex("e10317aae20314aa") + _bl(8, 0x2000)
+    report = analyze_caller_window(code, 0, 12, 8, 0x2000)
+    assert [x["at"] for x in report["possible_reaching_definitions"]["x1"]] == ["0x0"]
+    assert [x["at"] for x in report["possible_reaching_definitions"]["x2"]] == ["0x4"]
     assert report["single_definition_proven_within_window"] == {"x1": True, "x2": True}
 
     # An earlier call is a hard barrier for X1/X2; a later definition supersedes it.
-    code = _bl(0x1100, 0x2100) + bytes.fromhex("e10313aa") + _bl(0x1108, 0x2200)
-    report = analyze_caller_window(code, 0x1100, 0x110C, 0x1108, 0x2200)
+    code = _bl(0, 0x2100) + bytes.fromhex("e10313aa") + _bl(8, 0x2200)
+    report = analyze_caller_window(code, 0, 12, 8, 0x2200)
     assert [x["kind"] for x in report["possible_reaching_definitions"]["x1"]] == ["definition"]
     assert [x["kind"] for x in report["possible_reaching_definitions"]["x2"]] == ["call_barrier"]
 
     # Both sides of a conditional merge must be retained, not arbitrarily selected.
     words = [
-        0xB4000060,  # cbz x0, #0x100c
+        0xB4000060,  # cbz x0, #0xc
         0xAA1303E1,  # mov x1, x19
-        0x14000002,  # b #0x1010
+        0x14000002,  # b #0x10
         0xAA1403E1,  # mov x1, x20
     ]
-    code = b"".join(struct.pack("<I", x) for x in words) + _bl(0x1010, 0x2000)
-    report = analyze_caller_window(code, 0x1000, 0x1014, 0x1010, 0x2000)
-    assert {x["at"] for x in report["possible_reaching_definitions"]["x1"]} == {"0x1004", "0x100c"}
+    code = b"".join(struct.pack("<I", x) for x in words) + _bl(16, 0x2000)
+    report = analyze_caller_window(code, 0, 20, 16, 0x2000)
+    assert {x["at"] for x in report["possible_reaching_definitions"]["x1"]} == {"0x4", "0xc"}
     assert report["single_definition_proven_within_window"]["x1"] is False
 
     # Stack-relative and memory-loaded argument sources remain explicit.
-    code = struct.pack("<I", 0x910083E1) + struct.pack("<I", 0xF9400A62) + _bl(0x1208, 0x2200)
-    report = analyze_caller_window(code, 0x1200, 0x120C, 0x1208, 0x2200)
+    code = struct.pack("<I", 0x910083E1) + struct.pack("<I", 0xF9400A62) + _bl(8, 0x2200)
+    report = analyze_caller_window(code, 0, 12, 8, 0x2200)
     x1 = report["possible_reaching_definitions"]["x1"][0]
     x2 = report["possible_reaching_definitions"]["x2"][0]
     assert x1["definition_kind"] == "stack_relative_address"
@@ -62,8 +62,8 @@ def synthetic():
     assert x2["instruction"]["memory_operands"][0]["displacement"] == 16
 
     # A window with no local definition stays explicitly unknown.
-    code = struct.pack("<I", 0xD503201F) + _bl(0x1304, 0x2300)
-    report = analyze_caller_window(code, 0x1300, 0x1308, 0x1304, 0x2300)
+    code = struct.pack("<I", 0xD503201F) + _bl(4, 0x2300)
+    report = analyze_caller_window(code, 0, 8, 4, 0x2300)
     assert all(x["kind"] == "window_entry_unknown"
                for reg in ("x1", "x2")
                for x in report["possible_reaching_definitions"][reg])
@@ -75,7 +75,6 @@ def synthetic():
             pass
         else:
             raise AssertionError("Invalid caller window was accepted")
-
 
 def run(main, output):
     synthetic()
