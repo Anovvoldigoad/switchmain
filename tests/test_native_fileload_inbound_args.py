@@ -324,10 +324,10 @@ def synthetic_x19_stack_restore():
         initial_register_offsets={"x0": 0x30},
     )
     assert report["preservation_proven"] is False
-    # The nested cycle makes the bounded child have no proven return path.
-    # The parent preserves that precise summary rather than claiming preservation.
-    assert report["nested_call_proofs"][0]["reason"] == "NO_REACHABLE_RETURN"
-    assert report["reason"] == "NO_REACHABLE_RETURN"
+    # The child returns with X19 clobbered after its recursive-call barrier;
+    # the parent still rejects the nested preservation proof.
+    assert report["nested_call_proofs"][0]["reason"] == "ENTRY_REGISTER_NOT_RESTORED_ON_ALL_RETURNS"
+    assert report["reason"] == "NESTED_CALL_STACK_EFFECT_UNPROVEN"
 
     for start, end in ((1, 16), (0, 15), (0, len(good) + 4)):
         try:
