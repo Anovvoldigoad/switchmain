@@ -212,7 +212,7 @@ def inspect(nso):
             "pointer_type_and_ownership_proven": False,
         })
     return {
-        "status":"SHA_PINNED_ORIGINAL_FILELOAD_X20_X22_REACHING_WRITE_SITES_ONLY",
+        "status":"SHA_PINNED_ORIGINAL_FILELOAD_REGISTER_ORIGINS_WITH_CONSERVATIVE_CALL_BARRIERS",
         "original_caller_argument_register_alias_witnesses":alias_proofs,
         "original_main_sha256":actual,
         "original_entry_candidate":hex(ENTRY),

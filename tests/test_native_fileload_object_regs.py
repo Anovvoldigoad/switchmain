@@ -87,8 +87,26 @@ def run(main,out):
     assert proof["call_preservation_proofs"]
     assert all("preserved" in row["registers"]["x20"]
                for row in proof["call_preservation_proofs"])
-    assert any(not x["preservation_to_all_observations_proven"]
+    assert all(not x["preservation_to_all_observations_proven"]
                for x in proof["original_caller_argument_register_alias_witnesses"])
+    call_rows={x["site"]:x["registers"]
+               for x in proof["call_preservation_proofs"]}
+    assert call_rows["0x116f43c"]["x20"]["preserved"] is True
+    assert call_rows["0x116f514"]["x20"]["preserved"] is True
+    assert call_rows["0x116f47c"]["x20"]["preserved"] is False
+    assert call_rows["0x116f47c"]["x22"]["preserved"] is False
+    expected_use_origins=[
+        ("X2_to_X20_capture","0x116f51c","0x116f47c"),
+        ("X2_to_X20_capture","0x116f5bc","0x116f5a8"),
+        ("X1_to_X22_capture","0x116f5ac","0x116f5a8"),
+    ]
+    actual_use_origins=[]
+    for capture in proof["original_caller_argument_register_alias_witnesses"]:
+        for observation in capture["observations"]:
+            origin=observation["possible_reaching_writes"]
+            assert len(origin)==1 and origin[0]["kind"]=="unproven_call_clobber"
+            actual_use_origins.append((capture["name"],observation["site"],origin[0]["at"]))
+    assert actual_use_origins==expected_use_origins
     for alias in proof["original_caller_argument_register_alias_witnesses"]:
         assert "source_register_inbound_origin_candidates" in alias
         assert not alias["pointer_type_and_ownership_proven"]
@@ -119,11 +137,17 @@ def run(main,out):
               "site_origins",
               {k:[x.get("at") for x in v["possible_reaching_writes"]]
                for k,v in t["sites"].items()})
-    print("X1_X2_ORIGINAL_ENTRY_ARGUMENT_PROVENANCE",
-          [(p["source_register_at_copy"],
+    print("ORIGINAL_ENTRY_REGISTER_CAPTURE_PROVENANCE",
+          [(p["source_register_at_capture"],p["destination_register"],
+            p["capture_at"],p["capture_word_le"],
             p["source_register_unchanged_since_entry_in_bounded_static_CFG"],
             [(v["kind"],v.get("at"))
              for v in p["source_register_inbound_origin_candidates"]])
+           for p in proof["original_caller_argument_register_alias_witnesses"]])
+    print("CAPTURE_TO_USE_CALL_BARRIERS",
+          [(p["name"],[(o["site"],o["capture_value_only_reaches_observation"],
+                        [(v["kind"],v.get("at")) for v in o["possible_reaching_writes"]])
+                       for o in p["observations"]])
            for p in proof["original_caller_argument_register_alias_witnesses"]])
     print("PINNED_OBJECT_REGISTER_ORIGINS_PASS",
           "NOT_CLASS_OR_LIFETIME_OR_GAMEPLAY")
