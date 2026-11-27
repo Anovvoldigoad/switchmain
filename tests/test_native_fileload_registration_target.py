@@ -55,8 +55,17 @@ def synthetic_cfg():
     assert memory["memory_operands"] == [{
         "pc": "0x0", "base_register": "x1", "index_register": None,
         "displacement": 0, "access_size_bytes": 8,
+        "width_source": "data_register_width",
         "direction": "write", "writeback": False,
     }]
+    word_store = analyze_window(words(0xB9000020, 0xD65F03C0), 0, 8)
+    assert word_store["memory_operands"][0]["access_size_bytes"] == 4
+    byte_store = analyze_window(words(0x39000020, 0xD65F03C0), 0, 8)
+    assert byte_store["memory_operands"][0]["access_size_bytes"] == 1
+    pair_store = analyze_window(words(0xA9000440, 0xD65F03C0), 0, 8)
+    assert pair_store["memory_operands"][0]["access_size_bytes"] == 16
+    signed_word_load = analyze_window(words(0xB9800020, 0xD65F03C0), 0, 8)
+    assert signed_word_load["memory_operands"][0]["access_size_bytes"] == 4
     indirect = analyze_window(words(0xD63F0100, 0xD65F03C0), 0, 8)
     assert indirect["unresolved_indirect_call_sites"] == ["0x0"]
     assert indirect["return_sites"] == ["0x4"]
@@ -65,7 +74,7 @@ def synthetic_cfg():
     expect_reject(lambda: analyze_window(words(0xD65F03C0, 0xD65F03C0), 0, 7),
                   "unaligned end")
     expect_reject(lambda: analyze_window(words(0xD65F03C0), 4, 8),
-                  "missing entry")
+                  "out-of-bounds entry")
     expect_reject(lambda: analyze_window(words(0x54000040, 0xD65F03C0,
                                                0xD65F03C0, 0xD65F03C0),
                                          0, 16, max_reached=1),

@@ -9,7 +9,7 @@ import struct
 from collections import deque
 
 from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM
-from capstone.arm64_const import ARM64_OP_IMM, ARM64_OP_MEM
+from capstone.arm64_const import ARM64_OP_IMM, ARM64_OP_MEM, ARM64_OP_REG
 
 from .native_cpk_cfg import _edges
 from .native_cpk_graph import MAIN_SHA256, direct_branch
@@ -30,6 +30,57 @@ def _register_name(ins, register):
     if name == "lr":
         return "x30"
     return name
+
+
+def _register_width(name):
+    if not name:
+        return None
+    if name.startswith("x"):
+        return 8
+    if name.startswith("w"):
+        return 4
+    if name.startswith("b"):
+        return 1
+    if name.startswith("h"):
+        return 2
+    if name.startswith("s"):
+        return 4
+    if name.startswith("d"):
+        return 8
+    if name.startswith(("q", "v")):
+        return 16
+    return None
+
+
+def _memory_access_width(ins):
+    """Infer only widths encoded by the mnemonic/data-register class; else unknown."""
+    mnemonic = ins.mnemonic.lower()
+    registers = [op for op in ins.operands if op.type == ARM64_OP_REG]
+    names = [_register_name(ins, op.reg) for op in registers]
+
+    if mnemonic == "prfm":
+        return None, "no_data_register"
+    if mnemonic == "ldpsw":
+        return 8, "pair_of_signed_32_bit_words"
+    if mnemonic in {"ldp", "stp", "ldnp", "stnp"}:
+        widths = [_register_width(name) for name in names[:2]]
+        if len(widths) == 2 and widths[0] is not None and widths[0] == widths[1]:
+            return widths[0] * 2, "register_pair"
+        return None, "unresolved_register_pair_width"
+    if mnemonic in {"ldrsb", "ldursb"}:
+        return 1, "signed_byte_mnemonic"
+    if mnemonic in {"ldrsh", "ldursh"}:
+        return 2, "signed_halfword_mnemonic"
+    if mnemonic in {"ldrsw", "ldursw"}:
+        return 4, "signed_word_mnemonic"
+    if mnemonic.endswith("b"):
+        return 1, "byte_mnemonic"
+    if mnemonic.endswith("h"):
+        return 2, "halfword_mnemonic"
+    if not names:
+        return None, "no_data_register"
+    width = _register_width(names[0])
+    return (width, "data_register_width") if width is not None else (None, "unknown_register_width")
 
 
 def analyze_window(code, start, end, max_reached=MAX_REACHED):
@@ -87,7 +138,8 @@ def analyze_window(code, start, end, max_reached=MAX_REACHED):
                     "base_register": _register_name(ins, operand.mem.base),
                     "index_register": _register_name(ins, operand.mem.index),
                     "displacement": operand.mem.disp,
-                    "access_size_bytes": operand.size,
+                    "access_size_bytes": _memory_access_width(ins)[0],
+                    "width_source": _memory_access_width(ins)[1],
                     "direction": ("write" if ins.mnemonic.startswith("st") else
                                   "read" if ins.mnemonic.startswith("ld") else "unknown"),
                     "writeback": bool(getattr(ins, "writeback", False)),

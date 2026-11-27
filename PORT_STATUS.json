@@ -102,7 +102,8 @@
     "2026-11-27 PENDING_HEAD_CI: FileLoad status-service evidence now follows the four exact direct dependencies of the 0x1158c90/0x1158d10 wrappers, records SHA-pinned bounded disassembly/CFG/xrefs, and adds an emulated-ARM64 test that executes the original wrapper bodies while modeling only four leaf targets. Regressions cover first/reentrant acquire, non-final/final release, underflow, zero provider result, different owner token and 32 status-helper cases. This proves only the literal wrapper owner/count transitions under modeled leaf returns; no OS mutex semantics, concurrency, native consumer ABI, lifecycle, archive precedence or Uzuy proof. Parent 5efd93a9d5d23ab96f3fd7a4404a46e50153c6ac; CI pending. Research pins ModManager 2.1.2.1 tag 502c38d (pinned project commit 276116e is its direct child), Toolbox 2.1.2.1 tag 789fe96 (relevant parser blobs unchanged from 2.1.2.0), PyCriCodecs 755055ee, REA 0386efd1. Original main blob 8af900db, SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. No hooks; preserve Sakura aura107, both Event236 forms and all three false flags.",
     "2026-11-27 CI_REPAIR: Foundation run 46021414045/job 140581709219 failed in synthetic_service_dependency_window because entry 0x8 is NOP and falls through to RET at 0xc; expected return corrected to 0xc. Review of pinned dispatch bytes also caught ADD X0,X0,#8 at 0x1215360/0x121537c; the emulated wrapper now writes owner/count at the adjusted wrapper base (original status object +0x28/+0x2c), not the pre-adjustment subobject. Raw Foundation log inspected. New HEAD CI pending; no mutex/concurrency/consumer ABI or Uzuy claim.",
     "2026-11-27 CI_REPAIR_2: Foundation run 46022245151/job 140584543848 failed in test_native_fileload_status.py because the report omitted service_target_semantics_verified after the new dispatch-offset fields were inserted. The missing explicit false field is restored. Raw job log inspected. The three other workflows for code HEAD 4c83d56 completed successfully and their raw logs were read; Foundation must be rerun.",
-    "2026-11-28 PENDING_CI: Added SHA-pinned registration target CFG analysis from the single DT_RELA R_AARCH64_RELATIVE pointer cell 0x215d2b0 -> text offset 0x116b888. The 0x100-byte bounded CFG records reachable instructions, register/memory operands, direct/indirect call barriers, returns, out-of-window edges, raw aligned-text B/BL word candidates and window SHA. Synthetic CFG positive/negative/boundary/budget regressions plus original-main SHA/relocation tests added. Not callback/destructor identity, function extent, runtime relocated pointer, ABI, ownership or Uzuy proof."
+    "2026-11-28 PENDING_CI: Added SHA-pinned registration target CFG analysis from the single DT_RELA R_AARCH64_RELATIVE pointer cell 0x215d2b0 -> text offset 0x116b888. The 0x100-byte bounded CFG records reachable instructions, register/memory operands, direct/indirect call barriers, returns, out-of-window edges, raw aligned-text B/BL word candidates and window SHA. Synthetic CFG positive/negative/boundary/budget regressions plus original-main SHA/relocation tests added. Not callback/destructor identity, function extent, runtime relocated pointer, ABI, ownership or Uzuy proof.",
+    "2026-11-28 FIXED_PENDING_CI: Foundation run 46076828184/job 140766410479 exposed that Capstone 5.0.6 Arm64Op has no .size. The analyzer now derives only explicit AArch64 memory widths from mnemonic/data-register class and leaves ambiguous widths null; tests add W, byte, register-pair and signed-word cases. Other three workflows on c62ff2e passed. Rerun Foundation and all push workflows before promotion."
   ],
   "blocking_gaps": [
     "At FileLoad caller 0x116f280 -> 0x120a6c8, local X19 save/restore at entry-SP-8 is proven but recursive SP trust remains false. The 0x116b7b0 child has two relocation-backed __cxa_guard imports and a bounded 0x290 registration-helper candidate; exact guard/object BSS addresses and explicit store ranges are pending CI. Opaque import side effects, helper table target/callback identity, other unknown X0 stores, consumer ABI, ownership/lifecycle and archive precedence remain unresolved; do not relax the call barrier.",
@@ -1100,7 +1101,7 @@
     "new_commit_ci": "PENDING"
   },
   "latest_pending_code_commit": null,
-  "latest_pending_ci": "New FileLoad registration target CFG slice pending push CI; see native_fileload_registration_target_20261128.",
+  "latest_pending_ci": "FileLoad registration target CFG width fix is ready but pending push CI; previous Foundation failure c62ff2e537d845f6410b009045de423c103e0dce was caused by unsupported Capstone Arm64Op.size.",
   "multi_mod_pc_source_path_ownership_guard": "OFFLINE_ONLY_PENDING_CI_NO_ENGINE_ARCHIVE_PRECEDENCE",
   "crilayla_total_output_limit": {
     "status": "pending_ci",
@@ -1219,7 +1220,7 @@
     "consumer_abi_proven": false,
     "emulator_tested": false
   },
-  "pending_ci_note": "2026-11-28: registration target CFG code/test/workflow are pending push CI. Current guard-state slice is verified static-only on HEAD 9975550ae11657970ae8905a808aa0360ad36710; see native_fileload_guard_state_20261128. Do not identify callback/destructor or install a hook.",
+  "pending_ci_note": "FileLoad registration target CFG width fix is ready but pending push CI; previous Foundation failure c62ff2e537d845f6410b009045de423c103e0dce was caused by unsupported Capstone Arm64Op.size.",
   "native_fileopen_call_free_witness": {
     "status": "PENDING_CI",
     "parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
@@ -1656,7 +1657,7 @@
     "native_consumer_verified": false,
     "emulator_tested": false
   },
-  "latest_engineering_pending_ci": "New FileLoad registration target CFG slice pending push CI; see native_fileload_registration_target_20261128.",
+  "latest_engineering_pending_ci": "FileLoad registration target CFG width fix is ready but pending push CI; previous Foundation failure c62ff2e537d845f6410b009045de423c103e0dce was caused by unsupported Capstone Arm64Op.size.",
   "ordered_factory_atomic_publication": {
     "state": "PENDING_HEAD_CI",
     "source_commit": "4a882d11426a7c55dfbb0c5468aa3375d165c190",
@@ -2423,8 +2424,8 @@
     }
   },
   "native_fileload_registration_target_20261128": {
-    "state": "PENDING_CI_STATIC_ONLY",
-    "parent_sha": "9975550ae11657970ae8905a808aa0360ad36710",
+    "state": "FIXED_PENDING_CI",
+    "parent_sha": "c62ff2e537d845f6410b009045de423c103e0dce",
     "code_commit": null,
     "source": "tools/portlib/native_fileload_registration_target.py",
     "source_blob": "8ee881958c72de9bc1fa14feea1a2806265ce952",
@@ -2453,6 +2454,51 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Verify all four push workflows on the new code HEAD, inspect Foundation raw log and artifact, then refine only if bounded original-main CFG evidence supports a falsifiable next step."
+    "next": "Push the width fix and rerun all four direct push workflows. The Foundation raw log is authoritative; do not mark the target slice verified until its new job and artifact succeed.",
+    "last_failed_commit": "c62ff2e537d845f6410b009045de423c103e0dce",
+    "failure": {
+      "commit": "c62ff2e537d845f6410b009045de423c103e0dce",
+      "run_id": 46076828184,
+      "job_id": 140766410479,
+      "conclusion": "failure",
+      "exception": "AttributeError: 'Arm64Op' object has no attribute 'size'",
+      "file": "tools/portlib/native_fileload_registration_target.py",
+      "line": 90,
+      "cause": "Capstone 5.0.6 Arm64Op exposes memory operands but not a size attribute.",
+      "raw_log_inspected": true,
+      "artifact_created": false
+    },
+    "fix": {
+      "source_blob": "99044155b3ddb50c4bbbae4154baac730f2187ed",
+      "test_blob": "1b298593ac37bf4da039fb27b197464d0fb949b3",
+      "summary": "Replace unsupported operand.size with fail-closed width derivation from AArch64 mnemonic/data-register class; explicit widths for byte/halfword/signed word, register pairs and LDPSW; unknown width stays null. Add W-register, byte, pair and signed-word regressions."
+    },
+    "ci": {
+      "runs": [
+        46076828184,
+        46076828715,
+        46076828130,
+        46076828159
+      ],
+      "jobs": [
+        140766410479,
+        140766412164,
+        140766410292,
+        140766410251
+      ],
+      "foundation": "failure",
+      "factory": "success",
+      "compressed_prm": "success",
+      "movesetplus": "success",
+      "all_raw_job_logs_inspected": true,
+      "foundation_artifact_created": false
+    }
+  },
+  "latest_failed_code_commit": "c62ff2e537d845f6410b009045de423c103e0dce",
+  "latest_failed_ci": {
+    "run_id": 46076828184,
+    "job_id": 140766410479,
+    "exception": "AttributeError: 'Arm64Op' object has no attribute 'size'",
+    "raw_log_inspected": true
   }
 }
