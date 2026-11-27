@@ -323,7 +323,7 @@ def inspect(nso):
         "stack_and_abi_limits": {
             "explicit_guarded_object_stores_proven_in_main_bss": all_explicit_stores_in_bss,
             "explicit_guarded_object_stores_use_sp_relative_base": False,
-            "explicit_bss_stores_do_not_address_parent_entry_sp_minus_8": all_explicit_stores_in_bss,
+            "explicit_guarded_object_stores_do_not_address_parent_entry_sp_minus_8": all_explicit_stores_in_bss,
             "opaque_guard_import_side_effects_resolved": False,
             "registration_helper_table_target_resolved": False,
             "parent_x19_stack_preservation_proven": False,
