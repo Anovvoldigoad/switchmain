@@ -816,26 +816,7 @@
       "Integrate nine PC-only parameter family readers, unsupported factory selectors, MovesetPlus, models/effects/audio SFX JP voice only once native ABI/lifetime proven; keep release flags false."
     ]
   },
-  "continuation": {
-    "read_first": [
-      "NSC_FULL_API_CONTINUE_CHAT.md",
-      "handoff/checkpoint.json",
-      "PORT_STATUS.json",
-      "PORTING_PROGRESS.md",
-      ".github/workflows/verify-port-foundation.yml"
-    ],
-    "source_and_tests_persisted_in": "GitHub branch",
-    "scratch_files_guaranteed_available": false,
-    "chat_project_created": false,
-    "conversation_moved": false,
-    "astra_or_work_equivalence_guaranteed": false,
-    "requirements": [
-      "Verify actual model/tool access in destination chat.",
-      "Use Actions or a real execution environment for build/test claims.",
-      "Do not overwrite newer commits; compare HEAD and use expected-SHA updates.",
-      "Continue authorized work without repeated permission prompts; preserve honest evidence labels."
-    ]
-  },
+  "continuation": "Current code/test HEAD ac71215f23bd645119f830cc4c63d0b5b2f1974b passed all four push workflows; raw logs inspected. Caller window 0x116f09c..0x116f2a0 has 129 decoded instructions, 23 direct BLs, four strict X19 preservation positives, but X19 at FileLoad remains a barrier at 0x116f280 -> 0x120a6c8. The callee writes X19 at 0x120a6cc and 0x120a724; do not infer stack restoration until exact saved slot and all-return path are proven. Continue with bounded stack provenance for this target and other X19-writing callees. Keep consumer ABI, ownership/lifecycle, archive precedence and Uzuy false.",
   "verified_component_commit": "4ecbeeaec573eaf9eddad42b0d50c07d7a297ba4",
   "progress_since_previous_handoff": "2026-11-27 PENDING_CI_RETRY: First Foundation run 46017177259/job 140567169891 failed at synthetic geometry boundary: [0,12) is valid for a 16-byte buffer. Raw log inspected. Added a positive 12-byte-window case and changed the invalid end to 20. Parent 1ecdea1a0f48542c869aadfd6903be3e8f1894db; retry CI pending. No semantic/ABI claim.",
   "native_fileopen_branch_dependency_checkpoint": {
@@ -1196,7 +1177,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "2026-11-27: Retry all four push workflows after restoring service_target_semantics_verified=false. Inspect authentic Foundation log and artifact; then verify the emulated wrapper state transitions. All runtime flags stay false.",
+  "next_action": "Trace the exact SP-relative X19 save/restore in callee 0x120a6c8 and the other X19-writing callees from the 23-call inventory. Require path-sensitive SP-slot identity, no intervening overwrite, and restoration on every return; otherwise keep call barriers. No hook until ownership/lifecycle and native consumer ABI are proven.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -1209,16 +1190,8 @@
     "fix": "Initialize negatives before four output-alias negative tests; do not reset before other negatives",
     "ci": "PENDING"
   },
-  "latest_pending_code_commit": "622d65c890359be4dbaaac2d2b32c29bd5953ee6",
-  "latest_pending_ci": {
-    "parent_sha": "3db3a0209d34b9861fbca4fcb2442c5f1d805bb1",
-    "code_sha": "15701b3cfb5326645d59c08da81b4ebefd11e530",
-    "status": "PENDING_CI",
-    "run_id": null,
-    "job_id": null,
-    "authentic_log_verified": false,
-    "local_tests_run": false
-  },
+  "latest_pending_code_commit": null,
+  "latest_pending_ci": "Source/test commit ac71215f23bd645119f830cc4c63d0b5b2f1974b has all four push workflows COMPLETED SUCCESS and raw logs inspected. This documentation-only sync commit will trigger a separate push CI set.",
   "crilayla_total_output_limit": {
     "status": "pending_ci",
     "parent_sha": "e4e08cc748b18d9ae8576862d1cd509a27f684b0",
@@ -2175,37 +2148,62 @@
     "next": "Inspect HEAD Foundation job log and resolve failures; trace original consumer lifecycle before hooks."
   },
   "latest_pending_head_ci": {
-    "parent_sha": "04cd926fe4af8144e53fc7eb92c9c5096ce38fd0",
-    "topic": "fileload_caller_x19_exact_callee_preservation",
+    "parent_sha": "5187073633307e43985684325ebdce9821948849",
+    "code_commit": "ac71215f23bd645119f830cc4c63d0b5b2f1974b",
+    "topic": "fileload_caller_x19_raw_bl_inventory_and_reaching_definitions",
     "source": "tools/portlib/native_fileload_inbound_args.py",
     "test": "tests/test_native_fileload_inbound_args.py",
-    "status": "PENDING_CI_RETRY",
-    "failed_run_id": 46046167094,
-    "failed_job_id": 140665868834,
-    "ci_run_id": null,
-    "ci_job_id": null,
+    "status": "VERIFIED_STATIC_CI_ONLY_X19_UNRESOLVED_AT_SINK",
+    "ci_run_ids": [
+      46048379870,
+      46048379872,
+      46048379855,
+      46048379836
+    ],
+    "ci_job_ids": [
+      140673240478,
+      140673240433,
+      140673240097,
+      140673240368
+    ],
     "ci_log_inspected": true,
     "consumer_abi_proven": false,
     "uzuy_tested": false
   },
   "latest_execution": {
-    "status": "PENDING_CI_RETRY",
-    "parent_sha": "04cd926fe4af8144e53fc7eb92c9c5096ce38fd0",
+    "status": "VERIFIED_STATIC_CI_ONLY_X19_UNRESOLVED_AT_SINK",
+    "implementation_parent_sha": "95dda35fb5424425a720ced7c95db1f9ea6fdbee",
+    "implementation_commit": "04cd926fe4af8144e53fc7eb92c9c5096ce38fd0",
+    "correction_parent_sha": "5187073633307e43985684325ebdce9821948849",
+    "correction_commit": "ac71215f23bd645119f830cc4c63d0b5b2f1974b",
     "failed_run_id": 46046167094,
     "failed_job_id": 140665868834,
     "failed_raw_job_log_inspected": true,
-    "failure_reason": "The first synthetic exact-map assertion still expected only X1/X2 after TRACKED expanded to include X19; the implementation reached the test, but the assertion omitted the expected X19 window-entry unknown.",
-    "correction": "Update the exact synthetic reaching-definition map to include x19:false; preserve the separate positive/negative X19 call-preservation tests.",
-    "ci_run_id": null,
-    "ci_job_id": null,
-    "raw_job_log_inspected": false,
+    "failure_reason": "First synthetic exact-map assertion omitted x19:false; after that correction, the hand-entered direct-call list was found incomplete (10 listed vs 23 decoded from raw A64 BL words).",
+    "correction": "Use an independent A64 BL immediate decoder over the original caller-window instruction words; compare all 23 site/target pairs to preservation proofs, with forward/backward/B-exclusion/malformed/boundary synthetic tests.",
+    "ci_run_ids": [
+      46048379870,
+      46048379872,
+      46048379855,
+      46048379836
+    ],
+    "ci_job_ids": [
+      140673240478,
+      140673240433,
+      140673240097,
+      140673240368
+    ],
+    "raw_job_logs_inspected": true,
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-    "next": "Push the corrected synthetic expectation, inspect all four new push runs and raw logs, then inspect the Foundation artifact for X19 origin results."
+    "foundation_artifact_id": 15223636352,
+    "foundation_artifact_zip_sha256": "389c894d70f8f8fda4186e9a86352944427caf22bfe302a5637f2ca1f210c2ee",
+    "next": "Trace exact X19 stack save/restore and all return paths in 0x120a6c8; no runtime hook or ABI inference."
   },
   "latest_slice": {
-    "state": "PENDING_CI_RETRY",
-    "parent_sha": "04cd926fe4af8144e53fc7eb92c9c5096ce38fd0",
-    "description": "FileLoad caller X19 reaching definitions with exact direct-callee preservation; one synthetic expectation omitted the newly tracked register",
+    "state": "VERIFIED_STATIC_CI_ONLY_X19_UNRESOLVED_AT_SINK",
+    "parent_sha": "5187073633307e43985684325ebdce9821948849",
+    "code_commit": "ac71215f23bd645119f830cc4c63d0b5b2f1974b",
+    "description": "Independent raw A64 BL inventory found 23 direct calls (not 10); four exact-target bounded callees preserve X19, but X19 at FileLoad remains a call barrier at 0x116f280 -> 0x120a6c8",
     "source": "tools/portlib/native_fileload_inbound_args.py",
     "test": "tests/test_native_fileload_inbound_args.py",
     "consumer_abi_verified": false,
@@ -2676,7 +2674,7 @@
     "next_action": "Resolve import provider module from original Switch loader metadata, then trace the wrapper object's allocation and destruction. Keep all runtime hooks disabled."
   },
   "native_fileload_caller_x19_20261128": {
-    "state": "PENDING_CI_RETRY",
+    "state": "VERIFIED_STATIC_CI_ONLY_X19_UNRESOLVED_AT_SINK",
     "parent_sha": "95dda35fb5424425a720ced7c95db1f9ea6fdbee",
     "source": "tools/portlib/native_fileload_inbound_args.py",
     "test": "tests/test_native_fileload_inbound_args.py",
@@ -2685,58 +2683,234 @@
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
     "caller": {
       "callsite": "0x116f29c",
+      "entry": "0x116f404",
       "window_start": "0x116f09c",
       "window_end_exclusive": "0x116f2a0",
-      "window_sha256": "e18c0fcb01a040df2b232820813420313e623c5747bd0734507920507ba0775d"
+      "window_sha256": "e18c0fcb01a040df2b232820813420313e623c5747bd0734507920507ba0775d",
+      "decoded_instructions": 129,
+      "expected_instructions": 129,
+      "decode_failures": 0,
+      "external_direct_inbound": 1,
+      "out_of_window_edges": 4,
+      "bounded_window_complete": false
     },
     "tracked_registers": [
       "x1",
       "x2",
       "x19"
     ],
+    "direct_bl_count": 23,
     "direct_calls": [
+      {
+        "site": "0x116f0a0",
+        "target": "0x1215300",
+        "x19_preserved": false,
+        "reason": "OUT_OF_WINDOW_OR_UNDECODABLE_EDGE"
+      },
+      {
+        "site": "0x116f0b4",
+        "target": "0x116b6e8",
+        "x19_preserved": false,
+        "reason": "INDIRECT_TERMINATOR_UNRESOLVED"
+      },
+      {
+        "site": "0x116f0b8",
+        "target": "0x116d3c0",
+        "x19_preserved": true,
+        "reason": "NO_REGISTER_WRITES_ALL_DIRECT_CALLEES_PROVEN"
+      },
+      {
+        "site": "0x116f0c0",
+        "target": "0x116b3f0",
+        "x19_preserved": false,
+        "reason": "REGISTER_WRITTEN"
+      },
+      {
+        "site": "0x116f0c4",
+        "target": "0x116d420",
+        "x19_preserved": false,
+        "reason": "OUT_OF_WINDOW_OR_UNDECODABLE_EDGE"
+      },
+      {
+        "site": "0x116f0fc",
+        "target": "0x1215390",
+        "x19_preserved": false,
+        "reason": "REGISTER_WRITTEN"
+      },
+      {
+        "site": "0x116f104",
+        "target": "0x1215300",
+        "x19_preserved": false,
+        "reason": "OUT_OF_WINDOW_OR_UNDECODABLE_EDGE"
+      },
+      {
+        "site": "0x116f118",
+        "target": "0x116b6e8",
+        "x19_preserved": false,
+        "reason": "INDIRECT_TERMINATOR_UNRESOLVED"
+      },
+      {
+        "site": "0x116f11c",
+        "target": "0x116d3c0",
+        "x19_preserved": true,
+        "reason": "NO_REGISTER_WRITES_ALL_DIRECT_CALLEES_PROVEN"
+      },
+      {
+        "site": "0x116f124",
+        "target": "0x116b3f0",
+        "x19_preserved": false,
+        "reason": "REGISTER_WRITTEN"
+      },
+      {
+        "site": "0x116f128",
+        "target": "0x116d420",
+        "x19_preserved": false,
+        "reason": "OUT_OF_WINDOW_OR_UNDECODABLE_EDGE"
+      },
+      {
+        "site": "0x116f130",
+        "target": "0x12163d8",
+        "x19_preserved": true,
+        "reason": "NO_REGISTER_WRITES_ALL_DIRECT_CALLEES_PROVEN"
+      },
+      {
+        "site": "0x116f158",
+        "target": "0x21e0",
+        "x19_preserved": false,
+        "reason": "REGISTER_WRITTEN"
+      },
+      {
+        "site": "0x116f1c0",
+        "target": "0x116d3c0",
+        "x19_preserved": true,
+        "reason": "NO_REGISTER_WRITES_ALL_DIRECT_CALLEES_PROVEN"
+      },
+      {
+        "site": "0x116f1cc",
+        "target": "0x120661c",
+        "x19_preserved": false,
+        "reason": "REGISTER_WRITTEN"
+      },
+      {
+        "site": "0x116f1e8",
+        "target": "0x1215d28",
+        "x19_preserved": false,
+        "reason": "REGISTER_WRITTEN"
+      },
+      {
+        "site": "0x116f1f0",
+        "target": "0x116b698",
+        "x19_preserved": false,
+        "reason": "REGISTER_WRITTEN"
+      },
+      {
+        "site": "0x116f22c",
+        "target": "0x1161030",
+        "x19_preserved": false,
+        "reason": "REGISTER_WRITTEN"
+      },
+      {
+        "site": "0x116f23c",
+        "target": "0x12f37f0",
+        "x19_preserved": false,
+        "reason": "NO_REACHABLE_RETURN"
+      },
+      {
+        "site": "0x116f248",
+        "target": "0x12f3760",
+        "x19_preserved": false,
+        "reason": "NO_REACHABLE_RETURN"
+      },
+      {
+        "site": "0x116f254",
+        "target": "0x12f3760",
+        "x19_preserved": false,
+        "reason": "NO_REACHABLE_RETURN"
+      },
+      {
+        "site": "0x116f25c",
+        "target": "0x12f36d0",
+        "x19_preserved": false,
+        "reason": "NO_REACHABLE_RETURN"
+      },
+      {
+        "site": "0x116f280",
+        "target": "0x120a6c8",
+        "x19_preserved": false,
+        "reason": "REGISTER_WRITTEN"
+      }
+    ],
+    "positive_x19_preservation": [
       [
-        "0x116f1c0",
+        "0x116f0b8",
         "0x116d3c0"
       ],
       [
-        "0x116f1cc",
-        "0x120661c"
+        "0x116f11c",
+        "0x116d3c0"
       ],
       [
-        "0x116f1e8",
-        "0x1215d28"
+        "0x116f130",
+        "0x12163d8"
       ],
       [
-        "0x116f1f0",
-        "0x116b698"
-      ],
-      [
-        "0x116f22c",
-        "0x1161030"
-      ],
-      [
-        "0x116f23c",
-        "0x12f37f0"
-      ],
-      [
-        "0x116f248",
-        "0x12f3760"
-      ],
-      [
-        "0x116f254",
-        "0x12f3760"
-      ],
-      [
-        "0x116f25c",
-        "0x12f36d0"
-      ],
-      [
-        "0x116f280",
-        "0x120a6c8"
+        "0x116f1c0",
+        "0x116d3c0"
       ]
     ],
-    "proof_policy": "exact target bounded 0x200-byte recursive no-write/all-return proof for X19 only; no platform ABI assumption; failed/absent proof becomes call barrier",
+    "x19_sink_origin": {
+      "kind": "call_barrier",
+      "site": "0x116f280",
+      "target": "0x120a6c8",
+      "callee_writes": [
+        [
+          "0x120a6cc",
+          "mov x19,x0"
+        ],
+        [
+          "0x120a724",
+          "ldp x30,x19,[sp],#0x10"
+        ]
+      ],
+      "stack_save_restore_proven": false
+    },
+    "implementation_commit": "04cd926fe4af8144e53fc7eb92c9c5096ce38fd0",
+    "correction_commit": "ac71215f23bd645119f830cc4c63d0b5b2f1974b",
+    "ci_runs": [
+      {
+        "name": "foundation",
+        "run_id": 46048379870,
+        "job_id": 140673240478,
+        "conclusion": "success",
+        "raw_log_inspected": true
+      },
+      {
+        "name": "factory",
+        "run_id": 46048379872,
+        "job_id": 140673240433,
+        "conclusion": "success",
+        "raw_log_inspected": true
+      },
+      {
+        "name": "compressed_prm",
+        "run_id": 46048379855,
+        "job_id": 140673240097,
+        "conclusion": "success",
+        "raw_log_inspected": true
+      },
+      {
+        "name": "movesetplus",
+        "run_id": 46048379836,
+        "job_id": 140673240368,
+        "conclusion": "success",
+        "raw_log_inspected": true
+      }
+    ],
+    "artifact": {
+      "id": 15223636352,
+      "zip_sha256": "389c894d70f8f8fda4186e9a86352944427caf22bfe302a5637f2ca1f210c2ee",
+      "inbound_args_json_sha256": "28892246edbb718743c1f8bd4ea43d28086f7a65453ab41221aa6725fd57d3fd"
+    },
     "consumer_abi_verified": false,
     "ownership_verified": false,
     "lifecycle_verified": false,
@@ -2747,35 +2921,25 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Inspect new HEAD Foundation push job raw log and artifact. If X19 survives only some calls, retain barriers for the rest; do not infer numeric value, pointer type or ownership. If X19 remains unknown, pivot to exact allocation/destructor evidence or provider-module bytes; no runtime hooks.",
-    "implementation_commit": "04cd926fe4af8144e53fc7eb92c9c5096ce38fd0",
-    "failed_run_id": 46046167094,
-    "failed_job_id": 140665868834,
-    "failed_raw_job_log_inspected": true,
-    "failure_reason": "The first synthetic exact-map assertion still expected only X1/X2 after TRACKED expanded to include X19; the implementation reached the test, but the assertion omitted the expected X19 window-entry unknown.",
-    "correction": "Update the exact synthetic reaching-definition map to include x19:false; preserve the separate positive/negative X19 call-preservation tests.",
-    "other_workflows": [
-      {
-        "name": "factory",
-        "run_id": 46046167081,
-        "job_id": 140665869136,
-        "conclusion": "success",
-        "raw_log_inspected": true
-      },
-      {
-        "name": "compressed_prm",
-        "run_id": 46046167126,
-        "job_id": 140665868803,
-        "conclusion": "success",
-        "raw_log_inspected": true
-      },
-      {
-        "name": "moveset_multimod",
-        "run_id": 46046167216,
-        "job_id": 140665868954,
-        "conclusion": "success",
-        "raw_log_inspected": true
-      }
-    ]
+    "next": "Prove exact stack slot save/restore for 0x120a6c8 and other X19-writing direct callees; require all-return path proof and explicit SP delta; retain barriers otherwise. Do not infer AAPCS64, pointer type, ownership or ABI."
+  },
+  "latest_verified_code_commit": "ac71215f23bd645119f830cc4c63d0b5b2f1974b",
+  "latest_verified_ci_runs": {
+    "head": "ac71215f23bd645119f830cc4c63d0b5b2f1974b",
+    "runs": [
+      46048379870,
+      46048379872,
+      46048379855,
+      46048379836
+    ],
+    "jobs": [
+      140673240478,
+      140673240433,
+      140673240097,
+      140673240368
+    ],
+    "all_completed_success": true,
+    "raw_logs_inspected": true,
+    "foundation_artifact_id": 15223636352
   }
 }

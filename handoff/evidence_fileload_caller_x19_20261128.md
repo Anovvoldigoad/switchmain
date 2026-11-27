@@ -18,12 +18,36 @@ The unique direct FileLoad call remains `BL 0x116f404` at `0x116f29c` (word LE `
 
 Falsifiable hypothesis: the X19 value reaching the FileLoad call can be narrowed to those one or both loads only if every intervening direct BL on the path has a positive, exact-target bounded callee preservation proof. The proof is deliberately stricter than AAPCS64: the callee window must have only returning paths, no X19 writes, no unresolved indirect calls/terminators, no out-of-window exits, and all nested direct callees recursively pass. A failed or missing proof becomes a call barrier. No calling convention is assumed.
 
-Direct calls scanned before the FileLoad callsite:
-`0x116f1c0 -> 0x116d3c0`, `0x116f1cc -> 0x120661c`, `0x116f1e8 -> 0x1215d28`, `0x116f1f0 -> 0x116b698`, `0x116f22c -> 0x1161030`, `0x116f23c -> 0x12f37f0`, `0x116f248 -> 0x12f3760`, `0x116f254 -> 0x12f3760`, `0x116f25c -> 0x12f36d0`, `0x116f280 -> 0x120a6c8`.
+Direct BL instructions independently decoded from the raw little-endian words in the caller window (23 total; the earlier hand-entered ten-call list was incomplete and omitted 13 instructions):
 
+- `0x116f0a0 -> 0x1215300` — not preserved / unresolved: OUT_OF_WINDOW_OR_UNDECODABLE_EDGE
+- `0x116f0b4 -> 0x116b6e8` — not preserved / unresolved: INDIRECT_TERMINATOR_UNRESOLVED
+- `0x116f0b8 -> 0x116d3c0` — preserved under the bounded no-write/all-return proof
+- `0x116f0c0 -> 0x116b3f0` — not preserved / unresolved: REGISTER_WRITTEN
+- `0x116f0c4 -> 0x116d420` — not preserved / unresolved: OUT_OF_WINDOW_OR_UNDECODABLE_EDGE
+- `0x116f0fc -> 0x1215390` — not preserved / unresolved: REGISTER_WRITTEN
+- `0x116f104 -> 0x1215300` — not preserved / unresolved: OUT_OF_WINDOW_OR_UNDECODABLE_EDGE
+- `0x116f118 -> 0x116b6e8` — not preserved / unresolved: INDIRECT_TERMINATOR_UNRESOLVED
+- `0x116f11c -> 0x116d3c0` — preserved under the bounded no-write/all-return proof
+- `0x116f124 -> 0x116b3f0` — not preserved / unresolved: REGISTER_WRITTEN
+- `0x116f128 -> 0x116d420` — not preserved / unresolved: OUT_OF_WINDOW_OR_UNDECODABLE_EDGE
+- `0x116f130 -> 0x12163d8` — preserved under the bounded no-write/all-return proof
+- `0x116f158 -> 0x21e0` — not preserved / unresolved: REGISTER_WRITTEN
+- `0x116f1c0 -> 0x116d3c0` — preserved under the bounded no-write/all-return proof
+- `0x116f1cc -> 0x120661c` — not preserved / unresolved: REGISTER_WRITTEN
+- `0x116f1e8 -> 0x1215d28` — not preserved / unresolved: REGISTER_WRITTEN
+- `0x116f1f0 -> 0x116b698` — not preserved / unresolved: REGISTER_WRITTEN
+- `0x116f22c -> 0x1161030` — not preserved / unresolved: REGISTER_WRITTEN
+- `0x116f23c -> 0x12f37f0` — not preserved / unresolved: NO_REACHABLE_RETURN
+- `0x116f248 -> 0x12f3760` — not preserved / unresolved: NO_REACHABLE_RETURN
+- `0x116f254 -> 0x12f3760` — not preserved / unresolved: NO_REACHABLE_RETURN
+- `0x116f25c -> 0x12f36d0` — not preserved / unresolved: NO_REACHABLE_RETURN
+- `0x116f280 -> 0x120a6c8` — not preserved / unresolved: REGISTER_WRITTEN
+
+Only four of the 23 bounded targets pass the strict X19 no-write/all-return rule: `0x116f0b8 -> 0x116d3c0`, `0x116f11c -> 0x116d3c0`, `0x116f130 -> 0x12163d8`, and `0x116f1c0 -> 0x116d3c0`. All other direct calls remain barriers.
 ## Implementation
 
-The bounded caller analyzer now tracks X1, X2 and X19. X1/X2 retain the existing conservative call barriers. X19 may cross a direct call only when `native_fileload_call_targets.prove_register_preservation` proves the exact target under the no-ABI bounded rule above. A mismatched proof target is rejected. The machine-readable artifact records all ten direct call targets and their full per-target proof reports, and retains all unresolved origins as call barriers.
+The bounded caller analyzer now tracks X1, X2 and X19. X1/X2 retain the existing conservative call barriers. X19 may cross a direct call only when `native_fileload_call_targets.prove_register_preservation` proves the exact target under the no-ABI bounded rule above. A mismatched proof target is rejected. The machine-readable artifact records all 23 direct call targets and their full per-target proof reports, and retains all unresolved origins as call barriers.
 
 Synthetic tests cover a positive preserved leaf, absent/negative proof, mismatched target, and conditional merge retaining both X19 definitions. Original-main tests assert the exact ten direct calls and keep numeric value, pointer type, ownership, lifetime, consumer ABI and runtime flags false.
 
@@ -36,6 +60,15 @@ Static host analysis over the SHA-pinned original main plus synthetic instructio
 
 The first X19 implementation HEAD `04cd926fe4af8144e53fc7eb92c9c5096ce38fd0` failed the synthetic map expectation; the corrected HEAD `5187073633307e43985684325ebdce9821948849` advanced through the original-main SHA check and X19 proof construction but failed at the hard-coded `expected_calls` list in `tests/test_native_fileload_inbound_args.py`. Exact push job: run `46046833811`, job `140668067037`; the raw log was inspected. The other three workflows on that HEAD completed successfully: factory run/job `46046833823/140668067179`, compressed PRM `46046833807/140668067777`, and MovesetPlus `46046833905/140668067827`; raw logs were inspected.
 
-The test no longer duplicates a manually transcribed call-target list. It independently decodes each original little-endian instruction word in the SHA-pinned caller window using the A64 `BL` encoding (`op[31:26] == 0b100101`, signed `imm26 << 2`) and compares that inventory with the per-call preservation proofs. Synthetic controls cover forward and backward BL, exclusion of unconditional B, malformed/unaligned rows, ordering, and invalid boundary. This retains exact callsite/target checking without trusting the same production helper or a stale transcription.
+The test no longer duplicates a manually transcribed call-target list. The prior ten-call list was incomplete: the independent raw-word decoder finds 23 direct BL instructions in the SHA-pinned window, including 13 omitted entries. It decodes each original little-endian word using the A64 `BL` encoding (`op[31:26] == 0b100101`, signed `imm26 << 2`) and compares the complete inventory with the per-call preservation proofs. Synthetic controls cover forward and backward BL, exclusion of unconditional B, malformed/unaligned rows, ordering, and invalid boundary. This retains exact callsite/target checking without trusting the same production helper or a stale transcription.
 
 The correction is pending push CI. No consumer ABI, pointer value/type, ownership/lifecycle, callback/async/rollback/unbind/destructor, archive precedence, or Uzuy claim is added. Release flags remain false.
+
+
+## Verified original-main result and CI — 2026-11-28
+
+Code/test HEAD `ac71215f23bd645119f830cc4c63d0b5b2f1974b` passed all four push workflows. Foundation run/job `46048379870/140673240478` completed SUCCESS; raw log inspected and emitted `PINNED_FILELOAD_INBOUND_ARGUMENTS_PASS` plus `RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS`. Factory `46048379872/140673240433`, compressed PRM `46048379855/140673240097`, and MovesetPlus `46048379836/140673240368` also completed SUCCESS; all raw job logs were inspected. Foundation artifact ID `15223636352`, ZIP SHA256 `389c894d70f8f8fda4186e9a86352944427caf22bfe302a5637f2ca1f210c2ee`; `native_fileload_inbound_args.json` SHA256 `28892246edbb718743c1f8bd4ea43d28086f7a65453ab41221aa6725fd57d3fd`.
+
+The caller window decodes 129/129 instructions with zero decode failures, but remains incomplete: one external direct inbound edge and four out-of-window control-flow edges are recorded. At the FileLoad callsite, X19's only possible reaching origin is a call barrier at `0x116f280 -> 0x120a6c8`. That bounded callee has X19 writes at `0x120a6cc: mov x19,x0` and `0x120a724: ldp x30,x19,[sp],#0x10`; the latter resembles a restore, but no matching incoming-X19 stack save/slot/path proof has been established. Therefore X19's value at FileLoad remains unknown. X1's local candidate is `add x1,sp,#0x30` at `0x116f284`; X2 is copied from X19 at `0x116f294`, so X2's payload identity is also unresolved. Do not infer pointer type, object ownership/lifetime, consumer ABI, or a calling convention.
+
+Next safe slice: inspect the exact stack save/restore and all return paths for `0x120a6c8`, then only extend preservation when a path-sensitive SP-slot proof matches the saved incoming X19 value on every return. Apply the same strict rule to the other X19-writing callees; keep all unresolved calls as barriers. No runtime hook.

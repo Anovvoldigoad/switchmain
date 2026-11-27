@@ -1288,3 +1288,22 @@ Parent HEAD: `95dda35fb5424425a720ced7c95db1f9ea6fdbee`. The existing unique Fil
 ### CI failure and correction — 2026-11-28
 
 The first code HEAD `04cd926fe4af8144e53fc7eb92c9c5096ce38fd0` triggered all four push workflows. Factory `46046167081/140665869136`, compressed PRM `46046167126/140665868803`, and MovesetPlus `46046167216/140665868954` completed successfully; their raw logs were inspected. Foundation `46046167094/140665868834` failed in `tests/test_native_fileload_inbound_args.py::synthetic` before original-main analysis: the exact expected `single_definition_proven_within_window` mapping still contained only X1/X2 after X19 was added to `TRACKED`. This is a stale test expectation, not a decoder or original-byte mismatch. Correction: include `x19: false` for the untouched window-entry value; dedicated X19 positive, negative, mismatched-target and branch-merge regressions remain. New push CI is pending; no PASS claim.
+
+
+## 2026-11-28 — FileLoad caller X19 direct-call inventory and provenance (VERIFIED_STATIC_CI_ONLY)
+
+Implementation parent `95dda35fb5424425a720ced7c95db1f9ea6fdbee`; X19 source commit `04cd926fe4af8144e53fc7eb92c9c5096ce38fd0`; regression correction commit `ac71215f23bd645119f830cc4c63d0b5b2f1974b` (parent `5187073633307e43985684325ebdce9821948849`). The initial synthetic-map expectation failure was fixed. A subsequent failure exposed a more substantive test-fixture error: the manually transcribed direct-call list contained only ten calls, while independent decoding of raw little-endian A64 instruction words found 23 direct BL instructions in the pinned caller window. The test now independently decodes signed imm26 BL targets, excludes unconditional B, and compares all site/target pairs with the exact-callee proof inventory. Synthetic cases cover forward/backward BL, B exclusion, malformed/unaligned words, ordering and invalid boundaries.
+
+Original main SHA256: `2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9`. Unique FileLoad caller remains `BL 0x116f404` at `0x116f29c`, word LE `5a000094`. Caller window `[0x116f09c,0x116f2a0)`, SHA256 `e18c0fcb01a040df2b232820813420313e623c5747bd0734507920507ba0775d`, 129/129 decoded instructions, zero decode failures, one external direct inbound edge, four out-of-window control-flow edges; the bounded window is therefore not complete or a proven function extent.
+
+Of the 23 direct BLs, only four exact targets pass the strict recursive bounded no-write/all-return proof for X19: `0x116f0b8 -> 0x116d3c0`, `0x116f11c -> 0x116d3c0`, `0x116f130 -> 0x12163d8`, and `0x116f1c0 -> 0x116d3c0`. At the FileLoad sink, X19 remains a call barrier at `0x116f280 -> 0x120a6c8`. The bounded target writes X19 at `0x120a6cc: mov x19,x0` and `0x120a724: ldp x30,x19,[sp],#0x10`; no matching saved incoming-X19 slot or all-return restoration proof exists yet. X1 has a local candidate definition `add x1,sp,#0x30` at `0x116f284`; X2 is copied from X19 at `0x116f294`, so its value remains unresolved. No pointer type, object ownership/lifetime, consumer ABI, async/rollback/unbind/destructor, archive precedence, or gameplay proof.
+
+All four push workflows for code/test HEAD `ac71215f23bd645119f830cc4c63d0b5b2f1974b` completed SUCCESS and raw job logs were inspected:
+- Foundation run/job `46048379870/140673240478` — `PINNED_FILELOAD_INBOUND_ARGUMENTS_PASS`, `RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS`; artifact `15223636352`.
+- Factory `46048379872/140673240433`.
+- Compressed PRM `46048379855/140673240097`.
+- MovesetPlus `46048379836/140673240368`.
+
+Foundation artifact ZIP SHA256 `389c894d70f8f8fda4186e9a86352944427caf22bfe302a5637f2ca1f210c2ee`; `native_fileload_inbound_args.json` SHA256 `28892246edbb718743c1f8bd4ea43d28086f7a65453ab41221aa6725fd57d3fd`. Evidence: `handoff/evidence_fileload_caller_x19_20261128.md`.
+
+Next: prove exact SP-relative save/restore of incoming X19 in `0x120a6c8` and every other X19-writing callee, with path-sensitive SP deltas, same-slot identity, no intervening overwrite and restoration on every return. Keep barriers where any condition is unresolved. No runtime hooks. All release flags remain false.
