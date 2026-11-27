@@ -76,8 +76,47 @@ def synthetic():
         else:
             raise AssertionError("Invalid caller window was accepted")
 
+def synthetic_x19_call_preservation():
+    # X19 survives only when the exact direct callee has a positive bounded proof.
+    code = struct.pack("<I", 0xAA0503F3) + _bl(4, 0x100) + _bl(8, 0x200)
+    proof = {"target": "0x100", "preserved": True, "reason": "SYNTHETIC_LEAF"}
+    preserved = analyze_caller_window(
+        code, 0, 12, 8, call_preservation={4: {"x19": proof}}
+    )
+    x19 = preserved["possible_reaching_definitions"]["x19"]
+    assert [(x["kind"], x.get("at")) for x in x19] == [("definition", "0x0")]
+    assert preserved["single_definition_proven_within_window"]["x19"] is True
+    # The same call remains a hard barrier when the callee proof is absent or negative.
+    blocked = analyze_caller_window(code, 0, 12, 8)
+    x19_blocked = blocked["possible_reaching_definitions"]["x19"]
+    assert len(x19_blocked) == 1 and x19_blocked[0]["kind"] == "call_barrier"
+    assert x19_blocked[0]["target"] == "0x100"
+    negative = analyze_caller_window(
+        code, 0, 12, 8,
+        call_preservation={4: {"x19": {"target": "0x100", "preserved": False, "reason": "REGISTER_WRITTEN"}}}
+    )
+    assert negative["possible_reaching_definitions"]["x19"][0]["kind"] == "call_barrier"
+    # A proof for a different callee must never preserve the incoming X19 value.
+    try:
+        analyze_caller_window(
+            code, 0, 12, 8,
+            call_preservation={4: {"x19": {"target": "0x104", "preserved": True, "reason": "FORGED_TARGET"}}}
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Mismatched X19 callee proof was accepted")
+    # Conditional paths retain both reaching X19 definitions at the sink.
+    words = [0xB4000060, 0xAA0503F3, 0x14000002, 0xAA0603F3]
+    merged_code = b"".join(struct.pack("<I", word) for word in words) + _bl(16, 0x2000)
+    merged = analyze_caller_window(merged_code, 0, 20, 16)
+    assert {x["at"] for x in merged["possible_reaching_definitions"]["x19"]} == {"0x4", "0xc"}
+    assert merged["single_definition_proven_within_window"]["x19"] is False
+
+
 def run(main, output):
     synthetic()
+    synthetic_x19_call_preservation()
     raw = main.read_bytes()
     report = inspect(raw)
     assert report["original_main_sha256"] == MAIN_SHA256
@@ -85,11 +124,30 @@ def run(main, output):
     assert report["incoming_direct_calls"][0]["source"] == hex(CALLSITE)
     assert report["incoming_direct_calls"][0]["kind"] == "BL"
     caller = report["caller_window"]
+    assert caller["tracked_registers"] == ["x1", "x2", "x19"]
     assert caller["callsite"] == hex(CALLSITE)
     assert caller["sink_target"] == hex(ENTRY)
     assert caller["sink_reachable_from_bounded_window"]
     assert caller["decoded_instruction_count"] > 64
     assert len(caller["window_sha256"]) == 64
+    assert caller["source_register_origins_not_traced"] is True
+    x2_origin = caller["possible_reaching_definitions"]["x2"][0]
+    assert x2_origin["instruction"]["read_registers"] == ["x19"]
+    assert caller["possible_reaching_definitions"]["x19"]
+    expected_calls = [
+        ("0x116f1c0", "0x116d3c0"), ("0x116f1cc", "0x120661c"),
+        ("0x116f1e8", "0x1215d28"), ("0x116f1f0", "0x116b698"),
+        ("0x116f22c", "0x1161030"), ("0x116f23c", "0x12f37f0"),
+        ("0x116f248", "0x12f3760"), ("0x116f254", "0x12f3760"),
+        ("0x116f25c", "0x12f36d0"), ("0x116f280", "0x120a6c8"),
+    ]
+    proofs = report["caller_call_preservation_proofs"]
+    assert [(x["site"], x["target"]) for x in proofs] == expected_calls
+    assert all(x["proof"]["register"] == "x19" for x in proofs)
+    assert all(isinstance(x["proof"]["preserved"], bool) for x in proofs)
+    assert all(x["proof"]["bounded_window_not_function_extent"] is True for x in proofs)
+    assert report["caller_x19_numeric_value_proven"] is False
+    assert report["caller_x19_pointer_type_verified"] is False
     for key in (
         "caller_function_extent_verified",
         "caller_argument_identity_verified",
@@ -144,7 +202,10 @@ def run(main, output):
     }
     print("PINNED_FILELOAD_INBOUND_ARGUMENTS_PASS",
           "caller", hex(CALLSITE), "window", hex(WINDOW_START), hex(WINDOW_END),
-          "origins", origins, "NO_OWNERSHIP_NO_ABI_NO_GAMEPLAY")
+          "origins", origins, "x19_calls",
+          [(x["site"], x["proof"]["preserved"], x["proof"]["reason"])
+           for x in report["caller_call_preservation_proofs"]],
+          "NO_OWNERSHIP_NO_ABI_NO_GAMEPLAY")
 
 
 if __name__ == "__main__":

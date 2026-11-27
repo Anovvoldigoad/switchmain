@@ -2073,5 +2073,15 @@
       "emulator_tested": false
     },
     "next_step": "Identify the original Switch import provider module from loader metadata and trace the bounded wrapper object's allocation/destruction; do not install a hook without runtime binding and lifecycle proof."
+  },
+  "native_fileload_caller_x19": {
+    "state": "PENDING_CI",
+    "source": "tools/portlib/native_fileload_inbound_args.py",
+    "test": "tests/test_native_fileload_inbound_args.py",
+    "proof_scope": "SHA-pinned caller X19 reaching definitions with exact direct-callee bounded preservation; static only",
+    "consumer_abi_verified": false,
+    "ownership_lifecycle_verified": false,
+    "archive_precedence_verified": false,
+    "uzuy_verified": false
   }
 }

@@ -2672,5 +2672,79 @@
       "emulator_tested": false
     },
     "next_action": "Resolve import provider module from original Switch loader metadata, then trace the wrapper object's allocation and destruction. Keep all runtime hooks disabled."
+  },
+  "native_fileload_caller_x19_20261128": {
+    "state": "PENDING_CI",
+    "parent_sha": "95dda35fb5424425a720ced7c95db1f9ea6fdbee",
+    "source": "tools/portlib/native_fileload_inbound_args.py",
+    "test": "tests/test_native_fileload_inbound_args.py",
+    "evidence_note": "handoff/evidence_fileload_caller_x19_20261128.md",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "caller": {
+      "callsite": "0x116f29c",
+      "window_start": "0x116f09c",
+      "window_end_exclusive": "0x116f2a0",
+      "window_sha256": "e18c0fcb01a040df2b232820813420313e623c5747bd0734507920507ba0775d"
+    },
+    "tracked_registers": [
+      "x1",
+      "x2",
+      "x19"
+    ],
+    "direct_calls": [
+      [
+        "0x116f1c0",
+        "0x116d3c0"
+      ],
+      [
+        "0x116f1cc",
+        "0x120661c"
+      ],
+      [
+        "0x116f1e8",
+        "0x1215d28"
+      ],
+      [
+        "0x116f1f0",
+        "0x116b698"
+      ],
+      [
+        "0x116f22c",
+        "0x1161030"
+      ],
+      [
+        "0x116f23c",
+        "0x12f37f0"
+      ],
+      [
+        "0x116f248",
+        "0x12f3760"
+      ],
+      [
+        "0x116f254",
+        "0x12f3760"
+      ],
+      [
+        "0x116f25c",
+        "0x12f36d0"
+      ],
+      [
+        "0x116f280",
+        "0x120a6c8"
+      ]
+    ],
+    "proof_policy": "exact target bounded 0x200-byte recursive no-write/all-return proof for X19 only; no platform ABI assumption; failed/absent proof becomes call barrier",
+    "consumer_abi_verified": false,
+    "ownership_verified": false,
+    "lifecycle_verified": false,
+    "archive_precedence_verified": false,
+    "uzuy_verified": false,
+    "release_flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next": "Inspect new HEAD Foundation push job raw log and artifact. If X19 survives only some calls, retain barriers for the rest; do not infer numeric value, pointer type or ownership. If X19 remains unknown, pivot to exact allocation/destructor evidence or provider-module bytes; no runtime hooks."
   }
 }

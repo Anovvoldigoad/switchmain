@@ -13,13 +13,14 @@ from capstone.arm64_const import ARM64_OP_MEM
 from .native_cpk_cfg import _edges
 from .native_cpk_graph import MAIN_SHA256, direct_branch
 from .native_fileload_corrected_entry import NEW_CANDIDATE
+from .native_fileload_call_targets import prove_register_preservation
 from .nso_profile import segments
 
 ENTRY = NEW_CANDIDATE
 CALLSITE = 0x116F29C
 WINDOW_START = CALLSITE - 0x200
 WINDOW_END = CALLSITE + 4
-TRACKED = ("x1", "x2")
+TRACKED = ("x1", "x2", "x19")
 MAX_EXTERNAL_INBOUND = 256
 
 
@@ -83,7 +84,8 @@ def _origin_kind(row):
 
 
 def analyze_caller_window(code, start, end, callsite, sink_target=None,
-                          external_inbound=()):
+                          external_inbound=(), call_preservation=None):
+    call_preservation = call_preservation or {}
     if start < 0 or end > len(code) or end <= start or (start & 3) or (end & 3):
         raise ValueError("Invalid aligned caller analysis window")
     if callsite < start or callsite + 4 > end or (callsite & 3):
@@ -178,12 +180,24 @@ def analyze_caller_window(code, start, end, callsite, sink_target=None,
         row = rows[pc]
         outgoing = {reg: set(state_in[pc][reg]) for reg in TRACKED}
         if _is_call(row["mnemonic"]):
+            direct_targets = [
+                target for kind, target in _edges(pc, row["mnemonic"], row["operands"])
+                if kind == "call" and target is not None
+            ]
+            call_target = direct_targets[0] if len(direct_targets) == 1 else None
             for reg in TRACKED:
+                proof = call_preservation.get(pc, {}).get(reg)
+                if reg == "x19" and proof and proof.get("preserved") is True:
+                    if call_target is None or proof.get("target") != hex(call_target):
+                        raise ValueError("X19 preservation proof does not match direct call target at " + hex(pc))
+                    continue
                 key = f"call_barrier:{reg}:{pc:x}"
                 add_origin(key, {
                     "kind": "call_barrier",
                     "register": reg,
                     "at": hex(pc),
+                    "target": hex(call_target) if call_target is not None else None,
+                    "preservation_reason": proof.get("reason") if proof else "NO_DIRECT_CALLEE_PROOF",
                     "instruction": row,
                 })
                 outgoing[reg] = {key}
@@ -248,8 +262,10 @@ def analyze_caller_window(code, start, end, callsite, sink_target=None,
             for reg in TRACKED
         },
         "instructions": [rows[pc] for pc in sorted(rows)],
+        "tracked_registers": list(TRACKED),
         "source_identity_proven": False,
         "source_register_origins_not_traced": True,
+        "x19_scope": "X19 reaching definitions survive a call only when that exact direct callee passes bounded recursive no-write/all-return proof; otherwise a call barrier is emitted",
         "pointer_type_verified": False,
         "allocation_or_destructor_verified": False,
         "ownership_verified": False,
@@ -281,8 +297,27 @@ def inspect(nso):
             external.append({"source": pc, "target": target, "kind": kind})
     if incoming != [{"source": CALLSITE, "kind": "BL", "word_le": code[CALLSITE:CALLSITE + 4].hex()}]:
         raise ValueError("Original FileLoad direct caller census changed")
+    preservation_cache = {}
+    call_preservation = {}
+    call_preservation_proofs = []
+    for pc in range(WINDOW_START, CALLSITE, 4):
+        edge = direct_branch(struct.unpack_from("<I", code, pc)[0], pc)
+        if edge is None or edge[0] != "BL":
+            continue
+        target = edge[1]
+        proof = prove_register_preservation(
+            code, target, "x19", preservation_cache
+        )
+        call_preservation[pc] = {"x19": proof}
+        call_preservation_proofs.append({
+            "site": hex(pc),
+            "target": hex(target),
+            "register": "x19",
+            "proof": proof,
+        })
     caller = analyze_caller_window(
-        code, WINDOW_START, WINDOW_END, CALLSITE, ENTRY, external
+        code, WINDOW_START, WINDOW_END, CALLSITE, ENTRY, external,
+        call_preservation,
     )
     return {
         "status": "SHA_PINNED_FILELOAD_SINGLE_DIRECT_CALLER_ARGUMENT_ORIGINS_STATIC_ONLY",
@@ -294,6 +329,9 @@ def inspect(nso):
             for x in incoming
         ],
         "caller_window": caller,
+        "caller_call_preservation_proofs": call_preservation_proofs,
+        "caller_x19_numeric_value_proven": False,
+        "caller_x19_pointer_type_verified": False,
         "caller_function_extent_verified": False,
         "caller_argument_identity_verified": False,
         "object_type_or_ownership_verified": False,
