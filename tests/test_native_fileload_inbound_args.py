@@ -198,6 +198,11 @@ def synthetic_x19_stack_restore():
     report = analyze_stack_register_restore(with_call, 0, len(with_call), "x19")
     assert report["local_restore_on_all_returns"] is True
     assert report["preservation_proven"] is False
+    # This fixture deliberately truncates the child target at 0x14, so the
+    # child proof must report its bounded-window failure while the parent
+    # reports the higher-level nested-call barrier.
+    assert report["nested_call_proofs"][0]["target"] == "0x14"
+    assert report["nested_call_proofs"][0]["reason"] == "BOUNDED_WINDOW_OUT_OF_RANGE"
     assert report["reason"] == "NESTED_CALL_STACK_EFFECT_UNPROVEN"
 
     unknown_store = bytes.fromhex("fe4fbfa9f30300aa410000f9fe4fc1a8c0035fd6")
