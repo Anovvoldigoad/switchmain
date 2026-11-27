@@ -1,3 +1,27 @@
+# FileLoad registration callee dispatch-flow trace — PENDING_CI
+
+Date: 2026-11-28
+Branch: port/full-api-v170
+Parent HEAD: dffbf1bd2fc5257a72279186545bbd8d956ab0fe
+
+## Previously verified in this run
+
+The bounded 0x116b390 callee trace passed all four direct push workflows. It found 24 reachable instructions, three direct-call barriers, one BR X2 indirect terminator at 0x116b3d0, one RET, one out-of-window B to 0x116d820, and 114 raw aligned B/BL inbound candidates (not a function/call count). Original main SHA256 remained 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. Foundation artifact 15238645422; ZIP SHA256 0fd7633194afc59e31548bf8767ce2651776b79f2388fb3248d7695853512ed8; report JSON SHA256 2977741b1f6763aa3e80444607362c1f0429c2aa2bde486f071220e190b0103c.
+
+## Current vertical slice
+
+New source: tools/portlib/native_fileload_registration_dispatch.py
+New test: tests/test_native_fileload_registration_dispatch.py
+The trace validates X0->X19, three direct calls, conditional exits, the 0x20 stack frame, X8<-*[X0], X2<-*[X8+0x58], X1<-X19 and BR X2 at 0x116b3d0. It records four bounded 0x100-byte target windows at 0x116b7b0, 0x116d380, 0x116b82c and 0x116d820. BR X2 target stays unresolved; no callback/vtable/destructor identity or ABI is claimed.
+
+State: PENDING_CI. Inspect all four direct push workflow runs, raw job logs, and Foundation artifact for this exact HEAD. Fix any failure from the original raw log before proceeding.
+
+Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. No runtime hook. Preserve Sakura aura107, Event236 marker 0x4E53 +0x2A and unmarked Event236.
+
+## Next action
+
+After CI, inspect the four bounded target reports. Follow only a concrete byte-backed edge; do not infer BR X2 as callback/vtable/destructor or authorize runtime hooking.
+
 # FileLoad registration-table callee trace — PENDING_CI
 
 Date: 2026-11-28

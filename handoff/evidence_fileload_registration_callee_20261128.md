@@ -30,3 +30,13 @@ The trace is deliberately bounded to [0x116b390,0x116b590). It does not claim th
 - Workflow blob: 68320ad7f4e5b3a728fe06a55528cc6225d6376b
 - CI state at commit preparation: PENDING_CI
 - Release flags remain false; no hook is added.
+
+## CI completion and authentic-main findings
+
+Code commit dffbf1bd2fc5257a72279186545bbd8d956ab0fe (parent a859b4454fe7f8b1b18c5930bba38c483e7b7b6). All four direct push workflows completed SUCCESS and raw job logs were inspected: Foundation 46082949640/job 140785901176; Factory 46082949657/job 140785901415; Compressed PRM 46082949728/job 140785901575; MovesetPlus 46082949502/job 140785901019.
+
+Foundation marker: PINNED_FILELOAD_REGISTRATION_CALLEE_PASS 0x116b390 reachable 24 direct_calls 3 indirect_calls 0 NO_CALLBACK_NO_DESTRUCTOR_NO_ABI_CLAIM. Artifact 15238645422 (513005 bytes), ZIP SHA256 0fd7633194afc59e31548bf8767ce2651776b79f2388fb3248d7695853512ed8; native_fileload_registration_callee.json SHA256 2977741b1f6763aa3e80444607362c1f0429c2aa2bde486f071220e190b0103c.
+
+Observed bounded CFG: window [0x116b390,0x116b590), SHA256 0c12e8360c74f94b501046964810bf996668d938fabcc87a93dd34e70a7afd55, 24 reachable instructions, RET 0x116b3dc, direct calls 0x116b39c->0x116b7b0, 0x116b3a4->0x116d380, 0x116b3b0->0x116b82c, indirect terminator BR X2 at 0x116b3d0, and out-of-window B 0x116b3ec->0x116d820. Raw aligned-text B/BL census reports 114 candidates and is not an exact call count or function-boundary proof.
+
+This is host/static evidence only. The new Python analyzer was not emulated as ARM64 and no Uzuy runtime test was performed. No consumer ABI, ownership/lifecycle, callback/destructor identity, archive precedence or hook is proven.

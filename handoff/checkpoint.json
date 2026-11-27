@@ -2782,7 +2782,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Inspect direct push Actions runs for the new 0x116b390 bounded callee trace and read every raw job log plus Foundation artifact. If the callee reveals an unresolved branch/call, follow one exact target in a separate bounded static slice; keep all release flags false and add no hook.",
+  "next_action": "Inspect the new direct-call/BR X2 dispatch-flow slice on this HEAD: all four push workflows, raw logs, and Foundation artifact. If it passes, use its bounded traces to choose one exact next target; do not infer callback/vtable/destructor or install a hook.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -4505,39 +4505,38 @@
     },
     "next": "Prove exact stack slot save/restore for 0x120a6c8 and other X19-writing direct callees; require all-return path proof and explicit SP delta; retain barriers otherwise. Do not infer AAPCS64, pointer type, ownership or ABI."
   },
-  "latest_verified_code_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
-  "latest_verified_ci_runs": {
-    "head": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
-    "runs": [
-      46077330193,
-      46077330238,
-      46077330215,
-      46077330236
-    ],
-    "jobs": [
-      140768008713,
-      140768008784,
-      140768008716,
-      140768008350
-    ],
-    "statuses": [
-      "success",
-      "success",
-      "success",
-      "success"
-    ],
-    "all_completed_success": true,
-    "raw_job_logs_inspected": true,
-    "foundation_marker": "PINNED_FILELOAD_REGISTRATION_TARGET_PASS 0x116b888 reachable 33 direct_calls 1 NO_CALLBACK_NO_DESTRUCTOR_NO_ABI_CLAIM",
-    "foundation_artifact_id": 15234858334,
-    "foundation_artifact_size_bytes": 509805,
-    "foundation_artifact_zip_sha256": "7dad9c43345b5094a7cc3531df03c11c10dc01fd5b86c145585952551eb3207a",
-    "registration_json_sha256": "7f70068cb9a900f95a40ed1adc9520a8441f635523acaf6c11b8a94fe43750e0",
-    "target_window_sha256": "877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec",
-    "host_static_test_pass": true,
-    "emulated_arm64_for_new_analyzer": false,
-    "uzuy_runtime_tested": false
-  },
+  "latest_verified_code_commit": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
+  "latest_verified_ci_runs": [
+    {
+      "name": "foundation",
+      "run_id": 46082949640,
+      "job_id": 140785901176,
+      "conclusion": "success",
+      "raw_log_inspected": true,
+      "artifact_id": 15238645422
+    },
+    {
+      "name": "factory",
+      "run_id": 46082949657,
+      "job_id": 140785901415,
+      "conclusion": "success",
+      "raw_log_inspected": true
+    },
+    {
+      "name": "compressed_prm",
+      "run_id": 46082949728,
+      "job_id": 140785901575,
+      "conclusion": "success",
+      "raw_log_inspected": true
+    },
+    {
+      "name": "movesetplus",
+      "run_id": 46082949502,
+      "job_id": 140785901019,
+      "conclusion": "success",
+      "raw_log_inspected": true
+    }
+  ],
   "native_fileload_x19_stack_restore_20261128": {
     "state": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
     "code_commit": "dbc23b155335c61602437c72e7f1ceabbe35553d",
@@ -4713,54 +4712,52 @@
     "uzuy_verified": false,
     "next": "Continue from 0x116b698 and nested 0x116b6c0 -> 0x116b7b0. Prove exact pointer/stack alias provenance for X1/X19 and each unknown store; investigate 0x12f3690/0x12f36a0 bounded control-flow exits without assuming function extent. Keep 0x116f280 -> 0x120a6c8 as a call barrier until every nested stack/alias condition is proven."
   },
-  "latest_verified_code_parent": "255adab51824809ca8920c4b65dba6a3d326fb41",
+  "latest_verified_code_parent": "a859b4454fe7f8b1b18c5930bba38c483e7b7b6c",
   "latest_verified_code_ci": {
-    "head": "dbc23b155335c61602437c72e7f1ceabbe35553d",
-    "parent": "255adab51824809ca8920c4b65dba6a3d326fb41",
+    "head": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
+    "parent": "a859b4454fe7f8b1b18c5930bba38c483e7b7b6c",
     "workflows": [
       {
         "name": "foundation",
-        "run_id": 46066250617,
-        "job_id": 140732155719,
+        "run_id": 46082949640,
+        "job_id": 140785901176,
         "conclusion": "success",
         "raw_log_inspected": true,
-        "artifact_id": 15231780092,
-        "artifact_sha256": "598559d70ee9d2911c52fc6109b722465b87b96d3e5b9b77f2de8b99f38fc7aa"
+        "artifact_id": 15238645422
       },
       {
         "name": "factory",
-        "run_id": 46066250621,
-        "job_id": 140732155517,
+        "run_id": 46082949657,
+        "job_id": 140785901415,
         "conclusion": "success",
         "raw_log_inspected": true
       },
       {
         "name": "compressed_prm",
-        "run_id": 46066250642,
-        "job_id": 140732155515,
+        "run_id": 46082949728,
+        "job_id": 140785901575,
         "conclusion": "success",
         "raw_log_inspected": true
       },
       {
         "name": "movesetplus",
-        "run_id": 46066250702,
-        "job_id": 140732155859,
+        "run_id": 46082949502,
+        "job_id": 140785901019,
         "conclusion": "success",
         "raw_log_inspected": true
       }
     ],
     "all_completed_success": true,
-    "raw_logs_inspected": true,
+    "raw_job_logs_inspected": true,
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-    "artifact_zip_sha256": "598559d70ee9d2911c52fc6109b722465b87b96d3e5b9b77f2de8b99f38fc7aa",
-    "artifact_files": {
-      "native_fileload_inbound_args_json_sha256": "d3a1ece8b05743da15643babe98d77fffa0995532477f0bf6e769bbec66102e5",
-      "native_fileload_call_targets_json_sha256": "ff165a8a94f42d19b9e70d9e9642250afcb76ccdba2f876cf1da77490413394d"
-    },
-    "consumer_abi_verified": false,
-    "ownership_lifecycle_verified": false,
-    "archive_precedence_verified": false,
-    "uzuy_verified": false
+    "foundation_artifact_id": 15238645422,
+    "foundation_artifact_size_bytes": 513005,
+    "foundation_artifact_zip_sha256": "0fd7633194afc59e31548bf8767ce2651776b79f2388fb3248d7695853512ed8",
+    "registration_callee_json_sha256": "2977741b1f6763aa3e80444607362c1f0429c2aa2bde486f071220e190b0103c",
+    "callee_window_sha256": "0c12e8360c74f94b501046964810bf996668d938fabcc87a93dd34e70a7afd55",
+    "host_static_test_pass": true,
+    "emulated_arm64_for_new_analyzer": false,
+    "uzuy_runtime_tested": false
   },
   "native_fileload_x19_recursive_proofs_20261128": {
     "state": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
@@ -5257,7 +5254,7 @@
     "fixed_in_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e"
   },
   "native_fileload_registration_callee_20261128": {
-    "state": "PENDING_CI",
+    "state": "VERIFIED_CI_STATIC_ONLY",
     "parent_sha": "a859b4454fe7f8b1b18c5930bba38c483e7b7b6c",
     "source": "tools/portlib/native_fileload_registration_callee.py",
     "source_blob": "3bf733dc6d3368a7569d79853bef557fd330a03d",
@@ -5287,25 +5284,134 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Inspect all four direct push runs, raw job logs and Foundation artifact for this exact HEAD. Use the callee CFG to choose the next bounded target only; do not infer callback/destructor/ownership/ABI.",
-    "code_commit": null,
+    "next": "Trace the three exact direct callees and the X2 tail-branch source chain; do not identify the BR X2 target as a callback/vtable/destructor without further proof.",
+    "code_commit": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
     "ci": {
-      "status": "pending",
-      "raw_job_logs_inspected": false,
-      "artifact_id": null
+      "head": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
+      "parent": "a859b4454fe7f8b1b18c5930bba38c483e7b7b6c",
+      "workflows": [
+        {
+          "name": "foundation",
+          "run_id": 46082949640,
+          "job_id": 140785901176,
+          "conclusion": "success",
+          "raw_log_inspected": true,
+          "artifact_id": 15238645422
+        },
+        {
+          "name": "factory",
+          "run_id": 46082949657,
+          "job_id": 140785901415,
+          "conclusion": "success",
+          "raw_log_inspected": true
+        },
+        {
+          "name": "compressed_prm",
+          "run_id": 46082949728,
+          "job_id": 140785901575,
+          "conclusion": "success",
+          "raw_log_inspected": true
+        },
+        {
+          "name": "movesetplus",
+          "run_id": 46082949502,
+          "job_id": 140785901019,
+          "conclusion": "success",
+          "raw_log_inspected": true
+        }
+      ],
+      "all_completed_success": true,
+      "raw_job_logs_inspected": true,
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "foundation_artifact_id": 15238645422,
+      "foundation_artifact_size_bytes": 513005,
+      "foundation_artifact_zip_sha256": "0fd7633194afc59e31548bf8767ce2651776b79f2388fb3248d7695853512ed8",
+      "registration_callee_json_sha256": "2977741b1f6763aa3e80444607362c1f0429c2aa2bde486f071220e190b0103c",
+      "callee_window_sha256": "0c12e8360c74f94b501046964810bf996668d938fabcc87a93dd34e70a7afd55",
+      "host_static_test_pass": true,
+      "emulated_arm64_for_new_analyzer": false,
+      "uzuy_runtime_tested": false
     },
-    "research": {
-      "modmanager_latest_tag": "2.1.2.1",
-      "modmanager_latest_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
-      "modmanager_prior_tag": "2.1.2.0",
-      "modmanager_prior_commit": "a4a6e7e2aeec79cffa7d477e4b1a8fcd05823983",
-      "toolbox_latest_tag": "2.1.2.1",
-      "toolbox_latest_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
-      "toolbox_prior_tag": "2.1.2.0",
-      "toolbox_prior_commit": "dfe371dd4f1f0d1d1ad74a79e1bc8192a6d1fc31",
-      "pycricodecs_commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
-      "rea_current_head": "c4bc2f7fcb73882f638b9d9a31fd49156bd902f6",
-      "rea_methodology_commit": "0386efd1e1dfa41af41f804a6be56c6f5b7615d4"
+    "observations": {
+      "caller_load_site": "0x116b8a0",
+      "caller_load_operand": "ldr x0, [x8, #0x28]",
+      "direct_call_site": "0x116b8a4",
+      "direct_callee_target": "0x116b390",
+      "window": "[0x116b390,0x116b590)",
+      "window_bytes": 512,
+      "window_sha256": "0c12e8360c74f94b501046964810bf996668d938fabcc87a93dd34e70a7afd55",
+      "reachable_decoded_words": 24,
+      "return_sites": [
+        "0x116b3dc"
+      ],
+      "direct_calls_not_walked": [
+        {
+          "site": "0x116b39c",
+          "target": "0x116b7b0"
+        },
+        {
+          "site": "0x116b3a4",
+          "target": "0x116d380"
+        },
+        {
+          "site": "0x116b3b0",
+          "target": "0x116b82c"
+        }
+      ],
+      "unresolved_indirect_calls": [],
+      "indirect_terminators": [
+        "0x116b3d0"
+      ],
+      "indirect_terminator_operand": "br x2",
+      "out_of_window_edges": [
+        {
+          "from": "0x116b3ec",
+          "kind": "unconditional",
+          "target": "0x116d820"
+        }
+      ],
+      "raw_aligned_text_B_BL_inbound_candidate_count": 114,
+      "function_extent_verified": false,
+      "callback_identity_verified": false,
+      "destructor_identity_verified": false,
+      "ownership_lifecycle_verified": false,
+      "native_consumer_abi_verified": false
     }
+  },
+  "native_fileload_registration_dispatch_20261128": {
+    "state": "PENDING_CI",
+    "parent_sha": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
+    "source": "tools/portlib/native_fileload_registration_dispatch.py",
+    "source_blob": "c8897caaacebb6d96eca351bcf775cd5cd468434",
+    "test": "tests/test_native_fileload_registration_dispatch.py",
+    "test_blob": "d16853b274be4c2a30a6f91141bfc8f615e6d236",
+    "workflow": ".github/workflows/verify-port-foundation.yml",
+    "workflow_blob": "766ec521f3214393c84afb8c6dd54ff69e34bc84",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "callee_target": "0x116b390",
+    "indirect_branch_site": "0x116b3d0",
+    "indirect_branch_register": "x2",
+    "indirect_branch_target_resolved": false,
+    "direct_targets": [
+      "0x116b7b0",
+      "0x116d380",
+      "0x116b82c"
+    ],
+    "alternate_branch_target": "0x116d820",
+    "target_window_bytes": 256,
+    "callback_identity_verified": false,
+    "vtable_identity_verified": false,
+    "destructor_identity_verified": false,
+    "ownership_lifecycle_verified": false,
+    "native_consumer_abi_verified": false,
+    "archive_precedence_verified": false,
+    "native_hook_added": false,
+    "release_flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next": "Run all four direct push workflows for this HEAD, inspect raw logs and Foundation artifact. Keep BR X2 unresolved and add no hook."
   }
 }
