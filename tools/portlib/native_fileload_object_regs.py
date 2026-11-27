@@ -3,7 +3,7 @@
 Enumerate possible register *write origins* at already proven native
 status callsites and context-error guard. Do not infer class identity,
 ownership, object type, destructor, async completion or safe hook ABI.
-Original AAPCS64 callee-saved preservation is an explicit assumption.
+Register preservation across calls is proven only from bounded original callee code.
 """
 import hashlib
 from collections import deque
@@ -14,6 +14,7 @@ from .native_cpk_graph import MAIN_SHA256
 from .native_cpk_cfg import _edges
 from .native_fileload_corridor_cfg import ENTRY, END
 from .native_fileload_status import inspect as inspect_status
+from .native_fileload_call_targets import inspect as inspect_call_targets
 from .nso_profile import segments
 
 SITES = {
@@ -33,11 +34,13 @@ def _written(ins, reg):
     return any(ins.reg_name(x).lower() in aliases for x in written)
 
 
-def _trace_register(graph, instructions, reg, start, sites, low, high):
-    """Forward reaching-def union with kill on an actual write to X/Wn.
+def _trace_register(graph, instructions, reg, start, sites, low, high,
+                    call_preservation=None):
+    """Forward reaching-def union with conservative direct-callee call barriers.
 
-    Calls are assumed to return and respect the ABI-preserved X20/X22
-    registers, but this is not evidence about *real* foreign callbacks.
+    A call preserves a tracked register only when its exact bounded target and
+    every nested direct callee are proven not to write it on any returning path.
+    No platform calling convention or foreign-callback behavior is assumed.
     """
     entry = f"entry_{reg}_caller_value"
     incoming = {start: {entry}}
@@ -54,18 +57,23 @@ def _trace_register(graph, instructions, reg, start, sites, low, high):
         ins = instructions.get(pc)
         if ins is None:
             raise ValueError("Undecodable reached instruction in register audit")
-        # Under AAPCS64, X1/X2 are caller-saved; an opaque BL/BLR
-        # invalidates any incoming X1/X2 argument value even if Capstone
-        # does not report these implicit ABI effects. X20/X22 are
-        # callee-saved and remain modeled as preserved across calls.
-        clobber=(reg in ("x1","x2") and
-                 ins.mnemonic in ("bl","blr","blraa","blrab"))
-        if _written(ins, reg) or clobber:
+        call_edges = [target for kind, target in graph[pc] if kind == "call"]
+        indirect_call = any(kind == "indirect_call_unresolved"
+                            for kind, _ in graph[pc])
+        call_present = bool(call_edges or indirect_call)
+        proof = (call_preservation or {}).get(pc, {}).get(reg)
+        call_clobber = call_present and not (proof and proof.get("preserved") is True)
+        if _written(ins, reg) or call_clobber:
             definitions[pc] = {
                 "at":hex(pc), "register":reg,
                 "instruction":f"{ins.mnemonic} {ins.op_str}".strip(),
-                "kind":"caller_saved_call_clobber" if clobber
+                "kind":"unproven_call_clobber" if call_clobber
                        else "original_instruction_write",
+                "callee_targets":[hex(x) for x in call_edges],
+                "callee_preservation_reason":(
+                    proof.get("reason") if proof else
+                    ("INDIRECT_CALL_TARGET_UNRESOLVED" if indirect_call else
+                     "NO_EXACT_CALLEE_PRESERVATION_PROOF")),
                 "assignment_source_semantics_resolved":False}
             out={f"def@{pc:x}"}
         else:
@@ -102,9 +110,7 @@ def _trace_register(graph, instructions, reg, start, sites, low, high):
             if label==entry:
                 origins.append({
                     "at":None,
-                    "kind":("incoming_caller_saved_argument_value"
-                            if reg in ("x1","x2")
-                            else "incoming_callee_saved_value"),
+                    "kind":"incoming_register_value",
                     "register":reg,
                     "source_identity_proven":False})
             else:
@@ -141,10 +147,17 @@ def inspect(nso):
         if len(one)==1 and one[0].size==4:
             ins[pc]=one[0]
             graph[pc]=_edges(pc,one[0].mnemonic,one[0].op_str)
+    call_report=inspect_call_targets(nso)
+    call_preservation={
+        int(row["site"],16):row["registers"]
+        for row in call_report["pre_status_call_register_preservation"]
+    }
     traces={}
     for reg in ("x20","x22","x1","x2"):
         sites={k:site for k,(r,site) in SITES.items() if r==reg}
-        traces[reg]=_trace_register(graph,ins,reg,ENTRY,sites,ENTRY,END)
+        traces[reg]=_trace_register(
+            graph,ins,reg,ENTRY,sites,ENTRY,END,call_preservation
+        )
     if status["verified_status_argument_and_callsite_words"][1]["at"]!="0x116f51c":
         raise ValueError("Status caller word order changed")
     for name,(reg,site) in SITES.items():
@@ -152,40 +165,47 @@ def inspect(nso):
             raise ValueError("Original object register origin missing: "+name)
         if site not in ins:
             raise ValueError("Original object source site no longer decoded")
-    # The original machine instructions and reaching definitions now
-    # distinguish the status object source X2 from the guard source X1.
-    # These are register mappings, not class/ownership/lifetime proofs.
-    pinned = [
-        ("first_status_X20_argument_move", "x20",
-         "0x116f434", "mov x20, x2", "X2"),
-        ("second_status_X20_argument_move", "x20",
-         "0x116f434", "mov x20, x2", "X2"),
-        ("second_guard_X22_field_base", "x22",
-         "0x116f438", "mov x22, x1", "X1")
+    # The two MOV instructions capture caller-entry register values.
+    # Their later use is separately gated by exact direct-callee code proofs.
+    capture_specs = [
+        ("X2_to_X20_capture", "x20", 0x116F434, "mov x20, x2",
+         "x2", "X2_before_X20_capture",
+         ("first_status_X20_argument_move", "second_status_X20_argument_move")),
+        ("X1_to_X22_capture", "x22", 0x116F438, "mov x22, x1",
+         "x1", "X1_before_X22_capture",
+         ("second_guard_X22_field_base",)),
     ]
     alias_proofs = []
-    entry_checks = {
-        "X2": ("x2","X2_before_X20_capture"),
-        "X1": ("x1","X1_before_X22_capture")
-    }
-    for name,reg,at,phrase,source in pinned:
-        origin = traces[reg]["sites"][name]["possible_reaching_writes"]
-        if len(origin) != 1 or origin[0]["at"] != at or origin[0]["instruction"] != phrase:
-            raise ValueError("Pinned native caller register provenance changed: "+name)
-        origin_pc = int(at,16)
-        src_reg,src_site=entry_checks[source]
-        src_origins=traces[src_reg]["sites"][src_site]["possible_reaching_writes"]
-        unchanged=(len(src_origins)==1 and src_origins[0]["kind"]==
-                   "incoming_caller_saved_argument_value" and src_origins[0]["at"] is None)
+    for name, reg, at, phrase, src_reg, src_site, observations in capture_specs:
+        if at not in ins or ins[at].mnemonic != "mov" or ins[at].op_str != phrase:
+            raise ValueError("Pinned native capture instruction changed: " + name)
+        src_origins = traces[src_reg]["sites"][src_site]["possible_reaching_writes"]
+        unchanged = (len(src_origins) == 1 and src_origins[0]["kind"] ==
+                     "incoming_register_value" and src_origins[0]["at"] is None)
+        observed = []
+        for observation in observations:
+            origins = traces[reg]["sites"][observation]["possible_reaching_writes"]
+            capture_only = (len(origins) == 1 and origins[0].get("at") == hex(at)
+                            and origins[0].get("kind") == "original_instruction_write")
+            observed.append({
+                "site": traces[reg]["sites"][observation]["at"],
+                "possible_reaching_writes": origins,
+                "capture_value_only_reaches_observation": capture_only,
+            })
         alias_proofs.append({
-            "at":at, "original_word_le":code[origin_pc:origin_pc+4].hex(),
-            "original_instruction":phrase, "source_register_at_copy":source,
-            "destination_saved_register":reg.upper(),
-            "observed_at":traces[reg]["sites"][name]["at"],
-            "source_register_inbound_origin_candidates":src_origins,
-            "source_register_unchanged_since_entry_in_bounded_static_CFG":unchanged,
-            "argument_source_AAPCS64_caller_saved_call_clobbers_modeled":True,
-            "pointer_type_and_ownership_proven":False
+            "name": name,
+            "capture_at": hex(at),
+            "capture_word_le": code[at:at+4].hex(),
+            "capture_instruction": phrase,
+            "source_register_at_capture": src_reg.upper(),
+            "destination_register": reg.upper(),
+            "source_register_inbound_origin_candidates": src_origins,
+            "source_register_unchanged_since_entry_in_bounded_static_CFG": unchanged,
+            "observations": observed,
+            "preservation_to_all_observations_proven": all(
+                x["capture_value_only_reaches_observation"] for x in observed
+            ),
+            "pointer_type_and_ownership_proven": False,
         })
     return {
         "status":"SHA_PINNED_ORIGINAL_FILELOAD_X20_X22_REACHING_WRITE_SITES_ONLY",
@@ -197,7 +217,10 @@ def inspect(nso):
                                       "0x116f5bc MOV X0,X20"],
         "separate_guard_witness":"0x116f5ac LDR W8,[X22,#0x1D8]",
         "register_traces":traces,
-        "AAPCS64_callee_saved_registers_assumed_not_runtime_proven":True,
+        "call_preservation_proofs":call_report["pre_status_call_register_preservation"],
+        "call_preservation_method":call_report["call_preservation_method"],
+        "no_platform_calling_convention_assumed":True,
+        "AAPCS64_callee_saved_registers_assumed_not_runtime_proven":False,
         "register_write_origin_not_pointer_class_or_ownership":True,
         "X1_X2_entry_argument_proven_at_capture_only_if_unmodified":True,
         "all_function_paths_proven":False,

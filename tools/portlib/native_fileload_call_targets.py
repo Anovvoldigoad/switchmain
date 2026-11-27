@@ -17,6 +17,8 @@ from .nso_profile import segments
 
 MAX_REACHED = 384
 CALLEE_SPAN = 0x200
+MAX_PRESERVATION_DEPTH = 12
+MAX_PRESERVATION_TARGETS = 128
 TRACKED = tuple(f"x{i}" for i in range(19, 29))
 EXPECTED_PREFIX_CALLS = {
     0x116F43C: 0x116D3C0,
@@ -200,6 +202,87 @@ def analyze_window(code, start, end, max_reached=MAX_REACHED):
     }
 
 
+def prove_register_preservation(code, target, reg, cache=None, active=(), depth=0):
+    """Conservatively prove one register untouched across a bounded direct callee.
+
+    No platform ABI is assumed. A proof requires every reachable path to return
+    inside the bounded window, no writes to the tracked register, no indirect or
+    out-of-window exits, and recursively proven direct callees. Spill/restore
+    patterns are intentionally unresolved until their stack effects are proven.
+    """
+    if reg not in TRACKED:
+        raise ValueError("Register-preservation proof supports only tracked X19-X28")
+    if cache is None:
+        cache = {}
+    key = (target, reg)
+    if key in active:
+        return {"target": hex(target), "register": reg, "preserved": False,
+                "reason": "CALL_GRAPH_CYCLE", "bounded_window_not_function_extent": True}
+    if key in cache:
+        return dict(cache[key])
+    if depth >= MAX_PRESERVATION_DEPTH:
+        return {"target": hex(target), "register": reg, "preserved": False,
+                "reason": "CALL_DEPTH_LIMIT", "bounded_window_not_function_extent": True}
+    if len(cache) >= MAX_PRESERVATION_TARGETS:
+        return {"target": hex(target), "register": reg, "preserved": False,
+                "reason": "CALL_TARGET_BUDGET", "bounded_window_not_function_extent": True}
+    end = target + CALLEE_SPAN
+    if target < 0 or target & 3 or end > len(code):
+        return {"target": hex(target), "register": reg, "preserved": False,
+                "reason": "BOUNDED_WINDOW_OUT_OF_RANGE",
+                "bounded_window_not_function_extent": True}
+    try:
+        report = analyze_window(code, target, end)
+    except ValueError as exc:
+        return {"target": hex(target), "register": reg, "preserved": False,
+                "reason": "BOUNDED_CFG_UNRESOLVED", "detail": str(exc),
+                "bounded_window_not_function_extent": True}
+    base = {
+        "target": hex(target), "register": reg,
+        "window_end_exclusive": hex(end),
+        "window_sha256": report["window_sha256"],
+        "reachable_instructions": report["reachable_instructions"],
+        "return_sites": report["return_sites"],
+        "bounded_window_not_function_extent": True,
+        "register_write_sites": report["register_effects"][reg]["writes"],
+        "unresolved_indirect_calls": report["unresolved_indirect_calls"],
+        "indirect_terminators": report["indirect_terminators"],
+        "other_or_out_of_window_exits": report["other_or_out_of_window_exits"],
+        "nested_direct_calls": report["nested_direct_calls"],
+    }
+    if base["register_write_sites"]:
+        result = {**base, "preserved": False, "reason": "REGISTER_WRITTEN"}
+    elif base["other_or_out_of_window_exits"]:
+        result = {**base, "preserved": False,
+                  "reason": "OUT_OF_WINDOW_OR_UNDECODABLE_EDGE"}
+    elif not base["return_sites"]:
+        result = {**base, "preserved": False, "reason": "NO_REACHABLE_RETURN"}
+    elif base["unresolved_indirect_calls"]:
+        result = {**base, "preserved": False, "reason": "INDIRECT_CALL_UNRESOLVED"}
+    elif base["indirect_terminators"]:
+        result = {**base, "preserved": False, "reason": "INDIRECT_TERMINATOR_UNRESOLVED"}
+    else:
+        children = []
+        for call in base["nested_direct_calls"]:
+            child = prove_register_preservation(
+                code, int(call["target"], 16), reg, cache,
+                active + (key,), depth + 1
+            )
+            children.append({
+                "site": call["site"], "target": call["target"],
+                "preserved": child["preserved"], "reason": child["reason"]
+            })
+        failed = [x for x in children if not x["preserved"]]
+        result = {
+            **base, "nested_call_proofs": children,
+            "preserved": not failed,
+            "reason": ("NESTED_CALLEE_UNPROVEN" if failed else
+                       "NO_REGISTER_WRITES_ALL_DIRECT_CALLEES_PROVEN")
+        }
+    cache[key] = result
+    return dict(result)
+
+
 def inspect(nso):
     digest = hashlib.sha256(nso).hexdigest()
     if digest != MAIN_SHA256:
@@ -249,6 +332,17 @@ def inspect(nso):
                 "bounded_window_not_function_extent": True,
                 "preservation_proven": False,
             })
+    preservation_cache = {}
+    call_preservation = []
+    for call in prefix:
+        target = int(call["target"], 16)
+        call_preservation.append({
+            "site": call["site"], "target": call["target"],
+            "registers": {
+                reg: prove_register_preservation(code, target, reg, preservation_cache)
+                for reg in ("x20", "x22")
+            }
+        })
     return {
         "status": "PINNED_FILELOAD_DIRECT_CALLEE_REGISTER_EFFECT_INVENTORY_STATIC_ONLY",
         "original_main_sha256": digest,
@@ -258,6 +352,9 @@ def inspect(nso):
         "all_reachable_direct_calls": calls,
         "unique_pre_status_targets": [hex(x) for x in targets],
         "target_reports": reports,
+        "pre_status_call_register_preservation": call_preservation,
+        "call_preservation_method": "exact-main bounded recursive direct-callee proof; no writes, all paths return, no indirect/out-of-window edges, nested direct calls recursively proven; stack spill/restore remains unresolved",
+        "no_platform_calling_convention_assumed": True,
         "additional_reachable_direct_calls": additional_calls,
         "additional_unique_targets": [hex(x) for x in additional_targets],
         "additional_target_reports": additional_reports,

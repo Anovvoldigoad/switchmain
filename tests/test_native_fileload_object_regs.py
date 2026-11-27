@@ -42,7 +42,22 @@ def synthetic():
     ins={0:Dummy(),4:Dummy("cbz","x0, #0"),8:Dummy("ret","")}
     flow=_trace_register(graph,ins,"x22",0,{"exit":8},0,12)
     assert flow["sites"]["exit"]["possible_reaching_writes"][0]["kind"]==(
-        "incoming_callee_saved_value")
+        "incoming_register_value")
+
+    call_graph={0:[("call",0x100),("fallthrough",4)],
+                4:[("return_or_indirect_terminator",None)]}
+    call_ins={0:Dummy("bl","#0x100"),4:Dummy("ret","")}
+    preserved=_trace_register(
+        call_graph,call_ins,"x20",0,{"after":4},0,8,
+        {0:{"x20":{"preserved":True,"reason":"synthetic_leaf"}}}
+    )
+    assert preserved["sites"]["after"]["possible_reaching_writes"]==[
+        {"at":None,"kind":"incoming_register_value","register":"x20",
+         "source_identity_proven":False}
+    ]
+    unproven=_trace_register(call_graph,call_ins,"x20",0,{"after":4},0,8,{})
+    assert unproven["sites"]["after"]["possible_reaching_writes"][0]["kind"]==(
+        "unproven_call_clobber")
 
 
 def run(main,out):
@@ -55,18 +70,24 @@ def run(main,out):
         assert proof["register_traces"]["x20"]["sites"][key]["possible_reaching_writes"]
     assert proof["register_traces"]["x22"]["sites"]["second_guard_X22_field_base"][
         "possible_reaching_writes"]
-    assert [(x["source_register_at_copy"],x["destination_saved_register"],
-             x["observed_at"])
+    assert [(x["source_register_at_capture"],x["destination_register"],
+             [o["site"] for o in x["observations"]])
             for x in proof["original_caller_argument_register_alias_witnesses"]] == [
-                ("X2","X20","0x116f51c"),
-                ("X2","X20","0x116f5bc"),
-                ("X1","X22","0x116f5ac")]
+                ("X2","X20",["0x116f51c","0x116f5bc"]),
+                ("X1","X22",["0x116f5ac"])]
     for src,name in (("x1","X1_before_X22_capture"),
                      ("x2","X2_before_X20_capture")):
         origins=proof["register_traces"][src]["sites"][name]["possible_reaching_writes"]
         assert len(origins)==1
-        assert origins[0]["kind"]=="incoming_caller_saved_argument_value"
+        assert origins[0]["kind"]=="incoming_register_value"
     assert all(x["source_register_unchanged_since_entry_in_bounded_static_CFG"]
+               for x in proof["original_caller_argument_register_alias_witnesses"])
+    assert proof["no_platform_calling_convention_assumed"] is True
+    assert proof["AAPCS64_callee_saved_registers_assumed_not_runtime_proven"] is False
+    assert proof["call_preservation_proofs"]
+    assert all("preserved" in row["registers"]["x20"]
+               for row in proof["call_preservation_proofs"])
+    assert any(not x["preservation_to_all_observations_proven"]
                for x in proof["original_caller_argument_register_alias_witnesses"])
     for alias in proof["original_caller_argument_register_alias_witnesses"]:
         assert "source_register_inbound_origin_candidates" in alias

@@ -1,13 +1,16 @@
 """Pinned FileLoad direct-callee register-effect inventory regressions."""
 import argparse
 import json
+import struct
 import sys
 from pathlib import Path
 
 R = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(R / "tools"))
 from portlib.native_cpk_graph import MAIN_SHA256
-from portlib.native_fileload_call_targets import analyze_window, inspect
+from portlib.native_fileload_call_targets import (
+    analyze_window, inspect, prove_register_preservation
+)
 
 
 def _words(*values):
@@ -81,6 +84,46 @@ def synthetic():
         raise AssertionError("Accepted a partial ARM64 instruction window")
 
 
+def preservation_synthetic():
+    code=bytearray(0x400)
+    struct.pack_into("<I",code,0x00,0x94000010)  # BL 0x40
+    struct.pack_into("<I",code,0x04,0xD65F03C0)  # RET
+    struct.pack_into("<I",code,0x40,0xD65F03C0)  # leaf RET
+    good=prove_register_preservation(bytes(code),0,"x20")
+    assert good["preserved"] is True
+    assert good["reason"]=="NO_REGISTER_WRITES_ALL_DIRECT_CALLEES_PROVEN"
+    assert good["nested_call_proofs"]==[
+        {"site":"0x0","target":"0x40","preserved":True,
+         "reason":"NO_REGISTER_WRITES_ALL_DIRECT_CALLEES_PROVEN"}
+    ]
+    bad=bytearray(code)
+    struct.pack_into("<I",bad,0x40,0xAA0103F4)  # MOV X20,X1
+    struct.pack_into("<I",bad,0x44,0xD65F03C0)
+    rejected=prove_register_preservation(bytes(bad),0,"x20")
+    assert rejected["preserved"] is False
+    assert rejected["reason"]=="NESTED_CALLEE_UNPROVEN"
+    indirect=bytearray(code)
+    struct.pack_into("<I",indirect,0x40,0xD63F0120)  # BLR X9
+    struct.pack_into("<I",indirect,0x44,0xD65F03C0)
+    unresolved=prove_register_preservation(bytes(indirect),0,"x20")
+    assert unresolved["preserved"] is False
+    assert unresolved["nested_call_proofs"][0]["reason"]=="INDIRECT_CALL_UNRESOLVED"
+    recursive=bytearray(code)
+    struct.pack_into("<I",recursive,0x40,0x94000000)  # BL 0x40
+    struct.pack_into("<I",recursive,0x44,0xD65F03C0)
+    cycle=prove_register_preservation(bytes(recursive),0,"x20")
+    assert cycle["preserved"] is False
+    assert cycle["nested_call_proofs"][0]["reason"]=="NESTED_CALLEE_UNPROVEN"
+    outside=bytearray(code)
+    struct.pack_into("<I",outside,0x40,0x140000B0)  # B 0x300, outside [0x40,0x240)
+    edge=prove_register_preservation(bytes(outside),0,"x20")
+    assert edge["preserved"] is False
+    assert edge["nested_call_proofs"][0]["reason"]=="OUT_OF_WINDOW_OR_UNDECODABLE_EDGE"
+    short=prove_register_preservation(bytes(code[:0x200]),0x40,"x20")
+    assert short["preserved"] is False
+    assert short["reason"]=="BOUNDED_WINDOW_OUT_OF_RANGE"
+
+
 def run(main, output):
     synthetic()
     raw = main.read_bytes()
@@ -141,6 +184,10 @@ def run(main, output):
     assert report["archive_precedence_proven"] is False
     assert report["native_hook_installed"] is False
     assert report["gameplay_verified"] is False
+    assert report["no_platform_calling_convention_assumed"] is True
+    assert len(report["pre_status_call_register_preservation"]) == 11
+    assert all(set(x["registers"]) == {"x20", "x22"}
+               for x in report["pre_status_call_register_preservation"])
     output.mkdir(parents=True, exist_ok=True)
     (output / "native_fileload_call_targets.json").write_text(
         json.dumps(report, indent=2) + "\n"

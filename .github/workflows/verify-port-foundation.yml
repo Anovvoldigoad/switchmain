@@ -77,7 +77,7 @@ jobs:
         run: python tests/test_native_fileload_status.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Trace SHA-pinned FileLoad SP/indexed operands, exact MOV immediates, and callsite reaching definitions (no consumer ABI)
         run: python tests/test_native_fileload_sp_cfg.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
-      - name: Inventory pre-status and additional reachable FileLoad direct-callee windows (bounded, no ABI)
+      - name: Prove conservative FileLoad direct-callee register preservation without ABI assumptions
         run: python tests/test_native_fileload_call_targets.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Trace corrected original FileLoad entry CFG to native FileOpen and status5 callsites
         run: python tests/test_native_fileload_corridor_cfg.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
