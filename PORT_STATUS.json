@@ -7,6 +7,7 @@
   "pc_mod_manager_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
   "pc_api_source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
   "implemented_this_change": [
+    "2026-11-28 VERIFIED_STATIC_CI_ONLY: R277H5 FileLoad CFG now serializes derived-register counter dependencies, abstract backedge addresses and provenance without resolving runtime addresses; adds positive derived-X10 and negative unrelated-X11 regressions; repairs the stale pointer-page budget assertion that previously read an inspect()-only field from scan_address_pages_cfg(). On pinned original main SHA256 2579b0cb..., 4,055 of 61,914 ADRP candidates were processed under the 4,096 cap; 63 unknown-bound widenings across 45 references eliminated all state-budget exhaustion, target-page CFG is complete, but 8 pointer pages were skipped and pointer-alias trace remains incomplete. Targeted run 46135363784/job 140949354184 and broad foundation run 46135363770/job 140949354174 COMPLETED SUCCESS; raw logs inspected. Artifact/report/source checksum hashes are recorded in handoff/checkpoint.json and PORTING_PROGRESS.md. No consumer ABI, ownership/lifecycle, archive precedence, Uzuy or gameplay proof; release flags remain false.",
     "2026-11-28 PENDING_CI: New SHA-pinned FileLoad guard-state slice. It decodes ADRP/ADD and ADRP/LDR pairs, classifies the guard/object and explicit store ranges against original NSO text/rodata/data/BSS, verifies the two __cxa_guard import relocations and records the 0x290 helper's atomic counter, pointer cells and 24-byte three-register record shape. This does not identify the helper, callback/destructor, imported implementations, table target, native consumer ABI or ownership. Synthetic negative/boundary cases plus exact original-main SHA test added; Foundation workflow step added. Parent HEAD 261e4aab417b1aebaaeddb9a83160a46dc812255; commit SHA and push CI pending.",
     "2026-11-28 VERIFIED_CI_STATIC_ONLY: Branch HEAD 261e4aab417b1aebaaeddb9a83160a46dc812255 resolves six FileLoad PLT/GOT imports from original main. Four workflows completed SUCCESS; raw job logs inspected. Foundation run/job 46071621142/140749655985 artifact 15233128327, ZIP SHA256 fbab9afc236c8a85356e9e7cf3f02e3f219ee208f003c00addadde7869dfc65b; imports JSON SHA256 2d6165fafb81c7ee90141def3aad8a3383aec528e87e2e479173907ced6f12f8. Factory 46071621080/140749655836, compressed PRM 46071621075/140749655778, MovesetPlus 46071621063/140749655794. The two nested FileLoad imports resolve to __cxa_guard_acquire/__cxa_guard_release names only; implementations/provider and all runtime semantics remain unresolved. A prior Foundation failure on 42d91238 was a stale synthetic SP-delta expectation (-16 vs 0); 10ca61ba corrected it and all four workflows passed.",
     "2026-11-28 VERIFIED_CI_STATIC_ONLY: Branch HEAD 261e4aab417b1aebaaeddb9a83160a46dc812255 resolves six FileLoad PLT/GOT imports from original main. Four workflows completed SUCCESS; raw job logs inspected. Foundation run/job 46071621142/140749655985 artifact 15233128327, ZIP SHA256 fbab9afc236c8a85356e9e7cf3f02e3f219ee208f003c00addadde7869dfc65b; imports JSON SHA256 2d6165fafb81c7ee90141def3aad8a3383aec528e87e2e479173907ced6f12f8. Factory 46071621080/140749655836, compressed PRM 46071621075/140749655778, MovesetPlus 46071621063/140749655794. The two nested FileLoad imports resolve to __cxa_guard_acquire/__cxa_guard_release names only; implementations/provider and all runtime semantics remain unresolved. A prior Foundation failure on 42d91238 was a stale synthetic SP-delta expectation (-16 vs 0); 10ca61ba corrected it and all four workflows passed.",
@@ -162,7 +163,7 @@
     "Source-bound CRILAYLA candidate verifier has synthetic compressed CI proof only; original game PRM fixture, native consumer ABI, archive precedence and Uzuy remain unverified.",
     "FileLoad status service targets 0x1215358/0x1215374 are direct call/branch candidates only; their lock/unlock semantics, function boundaries and runtime binding remain unproven.",
     "FileLoad status service dispatch targets 0x1158c90/0x1158d10/0x1158d30 are now bounded read-only analysis candidates; actual lock/unlock semantics, function extents, object ownership/lifecycle and async teardown remain unresolved.",
-    "FileLoad table producer remains unresolved after bounded CFG equivalent-state dedup: 4,055 ADRP references were processed; state-budget exhaustion fell from 431 to 47 (target page 2, pointer pages 45), but 7,510 equivalent branch histories were merged and witness enumeration is representative-only. The scan records 72 direct accesses, 7 indexed reads, 32 STP write rows in the two known zeroing sequences, 214 candidate pointer cells, 271 loaded aliases and one ambiguous load; six extra reads appear at 0x116bf70/0x116bfc8 (slot offsets 0x80/0x88/0x90). Target CFG and pointer alias trace remain incomplete. 114 direct B/BL callers to 0x116b390 remain; BR X2 target, dynamic BSS/heap writers, producer identity, object type, ownership/lifecycle, callback/destructor, lock/unlock, async, rollback/unbind and archive precedence remain unresolved.",
+    "FileLoad table producer remains unresolved after unknown-bound loop widening: the pinned main scan sees 61,914 ADRP candidates but the 4,096-reference cap processes 4,055 and skips 8 pointer pages. It now has zero state-budget-exhausted references, 63 unknown-bound widenings across 45 references, and a complete target-page CFG; pointer-alias trace is still incomplete because of skipped pages and unknown loop bounds. Authentic report: 34 direct accesses, 9 indexed candidates, 32 branch-path write rows, 214 static pointer cells, 271 loaded aliases, 1 ambiguous load. No complete writer census, producer identity, BR X2 target, object type, consumer ABI, ownership/lifecycle, callback/destructor, lock/unlock, async, rollback/unbind or archive precedence.",
     "FileLoad helper 0x116b390 has a VERIFIED_STATIC_CI_ONLY caller prelude/signature census: 114 direct B/BL candidates, 114 Capstone-confirmed, 86 clusters. Function extents, actual reaching definitions, BR X2 target, producer/writer, ABI, ownership and lifecycle remain unresolved.",
     "Upstream source comparison confirms the repository pins NSC-ModManager 2.1.2.1 and NSC-Toolbox 2.1.2.1 (each one commit ahead of its release tag); PC API 2.1.2.1 command 29 TakeOverEnemyProjectiles is present in Windows source but has no proven Switch consumer ABI and is not ported."
   ],
@@ -225,6 +226,21 @@
       "foundation_job_id": 140891888072,
       "raw_logs_inspected": true,
       "limits": "bounded CFG and pointer alias trace incomplete; no native consumer ABI, ownership, archive precedence, Uzuy or gameplay"
+    },
+    {
+      "name": "FileLoad CFG derived-register provenance and budget regression",
+      "code_commit": "440c808f5c41237ddf72855d2f583d45a446399d",
+      "parent_sha": "aab7efd10250aa20ad59eb70fb9aadbb1ec562e4",
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "targeted_run_id": 46135363784,
+      "targeted_job_id": 140949354184,
+      "foundation_run_id": 46135363770,
+      "foundation_job_id": 140949354174,
+      "raw_logs_inspected": true,
+      "artifact_id": 15259811643,
+      "artifact_zip_sha256": "db171ec74c60f898bdc4489c2925a0bbf93e904842c2e36d079d937de98f9810",
+      "report_json_sha256": "13528ae1baeca899cf0d5debd5a947ea7abca045525310e1d4e47bf78a0bb970",
+      "scope": "host/static original-main analysis and synthetic CFG regressions only; no native consumer ABI or gameplay"
     }
   ],
   "parameter_family_coverage": {
@@ -4329,5 +4345,131 @@
       "emulator_tested": false
     },
     "next": "Continue static FileLoad pointer-page references and the unresolved BR X2 source/lifecycle. Do not port the PC Windows projectile code or infer Switch ABI."
+  },
+  "native_fileload_table_cfg": {
+    "state": "VERIFIED_STATIC_CI_ONLY",
+    "parent_sha": "aab7efd10250aa20ad59eb70fb9aadbb1ec562e4",
+    "code_commit": "440c808f5c41237ddf72855d2f583d45a446399d",
+    "source": "tools/portlib/native_fileload_table_cfg.py",
+    "source_blob": "c56de3e39379b2d444303ae2d7208036f583ee09",
+    "test": "tests/test_native_fileload_table_cfg.py",
+    "test_blob": "c005acfdafb96b809bcc65ebdaaaace1a15df6c1",
+    "evidence_note": "handoff/evidence_fileload_pointer_loop_widening_20261128.md",
+    "evidence_blob": "481d5088136b5254636b43bee511e1cea47c6ed9",
+    "original_main": {
+      "git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "bytes": 27701509,
+      "sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+    },
+    "research": {
+      "modmanager": {
+        "release_tag": "2.1.2.1",
+        "tag_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+        "parser_blob": "faf79d588fd8beb3f5761faebedd2252853b2f2b",
+        "binary_reader_blob": "cc49eedef1578b37d381d23f5f09ac2567009149",
+        "url": "https://github.com/TheLeonX/NSC-ModManager/tree/502c38d3ee832509f9ee3951b7d3339826538fec"
+      },
+      "toolbox": {
+        "release_tag": "2.1.2.1",
+        "tag_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+        "parser_blob": "86c63708edf2698b5bc1c2a54c0480cce014b525",
+        "skill_editor_blob": "e165471682e4a7aed91094ef07f92df271f31639"
+      },
+      "ultimate_storm_api": {
+        "commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+        "parent": "1c3460573fa70b595e6bfa70e52f83f1c3f74f12",
+        "movesetplus_blob": "d7c5dbbebd60415f8d304321f083897658a86146",
+        "delta": "case 29 TakeOverEnemyProjectiles added; 27/28 existed in parent; Windows mutex/time and PC player offset, not Switch ABI"
+      },
+      "pycricodecs": {
+        "commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+        "cpk_blob": "2ed2cbb2c6112124013ab52755dba8a443e91306",
+        "utf_blob": "d1662d140a48cae37a6696213ee441aed4076edb",
+        "chunk_blob": "aab0cf82b7ce599811762bda3a089cb0f8aa41b4"
+      },
+      "cpk_runtime": {
+        "commit": "82488818cd72f65c30328a4df6734708366d1ffe",
+        "format_blob": "245e5696156c211025057e64885059bd1a79f3d1"
+      },
+      "rea": {
+        "commit": "3a42ef68312e736a56381eb17b370e67a489c55e",
+        "binary_diagnostics_blob": "1e6ce267a1f6e46e5ff22901c2ae37a216858f1a",
+        "current_scope": "current docs state initial real verification only Linux x64 ELF64 x86-64; not an AArch64 decoder/runtime trace"
+      }
+    },
+    "implementation": {
+      "derived_register_provenance_emitted": true,
+      "unknown_bound_counter_stays_symbolic": true,
+      "effective_address_resolved_for_derived_registers": false,
+      "synthetic_positive_and_negative_proofs": true,
+      "complete_writer_census": false
+    },
+    "observed": {
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "candidate_reference_count": 61914,
+      "page_reference_count": 4055,
+      "target_page_reference_count": 89,
+      "pointer_page_reference_count": 3966,
+      "reference_budget": 4096,
+      "reference_budget_exceeded": true,
+      "pages_skipped": 8,
+      "state_budget_exceeded_references": 0,
+      "dynamic_loop_widening_reference_count": 45,
+      "dynamic_loop_widening_count": 63,
+      "derived_register_evidence_count_authentic": 0,
+      "target_page_cfg_complete": true,
+      "pointer_alias_trace_complete": false,
+      "direct_accesses": 34,
+      "indexed_access_candidates": 9,
+      "branch_path_table_write_rows": 32,
+      "static_pointer_cells": 214,
+      "memory_loaded_aliases": 271,
+      "ambiguous_pointer_loads": 1
+    },
+    "ci": {
+      "targeted": {
+        "name": "Verify pinned FileLoad registration lifecycle evidence",
+        "run_id": 46135363784,
+        "job_id": 140949354184,
+        "head": "440c808f5c41237ddf72855d2f583d45a446399d",
+        "conclusion": "success",
+        "raw_job_log_inspected": true,
+        "success_marker": "PINNED_FILELOAD_TABLE_CFG_PASS adrp_refs 4055 direct_accesses 34 indexed_accesses 9 branch_path_writes 32 static_pointer_cells 214 loaded_aliases 271 unknown_bound_loop_widening_refs 45 unknown_bound_loop_widenings 63 remaining_state_budget 0 NO_ABI_NO_OWNER_NO_ARCHIVE_PRECEDENCE_NO_UZUY_CLAIM",
+        "artifact_id": 15259811643,
+        "artifact_zip_sha256": "db171ec74c60f898bdc4489c2925a0bbf93e904842c2e36d079d937de98f9810",
+        "report_json_sha256": "13528ae1baeca899cf0d5debd5a947ea7abca045525310e1d4e47bf78a0bb970",
+        "source_sha256sums_file_sha256": "bdf2b896e3fc21f4a9fc1077150d1edcc1820f4531034932687fe9c79c45dffe"
+      },
+      "foundation": {
+        "name": "Verify Switch port foundation (not a gameplay release)",
+        "run_id": 46135363770,
+        "job_id": 140949354174,
+        "head": "440c808f5c41237ddf72855d2f583d45a446399d",
+        "conclusion": "success",
+        "raw_job_log_inspected": true,
+        "steps_completed": 97,
+        "artifact_id": 15258974881,
+        "artifact_json_files": 74,
+        "artifact_zip_sha256": "db9c10abfed9af1e0b7873e8b2c8a6b5621c60b8fd82c76e76e51bbacc1bb460",
+        "release_flag_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF",
+        "fileload_stack_marker": "PINNED_FILELOAD_STACK_CENSUS_PASS 19 NO_OWNERSHIP_OR_CONSUMER_ABI"
+      }
+    },
+    "limits": {
+      "native_consumer_abi_verified": false,
+      "producer_identity_verified": false,
+      "br_x2_target_resolved": false,
+      "complete_writer_census": false,
+      "pointer_alias_trace_complete": false,
+      "callback_destructor_verified": false,
+      "lock_unlock_verified": false,
+      "async_verified": false,
+      "rollback_unbind_verified": false,
+      "archive_precedence_verified": false,
+      "emulated_arm64_for_this_analyzer": false,
+      "uzuy": false,
+      "gameplay": false
+    },
+    "next": "Raise or partition the bounded pointer-page reference budget to cover the 61,914 selected-page ADRP candidates without claiming completeness on unknown-bound loops; then trace exact producer and [X8,#0x58] -> BR X2 at 0x116b3d0."
   }
 }

@@ -1,70 +1,26 @@
-Continue autonomous engineering on Anovvoldigoad/switchmain, branch port/full-api-v170. Always read the live branch HEAD first and do not rerun prior PASS tests without a relevant regression.
+Continue autonomous engineering on Anovvoldigoad/switchmain, branch port/full-api-v170. Read the live branch HEAD first; do not trust this snapshot or repeat prior PASS tests without a relevant regression.
 
-Verified implementation commit: 48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3 (parent 2133abb9534561eeacf47ffeff54a08e99339880).
-- FileLoad CFI state decoder: tools/portlib/native_fileload_unwind.py; tests/test_native_fileload_unwind.py.
-- Dedicated CFI run 46100321645 / job 140841047537: COMPLETED SUCCESS, raw log inspected; 6/6 pinned targets decoded, 0 unsupported/unmapped/ambiguous.
-- Broad foundation run 46100321670 / job 140841047578: COMPLETED SUCCESS, raw log inspected, 74 proof JSON files.
-- P32 packaging fix commit fbd13b35c07e88642ba3e5afb5818e678176807a (parent 48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3). Run 46100950488 / build job 140843020466: COMPLETED SUCCESS; artifact 15245441982, ZIP SHA256 2b5cd550145ae661200e1ce574eff0c6688d611c1e6b9d9dd96b804e73e8e9d1; subsdk9 128446 bytes, SHA256 fec2462e48e6960b225692f9ab2c68a481c21e049d800d51d91d09574a82b504. Build-only; no Uzuy/gameplay test.
-- Historical P32 failure 46099189607 was repaired: artifact collection tried to copy three absent root files. Current workflow generates a factual README and no longer copies absent optional files.
-- Original main SHA256 remains 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. Preserve Sakura aura107 and Event236 marker 0x4E53 +0x2A plus no-marker variant.
+## Latest verified code slice
+- Code commit: 440c808f5c41237ddf72855d2f583d45a446399d (parent aab7efd10250aa20ad59eb70fb9aadbb1ec562e4).
+- File: tools/portlib/native_fileload_table_cfg.py; tests: tests/test_native_fileload_table_cfg.py.
+- The CFG scanner now records derived-register dependencies, abstract backedge address, dynamic terms and origin chain. It explicitly marks runtime_value_verified=false and effective_address_resolved=false. Synthetic positive X10=X8+X9 and negative unrelated X11=X8+X8 cases pass.
+- Fixed the stale synthetic budget test that asserted an inspect()-only disassembly key on scan_address_pages_cfg() output.
 
-Research findings:
-- NSC-ModManager and NSC-Toolbox project pins contain the same relevant parser/editor/model blobs as their 2.1.2.1 release tags.
-- UltimateStormAPI pin a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc includes command 29 TakeOverEnemyProjectiles, absent in comparison parent 1c3460573fa70b595e6bfa70e52f83f1c3f74f12. Cases 27/28 and SetProjectileDeflection existed in both. Command 29 uses PC Windows mutex/time/engine state; do not port without Switch ABI proof.
-- PyCriCodecs CPK/UTF sources were checked. REA binary diagnostics profile is not AArch64-capable.
+## CI on the exact code commit
+- Targeted FileLoad run 46135363784 / job 140949354184: COMPLETED SUCCESS; raw log inspected; marker PINNED_FILELOAD_TABLE_CFG_PASS. Artifact 15259811643; ZIP SHA256 db171ec74c60f898bdc4489c2925a0bbf93e904842c2e36d079d937de98f9810; report JSON SHA256 13528ae1baeca899cf0d5debd5a947ea7abca045525310e1d4e47bf78a0bb970.
+- Broad foundation run 46135363770 / job 140949354174: COMPLETED SUCCESS; 97 steps; raw log inspected; 74 JSON proofs. Artifact 15258974881; ZIP SHA256 db9c10abfed9af1e0b7873e8b2c8a6b5621c60b8fd82c76e76e51bbacc1bb460.
+- Pinned original main SHA256: 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
+- Authentic CFG: 61,914 candidate ADRP refs; 4,055 processed under cap 4,096; 8 pointer pages skipped; zero state-budget exhaustion; 45 refs with 63 unknown-bound widenings; target-page CFG complete; pointer-alias trace still incomplete. Authentic derived-register evidence rows are 0; derived-register logic is synthetic-only. No ABI/ownership/runtime claim.
 
-CFI evidence:
-- GNU .eh_frame_hdr: segment 1 VA 0x12f6000; header offset 0x8ad0a8 / VA 0x1ba30a8; .eh_frame VA 0x1c49fd0; 85,474 FDE records.
-- Helper BR X2 at 0x116b3d0 and table-path calls 0x116b8a4 / 0x116b928 each decode CFA=SP+0x20, X19 recovery at CFA-8, LR/X30 recovery at CFA-0x20.
-- FDE ranges are unwind coverage, NOT verified function identity. CFI is static unwind metadata, NOT runtime register capture. Function identity, consumer ABI, object ownership, callback, lock/unlock, async lifetime, rollback/unbind/destructor and archive precedence remain unresolved.
+## Research corrections
+- NSC-ModManager and NSC-Toolbox latest release tags are both 2.1.2.1; XFBIN header is 0x44 and parser fields use BigEndian; Toolbox adds the Bin2-size field at 0x3C.
+- UltimateStormAPI 2.1.2.1 adds PC command 29 TakeOverEnemyProjectiles; it uses Windows mutex/time and PC engine state. Do not port to Switch without separate Switch-native ABI evidence.
+- PyCriCodecs CPK packet header is <4sIII, UTF header >4sIIIIIHHI; its TOC path uses 0x800+FileOffset. Independent cpk-runtime docs use min(TOC packet offset, ContentOffset) for observed layouts, so do not assume 0x800 universally.
+- Current REA docs only claim initial Linux x64 ELF64 x86-64 verification; they do not establish AArch64 decoding or Switch runtime behavior.
 
-Next vertical slice:
-1. Trace all static and indirect writers to the 64-slot FileLoad table at 0x4371800; distinguish the explicit zeroing path from any dynamic/aliased writer.
-2. Resolve the object/value returned by 0x116b82c and the memory source feeding [X8,#0x58] -> BR X2 at 0x116b3d0. Do not assume C++ vtable or object type.
-3. Map direct and indirect inbound edges to the relevant FDE coverage ranges; preserve the non-function-identity label.
-4. Only after dispatch identity, prove lock/unlock pairing, callbacks, async lifetime, rollback, unbind/destructor, then archive precedence.
+## Next engineering slice
+1. Address the 8 skipped pointer pages (61,914 candidates vs the 4,096 global cap) with a bounded per-page strategy or conservative prefilter; do not mark pointer_alias_trace_complete while unknown-bound loops remain.
+2. Continue tracing the FileLoad table producer and exact [X8,#0x58] -> BR X2 source at 0x116b3d0. Keep BLR/BR call barriers opaque until the real target and caller/callee state are proven.
+3. Prove callback identity, ownership/lifetime, lock/unlock, async completion, rollback/unbind/destructor and archive precedence before any runtime hook.
 
-Do not install hooks or write game runtime until ABI, ownership/lifecycle, callback, lock/unlock, async, rollback, unbind/destructor and archive precedence are proven. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. The P32 artifact is build-only and must not be presented as gameplay-ready.
-
-## 2026-11-28 verified static FileLoad slice
-- Exact tested code commit: `e9555de6024a334b6ffcac1e7b9c091fee79d7e6`.
-- The 64-slot table `0x4371800..0x4371a00` has seven indexed 64-bit read sites using `UXTW(W1)*8`; no indexed write candidates were found in the bounded 89-ADRP linear sweep. The 0x116b82c helper checks W1<=63, loads the indexed slot, rejects value 0x3f800000 and returns zero on the error path.
-- Raw CI logs inspected: table run 46109004389/job 140868100989 SUCCESS; return provenance run 46109004391/job 140868101178 SUCCESS. Artifact JSON hashes are in checkpoint/evidence note.
-- Important limit: this does NOT prove a complete writer census, native consumer ABI, pointer type, callback, ownership, lifecycle, archive precedence or runtime behavior.
-- Next: extend the table scan through bounded CFG branch paths and memory-loaded pointer aliases to find producer/writer paths. Continue BR X2 source/lifetime analysis. Do not repeat the direct table census or install hooks.
-
-
-## 2026-11-28 FileLoad CFG equivalent-state dedup — VERIFIED_STATIC_CI_ONLY
-
-- Code commit: `63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1` (parent `d1d6a77b0ae1c006b6313534a4206a2e9b055c6d`).
-- Targeted FileLoad run 46116650719/job 140891888185: COMPLETED SUCCESS; raw log inspected; artifact 15251304501, ZIP SHA256 `f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b`, report JSON SHA256 `6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36`.
-- Broad foundation run 46116650641/job 140891888072: COMPLETED SUCCESS; raw log inspected; 74 JSON proofs; artifact 15251649607, ZIP SHA256 `7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159`. This CFG analyzer remains host/static only; no Uzuy.
-- Equivalent-state dedup reduced references hitting the 256-state budget from 431 to 47 (89.1%): target-page 10→2, pointer-page 421→45. It merged 7,510 equivalent branch histories and explicitly marks branch witnesses non-exhaustive.
-- New report: 4,055 ADRP refs, 72 direct accesses, 7 indexed reads, 32 STP writes, 214 pointer cells, 271 loaded aliases, 1 ambiguous load, 10,581 call barriers, 4,345 out-of-window edges; six extra reads at 0x116bf70/0x116bfc8 for slot offsets 0x80/0x88/0x90.
-- The 47 remaining budget-exhausted references mean target CFG and pointer alias trace remain incomplete. No complete writer census, producer identity, BR X2 target, consumer ABI, ownership/lifecycle, callback/destructor, lock/unlock, async, rollback/unbind, archive precedence, Uzuy or gameplay proof.
-- Historical failures inspected and repaired: ADRP budget overflow on non-target pages; missing candidate-page key; overstrong CFG-complete assertion. Details and raw run/job IDs are in `handoff/checkpoint.json`.
-- Upstream research: NSC-ModManager and NSC-Toolbox latest releases are both 2.1.2.1; their current main branches are one commit ahead but relevant parser/editor/model blobs are unchanged. PC API 2.1.2.1 adds command 29 `TakeOverEnemyProjectiles`; it is Windows/PC-specific and not Switch ABI evidence. PyCriCodecs CPK/UTF and REA offline diagnostics were checked; exact commits/blob hashes/URLs are in the evidence note.
-- Next: investigate residual references `0x116bf54` and `0x116bfac` plus 45 pointer-page references; test conservative loop-induction/widening around repeated `X20 += 8` while preserving slot offsets. Then resolve `[X8,#0x58] -> BR X2` at `0x116b3d0`, and prove lifecycle/ownership/precedence before any hook.
-
-Preserve Sakura aura107 and both Event236 variants. Keep `full_moddingapi=false`, `ready_for_gameplay_test=false`, `emulator_tested=false`.
-
-
-## Latest execution handoff — 2026-11-28 (VERIFIED_STATIC_CI_ONLY)
-
-- Code commit: `2101530170402945bfa4165b1c01e06d944c2e48`, parent `c0649a2c899eb74c69bb0df177c232e413cc9846`.
-- FileLoad exact-loop induction widening is verified by targeted run [46124030962](https://github.com/Anovvoldigoad/switchmain/actions/runs/46124030962), job `140914501509`, COMPLETED SUCCESS; raw log inspected. Artifact `15255315717`, ZIP SHA256 `f8a95dc28b93472956194ddc457326616cdb971252191841e5ddd9a743c12cc9`, report SHA256 `19e379f8e8595d1138fe7db417e28e2c4e320147a811116fe8302e93af1c19ba`.
-- Target-page budget refs: 2→0; total refs hitting state budget: 47→45. New symbolic indexed reads: `0x116bf70`, `0x116bfc8`. The 45 pointer-page refs remain unresolved. BLR stays an opaque register-clobber barrier; no callback preservation assumption.
-- Release flags guard run [46124031110](https://github.com/Anovvoldigoad/switchmain/actions/runs/46124031110), job `140914502015`, COMPLETED SUCCESS; raw log inspected. Flags remain false.
-- Broad foundation run `46124031004` / job `140914502057` was IN_PROGRESS at this checkpoint.
-- Next: continue the 45 pointer-page CFG references and resolve the table producer / BR X2 value path. No runtime hook until ABI, ownership and lifecycle are proven.
-
-
-## Latest verified slice — 2026-11-28 (PC MovesetPlus command delta)
-
-- Final code head: `b7df04c64fb41c1403cb8b456164aeb9a45a9d6c`; parent chain starts at `41a77a98067b411a7575bd3b0b457a250ccd95a8`.
-- Upstream UltimateStormAPI 2.1.2.1 proves command 27 Start Deflect and 28 Stop Deflect already existed in parent `1c3460573fa70b595e6bfa70e52f83f1c3f74f12`; command 29 TakeOverEnemyProjectiles / Switch Projectiles Target is new. These are numeric PC meTest commands, not NSC-Toolbox ME_* name indices.
-- Added source-pinned command registry and CLI `--commands` / `--command-id`; 9 targeted tests pass. Run [46126953689](https://github.com/Anovvoldigoad/switchmain/actions/runs/46126953689), job 140923548062, raw log inspected; artifact 15255972970, ZIP SHA256 `c010a30453000e844a6927b359b2c416e2b6da9cfeaa51e9f8156b6a5e6c15fd`; internal checksum manifest independently verified.
-- Multi-mod regression run [46126953701](https://github.com/Anovvoldigoad/switchmain/actions/runs/46126953701), job 140923548214, COMPLETED SUCCESS; raw log inspected.
-- Command 29 is explicitly PC Windows-only in the source: offset rule, std::mutex, GetTickCount64, 250 ms freshness/expiry. No Switch hook or ABI is inferred. All release flags remain false.
-
-Next: continue the 45 unresolved FileLoad pointer-page CFG references and the exact table producer / BR X2 source at `0x116b3d0`. Preserve call-clobber barriers and do not install a runtime hook until Switch ABI, ownership/lifecycle, callback, lock/unlock, async, rollback/unbind/destructor and archive precedence are proven. Do not repeat the passing command-registry or multi-mod CI slices.
+Do not modify game runtime or install hooks. Preserve Sakura aura107 and Event236 marker 0x4E53 +0x2A plus the no-marker variant. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. The FileLoad analyzer is host/static only; no Uzuy/gameplay test was performed.

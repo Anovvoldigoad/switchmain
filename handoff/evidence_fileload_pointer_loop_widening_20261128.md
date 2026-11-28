@@ -40,7 +40,7 @@ Static host analysis of the exact pinned original main and synthetic CFG tests o
 
 ## R277H4 follow-up — derived-register provenance and regression repair (2026-11-28)
 
-State at this code revision: PENDING_CI. Parent HEAD: `aab7efd10250aa20ad59eb70fb9aadbb1ec562e4`.
+State at this code revision: VERIFIED_STATIC_CI_ONLY (code commit 440c808f5c41237ddf72855d2f583d45a446399d; parent aab7efd10250aa20ad59eb70fb9aadbb1ec562e4). Parent HEAD: `aab7efd10250aa20ad59eb70fb9aadbb1ec562e4`.
 
 ### Research sources rechecked
 
@@ -51,6 +51,13 @@ State at this code revision: PENDING_CI. Parent HEAD: `aab7efd10250aa20ad59eb70f
 - Independent CPK reference `BogdanLask/cpk-runtime`: current main commit `82488818cd72f65c30328a4df6734708366d1ffe`; format note blob `245e5696156c211025057e64885059bd1a79f3d1`. Its format notes distinguish big-endian CPK/@UTF tables from little-endian CRILAYLA headers, use archive-local numeric IDs, and explicitly mark legacy ITOC and higher UTF versions as synthetic-only. It does not establish this game's archive precedence or engine lifetime.
 - REA current main commit `3a42ef68312e736a56381eb17b370e67a489c55e`; binary-diagnostics doc blob `1e6ce267a1f6e46e5ff22901c2ae37a216858f1a`. REA's documented native-binary/offline ELF analysis is a tooling reference only; it is not live Switch tracing or ownership evidence.
 - Pinned Switch v1.70 original main: Git blob `8af900db0d7003255b4ddb3cbd1289cd5a15458e`, 27,701,509 bytes, expected SHA256 `2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9`.
+
+
+### Primary-source byte-layout cross-check and correction
+
+- NSC-ModManager's `BinaryReader.cs` blob `cc49eedef1578b37d381d23f5f09ac2567009149` implements `b_byteArrayToIntRev` with `BinaryPrimitives.ReadInt32BigEndian`. Its 2.1.2.1 `XfbinParser.cs` uses a 0x44-byte header; NUCC count/size at 0x1C/0x20; path count at 0x24 with a minus-one adjustment; path size at 0x28; name count/size at 0x2C/0x30; Bin1 size at 0x38; and animation-section size at 0x40. Toolbox 2.1.2.1 shares the same parser blob family but adds a Bin2-size field at 0x3C multiplied by four and a first-chunk-index calculation. These are PC XFBIN parser/editor layouts, not engine consumer ABI.
+- PyCriCodecs `chunk.py` blob `aab0cf82b7ce599811762bda3a089cb0f8aa41b4` defines CPK packet header `<4sIII` (little-endian fields) and UTF header `>4sIIIIIHHI` (big-endian fields). Its CPK TOC extraction path uses a fixed `0x800 + FileOffset`; the independent cpk-runtime format note instead documents the TOC base as `min(TOC packet offset, ContentOffset)` for observed layouts. Do not promote the PyCriCodecs 0x800 convention to a universal CPK rule. PyCriCodecs also decodes EUTF with the 0x655f/0x4115 LCG and handles ITOC from ContentOffset.
+- Correction to older REA assumptions: current REA commit `3a42ef68312e736a56381eb17b370e67a489c55e` binary-diagnostics blob `1e6ce267a1f6e46e5ff22901c2ae37a216858f1a` explicitly says initial real verification covers Linux x64 ELF64 x86-64. It is not an AArch64 decoder or Switch runtime tracer. The repo's Capstone-based AArch64 work remains its own pinned static analysis path; do not cite REA as proof of AArch64 support.
 
 ### Reproducible hypothesis and byte-level regression
 
@@ -63,3 +70,13 @@ The synthetic positive case requires the derived X10 chain to depend on widened 
 Push run `46131207431` / job `140936523895` failed in `synthetic_pointer_page_budget_fail_closed`: the test called `scan_address_pages_cfg()` but asserted for `pointer_page_budget_reference_disassembly`, a field produced only by the higher-level `inspect()` report. The raw log showed `KeyError` at test line 535; the scanner correctly exposes `page_references` and budget state instead. The fix asserts the low-level schema and keeps the full-main disassembly assertion in the authentic `inspect()` regression.
 
 No ABI, callback, object type, ownership/lifecycle, lock/unlock, async, rollback/unbind/destructor, archive precedence, emulated ARM64 analyzer execution, Uzuy or gameplay proof. No runtime hook or game-byte modification. Preserve Sakura aura107 and both Event236 variants; all three release flags remain false.
+
+### Verified Actions on the R277H5 code commit
+
+- Targeted FileLoad workflow run `46135363784`, job `140949354184`: COMPLETED SUCCESS; raw job log inspected; marker `PINNED_FILELOAD_TABLE_CFG_PASS`. Artifact `15259811643`, ZIP SHA256 `db171ec74c60f898bdc4489c2925a0bbf93e904842c2e36d079d937de98f9810`; report JSON SHA256 `13528ae1baeca899cf0d5debd5a947ea7abca045525310e1d4e47bf78a0bb970`; source SHA256SUMS file SHA256 `bdf2b896e3fc21f4a9fc1077150d1edcc1820f4531034932687fe9c79c45dffe`.
+- Broad foundation run `46135363770`, job `140949354174`: COMPLETED SUCCESS; all 97 job steps completed; raw log inspected; 74 JSON proof files; artifact `15258974881`, ZIP SHA256 `db9c10abfed9af1e0b7873e8b2c8a6b5621c60b8fd82c76e76e51bbacc1bb460`; release-flag marker `RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF`.
+- Authentic report counts: 61,914 candidate ADRP references; 4,055 traced under the 4,096 cap; 8 pages skipped; zero state-budget-exhausted references; 45 references with 63 unknown-bound loop widenings; target-page CFG complete, pointer-alias trace incomplete. There are 34 direct accesses, 9 indexed candidates, 32 branch-path write rows, 214 static pointer cells, 271 loaded aliases and 1 ambiguous load. The authentic report contains zero derived-register evidence rows; the positive/negative derived-register behavior is proven only by synthetic fixtures.
+- The earlier run `46131207431` / job `140936523895` failed before authentic-main analysis because the synthetic budget test asserted an inspect()-only key on the low-level scanner. R277H5 fixes that test contract; the successful targeted run now reaches the authentic SHA check and report generation.
+
+No ABI, object type, callback, ownership/lifecycle, lock/unlock, async, rollback/unbind/destructor, archive precedence, emulated ARM64 execution of this analyzer, Uzuy or gameplay proof. The broad foundation's separate modeled/emulated slices do not promote this FileLoad analyzer to runtime status. No game-byte modification or hook. Preserve Sakura aura107 and both Event236 variants; all three release flags remain false.
+
