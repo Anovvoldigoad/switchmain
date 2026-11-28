@@ -1,29 +1,32 @@
-Continue autonomous engineering on Anovvoldigoad/switchmain, branch port/full-api-v170. Read the live branch HEAD first; do not trust this snapshot or repeat prior PASS tests without a relevant regression.
+Continue autonomous engineering on Anovvoldigoad/switchmain, branch port/full-api-v170. Read the live branch HEAD and Actions runs first; do not trust this snapshot. Do not repeat a completed test unless a code change makes it a relevant regression.
 
-## Latest verified code slice
-- Code commit: 440c808f5c41237ddf72855d2f583d45a446399d (parent aab7efd10250aa20ad59eb70fb9aadbb1ec562e4).
-- File: tools/portlib/native_fileload_table_cfg.py; tests: tests/test_native_fileload_table_cfg.py.
-- The CFG scanner now records derived-register dependencies, abstract backedge address, dynamic terms and origin chain. It explicitly marks runtime_value_verified=false and effective_address_resolved=false. Synthetic positive X10=X8+X9 and negative unrelated X11=X8+X8 cases pass.
-- Fixed the stale synthetic budget test that asserted an inspect()-only disassembly key on scan_address_pages_cfg() output.
+## Latest verified engineering slice
+
+- Code commit: 31dceba3697d2a50c41ad8c9ada9b24027230696 (parent 9e2068a3a9c32ab91e1ed37f01bdb27f31768327).
+- File: tools/portlib/native_fileload_table_cfg.py; tests: tests/test_native_fileload_table_cfg.py; workflow: .github/workflows/verify-fileload-registration-lifecycle.yml.
+- The former global 4,096 ADRP-reference cap is now a hard total cap of 32,768 plus a per-page cap of 4,096. Oversubscribed pointer pages use deterministic evenly spaced sampling, with SHA256 identity for selected (PC, ADRP register) pairs. The target table page is never sampled; sampled/skipped pages force pointer_alias_trace_complete=false.
+- On pinned original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9: 61,914 candidates; 21,386 traced (up from 4,055); all 8 formerly skipped pages now visited, six fully and two sampled; zero pages skipped. Page 0x2143000: 44,208 candidates/4,096 selected. Page 0x2144000: 4,512/4,096 selected.
+- 34 direct accesses, 9 indexed candidates, 32 branch-path writes, 214 static pointer cells, 1,617 same-page loaded aliases, 17 state-budget refs, 366 refs with 510 dynamic loop widenings. The 1,617 loaded aliases are only same-page candidates: 107 unique values, zero in exact table range [0x4371800,0x4371A00). Do not label them table pointers. Pointer alias trace remains incomplete.
 
 ## CI on the exact code commit
-- Targeted FileLoad run 46135363784 / job 140949354184: COMPLETED SUCCESS; raw log inspected; marker PINNED_FILELOAD_TABLE_CFG_PASS. Artifact 15259811643; ZIP SHA256 db171ec74c60f898bdc4489c2925a0bbf93e904842c2e36d079d937de98f9810; report JSON SHA256 13528ae1baeca899cf0d5debd5a947ea7abca045525310e1d4e47bf78a0bb970.
-- Broad foundation run 46135363770 / job 140949354174: COMPLETED SUCCESS; 97 steps; raw log inspected; 74 JSON proofs. Artifact 15258974881; ZIP SHA256 db9c10abfed9af1e0b7873e8b2c8a6b5621c60b8fd82c76e76e51bbacc1bb460.
-- Pinned original main SHA256: 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
-- Authentic CFG: 61,914 candidate ADRP refs; 4,055 processed under cap 4,096; 8 pointer pages skipped; zero state-budget exhaustion; 45 refs with 63 unknown-bound widenings; target-page CFG complete; pointer-alias trace still incomplete. Authentic derived-register evidence rows are 0; derived-register logic is synthetic-only. No ABI/ownership/runtime claim.
 
-## Research corrections
-- NSC-ModManager and NSC-Toolbox latest release tags are both 2.1.2.1; XFBIN header is 0x44 and parser fields use BigEndian; Toolbox adds the Bin2-size field at 0x3C.
-- UltimateStormAPI 2.1.2.1 adds PC command 29 TakeOverEnemyProjectiles; it uses Windows mutex/time and PC engine state. Do not port to Switch without separate Switch-native ABI evidence.
-- PyCriCodecs CPK packet header is <4sIII, UTF header >4sIIIIIHHI; its TOC path uses 0x800+FileOffset. Independent cpk-runtime docs use min(TOC packet offset, ContentOffset) for observed layouts, so do not assume 0x800 universally.
-- Current REA docs only claim initial Linux x64 ELF64 x86-64 verification; they do not establish AArch64 decoding or Switch runtime behavior.
+- Targeted run 46137650356 / job 140956456790: COMPLETED SUCCESS; raw log inspected; artifact 15260591097; ZIP SHA256 4994bddf5948d04484f23cddae1afe8e3744a449611b25c959fbd7705d1573d2; report JSON SHA256 4f07a73a7934b9dc08e1ea0f228a1c6a0589da509142fc59098a67c7ea457921.
+- Broad foundation run 46137650346 / job 140956456885: COMPLETED SUCCESS; 97/97 steps; raw log inspected; 74 proof JSON files; artifact 15259834325; ZIP SHA256 de804f8b234ef2bf4d5d4e78f7a8da927316b781ece2c5045c21fe0aae9c502c. Release guard marker RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF.
+- No pending runs remained on the branch at the last direct Actions API check.
+
+## Research pins
+
+- NSC-ModManager latest release 2.1.2.1: tag commit 502c38d3ee832509f9ee3951b7d3339826538fec; project main commit 276116ebf5ba398a867793cb02ee6c33c0927645; parser blob faf79d588fd8beb3f5761faebedd2252853b2f2b.
+- NSC-Toolbox latest release 2.1.2.1: tag commit 789fe96f99cdaa77f952b90b563c6e3f49b6d697; project main commit 6f780cb6814f07e03c16b3e78d97dde4e4368983; parser blob 86c63708edf2698b5bc1c2a54c0480cce014b525; editor model blob e165471682e4a7aed91094ef07f92df271f31639.
+- UltimateStormAPI 2.1.2.1 commit a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc adds PC command 29; 27/28 existed in parent. It uses Windows mutex/time and player-side offset 0xE60 at 1.70. Do not port those PC hooks to Switch without Switch-native ABI evidence.
+- PyCriCodecs latest commit 755055ee7b056c9c1aefc6505a3daa3e45e2e111 and cpk-runtime latest 82488818cd72f65c30328a4df6734708366d1ffe disagree on CPK packet framing/endian and TOC base. Treat those as reader-specific; verify against Storm bytes before asserting a universal format or archive precedence.
+- REA current commit c22c1ab1795677b7a52a840d30257cb1cad28ee7 is offline diagnostics; Linux x64 host required for the AArch64 object profile. It is not live Switch ABI evidence.
 
 ## Next engineering slice
-1. Address the 8 skipped pointer pages (61,914 candidates vs the 4,096 global cap) with a bounded per-page strategy or conservative prefilter; do not mark pointer_alias_trace_complete while unknown-bound loops remain.
-2. Continue tracing the FileLoad table producer and exact [X8,#0x58] -> BR X2 source at 0x116b3d0. Keep BLR/BR call barriers opaque until the real target and caller/callee state are proven.
-3. Prove callback identity, ownership/lifetime, lock/unlock, async completion, rollback/unbind/destructor and archive precedence before any runtime hook.
 
-Do not modify game runtime or install hooks. Preserve Sakura aura107 and Event236 marker 0x4E53 +0x2A plus the no-marker variant. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. The FileLoad analyzer is host/static only; no Uzuy/gameplay test was performed.
+1. Inspect the 17 state-budget references produced by the expanded scan and determine whether a bounded semantic merge is safe; do not merely raise the state budget (a previous 1,024-state retry did not resolve the remaining refs).
+2. Trace the exact FileLoad producer and [X8,#0x58] -> BR X2 at 0x116b3d0 from original main, including register definitions, relocation targets and direct callers. Keep BLR/BR call barriers opaque until targets and caller/callee state are proven.
+3. Distinguish page-wide relocation candidates from exact table range [0x4371800,0x4371A00). Current scan found zero static pointer-cell or loaded-alias values in that exact range.
+4. Prove callback identity, object ownership/lifetime, lock/unlock, async completion, rollback/unbind/destructor and archive precedence before any runtime hook.
 
-Checkpoint schema note: the release-flag guard requires checkpoint.port_status to remain the complete PORT_STATUS object with the three release booleans at top level. A first documentation-only sync briefly nested them under flags and failed run 46136146075/job 140951782999; the current repair restores the complete object. The repair commit was reverified by release-flag run 46136246257/job 140952093422 (COMPLETED SUCCESS; raw log inspected; marker RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF; artifact 15260170542).
-
+Do not modify game runtime or install hooks. Preserve Sakura aura107 and Event236 marker 0x4E53 +0x2A plus the no-marker variant. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. The analyzer is host/static only; no Uzuy/gameplay test was performed.
