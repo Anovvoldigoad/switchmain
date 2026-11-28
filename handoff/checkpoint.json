@@ -5038,7 +5038,7 @@
     "next": "Inspect real unique external target path summaries, choose semantically likely caller/callee provenance; no hook until ABI and lifecycle proven."
   },
   "pending_ci": null,
-  "last_parent_sha": "872e39c2285888d1338bcc753d3812e663683127",
+  "last_parent_sha": "1f392b9449d9c210a4ab665908d38792c74f1a6d",
   "native_fileopen_call_free_witness": {
     "status": "PENDING_CI",
     "parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
@@ -6807,6 +6807,17 @@
       "artifact_zip_sha256": "db9c10abfed9af1e0b7873e8b2c8a6b5621c60b8fd82c76e76e51bbacc1bb460",
       "release_flag_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF",
       "fileload_stack_marker": "PINNED_FILELOAD_STACK_CENSUS_PASS 19 NO_OWNERSHIP_OR_CONSUMER_ABI"
+    },
+    {
+      "name": "Verify release flags (not a gameplay release)",
+      "run_id": 46136246257,
+      "job_id": 140952093422,
+      "head": "1f392b9449d9c210a4ab665908d38792c74f1a6d",
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "success_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF",
+      "artifact_id": 15260170542,
+      "artifact_zip_sha256": "df8887012963abe46b52fec4a2d5eb93c992ff2df535756e75e40c28a20a97b8"
     }
   ],
   "native_fileload_x19_stack_restore_20261128": {
@@ -8311,7 +8322,7 @@
     "proof_json_files": 74,
     "release_guard_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773"
   },
-  "checkpoint_update_parent_sha": "872e39c2285888d1338bcc753d3812e663683127",
+  "checkpoint_update_parent_sha": "1f392b9449d9c210a4ab665908d38792c74f1a6d",
   "latest_p32_build": {
     "state": "BUILD_ARTIFACT_CI_PASS_NOT_GAMEPLAY",
     "commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
@@ -8490,6 +8501,17 @@
       "raw_job_log_inspected": true,
       "root_cause": "checkpoint.port_status was rewritten as {stage, flags:{...}, latest:[...]}; release_flag_guard.validate requires full_moddingapi, ready_for_gameplay_test and emulator_tested as top-level false booleans on checkpoint.port_status.",
       "fix": "restore checkpoint.port_status as the complete PORT_STATUS.json object, preserving all three top-level false booleans and full status fields."
+    },
+    "documentation_guard_failure_reverified_by": {
+      "name": "Verify release flags (not a gameplay release)",
+      "run_id": 46136246257,
+      "job_id": 140952093422,
+      "head": "1f392b9449d9c210a4ab665908d38792c74f1a6d",
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "success_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF",
+      "artifact_id": 15260170542,
+      "artifact_zip_sha256": "df8887012963abe46b52fec4a2d5eb93c992ff2df535756e75e40c28a20a97b8"
     }
   },
   "documentation_commit_parent_sha": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
@@ -8877,21 +8899,15 @@
     }
   },
   "latest_release_flags_ci": {
-    "name": "release_flags_guard",
-    "run_id": 46117521438,
-    "job_id": 140894559264,
+    "name": "Verify release flags (not a gameplay release)",
+    "run_id": 46136246257,
+    "job_id": 140952093422,
+    "head": "1f392b9449d9c210a4ab665908d38792c74f1a6d",
     "conclusion": "success",
-    "raw_log_inspected": true,
+    "raw_job_log_inspected": true,
     "success_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF",
-    "artifact_id": 15252615686,
-    "artifact_zip_sha256": "a157c00edcb7424eff614f1aba285602e5d1334d1d045877a7c8107fe5269ec9",
-    "report_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773",
-    "verified_head": "653c29d23c49c73efdcf6fcbcb96868b12c56b89",
-    "flags": {
-      "full_moddingapi": false,
-      "ready_for_gameplay_test": false,
-      "emulator_tested": false
-    }
+    "artifact_id": 15260170542,
+    "artifact_zip_sha256": "df8887012963abe46b52fec4a2d5eb93c992ff2df535756e75e40c28a20a97b8"
   },
   "native_fileload_loop_widening_20261128": {
     "state": "VERIFIED_STATIC_CI_ONLY",
@@ -9469,6 +9485,17 @@
     "conclusion": "failure",
     "raw_job_log_inspected": true,
     "root_cause": "checkpoint.port_status was rewritten as {stage, flags:{...}, latest:[...]}; release_flag_guard.validate requires full_moddingapi, ready_for_gameplay_test and emulator_tested as top-level false booleans on checkpoint.port_status.",
-    "fix": "restore checkpoint.port_status as the complete PORT_STATUS.json object, preserving all three top-level false booleans and full status fields."
+    "fix": "restore checkpoint.port_status as the complete PORT_STATUS.json object, preserving all three top-level false booleans and full status fields.",
+    "reverified_by": {
+      "name": "Verify release flags (not a gameplay release)",
+      "run_id": 46136246257,
+      "job_id": 140952093422,
+      "head": "1f392b9449d9c210a4ab665908d38792c74f1a6d",
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "success_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF",
+      "artifact_id": 15260170542,
+      "artifact_zip_sha256": "df8887012963abe46b52fec4a2d5eb93c992ff2df535756e75e40c28a20a97b8"
+    }
   }
 }

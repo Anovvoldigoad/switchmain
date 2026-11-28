@@ -25,5 +25,5 @@ Continue autonomous engineering on Anovvoldigoad/switchmain, branch port/full-ap
 
 Do not modify game runtime or install hooks. Preserve Sakura aura107 and Event236 marker 0x4E53 +0x2A plus the no-marker variant. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. The FileLoad analyzer is host/static only; no Uzuy/gameplay test was performed.
 
-Checkpoint schema note: the release-flag guard requires checkpoint.port_status to remain the complete PORT_STATUS object with the three release booleans at top level. A first documentation-only sync briefly nested them under flags and failed run 46136146075/job 140951782999; the current repair restores the complete object. Verify the repair commit's release-flag job log before relying on the handoff.
+Checkpoint schema note: the release-flag guard requires checkpoint.port_status to remain the complete PORT_STATUS object with the three release booleans at top level. A first documentation-only sync briefly nested them under flags and failed run 46136146075/job 140951782999; the current repair restores the complete object. The repair commit was reverified by release-flag run 46136246257/job 140952093422 (COMPLETED SUCCESS; raw log inspected; marker RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF; artifact 15260170542).
 
