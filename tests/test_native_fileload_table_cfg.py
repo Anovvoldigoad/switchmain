@@ -161,7 +161,7 @@ def synthetic_memory_loaded_alias():
     put_word(code, 0x0C, encode_str64(0, 8, 0x10))
     cells = {
         0x5080: [{
-            "value": TABLE_PAGE + 0x7D8,
+            "value": TABLE_START,
             "source": "SYNTHETIC_R_AARCH64_RELATIVE",
         }]
     }
