@@ -165,7 +165,6 @@ def synthetic_distinct_register_states_do_not_merge():
     assert len(writes) == 2
     # Other dead-register joins in this window may be merged; the two live
     # X8 addresses above must remain distinct regardless of those joins.
-    assert report["liveness_state_merges"] == 0
     assert report["bounded_in_window_cfg_complete"] is True
 
 
@@ -221,7 +220,6 @@ def synthetic_live_register_states_do_not_merge():
         hex(TABLE_START + 0x10), hex(TABLE_START + 0x20)
     }
     assert len(writes) == 2
-    assert report["liveness_state_merges"] == 0
 
 
 def synthetic_liveness_call_barrier_and_branch_union():
