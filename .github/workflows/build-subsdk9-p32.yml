@@ -92,9 +92,18 @@ jobs:
           test -s artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
           stat artifact/atmosphere/contents/0100FA10190A0000/exefs/subsdk9
           (cd artifact && sha256sum atmosphere/contents/0100FA10190A0000/exefs/subsdk9 | tee SHA256SUMS.txt)
-          cp README_P32.txt artifact/README_P32.txt
-          cp analyze_p32_log.py artifact/analyze_p32_log.py
-          cp P30_MANIFEST_ROW_AUDIT.json artifact/P30_MANIFEST_ROW_AUDIT.json
+          cat > artifact/README_P32.txt <<EOF
+          Naruto Storm Connections Switch v1.70 — P32 CI build artifact
+          Source commit: $GITHUB_SHA
+          Output path: atmosphere/contents/0100FA10190A0000/exefs/subsdk9
+          Build: devkitPro/devkitA64 using the pinned exlaunch revision in this workflow.
+          Verification: see SHA256SUMS.txt for the generated subsdk9 digest.
+          Status: build-only artifact; not a gameplay release and not proof of FULL PC ModdingAPI compatibility.
+          Runtime: no Uzuy or in-game test is performed by this workflow.
+          Scope: P32 overlay build output only. The PC log analyzer and P30 manifest are not tracked at repository root and are intentionally not included.
+          EOF
+          test -s artifact/README_P32.txt
+          grep -q "not a gameplay release" artifact/README_P32.txt
 
       - name: Upload P32 subsdk9
         uses: actions/upload-artifact@v4
@@ -105,6 +114,7 @@ jobs:
           compression-level: 9
 
   unwind-proof:
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, 'P32 artifact packaging') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
