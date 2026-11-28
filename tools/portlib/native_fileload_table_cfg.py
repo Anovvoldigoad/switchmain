@@ -762,6 +762,16 @@ def _summarize_counted_slot_loop(text, site, base_address=0):
 
     init_site = site - 8
     expect(init_site, "mov", "x20, xzr")
+    for pc in range(init_site + 4, site, 4):
+        instruction = decode(pc)
+        try:
+            _, writes = instruction.regs_access()
+        except Exception as exc:
+            raise ValueError("Register effects unavailable before loop") from exc
+        if "x20" in {
+            _reg_name(instruction, register_id) for register_id in writes
+        }:
+            raise ValueError("Counter is modified after initialization")
     adrp = decode(site)
     if adrp.mnemonic != "adrp":
         raise ValueError("Missing table-page ADRP")

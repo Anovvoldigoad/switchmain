@@ -14,6 +14,7 @@ from portlib.native_fileload_table_cfg import (
     collect_static_pointer_cells,
     inspect,
     scan_address_pages_cfg,
+    _summarize_counted_slot_loop,
 )
 
 
@@ -299,25 +300,25 @@ def synthetic_counted_slot_loop():
     )["indirect_dispatch"]["target_load_offset"] == 0x68
 
     bad_stride = bytearray(positive)
-    bad_stride[12:16] = struct.pack("<I", encode_add(20, 20, 16))
+    bad_stride[20:24] = struct.pack("<I", encode_add(20, 20, 16))
     expect_reject(lambda: _summarize_counted_slot_loop(
         bytes(bad_stride), site, base_address
     ), "non-eight-byte loop stride")
 
     bad_limit = bytearray(positive)
-    bad_limit[16:20] = b"\\x00\\x00\\x00\\x00"
+    bad_limit[24:28] = b"\\x00\\x00\\x00\\x00"
     expect_reject(lambda: _summarize_counted_slot_loop(
         bytes(bad_limit), site, base_address
     ), "non-table loop bound")
 
     bad_read = bytearray(positive)
-    bad_read[28:32] = struct.pack("<I", encode_str64(0, 8, 0x28))
+    bad_read[36:40] = struct.pack("<I", encode_str64(0, 8, 0x28))
     expect_reject(lambda: _summarize_counted_slot_loop(
         bytes(bad_read), site, base_address
     ), "table write instead of read")
 
     bad_dispatch = bytearray(positive)
-    bad_dispatch[40:44] = bytes.fromhex("083940f9")
+    bad_dispatch[48:52] = bytes.fromhex("083940f9")
     expect_reject(lambda: _summarize_counted_slot_loop(
         bytes(bad_dispatch), site, base_address
     ), "unrecognized dispatch offset")
