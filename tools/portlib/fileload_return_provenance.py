@@ -5,6 +5,7 @@ provenance is killed rather than inferred from an assumed ABI. Memory reads
 remain symbolic. No function identity, object type, ownership, or hook is
 established by this module.
 """
+import hashlib
 from collections import deque
 
 from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM
