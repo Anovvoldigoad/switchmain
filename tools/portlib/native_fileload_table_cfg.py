@@ -37,7 +37,6 @@ MAX_PAGES = 64
 MAX_REFERENCES = 4096
 DEFAULT_WINDOW_BYTES = 0x100
 DEFAULT_MAX_STATES = 256
-POINTER_PAGE_RETRY_MAX_STATES = 1024
 RELATIVE_RELOCATION_TYPE = 1027
 CALL_KINDS = {"call", "indirect_call_unresolved"}
 TERMINATOR_KINDS = {"return_or_indirect_terminator"}
@@ -235,34 +234,36 @@ def _loop_induction_state(summary):
 
 def _unknown_loop_induction_state(summary):
     return {
-        "address": summary["initial_value"],
+        "address": summary["base_value_at_first_observed_header"],
         "dynamic_terms": [{
             "register": summary["counter_register"],
             "extension": "LOOP_INDUCTION_UNKNOWN_BOUND",
             "scale": 1,
-            "initial_value": summary["initial_value"],
+            "base_value_at_first_observed_header": summary["base_value_at_first_observed_header"],
             "stride": summary["stride"],
             "bound_verified": False,
+            "preheader_value_verified": False,
             "call_preservation_verified": False,
         }],
         "chain": list(summary["origin_chain"]) + [{
             "site": summary["update_site"],
             "kind": "LOOP_INDUCTION_WIDENING",
             "register": summary["counter_register"],
-            "initial_value": summary["initial_value"],
+            "base_value_at_first_observed_header": summary["base_value_at_first_observed_header"],
             "stride": summary["stride"],
             "backedge_site": summary["backedge_site"],
             "bound_verified": False,
+            "preheader_value_verified": False,
             "call_preservation_verified": False,
         }],
     }
 
 
 def _detect_backedge_induction(header_known, backedge_known, target, branch_pc):
-    """Widen one exact self-ADD register on an observed in-window back edge.
+    """Return exact self-ADD counters observed on an in-window backward edge.
 
-    This records an unbounded symbolic term. It does not infer a loop bound,
-    callback preservation, runtime iterations, or an effective address.
+    The first state at the target PC is only a comparison baseline, not a
+    proven preheader value. Every resulting term has unknown bound/lifetime.
     """
     common = (set(header_known) & set(backedge_known)) - {"xzr"}
     changed = []
@@ -272,6 +273,7 @@ def _detect_backedge_induction(header_known, backedge_known, target, branch_pc):
         if (before["address"], before.get("dynamic_terms", [])) != (
                 after["address"], after.get("dynamic_terms", [])):
             changed.append(name)
+
     for name in (set(header_known) ^ set(backedge_known)) - {"xzr"}:
         info = header_known.get(name) or backedge_known.get(name)
         chain = info.get("chain", [])
@@ -280,42 +282,48 @@ def _detect_backedge_induction(header_known, backedge_known, target, branch_pc):
             if (last.get("kind") == "ADD_IMMEDIATE"
                     and last.get("source_register") == name
                     and last.get("destination_register") == name):
-                return None
-    if len(changed) != 1:
-        return None
-    name = changed[0]
-    before = header_known[name]
-    after = backedge_known[name]
-    if before.get("dynamic_terms") or after.get("dynamic_terms"):
-        return None
-    chain = after.get("chain", [])
-    if not chain:
-        return None
-    update = chain[-1]
-    if (update.get("kind") != "ADD_IMMEDIATE"
-            or update.get("source_register") != name
-            or update.get("destination_register") != name):
-        return None
-    update_site = int(update.get("site", "-1"), 16)
-    stride = update.get("immediate")
-    if (not isinstance(stride, int) or stride == 0
-            or not target < update_site < branch_pc
-            or after["address"] - before["address"] != stride):
-        return None
-    return {
-        "backedge_target": _hex(target),
-        "backedge_site": _hex(branch_pc),
-        "counter_register": name,
-        "initial_value": before["address"],
-        "stride": stride,
-        "update_site": _hex(update_site),
-        "origin_chain": list(before.get("chain", [])),
-        "state": "STATIC_SELF_ADD_BACKEDGE_WIDENING_UNKNOWN_BOUND",
-        "bound_verified": False,
-        "iteration_count_verified": False,
-        "call_preservation_verified": False,
-        "callback_identity_verified": False,
-    }
+                return []
+
+    if not changed:
+        return []
+    summaries = []
+    for name in changed:
+        before = header_known[name]
+        after = backedge_known[name]
+        if before.get("dynamic_terms") or after.get("dynamic_terms"):
+            return []
+        chain = after.get("chain", [])
+        if not chain:
+            return []
+        update = chain[-1]
+        if (update.get("kind") != "ADD_IMMEDIATE"
+                or update.get("source_register") != name
+                or update.get("destination_register") != name):
+            return []
+        update_site = int(update.get("site", "-1"), 16)
+        stride = update.get("immediate")
+        if (not isinstance(stride, int) or stride == 0
+                or not target <= update_site < branch_pc
+                or after["address"] - before["address"] != stride):
+            return []
+        summaries.append({
+            "backedge_target": _hex(target),
+            "backedge_site": _hex(branch_pc),
+            "counter_register": name,
+            "base_value_at_first_observed_header": before["address"],
+            "stride": stride,
+            "update_site": _hex(update_site),
+            "origin_chain": list(before.get("chain", [])),
+            "state": "STATIC_SELF_ADD_BACKEDGE_WIDENING_UNKNOWN_BOUND",
+            "first_state_source": "FIRST_OBSERVED_STATE_AT_TARGET_PC",
+            "bound_verified": False,
+            "preheader_value_verified": False,
+            "iteration_count_verified": False,
+            "call_preservation_verified": False,
+            "callback_identity_verified": False,
+        })
+    return summaries
+
 
 
 def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
@@ -374,7 +382,7 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
         raise ValueError("Unable to seed ADRP reaching state")
 
     start = pc + 4
-    queue = deque([(start, known, (), None)])
+    queue = deque([(start, known, ())])
     visited = {}
     loop_entry_states = {}
     loop_induction_by_update_site = {}
@@ -405,7 +413,7 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                 existing["branch_path_witnesses"].append(witness)
 
     while queue:
-        current_pc, current_known, branch_sites, predecessor_pc = queue.popleft()
+        current_pc, current_known, branch_sites = queue.popleft()
         if current_pc < start or current_pc >= window_end or (current_pc & 3):
             outside[(current_pc, "queued_target")] = {
                 "from": _hex(pc),
@@ -413,8 +421,7 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                 "target": _hex(current_pc),
             }
             continue
-        if predecessor_pc is None or predecessor_pc <= current_pc:
-            loop_entry_states.setdefault(current_pc, _clone_known(current_known))
+        loop_entry_states.setdefault(current_pc, _clone_known(current_known))
         reached_branches.update(branch_sites)
         signature = _state_signature(current_known, bool(branch_sites))
         state_key = (current_pc, signature)
@@ -605,7 +612,7 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                     }
                 elif kind.startswith("fallthrough_after"):
                     if target is not None and start <= target < window_end:
-                        queue.append((target, _zero_register_state(), branch_sites, current_pc))
+                        queue.append((target, _zero_register_state(), branch_sites))
                     elif target is not None:
                         outside[(current_pc, kind, target)] = {
                             "from": _hex(current_pc),
@@ -640,10 +647,10 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                 if kind in {"conditional", "unconditional"} and target < current_pc:
                     header_state = loop_entry_states.get(target)
                     if header_state is not None:
-                        summary = _detect_backedge_induction(
+                        summaries = _detect_backedge_induction(
                             header_state, state_for_target, target, current_pc
                         )
-                        if summary is not None:
+                        for summary in summaries:
                             key = (
                                 summary["backedge_target"],
                                 summary["update_site"],
@@ -659,7 +666,7 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                             state_for_target[existing["counter_register"]] = (
                                 _unknown_loop_induction_state(existing)
                             )
-                queue.append((target, state_for_target, next_branches, current_pc))
+                queue.append((target, state_for_target, next_branches))
             else:
                 outside[(current_pc, kind, target)] = {
                     "from": _hex(current_pc),
@@ -692,7 +699,9 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                              row["counter_register"]),
         ),
         "undecodable_words": [_hex(value) for value in sorted(undecodable)],
-        "bounded_in_window_cfg_complete": not budget_exceeded and not undecodable,
+        "bounded_in_window_cfg_complete": (
+            not budget_exceeded and not undecodable and not dynamic_loop_widenings
+        ),
         "calls_are_clobber_barriers": True,
         "out_of_window_edges": list(outside.values()),
     }
@@ -812,42 +821,7 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
                 text, pc, page, rd, pointer_cells, target_start, target_end,
                 window_bytes, max_states, decoder, loop_summary
             )
-            initial_reference = trace["reference"]
-            retry_info = {
-                "attempted": False,
-                "reason": (
-                    "target_page_protected" if page == target_page
-                    and initial_reference["state_budget_exceeded"]
-                    else "not_needed" if not initial_reference["state_budget_exceeded"]
-                    else "retry_limit_reached"
-                ),
-                "initial_max_states": max_states,
-                "retry_max_states": None,
-                "initial_reachable_state_count": initial_reference["reachable_state_count"],
-                "retry_reachable_state_count": None,
-                "resolved": not initial_reference["state_budget_exceeded"],
-            }
-            if (page != target_page and initial_reference["state_budget_exceeded"]
-                    and max_states < POINTER_PAGE_RETRY_MAX_STATES):
-                retry_trace = _trace_reference_cfg(
-                    text, pc, page, rd, pointer_cells, target_start, target_end,
-                    window_bytes, POINTER_PAGE_RETRY_MAX_STATES, decoder, loop_summary
-                )
-                retry_reference = retry_trace["reference"]
-                retry_info = {
-                    "attempted": True,
-                    "reason": "bounded_pointer_page_retry",
-                    "initial_max_states": max_states,
-                    "retry_max_states": POINTER_PAGE_RETRY_MAX_STATES,
-                    "initial_reachable_state_count": initial_reference["reachable_state_count"],
-                    "retry_reachable_state_count": retry_reference["reachable_state_count"],
-                    "resolved": not retry_reference["state_budget_exceeded"],
-                }
-                trace = retry_trace
-                reference = retry_reference
-            else:
-                reference = initial_reference
-            reference["state_budget_retry"] = retry_info
+            reference = trace["reference"]
             references.append(reference)
             state_budget_exceeded = state_budget_exceeded or reference["state_budget_exceeded"]
             undecodable.update(int(value, 16) for value in reference["undecodable_words"])
@@ -889,17 +863,6 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
     branch_rows = [
         row for row in direct_rows + indexed_rows
         if row["branch_path_witnesses"]
-    ]
-    pointer_retry_rows = [
-        row for row in references
-        if row["target_page"] != _hex(_target_page(target_start))
-        and row["state_budget_retry"]["attempted"]
-    ]
-    pointer_retry_resolved = [
-        row for row in pointer_retry_rows if row["state_budget_retry"]["resolved"]
-    ]
-    pointer_retry_unresolved = [
-        row for row in pointer_retry_rows if not row["state_budget_retry"]["resolved"]
     ]
     target_page_scanned = target_page in page_set
     target_references = [
@@ -958,12 +921,6 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         )),
         "undecodable_words": [_hex(value) for value in sorted(undecodable)],
         "state_budget_exceeded": state_budget_exceeded,
-        "pointer_page_state_budget_retry": {
-            "max_states": POINTER_PAGE_RETRY_MAX_STATES,
-            "attempted_reference_count": len(pointer_retry_rows),
-            "resolved_reference_count": len(pointer_retry_resolved),
-            "unresolved_reference_count": len(pointer_retry_unresolved),
-        },
         "equivalent_branch_histories_merged": sum(
             row["equivalent_branch_histories_merged"] for row in references
         ),

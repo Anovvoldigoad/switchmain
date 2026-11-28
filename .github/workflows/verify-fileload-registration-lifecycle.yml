@@ -43,7 +43,7 @@ jobs:
           name: FILELOAD_TABLE_ACCESS_STATIC_EVIDENCE
           path: table-proof-work/native_fileload_table_access.json
           if-no-files-found: error
-      - name: Reproduce bounded CFG branch paths and retry pointer-page state budgets
+      - name: Reproduce bounded CFG branch paths and unknown-bound loop widening
         run: PYTHONPATH=tools python tests/test_native_fileload_table_cfg.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output table-cfg-proof-work
       - name: Hash exact analyzer, regression, workflow and evidence inputs
         if: always()

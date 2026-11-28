@@ -418,17 +418,25 @@ def synthetic_unknown_bound_backedge_widening():
     target_start = 0x5080
     target_end = 0x5090
 
-    def build(call_barrier=False, second_counter=False, non_self_update=False):
+    def build(call_barrier=False, second_counter=False, non_self_update=False,
+              preheader_skips_update=False):
         code = bytearray(0x40)
         put_word(code, 0x00, encode_adrp(0x00, 8, pointer_page))
         put_word(code, 0x04, 0xAA1F03E9)  # mov x9, xzr
         if second_counter:
             put_word(code, 0x08, 0xAA1F03EB)  # mov x11, xzr
             put_word(code, 0x0C, encode_add_register(10, 8, 9))
-            put_word(code, 0x10, encode_ldr64(0, 10, 0x80))
-            put_word(code, 0x14, encode_add(9, 9, 8))
-            put_word(code, 0x18, encode_add(11, 11, 4))
-            put_word(code, 0x1C, encode_branch(0x1C, 0x0C))
+            put_word(code, 0x10, encode_add_register(10, 10, 11))
+            put_word(code, 0x14, encode_ldr64(0, 10, 0x80))
+            put_word(code, 0x18, encode_add(9, 9, 8))
+            put_word(code, 0x1C, encode_add(11, 11, 4))
+            put_word(code, 0x20, encode_branch(0x20, 0x0C))
+        elif preheader_skips_update:
+            put_word(code, 0x08, encode_branch(0x08, 0x10))
+            put_word(code, 0x0C, encode_add(9, 9, 8))
+            put_word(code, 0x10, encode_add_register(10, 8, 9))
+            put_word(code, 0x14, encode_ldr64(0, 10, 0x80))
+            put_word(code, 0x18, encode_branch(0x18, 0x0C))
         else:
             put_word(code, 0x08, encode_add_register(10, 8, 9))
             put_word(code, 0x0C, encode_ldr64(0, 10, 0x80))
@@ -454,11 +462,13 @@ def synthetic_unknown_bound_backedge_widening():
     reference = positive["page_references"][0]
     widening = reference["dynamic_loop_widenings"][0]
     assert widening["counter_register"] == "x9"
-    assert widening["initial_value"] == 0
+    assert widening["base_value_at_first_observed_header"] == 0
+    assert widening["preheader_value_verified"] is False
     assert widening["stride"] == 8
     assert widening["bound_verified"] is False
     assert widening["call_preservation_verified"] is False
     assert reference["branch_path_witnesses_exhaustive"] is False
+    assert reference["bounded_in_window_cfg_complete"] is False
     indexed = [row for row in positive["indexed_access_candidates"]
                if row["site"] == "0xc"]
     assert len(indexed) == 1
@@ -475,10 +485,27 @@ def synthetic_unknown_bound_backedge_widening():
     assert call_barrier["dynamic_loop_widening_count"] == 0
 
     multiple = scan_address_pages_cfg(
-        build(second_counter=True), {pointer_page}, {}, window_bytes=0x30,
+        build(second_counter=True), {pointer_page}, {}, window_bytes=0x40,
         max_states=32, target_start=target_start, target_end=target_end,
     )
-    assert multiple["dynamic_loop_widening_count"] == 0
+    assert multiple["dynamic_loop_widening_count"] == 2
+    multiple_terms = next(
+        row for row in multiple["indexed_access_candidates"]
+        if row["site"] == "0x14"
+    )["dynamic_index_terms"]
+    assert {row["register"] for row in multiple_terms} == {"x9", "x11"}
+    assert all(row["extension"] == "LOOP_INDUCTION_UNKNOWN_BOUND"
+               for row in multiple_terms)
+
+    preheader = scan_address_pages_cfg(
+        build(preheader_skips_update=True), {pointer_page}, {},
+        window_bytes=0x30, max_states=16,
+        target_start=target_start, target_end=target_end,
+    )
+    assert preheader["dynamic_loop_widening_count"] == 1
+    assert preheader["page_references"][0]["dynamic_loop_widenings"][0][
+        "first_state_source"
+    ] == "FIRST_OBSERVED_STATE_AT_TARGET_PC"
 
     non_self = scan_address_pages_cfg(
         build(non_self_update=True), {pointer_page}, {}, window_bytes=0x30,
@@ -487,14 +514,13 @@ def synthetic_unknown_bound_backedge_widening():
     assert non_self["dynamic_loop_widening_count"] == 0
 
 
-def synthetic_pointer_page_budget_retry():
+def synthetic_pointer_page_budget_fail_closed():
     code = bytearray(0x40)
     pointer_page = 0x5000
     put_word(code, 0x00, encode_adrp(0x00, 8, pointer_page))
     put_word(code, 0x04, encode_b_cond(0x04, 0x20))
     put_word(code, 0x08, 0xD65F03C0)
     put_word(code, 0x20, 0xD65F03C0)
-
     report = scan_address_pages_cfg(
         bytes(code), {TABLE_PAGE, pointer_page}, {},
         window_bytes=0x30, max_states=1
@@ -503,36 +529,11 @@ def synthetic_pointer_page_budget_retry():
         row for row in report["page_references"]
         if row["target_page"] == hex(pointer_page)
     )
-    retry = reference["state_budget_retry"]
-    assert retry == {
-        "attempted": True,
-        "reason": "bounded_pointer_page_retry",
-        "initial_max_states": 1,
-        "retry_max_states": 1024,
-        "initial_reachable_state_count": 1,
-        "retry_reachable_state_count": 3,
-        "resolved": True,
-    }
-    assert reference["state_budget_exceeded"] is False
-    assert reference["bounded_in_window_cfg_complete"] is True
-    assert report["pointer_page_state_budget_retry"] == {
-        "max_states": 1024,
-        "attempted_reference_count": 1,
-        "resolved_reference_count": 1,
-        "unresolved_reference_count": 0,
-    }
-    assert report["pointer_alias_trace_complete"] is True
+    assert reference["state_budget_exceeded"] is True
+    assert reference["bounded_in_window_cfg_complete"] is False
+    assert report["pointer_alias_trace_complete"] is False
+    assert len(report["pointer_page_budget_reference_disassembly"]) == 1
 
-    no_retry = scan_address_pages_cfg(
-        bytes(code), {TABLE_PAGE, pointer_page}, {},
-        window_bytes=0x30, max_states=1024
-    )
-    no_retry_reference = next(
-        row for row in no_retry["page_references"]
-        if row["target_page"] == hex(pointer_page)
-    )
-    assert no_retry_reference["state_budget_retry"]["attempted"] is False
-    assert no_retry_reference["state_budget_retry"]["reason"] == "not_needed"
 
 
 def synthetic_limits():
@@ -547,8 +548,7 @@ def synthetic_limits():
     )
     assert limited["state_budget_exceeded"] is True
     assert limited["bounded_in_window_cfg_complete"] is False
-    assert limited["page_references"][0]["state_budget_retry"]["attempted"] is False
-    assert limited["page_references"][0]["state_budget_retry"]["reason"] == "target_page_protected"
+    assert limited["page_references"][0]["state_budget_exceeded"] is True
 
     budget_code = bytearray(0x40)
     put_word(budget_code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
@@ -586,7 +586,7 @@ def run(main, output):
     synthetic_counted_slot_loop()
     synthetic_loop_induction_widening()
     synthetic_unknown_bound_backedge_widening()
-    synthetic_pointer_page_budget_retry()
+    synthetic_pointer_page_budget_fail_closed()
     synthetic_limits()
 
     raw = main.read_bytes()
@@ -606,25 +606,18 @@ def run(main, output):
     remaining_budget = [
         row for row in cfg["page_references"] if row["state_budget_exceeded"]
     ]
-    retry_summary = cfg["pointer_page_state_budget_retry"]
-    attempted_retries = [
+    pointer_references = [
         row for row in cfg["page_references"]
-        if row["state_budget_retry"]["attempted"]
+        if row["target_page"] != hex(TABLE_PAGE)
     ]
-    assert len(attempted_retries) == retry_summary["attempted_reference_count"]
-    assert retry_summary["max_states"] == 1024
-    assert retry_summary["attempted_reference_count"] <= 45
-    assert retry_summary["unresolved_reference_count"] == len(remaining_budget)
-    assert cfg["dynamic_loop_widening_reference_count"] > 0
-    assert cfg["dynamic_loop_widening_count"] >= cfg["dynamic_loop_widening_reference_count"]
-    assert len(remaining_budget) < 45
-    assert all(row["state_budget_retry"]["initial_max_states"] == 256
-               and row["state_budget_retry"]["retry_max_states"] == 1024
-               for row in attempted_retries)
-    assert all(row["state_budget_retry"]["resolved"]
-               == (not row["state_budget_exceeded"])
-               for row in attempted_retries)
-    assert cfg["pointer_alias_trace_complete"] is (len(remaining_budget) == 0)
+    assert cfg["dynamic_loop_widening_reference_count"] >= 27
+    assert cfg["dynamic_loop_widening_count"] >= 37
+    assert len(remaining_budget) <= 20
+    has_unknown_bound_loops = any(row["dynamic_loop_widenings"]
+                                  for row in pointer_references)
+    assert cfg["pointer_alias_trace_complete"] is (
+        len(remaining_budget) == 0 and not has_unknown_bound_loops
+    )
     direct_sites = {row["site"] for row in cfg["direct_accesses"]}
     assert {"0x116b8a0", "0x116b924"} <= direct_sites
     indexed_sites = {row["site"] for row in cfg["indexed_access_candidates"]}
@@ -720,10 +713,9 @@ def run(main, output):
         "branch_path_writes", len(cfg["branch_path_table_writes"]),
         "static_pointer_cells", report["static_pointer_cells"]["candidate_cell_count"],
         "loaded_aliases", len(cfg["memory_loaded_aliases"]),
-        "pointer_retries", retry_summary["attempted_reference_count"],
-        "resolved", retry_summary["resolved_reference_count"],
-        "remaining", retry_summary["unresolved_reference_count"],
+        "unknown_bound_loop_widening_refs", cfg["dynamic_loop_widening_reference_count"],
         "unknown_bound_loop_widenings", cfg["dynamic_loop_widening_count"],
+        "remaining_state_budget", len(remaining_budget),
         "NO_ABI_NO_OWNER_NO_ARCHIVE_PRECEDENCE_NO_UZUY_CLAIM",
     )
 
