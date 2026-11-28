@@ -784,19 +784,8 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                 if kind in {"conditional", "unconditional"} and target < current_pc:
                     header_state = loop_entry_states.get(target)
                     if header_state is not None:
-                        live_at_header = live_in_registers.get(
-                            target, _ALL_TRACKED_REGISTERS
-                        )
-                        header_state = {
-                            name: value for name, value in header_state.items()
-                            if name in live_at_header
-                        }
-                        backedge_state = {
-                            name: value for name, value in state_for_target.items()
-                            if name in live_at_header
-                        }
                         summaries = _detect_backedge_induction(
-                            header_state, backedge_state, target, current_pc
+                            header_state, state_for_target, target, current_pc
                         )
                         for summary in summaries:
                             key = (
