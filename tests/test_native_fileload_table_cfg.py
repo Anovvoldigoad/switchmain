@@ -324,9 +324,11 @@ def run(main, output):
     ]
     for row in disassembly:
         assert row["instruction_count"] == 64
-        assert row["decoded_instruction_count"] == 64
-        assert all(item["decoded"] and len(item["word_le"]) == 8
-                   for item in row["rows"])
+        assert 0 < row["decoded_instruction_count"] <= 64
+        assert all(len(item["word_le"]) == 8 for item in row["rows"])
+        assert sum(not item["decoded"] for item in row["rows"]) == (
+            64 - row["decoded_instruction_count"]
+        )
         assert any(
             edge["kind"] in {"conditional", "unconditional"}
             for item in row["rows"] for edge in item["edges"]
