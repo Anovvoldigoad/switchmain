@@ -1512,3 +1512,14 @@ Implementation commit: \`48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3\` (parent \`21
 - CI on the exact code commit: table workflow run `46109004389`, job `140868100989`, COMPLETED SUCCESS; return-provenance workflow run `46109004391`, job `140868101178`, COMPLETED SUCCESS. Raw logs and both uploaded JSON artifacts were inspected. Table report JSON SHA256 `538dd282ac1f7af783d54b125d31958f0092b591d7be61032b261cd6d67ab7be`; return report JSON SHA256 `53ebe0d7eff1ffbdcb45fc838d63148b587fe76f0b0992d6baa2475f2ffba337`.
 - CI root causes fixed during this slice: missing `hashlib` import in the first run; then a too-strict test expectation caused by Capstone's CMP alias metadata. Both were corrected and the final two workflows passed.
 - Not verified: complete writer census, memory-loaded pointer aliases, branch-path stores, producer identity, consumer ABI, callbacks, ownership/lifecycle, async/rollback/unbind/destructor, archive precedence, emulated ARM64, Uzuy or gameplay. Release flags remain false.
+
+
+## 2026-11-28 — FileLoad bounded CFG branch-path + static pointer-alias census (PENDING_CI)
+
+- Parent HEAD: \`4d5acd5a52e0ae3e72415a7ee3164ffc21082769\`.
+- Research-first source pins and blob identities are recorded in \`handoff/evidence_fileload_table_cfg_20261128.md\`.
+- New source: \`tools/portlib/native_fileload_table_cfg.py\`; new tests: \`tests/test_native_fileload_table_cfg.py\`.
+- The analyzer follows bounded conditional/unconditional branch paths from target-page ADRPs and scans file-backed 64-bit literals plus symbol-zero \`R_AARCH64_RELATIVE\` addends for pointers into the target page. Only a unique pointer load is propagated. Direct/authenticated calls are clobber barriers; branch targets outside the 0x100-byte window are recorded but not followed.
+- Synthetic regressions cover branch-only stores, call barriers, static literal/RELA cells, ambiguous pointer values, BSS exclusion, page-end rejection, and CFG state-budget exhaustion. The authentic original main is SHA-pinned and the new scan must preserve every previous linear witness.
+- CI on the exact code commit is pending. Do not mark this slice verified until its raw job log is inspected.
+- Not proven: complete table writers, dynamic BSS/heap aliases, function identity, native consumer ABI, object ownership/lifecycle, callbacks, lock/unlock, async, rollback/unbind/destructor, archive precedence, emulated ARM64, Uzuy or gameplay. No runtime hook; Sakura aura107 and both Event236 variants remain untouched; all three release flags remain false.

@@ -32,3 +32,11 @@ Do not install hooks or write game runtime until ABI, ownership/lifecycle, callb
 - Raw CI logs inspected: table run 46109004389/job 140868100989 SUCCESS; return provenance run 46109004391/job 140868101178 SUCCESS. Artifact JSON hashes are in checkpoint/evidence note.
 - Important limit: this does NOT prove a complete writer census, native consumer ABI, pointer type, callback, ownership, lifecycle, archive precedence or runtime behavior.
 - Next: extend the table scan through bounded CFG branch paths and memory-loaded pointer aliases to find producer/writer paths. Continue BR X2 source/lifetime analysis. Do not repeat the direct table census or install hooks.
+
+
+## 2026-11-28 FileLoad table CFG slice — PENDING_CI
+- New code: \`tools/portlib/native_fileload_table_cfg.py\`; test: \`tests/test_native_fileload_table_cfg.py\`; workflow: \`.github/workflows/verify-fileload-registration-lifecycle.yml\`.
+- Research pins and byte-level scope: \`handoff/evidence_fileload_table_cfg_20261128.md\`.
+- Inspect the exact code commit's push workflow run, job and raw log. Repair any failure before updating the evidence state.
+- The new scan follows bounded in-window branch paths and one-level file-backed/RELA-backed pointer loads. Calls are clobber barriers; dynamic BSS/heap pointer cells, paths outside the window, and all native consumer/lifecycle semantics remain unresolved.
+- Never install a runtime hook. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false.

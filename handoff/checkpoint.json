@@ -26,7 +26,7 @@
   "repository": "https://github.com/Anovvoldigoad/switchmain",
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
-  "documentation_commit": "2026-11-28 static-only FileLoad table indexed-read and return provenance verified by Actions on e9555de6024a334b6ffcac1e7b9c091fee79d7e6; docs sync pending.",
+  "documentation_commit": "2026-11-28 PENDING_CI: FileLoad bounded CFG branch-path + static pointer-alias census added on parent 4d5acd5a52e0ae3e72415a7ee3164ffc21082769; targeted Actions run pending.",
   "prior_storm_checkpoint_id": "80be5308-6dfa-44d8-91e9-71c92a4f00e2",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
@@ -2842,7 +2842,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Extend FileLoad table writer census from bounded linear ADRP windows to bounded CFG branch paths and memory-loaded pointer aliases. Use the seven indexed readers as anchors, identify producer/write paths for 0x4371800, and continue the X0 -> [X0] -> [X8,#0x58] -> BR X2 object-source trace. Do not repeat the direct table census or install hooks.",
+  "next_action": "Inspect the new FileLoad table CFG workflow on the exact code commit and read its raw job log. If it fails, fix the specific regression. Then use any authentic branch-path or static alias witnesses to prioritize producer/constructor tracing; dynamic BSS/heap writers and BR X2 lifecycle remain unresolved. Do not install hooks or change gameplay flags.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -6381,5 +6381,62 @@
       "emulator_tested": false
     },
     "next": "Extend the 89-reference sweep to bounded CFG branch paths and memory-loaded pointer aliases; locate all producer/writer paths for 0x4371800. Then resolve the runtime value feeding BR X2 only from proven object/vtable construction and lifetime. Do not add hooks."
+  },
+  "native_fileload_table_cfg_20261128": {
+    "state": "PENDING_CI",
+    "parent_sha": "4d5acd5a52e0ae3e72415a7ee3164ffc21082769",
+    "code_commit": null,
+    "source": "tools/portlib/native_fileload_table_cfg.py",
+    "test": "tests/test_native_fileload_table_cfg.py",
+    "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
+    "original_main": {
+      "git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "bytes": 27701509,
+      "sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+    },
+    "research": {
+      "modmanager_tag": "502c38d3ee832509f9ee3951b7d3339826538fec",
+      "modmanager_main": "276116ebf5ba398a867793cb02ee6c33c0927645",
+      "modmanager_xfbin_blob": "faf79d588fd8beb3f5761faebedd2252853b2f2b",
+      "toolbox_tag": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+      "toolbox_main": "6f780cb6814f07e03c16b3e78d97dde4e4368983",
+      "toolbox_xfbin_blob": "86c63708edf2698b5bc1c2a54c0480cce014b525",
+      "toolbox_skill_editor_blob": "e165471682e4a7aed91094ef07f92df271f31639",
+      "ultimate_storm_api": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+      "pycri_main": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+      "pycri_cpk_blob": "2ed2cbb2c6112124013ab52755dba8a443e91306",
+      "pycri_utf_blob": "d1662d140a48cae37a6696213ee441aed4076edb",
+      "rea_main": "8ff3570430ad682061b7932b9953d45b904cb487",
+      "rea_binary_diagnostics_blob": "76da9004df7abee2831a2b1d9bc32e99d0e03f1c",
+      "rea_supported_targets_blob": "b4fad121e917a1a6eb148e72c4ac1daef7d95265"
+    },
+    "implementation": {
+      "branch_path_cfg": true,
+      "direct_and_authenticated_calls_are_clobber_barriers": true,
+      "file_backed_pointer_literals_scanned": true,
+      "relative_relocation_pointer_cells_scanned": true,
+      "single_level_static_pointer_loads_traced": true,
+      "bss_or_heap_pointer_cells_without_relocations": false,
+      "complete_writer_census": false,
+      "native_consumer_abi_verified": false
+    },
+    "ci": {
+      "status": "PENDING",
+      "run_id": null,
+      "job_id": null,
+      "raw_log_inspected": false
+    },
+    "release_flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "invariants": {
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "sakura_aura107_unchanged": true,
+      "event236_marker_0x4e53_plus_0x2a_unchanged": true,
+      "event236_no_marker_unchanged": true
+    },
+    "next": "Inspect targeted push workflow raw log; repair any failure. Continue only from authentic branch-path or static pointer-alias evidence. No hook until ABI, ownership/lifecycle, callback, lock/unlock, async, rollback, unbind/destructor and archive precedence are proven."
   }
 }

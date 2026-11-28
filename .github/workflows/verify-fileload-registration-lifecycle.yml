@@ -8,6 +8,8 @@ on:
       - 'tests/test_native_fileload_registration_lifecycle.py'
       - 'tools/portlib/native_fileload_table_access.py'
       - 'tests/test_native_fileload_table_access.py'
+      - 'tools/portlib/native_fileload_table_cfg.py'
+      - 'tests/test_native_fileload_table_cfg.py'
       - 'original/atmosphere/contents/0100FA10190A0000/exefs/main'
 jobs:
   verify:
