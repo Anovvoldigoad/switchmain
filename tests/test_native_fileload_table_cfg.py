@@ -306,7 +306,7 @@ def synthetic_counted_slot_loop():
     ), "non-eight-byte loop stride")
 
     bad_limit = bytearray(positive)
-    bad_limit[24:28] = b"\\x00\\x00\\x00\\x00"
+    bad_limit[24:28] = bytes(4)
     expect_reject(lambda: _summarize_counted_slot_loop(
         bytes(bad_limit), site, base_address
     ), "non-table loop bound")
@@ -324,7 +324,7 @@ def synthetic_counted_slot_loop():
     ), "unrecognized dispatch offset")
 
     bad_init = bytearray(positive)
-    bad_init[0:4] = b"\\x00\\x00\\x00\\x00"
+    bad_init[0:4] = bytes(4)
     expect_reject(lambda: _summarize_counted_slot_loop(
         bytes(bad_init), site, base_address
     ), "unknown initial counter value")
