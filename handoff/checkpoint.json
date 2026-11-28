@@ -26,7 +26,7 @@
   "repository": "https://github.com/Anovvoldigoad/switchmain",
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
-  "documentation_commit": "2026-11-28 evidence/status synchronization for FileLoad lifecycle static slice; code proof commit 2b06a49730dc3bdf9816cc7f4f984231aa34b4fe",
+  "documentation_commit": "2026-11-28 caller census implementation pending direct-push CI",
   "prior_storm_checkpoint_id": "80be5308-6dfa-44d8-91e9-71c92a4f00e2",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
@@ -2842,7 +2842,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Continue read-only analysis from the unresolved BR X2 at 0x116b3d0. Find the writer/producer for the 64 slots at 0x4371800 and any runtime vtable values without assuming object layout; request/locate a read-only Uzuy memory snapshot only if already available. Keep the allocator Free import and 24-byte helper records as static facts, not ownership proof. No hook until callback, object type, ownership, lock/unlock, async, rollback/unbind/destructor and archive precedence are established. If no runtime bytes are available, switch to a source-grounded semantic consumer slice (e.g. MovesetPlus command 29) and keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false.",
+  "next_action": "Inspect this isolated direct-push workflow's raw job log and JSON artifact. If a falsifiable caller grouping or concrete direct edge emerges, trace only that byte-backed path; otherwise keep BR X2, writer, ABI, ownership and lifecycle unresolved. No hook.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -2856,7 +2856,13 @@
     "ci": "PENDING"
   },
   "latest_pending_code_commit": null,
-  "latest_pending_ci": null,
+  "latest_pending_ci": {
+    "parent_sha": "e70d151e7c7fffec838126f47d2f375e65e8ba34",
+    "code_commit": null,
+    "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
+    "state": "pending",
+    "raw_log_inspected": false
+  },
   "crilayla_total_output_limit": {
     "status": "pending_ci",
     "parent_sha": "e4e08cc748b18d9ae8576862d1cd509a27f684b0",
@@ -3812,39 +3818,19 @@
   },
   "latest_pending_head_ci": null,
   "latest_execution": {
-    "status": "VERIFIED_CI_STATIC_ONLY_REGISTRATION_TARGET_CFG",
-    "code_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
-    "parent_sha": "c62ff2e537d845f6410b009045de423c103e0dce",
-    "source": "tools/portlib/native_fileload_registration_target.py",
-    "test": "tests/test_native_fileload_registration_target.py",
-    "summary": "Pinned relative relocation cell 0x215d2b0 -> text 0x116b888; bounded CFG identifies a 64-entry pointer-table loop, one direct call to 0x116b390 and a 0x200-byte zeroing sequence. No callback/destructor/function extent/ownership/runtime ABI claim.",
-    "ci_run_ids": [
-      46077330193,
-      46077330238,
-      46077330215,
-      46077330236
-    ],
-    "ci_job_ids": [
-      140768008713,
-      140768008784,
-      140768008716,
-      140768008350
-    ],
-    "all_completed_success": true,
-    "raw_job_logs_inspected": true,
-    "foundation_artifact_id": 15234858334,
-    "foundation_artifact_zip_sha256": "7dad9c43345b5094a7cc3531df03c11c10dc01fd5b86c145585952551eb3207a",
-    "registration_json_sha256": "7f70068cb9a900f95a40ed1adc9520a8441f635523acaf6c11b8a94fe43750e0",
-    "target_window_sha256": "877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec",
-    "next": "Trace direct-call target 0x116b390 in a separate bounded window; verify what X0 points to, whether it invokes an indirect callback, and its ownership/lock/unlock behavior. Do not identify destructor semantics or install a hook until the full lifecycle is proven."
+    "status": "IMPLEMENTED_AWAITING_CI_FILELOAD_HELPER_CALLER_CENSUS",
+    "parent_sha": "e70d151e7c7fffec838126f47d2f375e65e8ba34",
+    "source": "tools/portlib/native_fileload_helper_callers.py",
+    "test": "tests/test_native_fileload_helper_callers.py",
+    "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
+    "expected_raw_inbound_candidates": 101,
+    "next": "Inspect this isolated direct-push workflow's raw job log and JSON artifact. If a falsifiable caller grouping or concrete direct edge emerges, trace only that byte-backed path; otherwise keep BR X2, writer, ABI, ownership and lifecycle unresolved. No hook."
   },
   "latest_slice": {
-    "state": "VERIFIED_CI_STATIC_ONLY_REGISTRATION_TARGET_CFG",
-    "code_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
-    "parent_sha": "c62ff2e537d845f6410b009045de423c103e0dce",
-    "description": "SHA-pinned FileLoad registration code-pointer target trace and bounded AArch64 CFG",
-    "source": "tools/portlib/native_fileload_registration_target.py",
-    "test": "tests/test_native_fileload_registration_target.py",
+    "state": "IMPLEMENTED_AWAITING_CI_FILELOAD_HELPER_CALLER_CENSUS",
+    "parent_sha": "e70d151e7c7fffec838126f47d2f375e65e8ba34",
+    "source": "tools/portlib/native_fileload_helper_callers.py",
+    "test": "tests/test_native_fileload_helper_callers.py",
     "consumer_abi_verified": false,
     "ownership_lifecycle_verified": false,
     "uzuy_verified": false
@@ -5855,5 +5841,74 @@
       "emulated_arm64": false,
       "uzuy": false
     }
+  },
+  "native_fileload_helper_callers_20261128": {
+    "state": "IMPLEMENTED_AWAITING_CI",
+    "parent_sha": "e70d151e7c7fffec838126f47d2f375e65e8ba34",
+    "code_commit": null,
+    "source": "tools/portlib/native_fileload_helper_callers.py",
+    "test": "tests/test_native_fileload_helper_callers.py",
+    "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
+    "evidence_note": "handoff/evidence_fileload_helper_callers_20261128.md",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_size_bytes": 27701509,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "target": "0x116b390",
+    "expected_raw_inbound_candidates": 101,
+    "known_table_path_calls": [
+      {
+        "call_site": "0x116b8a4",
+        "load_site": "0x116b8a0",
+        "memory_base": "x8",
+        "displacement": "0x28"
+      },
+      {
+        "call_site": "0x116b928",
+        "load_site": "0x116b924",
+        "memory_base": "x8",
+        "displacement": "0x28"
+      }
+    ],
+    "research": {
+      "modmanager_latest_tag": "2.1.2.1",
+      "modmanager_latest_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+      "modmanager_previous_tag_commit": "a4a6e7e2aeec79cffa7d477e4b1a8fcd05823983",
+      "toolbox_latest_tag": "2.1.2.1",
+      "toolbox_latest_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+      "toolbox_previous_tag_commit": "dfe371dd4f1f0d1d1ad74a79e1bc8192a6d1fc31",
+      "ultimate_storm_api_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+      "pycricodecs_commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+      "rea_commit": "0386efd1e1dfa41af41f804a6be56c6f5b7615d4"
+    },
+    "ci": {
+      "state": "pending",
+      "code_commit": null,
+      "run_id": null,
+      "job_id": null,
+      "raw_log_inspected": false,
+      "artifact_id": null,
+      "artifact_zip_sha256": null,
+      "report_sha256": null,
+      "failed_attempts": []
+    },
+    "limits": {
+      "prelude_last_writes_are_syntactic_not_reaching_definitions": true,
+      "function_extents_verified": false,
+      "producer_identity_verified": false,
+      "table_writer_identity_verified": false,
+      "br_x2_target_resolved": false,
+      "ownership_lifecycle_verified": false,
+      "lock_unlock_async_rollback_unbind_verified": false,
+      "native_consumer_abi_verified": false,
+      "archive_precedence_verified": false,
+      "emulated_arm64": false,
+      "uzuy": false
+    },
+    "release_flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next": "Inspect this isolated direct-push workflow's raw job log and JSON artifact. If a falsifiable caller grouping or concrete direct edge emerges, trace only that byte-backed path; otherwise keep BR X2, writer, ABI, ownership and lifecycle unresolved. No hook."
   }
 }

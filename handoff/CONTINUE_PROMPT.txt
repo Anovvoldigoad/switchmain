@@ -1,177 +1,33 @@
-# FileLoad registration dispatch-flow trace — VERIFIED_CI_STATIC_ONLY
+# Continue FULL PC ModdingAPI -> Switch v1.70
 
-Date: 2026-11-28
-Branch: port/full-api-v170
-Code HEAD: 9c06a6bba6d5c69f49107ce3094cbee614d4f5df
+Branch: `port/full-api-v170`
+Current implementation parent: `e70d151e7c7fffec838126f47d2f375e65e8ba34`
+Latest code proof before this slice: `0bc4cb45d713325cf8e33f0385b42535791fe5ab`
+Original Switch v1.70 main SHA256: `2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9`
 
-## Verified result
+## Verified baseline
 
-All four direct push workflows passed on this code HEAD; raw job logs inspected. Foundation run 46083883814/job 140788864287 emitted PINNED_FILELOAD_REGISTRATION_DISPATCH_PASS targets 4 indirect_branch 0x116b3d0. Artifact 15238396702; ZIP SHA256 d33b8fdc4bb728a9d1c7337674a87e6777dcd1a69e4752e36d6f08c51659966c; dispatch JSON SHA256 f2eed43777e1679e2948f0a43ef02c0022ac623586997545573c12949214ab1a.
+- FileLoad 64-slot table census is `VERIFIED_STATIC_CI_ONLY` on `0bc4cb45d713325cf8e33f0385b42535791fe5ab`; run `46089004753`, job `140805260736`, raw log inspected, artifact `15239987914`.
+- Table: `[0x4371800,0x4371a00)`, 64 qword slots; two bounded 512-byte clear sequences; 89 ADRP page references; 34 direct accesses; 288,973 RELA records; 101 raw aligned B/BL inbound candidates to `0x116b390`.
+- The latest branch HEAD before this implementation was documentation-only `e70d151e7c7fffec838126f47d2f375e65e8ba34`; direct Actions API showed no run for that docs-only commit. No queued/in-progress run was present in the direct push run list.
+- Historical failed table-census jobs were checked from raw logs and their root causes are recorded in the evidence note. Do not rerun their fixed tests unless source changes.
 
-Observed dataflow: X19<-X0; direct BLs to 0x116b7b0, 0x116d380 and 0x116b82c; X8<-*[X0]; X2<-*[X8+0x58]; X1<-X19; BR X2 at 0x116b3d0. Four bounded 0x100-byte windows at 0x116b7b0, 0x116d380, 0x116b82c and 0x116d820 were recorded. BR X2 target remains unresolved.
+## Current vertical slice — IMPLEMENTED_AWAITING_CI
 
-## Next slice
+Source: `tools/portlib/native_fileload_helper_callers.py`  
+Test: `tests/test_native_fileload_helper_callers.py`  
+Workflow: `.github/workflows/verify-fileload-helper-callers.yml`  
+Research note: `handoff/evidence_fileload_helper_callers_20261128.md`
 
-Trace exact nested targets 0x12f3690, 0x290, 0x12f36a0, 0x12155a0 and alternate branch 0x12f49b0. Check symbols/relocations before naming any target. No lock/unlock, callback, vtable, destructor, ownership, async, rollback/unbind, ABI, archive precedence or Uzuy claim. No runtime hook.
+The new analyzer Capstone-confirms raw direct B/BL candidates to `0x116b390`, captures each fixed 0x40-byte prelude, records instruction words, register reads/writes and memory operands, and groups callers by last-syntactic-write signatures for X0-X7. It verifies the two known table-path helper calls at `0x116b8a4` / `0x116b928` are preceded by the exact `LDR X0,[X8,#0x28]` at `0x116b8a0` / `0x116b924`.
 
-Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. Preserve Sakura aura107, Event236 marker 0x4E53 +0x2A and unmarked Event236.
+## Required next action
 
-# FileLoad registration callee dispatch-flow trace — PENDING_CI
+1. Inspect the direct push workflow run for the new code commit through `actions/runs` API; read the original job log and download/inspect its JSON artifact.
+2. If a test fails, fix the exact failing assertion from the raw log, push with a fresh expected HEAD and rerun only this isolated workflow.
+3. After CI success, synchronize checkpoint/status/progress and this prompt with the actual run/job/artifact SHA values.
+4. Continue only from byte-backed caller groups or a concrete code/data edge. Do not call last syntactic writes reaching definitions. Resolve BR X2 and any indirect table writer only with further read-only proof.
 
-Date: 2026-11-28
-Branch: port/full-api-v170
-Parent HEAD: dffbf1bd2fc5257a72279186545bbd8d956ab0fe
+## Hard safety limits
 
-## Previously verified in this run
-
-The bounded 0x116b390 callee trace passed all four direct push workflows. It found 24 reachable instructions, three direct-call barriers, one BR X2 indirect terminator at 0x116b3d0, one RET, one out-of-window B to 0x116d820, and 114 raw aligned B/BL inbound candidates (not a function/call count). Original main SHA256 remained 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. Foundation artifact 15238645422; ZIP SHA256 0fd7633194afc59e31548bf8767ce2651776b79f2388fb3248d7695853512ed8; report JSON SHA256 2977741b1f6763aa3e80444607362c1f0429c2aa2bde486f071220e190b0103c.
-
-## Current vertical slice
-
-New source: tools/portlib/native_fileload_registration_dispatch.py
-New test: tests/test_native_fileload_registration_dispatch.py
-The trace validates X0->X19, three direct calls, conditional exits, the 0x20 stack frame, X8<-*[X0], X2<-*[X8+0x58], X1<-X19 and BR X2 at 0x116b3d0. It records four bounded 0x100-byte target windows at 0x116b7b0, 0x116d380, 0x116b82c and 0x116d820. BR X2 target stays unresolved; no callback/vtable/destructor identity or ABI is claimed.
-
-State: PENDING_CI. Inspect all four direct push workflow runs, raw job logs, and Foundation artifact for this exact HEAD. Fix any failure from the original raw log before proceeding.
-
-Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. No runtime hook. Preserve Sakura aura107, Event236 marker 0x4E53 +0x2A and unmarked Event236.
-
-## Next action
-
-After CI, inspect the four bounded target reports. Follow only a concrete byte-backed edge; do not infer BR X2 as callback/vtable/destructor or authorize runtime hooking.
-
-# FileLoad registration-table callee trace — PENDING_CI
-
-Date: 2026-11-28
-Branch: port/full-api-v170
-Parent HEAD: a859b4454fe7f8b1b18c5930bba38c483e7b7b6c
-
-## Current vertical slice
-
-Research-first checks were performed against upstream ModManager/Toolbox 2.1.2.1 and 2.1.2.0, PyCriCodecs CPK/UTF, REA static-analysis guidance, and the pinned Switch v1.70 original main. Exact inspected upstream parser/editor blobs are unchanged across the 2.1.2.0 -> 2.1.2.1 tags; the release-note additions do not prove a Switch consumer ABI.
-
-New source: tools/portlib/native_fileload_registration_callee.py
-New test: tests/test_native_fileload_registration_callee.py
-New Foundation step: bounded trace of the exact 0x116b8a4 -> 0x116b390 BL target. The analyzer validates the 64-bit X0 load at 0x116b8a0 from [X8,#0x28], then records a bounded 0x200-byte callee CFG, register/argument-register access, X0 and stack memory use, direct/indirect call barriers, returns, out-of-window edges and raw aligned-text B/BL inbound candidates. It never treats the bounded window as a function extent.
-
-Original main: Git blob 8af900db0d7003255b4ddb3cbd1289cd5a15458e, 27,701,509 bytes, SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9.
-
-State: PENDING_CI. Inspect all four direct push workflow runs, raw job logs, and Foundation artifact for the new code HEAD. If any CI fails, read the original failing log and fix the root cause. Do not mark this slice verified before all required runs succeed and logs are inspected.
-
-No callback/destructor identity, object type, ownership/lifecycle, lock/unlock, async, rollback/unbind, native consumer ABI, archive precedence or Uzuy proof. No runtime hook. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. Preserve Sakura aura107, Event236 marker 0x4E53 +0x2A, and unmarked Event236.
-
-## Next action
-
-After CI, inspect the bounded callee output. Follow only a concrete, byte-backed direct/indirect edge in a separate static slice; never promote a reader or bounded CFG into a native consumer claim.
-
-# FileLoad registration code-pointer target trace — FIXED_PENDING_CI
-
-Date: 2026-11-28  
-Branch: `port/full-api-v170`  
-Parent HEAD: `9975550ae11657970ae8905a808aa0360ad36710`
-
-## Research-first primary sources
-
-| Primary source | Exact ref / commit | Inspected code / byte evidence |
-|---|---|---|
-| [NSC-ModManager 2.1.2.1](https://github.com/TheLeonX/NSC-ModManager/releases/tag/2.1.2.1) | tag commit `502c38d3ee832509f9ee3951b7d3339826538fec`, published 2026-08-30 | Release adds **Switch Projectiles Target** (change owner of enemy projectiles). |
-| [NSC-ModManager 2.1.2.0](https://github.com/TheLeonX/NSC-ModManager/releases/tag/2.1.2.0) | tag commit `a4a6e7e2aeec79cffa7d477e4b1a8fcd05823983`, published 2026-08-28 | Release adds **Start Deflect / Stop Deflect** (deflect projectiles back to sender). |
-| ModManager source comparison | 2.1.2.1 vs 2.1.2.0 | `SkillCustomizeParamModel.cs` blob `6a891e237d27fdf01336f806dbef8767d609a304`, `SkillCustomizeParamViewModel.cs` `ced6d805b207fae16cf68df87e23744608d6562b`, `SpSkillCustomizeParamModel.cs` `2b518f6eeb9ef97895517582e393a2adf9ee6da0`, `SpSkillCustomizeParamViewModel.cs` `dcfccabe2edb8dd1bc1f0a05be81bdaefb9d517e`, and `XfbinParser.cs` `faf79d588fd8beb3f5761faebedd2252853b2f2b` are identical in both tag trees. The release-note feature delta is not evidence of a parser/ABI delta. |
-| [NSC-Toolbox 2.1.2.1](https://github.com/TheLeonX/NSC-Toolbox/releases/tag/2.1.2.1) | tag commit `789fe96f99cdaa77f952b90b563c6e3f49b6d697`, published 2026-08-30 | Also announces Switch Projectiles Target. |
-| [NSC-Toolbox 2.1.2.0](https://github.com/TheLeonX/NSC-Toolbox/releases/tag/2.1.2.0) | tag commit `dfe371dd4f1f0d1d1ad74a79e1bc8192a6d1fc31`, published 2026-08-28 | Also announces Start Deflect / Stop Deflect. |
-| Toolbox source comparison | 2.1.2.1 vs 2.1.2.0 | `SkillEditorModel.cs` blob `e165471682e4a7aed91094ef07f92df271f31639`, `SkillEditorViewModel.cs` `870af492c41f26c2aab07c216b6fa5fd00ac2cbf`, `ConditionPrmModel.cs` `2827ca9e484eafb0c7435f066d42ff3e9345e17c`, and `XfbinParser.cs` `86c63708edf2698b5bc1c2a54c0480cce014b525` are identical across those tags. |
-| [PyCriCodecs CPK reference](https://github.com/t-wy/PyCriCodecs/tree/755055ee7b056c9c1aefc6505a3daa3e45e2e111) | commit `755055ee7b056c9c1aefc6505a3daa3e45e2e111` | `PyCriCodecs/cpk.py` blob `2ed2cbb2c6112124013ab52755dba8a443e91306` reads CPK header then UTF CPK metadata and follows TOC/ITOC/HTOC/GTOC/HGTOC offsets. `PyCriCodecs/utf.py` blob `d1662d140a48cae37a6696213ee441aed4076edb` parses @UTF/EUTF. Generic format reference only; it does not establish Switch archive precedence or native FileLoad lifetime. |
-| [REA reverse-engineering methodology](https://github.com/morluto/rea/tree/0386efd1e1dfa41af41f804a6be56c6f5b7615d4) | commit `0386efd1e1dfa41af41f804a6be56c6f5b7615d4` | README blob `474ecfbec32c2ef86e5d0cf17837892d5b07335a`; CLI/evidence guide blob `35f686aa26ba850b56e8a74df648f47d99a164e3`. The guide recommends retained Evidence and pinned static analysis in CI; methodology only, not a game-specific ABI source. |
-| Pinned Switch v1.70 original main | Git blob `8af900db0d7003255b4ddb3cbd1289cd5a15458e`, 27,701,509 bytes | SHA256 `2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9`; Foundation workflow reads this exact tracked file and fails on mutation. |
-
-## Current verified base evidence
-
-The preceding branch HEAD `9975550ae11657970ae8905a808aa0360ad36710` passed the FileLoad guard-state test. Foundation artifact `15233949208` / ZIP SHA256 `53075cb3fbadba6548a2dc0080f429b3aedadb66d898164aebb971860deb04ff`; guard JSON SHA256 `c04f854b2be460035599ed07355ed9993183a5c0e544e828f0f9f7bf43e649bb`.
-
-The pinned report records:
-- Registration helper callsite `0x116b810 -> 0x290`.
-- X0 is loaded from pointer cell `0x215d2b0`; X1 is the candidate static object `0x43717e0`; X2 is `0x1eb3000`.
-- The pointer cell is in data at `0x215d2b0`, raw u64 is zero in the file image, and exactly one `DT_RELA` record exists at `0x1976d80`: `R_AARCH64_RELATIVE`, symbol index 0, addend decimal 18,266,248 = text offset `0x116b888`.
-- The helper's bounded window contains atomic increment sites `0x2e0/0x2e8/0x2ec`, a 24-byte record stride from `0x2f8/0x2fc`, and stores X8/X1/X2 at `0x304/0x308`. Helper identity, table runtime target and destructor/callback semantics are not proven.
-- The tracked original ExeFS tree contains the original main and a separate P128 reference main; no additional original Switch provider module is present in that tree.
-
-## Implementation in this slice
-
-New source: `tools/portlib/native_fileload_registration_target.py` (blob `8ee881958c72de9bc1fa14feea1a2806265ce952`)  
-New test: `tests/test_native_fileload_registration_target.py` (blob `10b77976b8af26ef1c6720a30028c67cf7b96bd9`)  
-Workflow change: `.github/workflows/verify-port-foundation.yml` (blob `c087b353eb4dbbe5512f49ba821fc92974a89db0`)
-
-The analyzer reuses the SHA-pinned guard-state proof, requires exactly one `R_AARCH64_RELATIVE` relocation in cell `0x215d2b0`, checks the link-time text addend `0x116b888`, then disassembles a bounded `[0x116b888, 0x116b988)` window. It records reachable instruction words, register reads/writes, memory base/index/displacement/width/direction/writeback, direct calls as non-walked barriers, unresolved indirect calls/terminators, returns, out-of-window edges, raw aligned-text B/BL word candidates and the exact window SHA256. The window is explicitly not a function extent; the relative relocation addend is not treated as the runtime relocated pointer.
-
-Synthetic regressions cover direct BL non-recursion, conditional branch/fallthrough, external branch exits, memory operand width/base, indirect BLR barriers, invalid alignment/entry, and reachability budget. The authentic-main test requires the original-main SHA, exact relocation slot/record/type/addend, executable-text target, nonempty bounded decode, and every callback/destructor/ABI/runtime release flag false.
-
-## Falsifiable boundaries
-
-This slice can falsify the relocation source, target offset, text bounds, instruction decode, CFG reachability, memory operand metadata, and direct/indirect control-flow inventory. It cannot by itself prove that the target is invoked as a callback, is a destructor, belongs to a complete function, owns or frees the static object, runs synchronously/asynchronously, participates in rollback/unbind, or supplies a consumer ABI. No runtime hook is added.
-
-CI for the new code/test HEAD is pending. Inspect direct push API runs, raw job logs, and the Foundation artifact before promoting this note or status to VERIFIED.
-
-
-## Full upstream diff verification — 2026-11-28
-
-A GitHub compare of the complete 2.1.2.0 -> 2.1.2.1 tag trees was performed, not just selected file hashes:
-- ModManager compare: one commit, 140 changed paths. The only non-generated `.cs` source change is `ViewModel/TitleViewModel.cs` (charsel page-count patch, copying `xcmn_menu.gfx`, and motion-blur post-effect selection). No SkillCustomizeParam/XFBIN parser source change was found. The PC data file `ModdingAPIFiles/moddingapi/param/NSC/conditionprmManager.xfbin` changes from blob `3dcf64148cfb386d479a7b588fbf03d7e6e180a5` (57,232 bytes) to `0e7133223f10eb2dbbb39d2166fdca9352e84c3e` (57,344 bytes); its feature semantics are not decoded here.
-- Toolbox compare: the source changes are localization and costume editor UI/model (`View/CostumeParamEditorView.xaml`, `ViewModel/AddCostumeViewModel.cs`); no SkillEditor, PRM editor, ConditionPrmModel or XFBIN parser source change. The same `conditionprmManager.xfbin` blob changes as above.
-- Direct inspection of Toolbox `SkillEditorModel.cs` and `SkillEditorViewModel.cs` shows projectile/TargetDir fields, but no `SwitchProjectilesTarget`, `StartDeflect` or `StopDeflect` implementation identifiers in those source files. The release notes therefore identify PC feature availability but do not specify the runtime consumer ABI.
-- The branch's PC ModManager pin `276116ebf5ba398a867793cb02ee6c33c0927645` is one commit after tag `502c38d3...`; compare shows no changed source-code files. The Toolbox pin `6f780cb` is one commit after tag `789fe96...`.
-- REA repository current HEAD observed at research time: `morluto/rea@72c0f5caf2b3c19144c6bc8c50a7361a76f2c103`; the pinned methodology/CLI guide at `0386efd1e1dfa41af41f804a6be56c6f5b7615d4` was inspected. Neither is a game-specific FileLoad ABI source.
-
-## CI failure and correction — 2026-11-28
-
-The first new code HEAD `c62ff2e537d845f6410b009045de423c103e0dce` had three successful workflows (Factory run/job `46076828715/140766412164`, Compressed PRM `46076828130/140766410292`, MovesetPlus `46076828159/140766410251`) and one Foundation failure (run/job `46076828184/140766410479`). The raw Foundation log was read. It failed in the synthetic memory-width test before reading the original main: Capstone 5.0.6 `Arm64Op` has no `.size` attribute. No Foundation artifact was produced.
-
-The fix now derives widths only from AArch64 mnemonic and data-register class (including signed byte/halfword/word, register pairs and LDPSW); unknown widths remain null rather than guessed. New synthetic cases cover 32-bit, byte, pair and signed-word access widths. Source/test blob SHAs: `99044155b3ddb50c4bbbae4154baac730f2187ed` / `1b298593ac37bf4da039fb27b197464d0fb949b3`. The fix is not verified until the next push CI completes and the original logs/artifact are inspected.
-
-
-2026-11-28 VERIFIED_CI_STATIC_ONLY — Code HEAD b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e, parent c62ff2e537d845f6410b009045de423c103e0dce. All four direct push workflows completed SUCCESS and raw job logs were inspected: Foundation 46077330193/job 140768008713; Factory 46077330238/job 140768008784; Compressed PRM 46077330215/job 140768008716; MovesetPlus 46077330236/job 140768008350. Artifact 15234858334; ZIP SHA256 7dad9c43345b5094a7cc3531df03c11c10dc01fd5b86c145585952551eb3207a; report JSON SHA256 7f70068cb9a900f95a40ed1adc9520a8441f635523acaf6c11b8a94fe43750e0. Exact pointer relocation: cell 0x215d2b0, DT_RELA record 0x1976d80, R_AARCH64_RELATIVE addend 0x116b888. Bounded target window [0x116b888,0x116b988), SHA256 877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec, 33 reachable words, return 0x116b908, direct call 0x116b8a4 -> 0x116b390, no indirect edges/out-of-window exits. It walks 64 pointer slots at 0x4371800 and zeroes 0x200 bytes, but destructor/callback identity and relation to 24-byte registration records are unresolved. Next: trace 0x116b390 and prove callback dispatch/ownership/lock/unlock/lifetime/rollback/unbind before any hook. Upstream 2.1.2.1 vs 2.1.2.0 source diff and DUMMY XFBIN byte check are in handoff/evidence_fileload_registration_target_20261128.md. Keep all flags false and no hooks; Uzuy not tested.
-
-
-LATEST VERIFIED ENGINEERING SLICE — 2026-11-28
-
-Code commit: 2b06a49730dc3bdf9816cc7f4f984231aa34b4fe (parent 3982db7cbea721a3308870945cd29dad6598a5ba). Branch documentation/status sync follows this code commit. CI run 46086093686, job 140795884030: COMPLETED SUCCESS; raw job log inspected. Artifact 15238478983; JSON SHA256 51fb342cffdb2b39ea7d3c72aa21c21afcb20b6ea1c979a15f91eba4de74c949.
-
-Verified static facts: 0x290 writes 24-byte records (x8/x1/x2 at 0/8/16), table pointer relocations both target 0x2161230, atomic counter 0x21620d8. Registered code-pointer candidate 0x116b888 iterates 64 slots from 0x4371800, calls 0x116b390 per slot, then clears 0x200 bytes. Guard imports are __cxa_guard_acquire/__cxa_guard_release for 0x43717d8. Alternate tail 0x116d830 resolves to nn::mem::StandardAllocator::Free(void*) with receiver relocation target 0x4371a00 and X1 copied from X0 (original X19). Error path passes the exact rodata literal 'BlockManager::GetBlock break\\n' to 0x12155a0.
-
-Do NOT call this a destructor, native consumer, ownership proof or runtime hook. BR X2 target, vtable/object identity, runtime table values, allocator binding, callback/teardown, lock/async/rollback/unbind and archive precedence remain unresolved. Host/static CI only; no emulated ARM64 or Uzuy. Flags remain false.
-
-NEXT: resolve the producer/writer and runtime value for the 64 slots at 0x4371800 and BR X2 at 0x116b3d0 without assuming C++ object layout. If read-only Uzuy memory evidence is not available, switch to a source-grounded semantic consumer slice such as MovesetPlus command 29, but do not transplant Windows x64 hooks or infer Switch ABI.
-
-
-LATEST ENGINEERING SLICE — 2026-11-28 (IMPLEMENTED_AWAITING_CI)
-
-Parent HEAD: 9ea102fe95646d1d595ec33335aa16a563e5ef97. New source tools/portlib/native_fileload_table_access.py, test tests/test_native_fileload_table_access.py, and isolated workflow .github/workflows/verify-fileload-table-access.yml perform a SHA-pinned direct ADRP reference census for the 64-slot table [0x4371800,0x4371a00) plus RELA destination/addend inventory. It does not infer a writer through arbitrary pointer aliases or resolve BR X2.
-
-Research-first evidence note: handoff/evidence_fileload_table_access_20261128.md. CI has not yet run on this new code. Read the direct push workflow run/job raw log and artifact before promoting the status. If the direct census shows no writer outside the clear sequence, that is not proof that no indirect/dynamic writer exists. Continue from unresolved X2/table runtime values only with read-only evidence; otherwise use a source-grounded semantic consumer slice. Never install a hook or mark ABI/ownership/lifecycle/archive precedence/Uzuy verified from this census. Preserve all three release flags as false.
-
-
-WORKFLOW CORRECTION — 2026-11-28
-
-The first table-census push produced no Actions run. The follow-up reuses the active verify-fileload-registration-lifecycle workflow, adds the new source/test paths, and runs the table census as a separate step with a separate artifact. It also fixes the synthetic ADRP encoder (page delta is already in pages) and enforces 8-byte range alignment. Read the follow-up push job raw log and artifact before marking anything verified.
-
-
-LATEST ROOT-CAUSE FIX — 2026-11-28
-
-The authentic lifecycle log showed the first slot address is formed by MOV X19,XZR at 0x116b890; ADRP X20,0x4371000; ADD X20,X20,#0x7d8; ADD X8,X20,X19; then LDR X0,[X8,#0x28] at 0x116b8a0. The analyzer now tracks a bounded 0x20-byte reaching-definition prefix and register ADD only when both values are statically known. Unknown values are not guessed. The foundation workflow excludes this one isolated FileLoad test; the active lifecycle workflow runs it and uploads the JSON evidence.
-
-Parent: 3ba748262c0790f781249cbb8c1eb55410aa538c. Two failed attempts have raw logs inspected and are recorded in handoff/checkpoint.json. Wait for the corrected push run and inspect its raw log/artifact. Do not infer writer completeness, callback/destructor, ownership, BR X2, archive precedence, runtime ABI or Uzuy.
-
-
-LATEST EXTENSION — DUAL FILELOAD TABLE PATHS (IMPLEMENTED_AWAITING_CI)
-
-The prior table census passed on 05afa169bc47025b0ea18f3fae2b85da9601c54d (run 46088613491/job 140803970356). Its artifact showed 2 direct first-slot reads, 32 stores and no RELA pointer targets in the table. The extra 16 stores form a second clear path.
-
-The new revision decodes bounded CFG windows at 0x116b888 and 0x116b918, verifies both first-slot reads, both 16-store reverse clear sequences, MOVI V0,#0 continuity through each last Q0 store, and direct B/BL inbound sites to 0x116b390. Synthetic direct branch tests cover B/BL, nonmatching targets and alignment. CI is pending; read raw log and artifact before promoting. No function extent, destructor, producer, runtime values, ABI or Uzuy claim.
-
-
-LATEST VERIFIED SLICE — 2026-11-28
-
-FileLoad table static census is VERIFIED_STATIC_CI_ONLY on code commit 0bc4cb45d713325cf8e33f0385b42535791fe5ab. CI run 46089004753 / job 140805260736 completed success; raw log and artifact were inspected. Artifact 15239987914; ZIP SHA256 97f2b7734baef912d6becf291ed88c2b2bc59427f641ca238b96cc29751bca28. Evidence note: handoff/evidence_fileload_table_access_20261128.md.
-
-Measured facts: original main SHA256 pinned; 64 qword slots at [0x4371800,0x4371a00); 89 ADRP refs; 34 direct accesses; 2 reads; 32 stores in two 512-byte zeroing sequences; 0 direct writes outside those sequences; 288,973 RELA records with 0 table destinations/addends; 101 direct B/BL inbound callers to helper 0x116b390, including two table-path calls. This is static only. No producer, object type, destructor, ownership, lock/async/rollback/unbind, BR X2 target, native consumer ABI, archive precedence, ARM64 emulation or Uzuy claim.
-
-Next: classify the 101 direct helper callers by preceding argument setup and dataflow, then resolve the dynamic BR X2 target and indirect table writer. Do not rerun the passing table census unless source changes. Keep full_moddingapi, ready_for_gameplay_test and emulator_tested false. No runtime hook.
+No runtime hook or game writes. No parameter/ABI, class, callback/vtable/destructor, producer, ownership/lifetime, lock/unlock, async, rollback/unbind or archive-precedence claim. No emulated ARM64 or Uzuy claim. Keep `full_moddingapi=false`, `ready_for_gameplay_test=false`, `emulator_tested=false`. Preserve Sakura aura107 and Event236 marker `0x4E53 +0x2A` plus unmarked Event236.
