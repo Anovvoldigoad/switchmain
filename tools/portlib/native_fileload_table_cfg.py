@@ -37,6 +37,7 @@ MAX_PAGES = 64
 MAX_REFERENCES = 4096
 DEFAULT_WINDOW_BYTES = 0x100
 DEFAULT_MAX_STATES = 256
+POINTER_PAGE_RETRY_MAX_STATES = 1024
 RELATIVE_RELOCATION_TYPE = 1027
 CALL_KINDS = {"call", "indirect_call_unresolved"}
 TERMINATOR_KINDS = {"return_or_indirect_terminator"}
@@ -685,7 +686,42 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
                 text, pc, page, rd, pointer_cells, target_start, target_end,
                 window_bytes, max_states, decoder, loop_summary
             )
-            reference = trace["reference"]
+            initial_reference = trace["reference"]
+            retry_info = {
+                "attempted": False,
+                "reason": (
+                    "target_page_protected" if page == target_page
+                    and initial_reference["state_budget_exceeded"]
+                    else "not_needed" if not initial_reference["state_budget_exceeded"]
+                    else "retry_limit_reached"
+                ),
+                "initial_max_states": max_states,
+                "retry_max_states": None,
+                "initial_reachable_state_count": initial_reference["reachable_state_count"],
+                "retry_reachable_state_count": None,
+                "resolved": not initial_reference["state_budget_exceeded"],
+            }
+            if (page != target_page and initial_reference["state_budget_exceeded"]
+                    and max_states < POINTER_PAGE_RETRY_MAX_STATES):
+                retry_trace = _trace_reference_cfg(
+                    text, pc, page, rd, pointer_cells, target_start, target_end,
+                    window_bytes, POINTER_PAGE_RETRY_MAX_STATES, decoder, loop_summary
+                )
+                retry_reference = retry_trace["reference"]
+                retry_info = {
+                    "attempted": True,
+                    "reason": "bounded_pointer_page_retry",
+                    "initial_max_states": max_states,
+                    "retry_max_states": POINTER_PAGE_RETRY_MAX_STATES,
+                    "initial_reachable_state_count": initial_reference["reachable_state_count"],
+                    "retry_reachable_state_count": retry_reference["reachable_state_count"],
+                    "resolved": not retry_reference["state_budget_exceeded"],
+                }
+                trace = retry_trace
+                reference = retry_reference
+            else:
+                reference = initial_reference
+            reference["state_budget_retry"] = retry_info
             references.append(reference)
             state_budget_exceeded = state_budget_exceeded or reference["state_budget_exceeded"]
             undecodable.update(int(value, 16) for value in reference["undecodable_words"])
@@ -727,6 +763,17 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
     branch_rows = [
         row for row in direct_rows + indexed_rows
         if row["branch_path_witnesses"]
+    ]
+    pointer_retry_rows = [
+        row for row in references
+        if row["target_page"] != _hex(_target_page(target_start))
+        and row["state_budget_retry"]["attempted"]
+    ]
+    pointer_retry_resolved = [
+        row for row in pointer_retry_rows if row["state_budget_retry"]["resolved"]
+    ]
+    pointer_retry_unresolved = [
+        row for row in pointer_retry_rows if not row["state_budget_retry"]["resolved"]
     ]
     target_page_scanned = target_page in page_set
     target_references = [
@@ -785,6 +832,12 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         )),
         "undecodable_words": [_hex(value) for value in sorted(undecodable)],
         "state_budget_exceeded": state_budget_exceeded,
+        "pointer_page_state_budget_retry": {
+            "max_states": POINTER_PAGE_RETRY_MAX_STATES,
+            "attempted_reference_count": len(pointer_retry_rows),
+            "resolved_reference_count": len(pointer_retry_resolved),
+            "unresolved_reference_count": len(pointer_retry_unresolved),
+        },
         "equivalent_branch_histories_merged": sum(
             row["equivalent_branch_histories_merged"] for row in references
         ),
