@@ -440,6 +440,11 @@ def inspect(nso):
             "return_sites": window["return_sites"],
             "direct_calls_not_walked": window["direct_calls_not_walked"],
             "indirect_terminators": window["indirect_terminators"],
+            "decoded_instructions": window["decoded_reachable_instructions"],
+            "x0_write_sites": [
+                row for row in window["decoded_reachable_instructions"]
+                if {"x0", "w0"} & set(row["written_registers"])
+            ],
         },
         "return_provenance": provenance,
         "limits": {

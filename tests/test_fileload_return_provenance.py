@@ -139,6 +139,9 @@ def run(main, output):
         "0x116b858", "0x116b870"
     ]
     assert report["return_provenance"]["return_site_count"] == 2
+    assert [row["pc"] for row in report["bounded_cfg"]["x0_write_sites"]] == [
+        "0x116b84c"
+    ]
     assert report["return_provenance"]["post_call_registers_are_unknown_without_callee_proof"]
     assert report["return_provenance"]["memory_values_are_symbolic_not_read_from_runtime_objects"]
     assert all(value is False for value in report["limits"].values())
