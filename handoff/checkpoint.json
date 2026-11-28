@@ -5667,5 +5667,74 @@
       "emulated_arm64": false,
       "uzuy": false
     }
+  },
+  "native_fileload_table_access_census_20261128": {
+    "state": "IMPLEMENTED_AWAITING_CI",
+    "parent_sha": "9ea102fe95646d1d595ec33335aa16a563e5ef97",
+    "source": "tools/portlib/native_fileload_table_access.py",
+    "test": "tests/test_native_fileload_table_access.py",
+    "workflow": ".github/workflows/verify-fileload-table-access.yml",
+    "evidence_note": "handoff/evidence_fileload_table_access_20261128.md",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_size_bytes": 27701509,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "table": {
+      "start": "0x4371800",
+      "end_exclusive": "0x4371a00",
+      "slot_count": 64,
+      "slot_stride_bytes": 8
+    },
+    "expected_static_facts": {
+      "first_slot_load": "0x116b8a0",
+      "cleanup_clear_sites": [
+        "0x116b8c4",
+        "0x116b8c8",
+        "0x116b8cc",
+        "0x116b8d0",
+        "0x116b8d4",
+        "0x116b8d8",
+        "0x116b8dc",
+        "0x116b8e0",
+        "0x116b8e4",
+        "0x116b8e8",
+        "0x116b8ec",
+        "0x116b8f0",
+        "0x116b8f4",
+        "0x116b8f8",
+        "0x116b8fc",
+        "0x116b900"
+      ]
+    },
+    "research": {
+      "modmanager_latest_tag": "2.1.2.1",
+      "modmanager_latest_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+      "toolbox_latest_tag": "2.1.2.1",
+      "toolbox_latest_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+      "ultimate_storm_api_latest_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+      "pycricodecs_commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+      "rea_commit": "0386efd1e1dfa41af41f804a6be56c6f5b7615d4"
+    },
+    "ci": {
+      "state": "pending",
+      "code_commit": null,
+      "run_id": null,
+      "job_id": null,
+      "raw_log_inspected": false
+    },
+    "limits": {
+      "producer_identity_verified": false,
+      "br_x2_target_resolved": false,
+      "native_consumer_abi_verified": false,
+      "ownership_lifecycle_verified": false,
+      "archive_precedence_verified": false,
+      "emulated_arm64": false,
+      "uzuy": false
+    },
+    "release_flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next": "Read the new push workflow raw job log and artifact. If no direct writer outside cleanup is found, do not infer absence of indirect writers; continue from unresolved BR X2 and runtime slot values or switch to a source-grounded semantic consumer slice. No hooks."
   }
 }

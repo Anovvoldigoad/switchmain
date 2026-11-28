@@ -1388,3 +1388,12 @@ Next exact targets to inspect are 0x12f3690, 0x290, 0x12f36a0, 0x12155a0 and alt
 - Guard imports: __cxa_guard_acquire/__cxa_guard_release for guard 0x43717d8. Alternate tail resolves to nn::mem::StandardAllocator::Free(void*) with receiver relocation target 0x4371a00 and X1 sourced from X19. Error literal: BlockManager::GetBlock break\\n.
 - CI: run 46086093686 / job 140795884030 COMPLETED SUCCESS; raw log inspected; artifact 15238478983; report SHA256 51fb342cffdb2b39ea7d3c72aa21c21afcb20b6ea1c979a15f91eba4de74c949. Only the isolated FileLoad workflow ran; unrelated PASS suites were not rerun.
 - Static/host only. BR X2 target, callback/destructor, ownership, runtime table values, lock/async/rollback/unbind, archive precedence, emulated ARM64 and Uzuy remain unverified. No hook; all release flags false.
+
+
+## 2026-11-28 — FileLoad 64-slot table direct-reference census (IMPLEMENTED_AWAITING_CI)
+
+Parent HEAD: 9ea102fe95646d1d595ec33335aa16a563e5ef97. Research-first re-read confirmed upstream ModManager/Toolbox 2.1.2.1 parser sources are unchanged from 2.1.2.0; UltimateStormAPI 2.1.2.1 adds PC Windows command 29 (TakeOverEnemyProjectiles) using a mutex and 250 ms pointer window, not Switch ABI. PyCriCodecs CPK/UTF and REA binary-diagnostics sources were consulted as format/evidence references only.
+
+New analyzer tools/portlib/native_fileload_table_access.py scans every aligned ADRP targeting page 0x4371000, follows only 0x100-byte bounded linear ADRP/ADD/MOV chains, and inventories direct memory accesses overlapping [0x4371800,0x4371a00). It also inventories dynamic RELA destinations in that range and addends pointing into it. Synthetic regressions cover direct load/store/pair-store, exact end boundary, branch barrier, register clobber, malformed windows, relocation boundaries and overlapping tables. The original main SHA256 is pinned. Expected authentic checks include the slot read at 0x116b8a0 and 16 existing 32-byte clear stores at 0x116b8c4..0x116b900.
+
+CI is pending. This is not a producer identity, callback/destructor, BR X2 target, ownership, ABI, archive-precedence or runtime proof. No hook. All release flags remain false. See handoff/evidence_fileload_table_access_20261128.md.
