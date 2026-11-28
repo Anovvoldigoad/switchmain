@@ -36,3 +36,12 @@ This is a static direct-reference census only. It does not resolve indexed effec
 
 
 The extended analyzer now decodes bounded windows beginning at 0x116b888 and 0x116b918, verifies both first-slot reads and both 16-store reverse clear sequences, checks MOVI V0,#0 remains unmodified through the final Q0 store (including scalar/vector aliases), and enumerates direct B/BL inbound sites to the per-slot helper at 0x116b390. Direct B/BL census intentionally does not include conditional or indirect control flow. CI is pending for this extension.
+
+
+## Final verified CI and measured output
+
+Implementation commit: 0bc4cb45d713325cf8e33f0385b42535791fe5ab; parent 05afa169bc47025b0ea18f3fae2b85da9601c54d. Run 46089004753 (run #5), job 140805260736, COMPLETED SUCCESS. Raw log inspected; markers PINNED_FILELOAD_REGISTRATION_LIFECYCLE_PASS and PINNED_FILELOAD_TABLE_ACCESS_CENSUS_PASS. Artifact 15239987914, ZIP SHA256 97f2b7734baef912d6becf291ed88c2b2bc59427f641ca238b96cc29751bca28; JSON SHA256 49b68228ce6a598471d5778e9e847bdbb10c00e11bd7ae3e806618b923f7586d.
+
+Authentic output: 89 ADRP page references; 34 direct accesses; two first-slot reads (0x116b8a0, 0x116b924); two 16-store reverse zeroing sequences (0x116b8c4..0x116b900 and 0x116b948..0x116b984), each covering 512 bytes; MOVI V0,#0 at 0x116b8b4 and 0x116b938 remains intact through the final Q0 store; zero direct writes outside those sequences. 288,973 dynamic RELA records scanned, with zero relocation destinations or addends in the table. Direct B/BL inbound census: 101 callers of 0x116b390, including 0x116b8a4 and 0x116b928; zero direct B/BL inbound sites to bounded path start 0x116b918.
+
+The 101 inbound calls are the next static callsite-classification target. They are not proof of one uniform ABI. Direct B/BL only; conditional/indirect edges and runtime values are not resolved. No producer, destructor, ownership, native ABI, archive precedence, ARM64 emulation or Uzuy PASS is claimed. Keep release flags false.

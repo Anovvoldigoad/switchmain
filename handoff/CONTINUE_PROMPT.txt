@@ -166,3 +166,12 @@ LATEST EXTENSION — DUAL FILELOAD TABLE PATHS (IMPLEMENTED_AWAITING_CI)
 The prior table census passed on 05afa169bc47025b0ea18f3fae2b85da9601c54d (run 46088613491/job 140803970356). Its artifact showed 2 direct first-slot reads, 32 stores and no RELA pointer targets in the table. The extra 16 stores form a second clear path.
 
 The new revision decodes bounded CFG windows at 0x116b888 and 0x116b918, verifies both first-slot reads, both 16-store reverse clear sequences, MOVI V0,#0 continuity through each last Q0 store, and direct B/BL inbound sites to 0x116b390. Synthetic direct branch tests cover B/BL, nonmatching targets and alignment. CI is pending; read raw log and artifact before promoting. No function extent, destructor, producer, runtime values, ABI or Uzuy claim.
+
+
+LATEST VERIFIED SLICE — 2026-11-28
+
+FileLoad table static census is VERIFIED_STATIC_CI_ONLY on code commit 0bc4cb45d713325cf8e33f0385b42535791fe5ab. CI run 46089004753 / job 140805260736 completed success; raw log and artifact were inspected. Artifact 15239987914; ZIP SHA256 97f2b7734baef912d6becf291ed88c2b2bc59427f641ca238b96cc29751bca28. Evidence note: handoff/evidence_fileload_table_access_20261128.md.
+
+Measured facts: original main SHA256 pinned; 64 qword slots at [0x4371800,0x4371a00); 89 ADRP refs; 34 direct accesses; 2 reads; 32 stores in two 512-byte zeroing sequences; 0 direct writes outside those sequences; 288,973 RELA records with 0 table destinations/addends; 101 direct B/BL inbound callers to helper 0x116b390, including two table-path calls. This is static only. No producer, object type, destructor, ownership, lock/async/rollback/unbind, BR X2 target, native consumer ABI, archive precedence, ARM64 emulation or Uzuy claim.
+
+Next: classify the 101 direct helper callers by preceding argument setup and dataflow, then resolve the dynamic BR X2 target and indirect table writer. Do not rerun the passing table census unless source changes. Keep full_moddingapi, ready_for_gameplay_test and emulator_tested false. No runtime hook.

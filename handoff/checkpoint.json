@@ -5669,7 +5669,7 @@
     }
   },
   "native_fileload_table_access_census_20261128": {
-    "state": "IMPLEMENTED_AWAITING_CI",
+    "state": "VERIFIED_STATIC_CI_ONLY",
     "parent_sha": "05afa169bc47025b0ea18f3fae2b85da9601c54d",
     "source": "tools/portlib/native_fileload_table_access.py",
     "test": "tests/test_native_fileload_table_access.py",
@@ -5726,27 +5726,69 @@
       "rea_commit": "0386efd1e1dfa41af41f804a6be56c6f5b7615d4"
     },
     "ci": {
-      "state": "pending",
-      "code_commit": null,
-      "run_id": null,
-      "job_id": null,
-      "raw_log_inspected": false,
+      "state": "completed_success",
+      "code_commit": "0bc4cb45d713325cf8e33f0385b42535791fe5ab",
+      "run_id": 46089004753,
+      "run_number": 5,
+      "job_id": 140805260736,
+      "run_url": "https://github.com/Anovvoldigoad/switchmain/actions/runs/46089004753",
+      "job_conclusion": "success",
+      "raw_log_inspected": true,
+      "raw_log_markers": [
+        "PINNED_FILELOAD_REGISTRATION_LIFECYCLE_PASS",
+        "PINNED_FILELOAD_TABLE_ACCESS_CENSUS_PASS"
+      ],
+      "artifact_id": 15239987914,
+      "artifact_name": "FILELOAD_TABLE_ACCESS_STATIC_EVIDENCE",
+      "artifact_zip_sha256": "97f2b7734baef912d6becf291ed88c2b2bc59427f641ca238b96cc29751bca28",
+      "report_sha256": "49b68228ce6a598471d5778e9e847bdbb10c00e11bd7ae3e806618b923f7586d",
       "failed_attempts": [
         {
           "run_id": 46088082330,
           "job_id": 140802291968,
           "commit": "30a06adf117ffc4f5657044922fcff360820d8b0",
-          "failure": "synthetic ADRP encoder incorrectly tested page delta as bytes",
+          "failure": "synthetic ADRP encoder treated page delta as bytes",
           "raw_log_inspected": true
         },
         {
           "run_id": 46088241951,
           "job_id": 140802797820,
           "commit": "3ba748262c0790f781249cbb8c1eb55410aa538c",
-          "failure": "authentic first-slot read not found because ADD X8,X20,X19 and prior MOV X19,XZR were not tracked",
+          "failure": "missing register ADD reaching definition for X19=0 before first-slot load",
           "raw_log_inspected": true
         }
-      ]
+      ],
+      "observed": {
+        "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+        "bss_start": "0x2161234",
+        "bss_end": "0x44cc000",
+        "table_start": "0x4371800",
+        "table_end_exclusive": "0x4371a00",
+        "slots": 64,
+        "slot_stride": 8,
+        "adrp_page_references": 89,
+        "direct_accesses": 34,
+        "direct_reads": 2,
+        "direct_writes": 32,
+        "bounded_zeroing_paths": 2,
+        "clear_stores_per_path": 16,
+        "bytes_cleared_per_path": 512,
+        "zero_vector_sites": [
+          "0x116b8b4",
+          "0x116b938"
+        ],
+        "direct_writes_outside_two_zeroing_sequences": 0,
+        "indexed_access_candidates": 0,
+        "dynamic_rela_records_scanned": 288973,
+        "relocation_destinations_in_table": 0,
+        "relocation_addends_pointing_into_table": 0,
+        "direct_b_bl_inbound_to_helper_0x116b390": 101,
+        "helper_calls_from_two_table_paths": [
+          "0x116b8a4",
+          "0x116b928"
+        ],
+        "direct_b_bl_inbound_to_bounded_path_b_start_0x116b918": 0
+      }
     },
     "limits": {
       "producer_identity_verified": false,
@@ -5762,7 +5804,7 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Read the extended lifecycle workflow raw log and artifact. Confirm the second bounded window, both zero-vector clear sequences and direct B/BL inbound callsites. Do not infer producer/destructor/ownership/ABI or runtime slot values.",
+    "next": "Use the 101 direct B/BL callers of helper 0x116b390 to group callsite argument setup and dataflow. Resolve the dynamic BR X2 target and identify any indirect table writer without assuming object type, function extent or ownership. If static evidence cannot resolve the producer, keep runtime hooks blocked. Do not repeat the passing table census unless its source changes.",
     "previous_verified_revision": {
       "code_commit": "05afa169bc47025b0ea18f3fae2b85da9601c54d",
       "run_id": 46088613491,
@@ -5796,6 +5838,22 @@
       "clear_bytes_per_sequence": 512,
       "q0_zero_continuity_checked": true,
       "direct_b_bl_inbound_to_helper": 18264976
+    },
+    "code_commit": "0bc4cb45d713325cf8e33f0385b42535791fe5ab",
+    "static_limits": {
+      "direct_b_bl_only": true,
+      "conditional_and_indirect_control_flow_not_scanned": true,
+      "function_extents_verified": false,
+      "writer_identity_verified": false,
+      "destructor_identity_verified": false,
+      "runtime_slot_values_verified": false,
+      "br_x2_target_resolved": false,
+      "ownership_lifecycle_verified": false,
+      "lock_unlock_async_rollback_unbind_verified": false,
+      "native_consumer_abi_verified": false,
+      "archive_precedence_verified": false,
+      "emulated_arm64": false,
+      "uzuy": false
     }
   }
 }
