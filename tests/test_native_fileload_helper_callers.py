@@ -149,7 +149,7 @@ def run(main, output):
     assert report["prelude_bytes_per_caller"] == 0x40
     assert report["capstone_confirmed_direct_branch_count"] + len(
         report["capstone_unconfirmed_raw_candidates"]
-    ) == 101
+    ) == report["raw_aligned_direct_b_bl_inbound_count"]
     assert report["known_table_path_helper_calls"] == [
         {
             "call_site": "0x116b8a4",

@@ -1442,3 +1442,6 @@ CI routing note: the first push of the new standalone workflow file produced no 
 ## 2026-11-28 — Caller-count correction after raw artifact inspection
 
 The first caller test failed because the handoff pinned an incorrect count of 101. Raw CI log run 46093640387/job 140819988501 was inspected. Both authentic table-census artifacts (15239987914 and 15242585556) were downloaded and their JSON reports inspected: each contains 114 raw direct B/BL inbound words to 0x116b390 (111 BL, 3 B), including the two table-path calls. The stale checkpoint/status count is corrected. Caller test now asserts 114 and the B/BL split; isolated CI retry pending. No ABI or lifecycle inference.
+
+
+Caller regression retry: run 46094071904/job 140821324819 passed the corrected raw count (114), branch split (111 BL, 3 B), and both known table-path X0-load assertions. It failed only at a second invariant still containing the stale literal 101; that invariant now compares confirmed plus unconfirmed rows to the report's raw count. Raw log inspected; CI retry pending.

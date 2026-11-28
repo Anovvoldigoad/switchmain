@@ -26,7 +26,7 @@
   "repository": "https://github.com/Anovvoldigoad/switchmain",
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
-  "documentation_commit": "2026-11-28 corrected stale caller-count expectation from 101 to artifact-proven 114; isolated CI retry pending",
+  "documentation_commit": "2026-11-28 caller census retry; raw 114/111/3 proven, redundant stale invariant fixed, CI pending",
   "prior_storm_checkpoint_id": "80be5308-6dfa-44d8-91e9-71c92a4f00e2",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
@@ -2842,7 +2842,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Run the isolated caller workflow against the pinned original main. Require 114 raw candidates (111 BL, 3 B), then inspect the raw job log and JSON artifact. Keep last-syntactic-write and all ABI/lifecycle conclusions explicitly unresolved.",
+  "next_action": "Run the isolated caller workflow after replacing the redundant literal 101 with the report's raw candidate count. Inspect the exact job log and JSON artifact; require 114 raw candidates (111 BL, 3 B), both known table-path X0 loads, and a complete caller/cluster report.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -2857,12 +2857,15 @@
   },
   "latest_pending_code_commit": null,
   "latest_pending_ci": {
-    "parent_sha": "92fc27933d27beca0c80bd72d3b0e6dd262dd038",
+    "parent_sha": "95dcd5dcb5ce8c52ee45a67be89a00c8f9afc83f",
     "code_commit": null,
     "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
     "state": "pending",
     "raw_log_inspected": false,
-    "previous_failed_run": 46093640387
+    "previous_failed_runs": [
+      46093640387,
+      46094071904
+    ]
   },
   "crilayla_total_output_limit": {
     "status": "pending_ci",
@@ -3820,7 +3823,7 @@
   "latest_pending_head_ci": null,
   "latest_execution": {
     "status": "IMPLEMENTED_AWAITING_CI_RETRY_FILELOAD_HELPER_CALLER_CENSUS",
-    "parent_sha": "92fc27933d27beca0c80bd72d3b0e6dd262dd038",
+    "parent_sha": "95dcd5dcb5ce8c52ee45a67be89a00c8f9afc83f",
     "source": "tools/portlib/native_fileload_helper_callers.py",
     "test": "tests/test_native_fileload_helper_callers.py",
     "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
@@ -3829,11 +3832,11 @@
       "BL": 111,
       "B": 3
     },
-    "next": "Run the isolated caller workflow against the pinned original main. Require 114 raw candidates (111 BL, 3 B), then inspect the raw job log and JSON artifact. Keep last-syntactic-write and all ABI/lifecycle conclusions explicitly unresolved."
+    "next": "Run the isolated caller workflow after replacing the redundant literal 101 with the report's raw candidate count. Inspect the exact job log and JSON artifact; require 114 raw candidates (111 BL, 3 B), both known table-path X0 loads, and a complete caller/cluster report."
   },
   "latest_slice": {
     "state": "IMPLEMENTED_AWAITING_CI_RETRY_FILELOAD_HELPER_CALLER_CENSUS",
-    "parent_sha": "92fc27933d27beca0c80bd72d3b0e6dd262dd038",
+    "parent_sha": "95dcd5dcb5ce8c52ee45a67be89a00c8f9afc83f",
     "source": "tools/portlib/native_fileload_helper_callers.py",
     "test": "tests/test_native_fileload_helper_callers.py",
     "consumer_abi_verified": false,
@@ -5849,7 +5852,7 @@
   },
   "native_fileload_helper_callers_20261128": {
     "state": "IMPLEMENTED_AWAITING_CI_RETRY",
-    "parent_sha": "e70d151e7c7fffec838126f47d2f375e65e8ba34",
+    "parent_sha": "95dcd5dcb5ce8c52ee45a67be89a00c8f9afc83f",
     "code_commit": null,
     "source": "tools/portlib/native_fileload_helper_callers.py",
     "test": "tests/test_native_fileload_helper_callers.py",
@@ -5900,6 +5903,13 @@
           "job_id": 140819988501,
           "commit": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
           "failure": "test expected stale raw inbound count 101; authentic table-census artifacts show 114 (111 BL, 3 B)",
+          "raw_log_inspected": true
+        },
+        {
+          "run_id": 46094071904,
+          "job_id": 140821324819,
+          "commit": "95dcd5dcb5ce8c52ee45a67be89a00c8f9afc83f",
+          "failure": "second invariant still compared confirmed+unconfirmed rows to stale literal 101; raw 114 and 111/3 assertions plus known table-path checks passed",
           "raw_log_inspected": true
         }
       ],
@@ -5955,7 +5965,7 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Run the isolated caller workflow against the pinned original main. Require 114 raw candidates (111 BL, 3 B), then inspect the raw job log and JSON artifact. Keep last-syntactic-write and all ABI/lifecycle conclusions explicitly unresolved.",
+    "next": "Run the isolated caller workflow after replacing the redundant literal 101 with the report's raw candidate count. Inspect the exact job log and JSON artifact; require 114 raw candidates (111 BL, 3 B), both known table-path X0 loads, and a complete caller/cluster report.",
     "expected_raw_branch_kind_counts": {
       "BL": 111,
       "B": 3
