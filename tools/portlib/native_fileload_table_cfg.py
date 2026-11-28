@@ -491,7 +491,7 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
 
 def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_START,
                            target_end=TABLE_END, window_bytes=DEFAULT_WINDOW_BYTES,
-                           max_states=DEFAULT_MAX_STATES):
+                           max_states=DEFAULT_MAX_STATES, max_references=MAX_REFERENCES):
     """Trace bounded branch paths from ADRP references to selected pages."""
     if not isinstance(text, (bytes, bytearray, memoryview)) or len(text) < 4:
         raise ValueError("AArch64 text must contain complete instructions")
@@ -509,7 +509,8 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         raise ValueError("Invalid target memory range")
     if (not isinstance(window_bytes, int) or window_bytes < 8
             or (window_bytes & 3) or not isinstance(max_states, int)
-            or max_states <= 0):
+            or max_states <= 0 or not isinstance(max_references, int)
+            or max_references <= 0):
         raise ValueError("Invalid CFG window or state budget")
     if pointer_cells is None:
         pointer_cells = {}
@@ -562,15 +563,30 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         if origin not in existing["origin_candidates"]:
             existing["origin_candidates"].append(origin)
 
-    for page in sorted(page_set):
-        for pc, rd in candidates[page]:
+    target_page = _target_page(target_start)
+    page_order = [target_page] + sorted(page for page in page_set if page != target_page)
+    processed_pages = []
+    skipped_pages = []
+    for page in page_order:
+        page_candidates = candidates[page]
+        remaining = max_references - len(references)
+        if len(page_candidates) > remaining:
+            if page == target_page:
+                raise ValueError("Target-page ADRP reference budget exceeded")
+            skipped_pages.append({
+                "page": _hex(page),
+                "candidate_reference_count": len(page_candidates),
+                "remaining_reference_budget": remaining,
+                "reason": "reference_budget_exceeded",
+            })
+            continue
+        processed_pages.append(page)
+        for pc, rd in page_candidates:
             trace = _trace_reference_cfg(
                 text, pc, page, rd, pointer_cells, target_start, target_end,
                 window_bytes, max_states, decoder
             )
             reference = trace["reference"]
-            if len(references) >= MAX_REFERENCES:
-                raise ValueError("ADRP reference budget exceeded")
             references.append(reference)
             state_budget_exceeded = state_budget_exceeded or reference["state_budget_exceeded"]
             undecodable.update(int(value, 16) for value in reference["undecodable_words"])
@@ -613,9 +629,30 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         row for row in direct_rows + indexed_rows
         if row["branch_path_witnesses"]
     ]
+    target_references = [
+        row for row in references if row["target_page"] == _hex(target_page)
+    ]
+    pointer_references = [
+        row for row in references if row["target_page"] != _hex(target_page)
+    ]
+    target_page_cfg_complete = (
+        len(target_references) == len(candidates[target_page])
+        and all(row["bounded_in_window_cfg_complete"] for row in target_references)
+    )
+    pointer_alias_trace_complete = (
+        not skipped_pages
+        and all(row["bounded_in_window_cfg_complete"] for row in pointer_references)
+    )
     return {
-        "pages_scanned": [_hex(page) for page in sorted(page_set)],
+        "pages_scanned": [_hex(page) for page in processed_pages],
+        "pages_skipped": skipped_pages,
+        "candidate_reference_count": sum(len(rows) for rows in candidates.values()),
         "page_reference_count": len(references),
+        "target_page_reference_count": len(target_references),
+        "target_page_cfg_complete": target_page_cfg_complete,
+        "pointer_alias_trace_complete": pointer_alias_trace_complete,
+        "reference_budget": max_references,
+        "reference_budget_exceeded": bool(skipped_pages),
         "page_references": references,
         "direct_accesses": direct_rows,
         "indexed_access_candidates": indexed_rows,
@@ -634,7 +671,8 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         "undecodable_words": [_hex(value) for value in sorted(undecodable)],
         "state_budget_exceeded": state_budget_exceeded,
         "bounded_in_window_cfg_complete": (
-            not state_budget_exceeded and not undecodable
+            target_page_cfg_complete and pointer_alias_trace_complete
+            and not state_budget_exceeded and not undecodable
         ),
         "branch_targets_outside_window_followed": False,
         "calls_followed": False,

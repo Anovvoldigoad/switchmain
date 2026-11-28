@@ -220,6 +220,23 @@ def synthetic_limits():
     assert limited["state_budget_exceeded"] is True
     assert limited["bounded_in_window_cfg_complete"] is False
 
+    budget_code = bytearray(0x40)
+    put_word(budget_code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
+    put_word(budget_code, 0x04, encode_adrp(0x04, 9, 0x5000))
+    put_word(budget_code, 0x08, encode_adrp(0x08, 10, 0x5000))
+    budgeted = scan_address_pages_cfg(
+        bytes(budget_code), {TABLE_PAGE, 0x5000}, {},
+        window_bytes=0x30, max_references=1
+    )
+    assert budgeted["target_page_cfg_complete"] is True
+    assert budgeted["reference_budget_exceeded"] is True
+    assert budgeted["pages_skipped"] == [{
+        "page": "0x5000",
+        "candidate_reference_count": 2,
+        "remaining_reference_budget": 0,
+        "reason": "reference_budget_exceeded",
+    }]
+
     expect_reject(lambda: scan_address_pages_cfg(bytes(code), set(), {}),
                   "empty page set")
     expect_reject(lambda: scan_address_pages_cfg(bytes(code), {TABLE_PAGE + 1}, {}),
@@ -242,7 +259,7 @@ def run(main, output):
     assert report["table"]["base"] == hex(TABLE_START)
     assert report["table"]["end_exclusive"] == hex(TABLE_END)
     cfg = report["branch_cfg_scan"]
-    assert cfg["bounded_in_window_cfg_complete"] is True
+    assert cfg["target_page_cfg_complete"] is True
     direct_sites = {row["site"] for row in cfg["direct_accesses"]}
     assert {"0x116b8a0", "0x116b924"} <= direct_sites
     indexed_sites = {row["site"] for row in cfg["indexed_access_candidates"]}
