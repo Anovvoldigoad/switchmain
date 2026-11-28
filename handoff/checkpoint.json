@@ -44,7 +44,114 @@
       "2026-11-28 VERIFIED_CI_STATIC_ONLY: Fixed recursive FileLoad X19 proof-tree serialization. `analyze_stack_register_restore()` returns `nested_call_proofs` as a list; the parent serializer incorrectly called `.values()`, causing Foundation step 42 to raise AttributeError. Changed it to copy the list directly. Existing regression covers list shape, nested-call failure and cycle evidence. Code commit dbc23b155335c61602437c72e7f1ceabbe35553d (parent 255adab51824809ca8920c4b65dba6a3d326fb41). All four push workflows COMPLETED SUCCESS with raw logs inspected. Foundation artifact 15231780092 (336355 bytes, SHA256 598559d70ee9d2911c52fc6109b722465b87b96d3e5b9b77f2de8b99f38fc7aa); inbound-args JSON SHA256 d3a1ece8b05743da15643babe98d77fffa0995532477f0bf6e769bbec66102e5. Authentic original main SHA256 guard passed. Exact local X19 save/restore at SP-8 is proven, but nested call stack effects and unknown-base writes keep X19 at 0x116f280 -> 0x120a6c8 unresolved. Static proof only; no consumer ABI, ownership/lifecycle, archive precedence or Uzuy claim. All three release flags remain false.",
       "2026-11-28 VERIFIED_CI_STATIC_ONLY: FileLoad caller X19 reaching-definition analysis and complete raw-word direct-BL inventory are verified on original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. The previous manual list had 10 calls; independent A64 BL decoding finds 23, of which four pass strict exact-target bounded no-write/all-return preservation. At the unique FileLoad caller 0x116f29c, X19 remains unresolved behind a call barrier at 0x116f280 -> 0x120a6c8; its bounded callee writes X19 at 0x120a6cc and 0x120a724, and stack restore is not yet proven. Test correction commit ac71215f23bd645119f830cc4c63d0b5b2f1974b (source implementation 04cd926fe4af8144e53fc7eb92c9c5096ce38fd0). Four push workflows on ac71215 COMPLETED SUCCESS; raw logs inspected: Foundation 46048379870/140673240478, factory 46048379872/140673240433, compressed PRM 46048379855/140673240097, MovesetPlus 46048379836/140673240368. Foundation artifact 15223636352, ZIP SHA256 389c894d70f8f8fda4186e9a86352944427caf22bfe302a5637f2ca1f210c2ee. This is original-main static evidence only; no ABI/ownership/lifecycle/archive-precedence/Uzuy proof. Keep all three release flags false.",
       "2026-11-27 VERIFIED_CI_STATIC_ONLY: FileLoad SP/FP alias evidence now records AArch64 register-indexed memory operands and refuses displacement-only stack claims when the index is unresolved. Synthetic regressions prove indexed SP STR/LDR pairs do not create constant stack candidates, shifted index operands are inventoried unresolved, and indexed stores through SP-derived aliases invalidate apparently disjoint witnesses; existing immediate-only positives remain. Code df9a3e1e41db4d1b2063f2ac7b31e5adc6ef3dea (parent 840f92aa7d6dc5b812a07c2fc8c4ae8589b58ac3). Foundation push run 45976679056 job 140430025592 COMPLETED SUCCESS; raw job log inspected: PINNED_FILELOAD_SP_CFG_PASS 166 10 NO_CONSUMER_ABI and RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF. Other HEAD workflows also COMPLETED SUCCESS with raw logs inspected: compressed 45976679041/job 140430025502, factory 45976679120/job 140430025333, MovesetPlus 45976679117/job 140430026222. Foundation proof artifact 15187631793 (263930 bytes). Host/static and original-main SHA-guarded test passed; this slice is not an emulated ARM64 runtime test or Uzuy test. Native consumer ABI, ownership/lifecycle, callback, async, rollback/unbind/destructor, archive precedence and gameplay remain unresolved; all release flags remain false.",
-      "2026-11-23 PENDING_HEAD_CI: compressed batch independent verifier now reconstructs exact deterministic literal/runs CRILAYLA bitstream for changed Event236 candidates, rejecting a valid alternate encoder even when decoded bytes and updated SHA match; three encoder modes positive and alternate negative regressions. Code commit 28c95224bc9538dae9dcba85f1e1b437c3cf5500 parent aca1be0f02b7e334768d82d2483523507ff96ecc. Prior compressed push run 45157982290 job 137635718880 COMPLETED SUCCESS raw log inspected; new HEAD CI pending. Synthetic offline only. NSC-ModManager/Toolbox 2.1.2.1 upstream release 2026-08-30; no Switch ABI inference. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Sakura aura107, Event236 marked/unmarked and three false release flags preserved. NEXT inspect compressed workflow push run/job/log for new HEAD, repair failures, then authentic consumer evidence."
+      "2026-11-23 PENDING_HEAD_CI: compressed batch independent verifier now reconstructs exact deterministic literal/runs CRILAYLA bitstream for changed Event236 candidates, rejecting a valid alternate encoder even when decoded bytes and updated SHA match; three encoder modes positive and alternate negative regressions. Code commit 28c95224bc9538dae9dcba85f1e1b437c3cf5500 parent aca1be0f02b7e334768d82d2483523507ff96ecc. Prior compressed push run 45157982290 job 137635718880 COMPLETED SUCCESS raw log inspected; new HEAD CI pending. Synthetic offline only. NSC-ModManager/Toolbox 2.1.2.1 upstream release 2026-08-30; no Switch ABI inference. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Sakura aura107, Event236 marked/unmarked and three false release flags preserved. NEXT inspect compressed workflow push run/job/log for new HEAD, repair failures, then authentic consumer evidence.",
+      "2026-11-23 PENDING_HEAD_CI: compressed PRM batch now preserves the exact original CRILAYLA stored bytes for unchanged Event236 members across literal/runs/auto, while changed members still encode and independently roundtrip. New mixed-member, all-encoder, no-encode and SHA regressions; synthetic offline only. Parent 40f8de7c05c193a21b7fc799b28273bf663692c0. Upstream ModManager 2.1.2.1 README blob 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709, Toolbox README blob 657f161390c4abe8afe10cea11a2b9a28e6bf6b0; generic REA evidence only; pinned original main bytes not available for rehash. No native ABI/ownership/archive precedence/Uzuy proof. Preserve Sakura aura107, Event236 variants and false release flags.",
+      "2026-11-23 PENDING_HEAD_CI: ordered factory source validation now rejects unknown source kinds before applying --exclude, preventing invalid excluded source from bypassing kind validation. Regression covers excluded unknown kind; host/Actions HEAD CI not yet verified. Parent cdfbd08e7241b3118506aff161ce8318bdd3a039. This is offline factory input correctness only; no original main rehash, Switch ABI, lifecycle, archive precedence, or Uzuy proof. Preserve Sakura aura107, both Event236 forms and all three false release flags.",
+      "2026-11-23 PENDING_HEAD_CI: shared native CPK/FileLoad ARM64 CFG now classifies BLRAA/BLRAB/BLRAAZ/BLRABZ as unresolved authenticated calls and BRAAZ/BRABZ as terminal jumps. FileLoad uses shared edge classification, retains opaque-call SP barrier; regression covers four call and six terminal mnemonics plus existing original-main SHA-guarded CFG tests. Parent d225194e6b18d3b540f12ea3c99adccda350dd5c; local Capstone unavailable (DNS), HEAD Actions log not yet inspected. Upstream ModManager 2.1.2.1 release 502c38d (Switch Projectiles Target), 2.1.2.0 Start/Stop Deflect; Toolbox 2.1.2.1 789fe96; generic REA/CRI references do not prove Switch ABI. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. No native consumer ABI, lifecycle, archive precedence or Uzuy proof; Sakura aura107, both Event236 variants and three false release flags untouched. NEXT inspect authentic Foundation push run/job/log for new HEAD; if failing repair; authenticate original main for native consumer proof.",
+      "2026-11-23 PENDING_HEAD_CI: ARMv8.3 authenticated indirect BLRAA/BLRAB calls in read-only FileLoad CFG now act as opaque call barriers instead of falsely allowing SP stack witness across call. Positive negative synthetic BLRAA regression uses clang-assembled word 0xd73f092a. Parent 2da3c6f97aa4cdc9856d1686c05062bad761de12; host Capstone unavailable; HEAD push Actions job/log unverified. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Native consumer ABI/ownership/lifecycle/CPK precedence/Uzuy unresolved; Sakura aura107 and both Event236 forms untouched; full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. NEXT run Foundation CI for HEAD and inspect authentic job logs, then source-pinned native proof.",
+      "2026-11-22 PENDING_HEAD_CI: FileLoad CFG backward-edge witness now considers lower-address readers reached after a stack writer, instead of filtering by numeric PC order; synthetic positive backward branch and negative disconnected edge added. Parent a4f9056bc09985362c96065bdccab8b2867a2fce; host Capstone unavailable; HEAD Actions job/log not verified. Read-only static possibility only, no consumer ABI, ownership, lifecycle, archive precedence or Uzuy proof. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Sakura aura107, marked/unmarked Event236 untouched; full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. NEXT inspect Foundation push job log for new HEAD and fix failures; continue original main consumer proof.",
+      "2026-11-21 PENDING_HEAD_CI: ordered factory now accepts SHA256-pinned --baseline-report alongside --baseline-profile and records same-selector source transfers (operation=transfer), with baseline report/profile cross-check and complete unique effective-owner validation. Source commit 981bc6cba42c58e88a1f9eecc2c5fbb9fc65e2ff; test commit d51d309ca047c57e196df4dde5478eaea1c2fddb; parent 3f98581455a71d688b889901a95633da777dbfb6. Added regression for transfer, replay, tampered report, missing baseline. GitHub Actions push runs/logs for new HEAD not verified; local clone blocked by DNS, no PASS. Upstream ModManager/Toolbox 2.1.2.1 referenced, no Switch ABI proof; original main pinned SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Sakura aura107, marked/unmarked Event236 untouched. full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. NEXT read exact HEAD push Actions job logs, fix regressions, prove native consumer ABI/lifecycle before hooks.",
+      "2026-11-21 PENDING_HEAD_CI: ordered mixed raw PC/profile factory composer now supports --exclude LABEL to remove any mod and deterministically replay surviving sources in original order, restoring shadowed selectors. Every excluded source remains SHA256-authenticated, unknown/duplicate exclusions fail closed, provenance records excluded status. 3 positive/negative/CLI tests added. Parent ecf1e9099c2821fad2050becd1c0032ca4ecae25; host/Actions HEAD CI not yet verified. Upstream ModManager 2.1.2.1 release 502c38d, Toolbox 2.1.2.1 release 789fe96, REA generic reference; no native Switch ABI inference. Pinned original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed. Sakura aura107, Event236 marked/unmarked untouched; full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. NEXT inspect exact HEAD Actions ordered-factory job authentic log; fix if failing. Native consumer ownership/lifecycle/archive precedence/Uzuy remain unresolved.",
+      "2026-11-21 PENDING_HEAD_CI: explicit interleaved raw PC specialCondParam and SHA256-authenticated factory.profile multi-mod order implemented in tools/compose_ordered_factory.py; positive/negative/boundary/CLI regressions in tests/test_factory_ordered_sources.py. Parent de5aeaf7c31a2ec73fd0cb7f750028e0105b6fd5; code 766dedb0e81ece2828ca16fd72fb6fdba9d81a16. Existing compiler grouped raw before profile and could not represent profile -> raw priority. New standalone CLI processes exact source order; no native consumer. Primary references: https://github.com/TheLeonX/NSC-ModManager/releases/tag/2.1.2.1 (release 502c38d, current source 276116e), https://github.com/TheLeonX/NSC-Toolbox/releases/tag/2.1.2.1 (789fe96), REA reference from previous pinned evidence only; no original main rehash this run. Switch original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; ABI, ownership, archive precedence, Uzuy unresolved. Sakura aura107, Event236 marked/unmarked untouched. full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. HEAD CI pending; inspect authentic workflow job log before PASS.",
+      "2026-11-21 PENDING_HEAD_CI: mixed factory composition now accepts authenticated --profile LABEL PATH SHA256 after raw PC specialCondParam inputs; deterministic last-wins or reject, provenance and positive/negative/boundary regression. Code 622d65c890359be4dbaaac2d2b32c29bd5953ee6 parent 66847664b781ae31f5b7a35e2ddbfdbb66a71736. Parent HEAD four push workflows COMPLETED SUCCESS, authentic logs inspected: Foundation 44855979418/136698177683; factory 44855979405/136698177499; compressed 44855979396/136698177373; MovesetPlus 44855979480/136698177758. New HEAD workflow pending. Offline class-selector composition only; no Switch native consumer, original main rehash or Uzuy. SHA guard, Sakura aura107, Event236 variants and three false flags preserved. NEXT inspect new HEAD factory job log and fix failures; prove consumer ABI from original bytes before hooks.",
+      "2026-11-21 PENDING_HEAD_CI: raw PC factory compiler authenticates ordered --param-sha256 inputs and records SHA256 provenance, rejecting missing/swapped/tampered sources before publication. Code b378773d0b6917f16e3b1a016ff222bf8dab5863 parent 94069ee01aa1873173a5c3d49f5ad69df6744bd9. Prior HEAD factory 44836719730/136634842690 and foundation 44836719662/136634842448 COMPLETED SUCCESS authentic logs inspected. New HEAD pending CI; offline only. ModManager 2.1.2.1 commit 276116eb, Toolbox 6f780cb. Original main SHA pinned not rehashed; no consumer ABI/Uzuy. Sakura aura107, Event236 variants, three false flags untouched.",
+      "2026-11-21 PENDING_HEAD_CI: code 8292c004bffc5bedc44f34aad5672552c3941fc3 (parent 13249b458ca4bc9c5f3f5a327791b6c87822b497) adds --conflicts reject/last to raw PC specialCondParam factory compiler. Strict mode rejects duplicate final Switch owners across/within sources and owner-map collisions before output; default last-wins preserved. New regression tests/test_factory_raw_conflicts.py + factory workflow step. Prior HEAD Foundation 44828270273/job 136606336221 and factory 44828270332/job 136606337206 COMPLETED SUCCESS; authentic logs inspected. Current code HEAD push Actions log unavailable, NOT PASS. Upstream ModManager 2.1.2.1 and Toolbox 2.1.2.1, REA generic reference do not prove Switch ABI. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not rehashed; Sakura aura107, Event236 marked/unmarked and all three false flags untouched. NEXT obtain HEAD factory push run/job/log; fix if failing; native consumer ownership/lifecycle remains unresolved.",
+      "2026-11-21 PENDING_CI: parent 531305c83b1effdb28313078c15a46c521af450d; code 78c7b01c6bdc2cbbfa3d4e65b5e6ddfd59c40209 adds reassemble_owner_partitions, a reversible editor-only inverse of explicit-owner MovesetPlus partitions preserving global event order. It validates source partition ordering, per-part SHA256, event-owner ledger, missing/extra events, final merged byte SHA and event count; regression covers positive, tampered SHA, reversed partitions/ledger, missing part, and empty losing-owner partition. Upstream ModManager 2.1.2.1 README SHA 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709 (Steam-only), Toolbox README SHA 657f161390c4abe8afe10cea11a2b9a28e6bf6b0; REA generic reference from prior evidence, not refreshed this run. Previous HEAD 531305c CI completed success and authentic job logs read: MovesetPlus 44782462393/136448455336, Foundation 44782462286/136448455226, compressed PRM 44782462660/136448456498. New code HEAD CI not verified; no original main byte rehash, Switch consumer ABI, ownership, CPK precedence or Uzuy proof. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; Sakura aura107, marked/unmarked Event236 unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT: obtain push Actions run/job/log for final HEAD, fix regression if needed; then source-pinned consumer analysis.",
+      "2026-11-21 PENDING_CI: code f5ad7cfd8bc1526f9021e43e08ffd7d4a99610d6 (parent 1dce633b87d215bfe8631092934bb0fea4c48892) adds read-only --verify-partition-directory exact source replay of standalone selected-owner editor files/index; positive, altered index, altered part, unexpected file, altered source and CLI regression. GitHub Actions push run/job/raw log for this code not yet available. ModManager tag 2.1.2.1 README 8e9560b2; Toolbox 6f780cb README 657f1613; REA README 93e1e272 are PC/generic only. No native Switch consumer ABI/ownership/Uzuy proof. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 pinned; Sakura aura107, Event236 marked/unmarked and all three false release flags untouched. NEXT inspect exact HEAD push Actions job raw logs, repair failures, then authenticate original main consumer ownership.",
+      "2026-11-20 PENDING_CI: code b72be2698cc5c46027446860c5fb69a3b06498d9 (parent 316e8342b30232671d21c59f95e083fc47e073b5) adds --verify-resolved --partition-directory to publish SHA-replayed selected-owner PC editor manifests as individual numbered JSON files plus SHA256 index using staged directory rename; no engine ABI. Direct regression tests positive owner selection, unsafe source names (not used as paths), SHA integrity, existing destination, mutated proof/source rollback. Local tests not run (GitHub DNS unavailable); HEAD push workflow run/job/authentic log not obtained, NOT PASS. Primary sources: ModManager tag 2.1.2.1 README blob 8e9560b2; NSC-Toolbox 6f780cb README blob 657f1613; REA main README blob 93e1e272; none proves Switch ABI. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not independently rehashed; no consumer ownership/lifecycle/CPK precedence/Uzuy proof. Sakura aura107, Event236 marker 0x4E53 +0x2A and unmarked variant untouched; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT obtain HEAD MovesetPlus push run and raw job logs, fix any failure; then authentic native consumer proof.",
+      "2026-11-20 PENDING_CI: resolved PC editor multi-mod output now emits per-event selected-source provenance for every event, including unique and explicitly resolved collisions. Read-only replay verifier compares complete provenance and exact bytes; regression asserts ordered owners and rejects tampered owner ledger. Parent 876c7c9f5cfe50ff993e0f074953c98d94d3b8c5. No engine archive precedence or native ABI claim; original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, both Event236 variants, and three false flags untouched. Host/HEAD CI job log pending.",
+      "2026-11-20 PENDING_CI: explicit-owner MovesetPlus editor output now supports read-only --verify-resolved replay from SHA-pinned PC manifests, comparing exact payload and full provenance; source 4eaff6c515090061c66a010695a771927370c9d1, regression d5c62c1aba9f46154653cfdb0cf5e3f194c002c3, parent f1f5ab0f324cee774a196293c5240878d5f42fa5. No host/HEAD Actions raw log verified. Original main pinned SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; Sakura aura107, Event236 marked/unmarked and three false release flags unchanged. No Switch ABI/ownership/Uzuy proof. NEXT execute new regression, inspect authentic HEAD Actions job logs, fix failures.",
+      "2026-11-20 PENDING_CI explicit PC editor collision owner resolution: parent 21ae9996be9e92af2bf3a986150b243b683cdf7e; source 5b79d6ffa15be4bbe0968acd730b1d27ecbec62d, tests 66de632b7ad2bbb6992b15d518dd3a1c3f827f2c, newline fix 96276d87edc423eb4f8a17ed6b40b9d4dbee1549. New --resolve JSON event_id->source owner selects authenticated PC editor event rows only when every collision has exactly one explicit owner, preserves first-occurrence event order, rejects missing/extra/unknown owners and tampered source; SHA-pinned provenance output and CLI positive/negative/rollback tests. Host tests NOT executed; HEAD Actions push runs/job raw logs NOT obtained; PENDING_CI NOT PASS. Research ModManager tag 2.1.2.1 README blob 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709 (Steam-only), Toolbox README 657f161390c4abe8afe10cea11a2b9a28e6bf6b0, REA README 6cbd8d77f786b2f71b952a1282fda93a2fbdc13d; none proves Switch consumer ABI. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107 and both Event236 variants unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT verify HEAD Actions original job logs, repair failures; authenticate original main native consumer ownership before any hook.",
+      "2026-11-20 PENDING_CI: code 813669ded6e4c7afdc28e7eb1cbc4181210adccf parent ff37c40425fe9a240c163830a309b79235d3cadd exposes SHA-authenticated PC editor event-ID collision report through --collisions-only CLI; JSON report and independent evidence SHA256, no merge or engine precedence; subprocess positive, tampered-source and preexisting-output fail-closed regressions. GitHub Git tree/commit/ref update succeeded; host tests and HEAD Actions push-run/job/raw logs NOT verified (GitHub DNS unavailable from container, connector commit runs PR-only). NOT PASS. Original main pinned SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; Sakura aura107, marked/unmarked Event236 unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT obtain authentic HEAD Actions logs, fix any failures; prove consumer ownership/lifecycle before runtime hooks.",
+      "2026-11-20 PENDING_CI: code f6dc2c829463061b74ae8faa3fbadf6d937b05a0 parent 18d55757a9ecf0dd99e4dc783ca4239a03cdcc9c implements SHA-pinned PC MovesetPlus multi-mod editor index reorder with source replay before/after, bijective order validation, CLI two-file publication, positive/negative/tamper tests and workflow integration. Evidence handoff/evidence_pc_moveset_reorder_20261120.md. HEAD Actions run/job/raw log pending, NOT PASS. No Switch ABI, CPK precedence or Uzuy proof; original main SHA256 pinned, Sakura aura107 and marked/unmarked Event236 unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT inspect HEAD push Actions jobs and raw logs, fix failures; then prove native consumer ownership.",
+      "2026-11-19 PENDING_CI: implementation 856f8c7d3b9a300e2a529af0c3fecbb2325fcbe9 adds offline source-SHA-bound compressed Event236 conversion through exact-size independently verified CPK publication, with real synthetic parser positive/negative/integrity regression and no-op/size-change fail-closed. CI HEAD authentic job log pending; not native consumer or Uzuy proof. Evidence handoff/evidence_compressed_same_size_20261119.md. Original main pinned; Sakura aura107 and both Event236 variants untouched; all three release flags false.",
+      "2026-11-19 PENDING_CI code 1a8c1b590142c45699af496a7e7e74a0cf62ac43 parent bbad993399ea563843092d1afb364f762bed5428: compressed PRM zero-change path preserves original CRILAYLA stored bytes bit-for-bit; offline CLI now calls shared validated reencode_candidate and verifies stored SHA, instead of duplicating encoder path. Added zero-change export identity/size and changed-payload evidence regressions. Prior HEAD bbad993 GitHub push runs 44479125643/44479125629/44479125726 COMPLETED SUCCESS, authentic jobs 135406786399/135406786200/135406786684 logs read. New HEAD run/log NOT YET VERIFIED, no PASS claim. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 pinned, Sakura aura107 and Event236 marked/unmarked untouched; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. Research upstream ModManager 2.1.2.1 2026-08-30, NSC-Toolbox 6f780cb6814f07e03c16b3e78d97dde4e4368983, REA 93c8e0c0c8e80e3c2379a1c7d2c2a956331cc8e8 (not game ABI). NEXT retrieve new HEAD push runs via REST actions/runs branch, raw job logs, fix any failure; then pursue consumer ownership/CPK precedence.",
+      "2026-11-19 PENDING_CI: compressed PRM offline CRILAYLA payload re-encoding added with independent decode roundtrip, stored size delta and SHA256, source CPK immutable. Positive marker/zero-change, invalid SHA, missing entry, decoded budget regressions. NOT a CPK repacker or engine consumer; original main SHA256 pinned 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; Sakura aura107/Event236 both variants untouched; three release flags false. NEXT inspect HEAD Actions authentic compressed PRM/Foundation logs, repair failures; prove native ABI/ownership before hooks.",
+      "2026-11-19 PENDING_CI: code 96c14d38f8f2897d48583aa4893b6d93b5d6ebd9 parent cbf830a162e483a209c4e6f3d42e8242d130f61d propagates path-local SP-derived aliases through MOV and ADD/SUB immediate, with synthetic positive MOV+ADD disjoint, negative SUB overlap, and negative source-clobber regressions. Upstream primary README blobs: ModManager 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709 (Steam only), NSC-Toolbox 657f161390c4abe8afe10cea11a2b9a28e6bf6b0 (PC editor), REA bb4828fb62da9283985a16b2051cc98efac8c7ec (generic RE). No Switch ABI proof. Local Capstone unavailable due DNS, authentic HEAD Actions push-run/job/log not obtained; NOT PASS. No hook, no Uzuy test, original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; Sakura aura107 and both Event236 variants unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT inspect Foundation push-run authentic log, fix any regression, then advance consumer ownership evidence from pinned main.",
+      "2026-11-19 PENDING_CI: FileLoad CFG witness now tracks path-local ADD Xn,SP,#imm aliases, permits a non-SP-base store only when its recognized byte range is provably disjoint, and kills aliases on register writes. Synthetic positive disjoint, negative overlap, negative clobber regressions added. Code 49e8081e873140520120a90b887af2e92b64db94 parent 18685003b34cc6e5f0673667646183d769fb5440. Upstream ModManager 2.1.2.1 README blob 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709; NSC-Toolbox 6f780cb README 657f161390c4abe8afe10cea11a2b9a28e6bf6b0; REA main README bb4828fb62da9283985a16b2051cc98efac8c7ec. None establishes Switch consumer ABI. No local Capstone or original runtime test; HEAD Actions log unverified, NOT PASS. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 pinned; Sakura aura107/Event236 both variants untouched; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT inspect Foundation push-run original job log for code HEAD, repair failures, then extend path-sensitive provenance and native consumer ownership evidence.",
+      "2026-11-19: Recovered authentic Foundation push-run 44390924739 job 135108023312 for parent ee1b77baab796b63e2164b5cb39d226f29de59c0: COMPLETED FAILURE, raw log proves Python SyntaxError at tools/portlib/native_fileload_sp_cfg.py line 130 (missing closing parenthesis). Fixed one-line syntax in code 8ff037581cd49ebfe50be905876687c8e61127e9 (parent ee1b77baab796b63e2164b5cb39d226f29de59c0). New Foundation run 44419953534 job 135209989291 pending at checkpoint; MovesetPlus 44419953656 job 135209988828 and compressed PRM 44419953633 job 135209989361 COMPLETED SUCCESS, authentic logs read. This fixes a real import blocker, not ABI/ownership/lifecycle/Uzuy. No runtime hooks; three release flags false. NEXT inspect Foundation 44419953534 original job log and repair any failure, then pursue register provenance.",
+      "2026-11-19 PENDING_CI: ARM64 FileLoad byte-width semantics now distinguish byte/halfword/signed-word loads from destination register width, and fail closed on unsupported transfer mnemonics; synthetic narrow-load negative regressions added. Code eab7be2e9ca1c98a5c838c09bce01948508a107d parent 1c31307b3ce53ffe8fc3161496c3d10631a27474. Local Capstone install blocked by DNS, no HEAD authentic Actions run/job/log yet. This is static alias evidence, not consumer ABI, ownership, or Uzuy. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 both variants unchanged; three release flags false. NEXT obtain Foundation push-run raw log, repair any failure, then pursue register provenance and actual native consumer lifecycle.",
+      "2026-11-19 PENDING_CI: FileLoad CFG path witness excludes partial byte-range overlap (STR W over prior STR X) and preserves adjacent nonoverlap; synthetic regressions added. Code e629afe31fccb8230d5111775cd1614a4396ffbc, tests dd7632afde07a6952765128ffefeeef6fb50d4da; parent 477ac57ea4e420a54833d0ab8a34d078eef5bc65. HEAD Actions authentic log not obtained; local Capstone absent. No consumer ABI/ownership/Uzuy, no runtime hook; original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 and Sakura aura107/Event236 both variants unchanged; all three release flags false. NEXT inspect Foundation push-run original job logs and repair failures before PASS; then register provenance.",
+      "2026-11-18 PENDING_CI: FileLoad CFG now emits possible stack write/read address-equality candidates only when each instruction has a unique entry-SP-relative offset; ambiguous paths are excluded. Candidate does NOT establish same executed path, register value, pointer ownership, ABI, lifecycle, or engine consumer. Positive same-offset, negative different-offset and ambiguous-path synthetic regressions added. Parent 0396cef291485e617db4f108d13edda60287cdbb; local Capstone unavailable, HEAD Actions job logs pending. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9; Sakura aura107 and Event236 variants unchanged. Upstream ModManager tag 2.1.2.1 README blob 8e9560b2, Toolbox blob 657f1613, REA blob 4ccd45ed; none establishes Switch ABI. Release flags false. NEXT inspect authentic HEAD Foundation job logs and then prove path-sensitive register provenance before runtime integration.",
+      "2026-11-18 VERIFIED_CI_STATIC_ONLY: bounded FileLoad CFG SP-relative offset propagation across conditional/unconditional paths, conservative ambiguous merge and opaque-call barrier. SHA-pinned original main; synthetic linear, join, call, truncated and budget regressions. Code b9bed4840db45d1a0d0eb725fa0a41ce768a5179; foundation run 44294505825 job 134767889692 COMPLETED SUCCESS, raw log PINNED_FILELOAD_SP_CFG_PASS 166 10 NO_CONSUMER_ABI; compressed 44294505944 job 134767889225 and MovesetPlus 44294505872 job 134767888993 COMPLETED SUCCESS, authentic logs read. No native consumer ABI, ownership, archive precedence, runtime or Uzuy proof; all three release flags false.",
+      "2026-11-18 PENDING_CI: new SHA-pinned FileLoad SP/FP memory operand census (original instruction words, exact offsets, writeback, negative mutated main, synthetic STR/LDR test); no stack-slot dataflow, pointer ownership, consumer ABI or runtime claims. Parent b56ae5e70769b400597ec1e9ffd8fdc9bc62519f. Upstream ModManager 2.1.2.1, Toolbox 6f780cb6814f07e03c16b3e78d97dde4e4368983, REA 4995018d3a492aa6627929e1d45ea35c95170970 are not Switch ABI evidence. All release flags false. NEXT verify HEAD Actions authentic log; investigate original FileLoad SP delta and control-flow before claiming stack aliases.",
+      "2026-11-18 VERIFIED OFFLINE SYNTHETIC: code 61403b49750938ff7710cc5b04bf38d0c2b29c39 extends CRILAYLA match distance to 258 with 4-byte prefilter; 6 encoder tests PASS incl 127/251 periodic payloads. Foundation push run 44189015312 job 134413108606 COMPLETED SUCCESS and authentic log read (6/6). MovesetPlus run 44189015390 job 134413110690 and compressed PRM run 44189015431 job 134413108835 COMPLETED SUCCESS; both authentic logs read. Synthetic/offline only; original game archive and native consumer ABI/lifecycle/Uzuy unverified. No hooks or release flags changed. This documentation followup HEAD CI is pending.",
+      "2026-11-18 PENDING_CI: offline CRILAYLA encoder expanded deterministic match search from distances 3..34 to 3..258 with four-byte candidate prefilter, plus periods 127/251 roundtrip, deterministic replay and compression-ratio regressions. Parent e4f132a6487066f970f965cc2505ce2b083f0912. Synthetic only; CI HEAD run/job/log not yet verified. Original main blob 8af900db0d7003255b4ddb3cbd1289cd5a15458e is tracked in repository (27,701,509 bytes), but SHA256 not independently checked in this session; do not infer native consumer ABI. Upstream NSC-ModManager release 2.1.2.1 published 2026-08-30; NSC-Toolbox HEAD 6f780cb6814f07e03c16b3e78d97dde4e4368983; REA HEAD c78e6e3aa54facde2d7610f203dd740e47611090; none proves Switch ABI. No runtime hooks; Sakura aura107/Event236 marked/unmarked untouched; three release flags false.",
+      "2026-11-18 VERIFIED OFFLINE SYNTHETIC: bounded-distance CRILAYLA encoder code 05e376d01731eaf60b83fc09108c97561ef6b14c; foundation run 44179052280 job 134378140592 COMPLETED SUCCESS, authentic raw job log read (5/5 encoder tests including periodic 5/7/13/31, random, deterministic replay, long run). Compressed run 44179052253 job 134378140460 SUCCESS, MovesetPlus run 44179052312 job 134378141078 SUCCESS; both raw logs read. Workflow step description updated only in this followup; new HEAD CI pending. Synthetic only, no authentic game PRM or engine consumer ABI/Uzuy; all release flags false.",
+      "2026-11-18: Offline CRILAYLA bounded-distance encoding slice. Parent c6625cb95730fd521d55a02499543f87c19551fe. Replace distance-3-only greedy selection with deterministic best-length search over distances 3..34, max match 1024; no game CPK writes. Positive periodic 5/7/13/31, random and long-run roundtrip, size reduction, exact deterministic replay. Independent local prototype passed 49 synthetic decode roundtrips; repository tests and HEAD Actions PENDING. Upstream anchors: NSC-ModManager 2.1.2.1 (release 2026-08-30, PC Switch Projectiles Target/Start-Stop Deflect; no Switch ABI); NSC-Toolbox 6f780cb6814f07e03c16b3e78d97dde4e4368983 README blob 657f161390c4abe8afe10cea11a2b9a28e6bf6b0; REA 237b1ea5b39ea9fc5373aa08a9f54d25715c4873 README blob a01452f5e21b50d1b6233a1761e1536a22b1271d (not engine ABI). Original main pinned SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 not changed. Synthetic only, no authentic PRM, native consumer ownership/lifecycle/archive precedence, or Uzuy. All three release flags false. NEXT: inspect HEAD foundation push-run and raw job logs; fix CI if necessary.",
+      "2026-11-17 PENDING_CI: commit 47bf6df1eda645679745b159716f525e21e1db35 (parent b288d3a7711870231a5b6ba62abebf3267b21f8d) adds source-authenticated selective PC editor manifest restoration (--name) preserving original numeric index and untouched neighboring files. Two synthetic positive/negative tests added. No local tests executed (GitHub DNS inaccessible in container); commit-scoped GitHub Actions connector returns PR-only empty list, so push CI run/job/log NOT verified. ModManager 2.1.2.1 README blob 8e9560b2, NSC-Toolbox 6f780cb README blob 657f1613, REA b2f3dc81 README blob 4e525c0c; none establishes Switch ABI. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 marked/unmarked unchanged. Native consumer/ownership/lifecycle/archive precedence and Uzuy unverified; all release flags false. NEXT obtain HEAD push-run via direct Actions REST and inspect raw job logs, fix failures before PASS.",
+      "2026-11-17 VERIFIED OFFLINE CPK: code ab7caf471b7303ccb73ef88da77fe05d73373c9b (parent 3062e83cda93426339d856f2bcb427ac8b5fab73) maps every packed candidate read-only via ExitStack rather than Path.read_bytes; validate_many_same_size accepts mmap payloads and validates CRILAYLA against source-bound Event236; output streaming, independent disk verification and exclusive publication remain. Two-member synthetic regression and no-read_bytes assertion. GitHub Actions CPK push run 43986842680 job 133717069114 COMPLETED SUCCESS; authentic job log inspected: 39 tests OK. MovesetPlus run 43986842799 job 133717069869 and compressed PRM run 43986842723 job 133717069130 SUCCESS with original logs inspected. Foundation run 43986843402 still pending at checkpoint. Earlier code d238ae7c CPK run 43978999838 job 133690273906 COMPLETED SUCCESS 38 tests with original log inspected. Upstream ModManager release 2.1.2.1 published 2026-08-30, Toolbox HEAD 6f780cb6814f07e03c16b3e78d97dde4e4368983, REA HEAD d5a942177fad030d3caf0f8d39856c116e3e5cda; these are PC/generic references and DO NOT prove Switch engine ABI. Original pinned main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 and authentic CPK unavailable in this run; no native consumer/ownership/lifecycle/archive precedence or Uzuy proof. Sakura aura107 and Event236 marked/unmarked untouched. full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT authenticate original main and CPK bytes, establish consumer ABI/lifecycle before hooks.",
+      "2026-11-17 PENDING_CI: code 31c692a45ee31c268110b0f904e4a42a16aded90 (parent 32df22134713b3e73fa8f9de9d2dd9685e6ea05e) independently verifies staged on-disk same-size CPK bytes using source/output SHA-pinned read-only mmap and semantic verifier before exclusive hard-link publication. Negative regression forces verifier failure and asserts no published output or staging residue. GitHub Actions push run/job/raw log for this code NOT VERIFIED; local tests not executed; no PASS. Earlier run 43928815687 job 133515411235 SUCCESS only for earlier code. Original Switch CPK and pinned main bytes unavailable for consumer ABI/ownership/lifecycle/async/rollback/archive precedence; no Uzuy. Preserve main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 marked/unmarked; three release flags false. NEXT retrieve new push run and raw job logs, repair any failure, authenticate original game assets before native hooks.",
+      "2026-11-17 VERIFIED OFFLINE CPK: code 9b3e82940976c0befef16cca44a03409c072c5cf (parent 6bd9e03710bd213cc17fcc6f50118ad48f397ee2) uses read-only mmap source in same-size multi-member CPK publisher instead of source_path.read_bytes(), reducing peak Android archive copies; one regression proves source Path.read_bytes is never called. GitHub Actions push run 43928815687, job 133515411235 COMPLETED SUCCESS; raw job log inspected: 36 real-parser synthetic tests OK including new mmap publisher test. Prior code 15701b3c run 43877214874 job 133333273151 also SUCCESS 35 tests, authentic log inspected; prior PENDING_CI notes are historical. Original Switch CPK not tested; original pinned main bytes not available in this session for ABI; no native engine consumer/lifecycle/precedence or Uzuy proof. Upstream ModManager tag 2.1.2.1 commit 502c38d3ee832509f9ee3951b7d3339826538fec, Toolbox 6f780cb6814f07e03c16b3e78d97dde4e4368983, REA 26d88826cc36c5513ce8977346c0e4f15bb25169; no cross-OS ABI inference. Preserve main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 both variants and three false release flags. NEXT verify final HEAD foundation workflow log, authenticate original game CPK/main and prove consumer lifecycle before any hook.",
+      "2026-11-16 PENDING_CI: Fixed an actual Python SyntaxError in tools/portlib/cpk_same_size_verify.py: the call to _extract_validated_candidate contained literal backslash-n characters instead of a newline, preventing module import and therefore all independent verifier tests. Code commit 15701b3cfb5326645d59c08da81b4ebefd11e530 (parent 3db3a0209d34b9861fbca4fcb2442c5f1d805bb1), one source file only; existing workflow unittest imports module and is the regression gate. Verified GitHub compare only changed this file; no local tests or authentic Actions push run/job/log confirmed (REST DNS failure). Upstream README anchors NSC-ModManager 2.1.2.1 blob 8e9560b2, NSC-Toolbox blob 657f1613, REA blob 5ea33378; none prove Switch ABI. No authentic original main/CPK bytes, consumer ABI/lifecycle, archive precedence or Uzuy proof. Keep SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 marked/unmarked, and all three release flags false. NEXT obtain Actions push-run and raw job log, fix remaining test failures, validate authentic CPK before runtime hooks.",
+      "2026-11-16 PENDING_CI: Code 3067e6af1faa6aba2f4acf4faf24d52278ee26bc (parent d594906903bfe2da270753468c880123b028356a) adds read-only mmap verification for source/output CPK, avoiding full-file read_bytes copies on Android; direct verifier accepts mmap and bytes, positive and wrong-hash mmap regressions added. GitHub compare: 1 ahead, 0 behind; PR-filtered workflow lookup empty and combined statuses empty, NOT evidence of push-run absence. Push Actions run/job/authentic log NOT verified; local tests NOT executed. Primary source anchors: NSC-ModManager tag 2.1.2.1 README blob 8e9560b2 (Steam-only), NSC-Toolbox README 657f1613 (PC editor), REA README 5ea33378 (generic reverse engineering). No original Switch CPK or pinned original main bytes available here for ABI proof; no native consumer/ownership/lifecycle/archive precedence/Uzuy proof. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; Sakura aura107, Event236 marked/unmarked preserved. full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. NEXT: obtain push-run via Actions REST and inspect authentic job logs, repair failures, test genuine CPK; do not hook runtime.",
+      "2026-11-16 PENDING_CI: Added read-only offline CLI tools/verify_same_size_cpk.py wrapping independent SHA-pinned CPK output verifier, with four real-parser synthetic subprocess regressions (valid, wrong SHA, unselected tamper with recomputed SHA, unknown member) and push workflow trigger. Parent 77b2ee97e0a37c071b5cc6443abcef216d0b2691, code f9261cc3d9a080388467405166eba71e9ba2686a. GitHub Actions push-run/job/log unavailable; no PASS. Research anchors NSC-ModManager tag 2.1.2.1 README blob 8e9560b2, NSC-Toolbox 6f780cb README blob 657f1613, REA README blob 5ea33378; no cross-OS ABI proof. Pinned main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107 and Event236 marked/unmarked unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. Next authenticate HEAD Actions job logs, repair any failures, then test genuine Switch CPK; do not hook native consumers.",
+      "2026-11-16 PENDING_CI: Added independent read-only verification of SHA-pinned source/output CPK, TOC equality, every nonselected byte, selected Event236 decoded semantics, and synthetic positive/negative regressions. No authentic Switch archive or native consumer ABI/ownership/lifecycle/archive precedence; no Uzuy. Upstream anchors NSC-ModManager 2.1.2.1 README 8e9560b2, NSC-Toolbox 6f780cb README 657f1613, REA README 5ea33378 (not Switch ABI). Parent b80b93c69fd40a651baf04a9fd60c33ce45ecea0; final HEAD CI run/job/log not yet authenticated. Preserve pinned main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 marked/unmarked; all three release flags false.",
+      "2026-11-16 PENDING_CI: Fixed offline same-size CPK multi-member collision handling: casefold duplicate member names now rejected before candidate processing; publisher JSON duplicate object keys (exact/casefold) fail closed rather than silently overwriting a candidate. Added real-parser integration negative regression and CLI publication regressions for both cases. Parent bf4d91e9b7921780754f4e15b8554ebaa560bedd; CI run/job/log not verified; no authentic Switch CPK, original-main consumer ABI, ownership, lifecycle, archive precedence or Uzuy. Primary evidence: NSC-ModManager 2.1.2.1 README blob 8e9560b2 (Steam-only), NSC-Toolbox 6f780cb README blob 657f1613 (editor), REA README blob 5ea33378 (general RE). Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; Sakura aura107 and Event236 marked/unmarked unchanged; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. Next obtain push-run and authentic job log; repair test failures; then authenticate real v1.70 archive and native consumer before any runtime hook.",
+      "2026-11-16 PENDING_CI: atomic multi-member same-size CRILAYLA replacement implemented in ddf52047a1a09a777164b1cafa45ee7a1324205a (parent 4dec5b1e71cf0c293f39168660c175425595736e). One SHA-authenticated original CPK and original TOC; all selected decoded Event236 candidates validated against original before any archive bytes are published; byte-exact untouched spans and unchanged TOC verified. Two synthetic real-parser regressions added for two-member conversion, unaffected third entry, wrong SHA, empty mapping, wrong semantic candidate and size mismatch. NOT executed locally (GitHub DNS unavailable), push Actions run/job/log NOT verified; no authentic CPK, native ABI/ownership/lifecycle/archive precedence or Uzuy proof. Research refs: NSC-ModManager 2.1.2.1 README blob 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709 (Steam only), NSC-Toolbox README blob 657f161390c4abe8afe10cea11a2b9a28e6bf6b0, REA generic reverse engineering reference (not game ABI). Next inspect HEAD push Actions run and full job log, fix any regressions; then authenticate real v1.70 CPK before installation. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 untouched; Sakura aura107 and both Event236 variants preserved; full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false.",
+      "2026-11-15 PENDING_CI: Added offline source-authenticated batch remove/replace for PC MovesetPlus editor indices (one replayed composition, conflict rejection, five synthetic regressions); no native consumer, CPK installation or Uzuy proof. Research: NSC-ModManager 2.1.2.1 README blob 8e9560b2e906fa88ae8aca20f99e3f3e77fbf709 (Steam-only), NSC-Toolbox 6f780cb6814f07e03c16b3e78d97dde4e4368983 README blob 657f161390c4abe8afe10cea11a2b9a28e6bf6b0, REA README blob 056af5e87775520a72fd8609f88edd074a5e7498 (not game ABI). Pinned original main 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; Sakura aura107, Event236 marked/unmarked preserved; all release flags false. Next verify HEAD Actions logs, then authenticate consumer lifecycle and archive precedence.",
+      "2026-11-15 PENDING_CI: Added SHA-pinned PC MovesetPlus editor source replacement (original source replay, full recomposition, collision rejection, 4 synthetic regressions); no binary consumer or Uzuy evidence.",
+      "2026-11-15 PENDING_CI: source-replayable PC-only multi-mod editor removal; no binary/consumer/Uzuy proof",
+      "2026-11-15 pending CI: original PC source replay verification of merged editor indices, offline only",
+      "2026-11-15 pending CI: offline PC editor multi-mod restore CLI with exclusive rollback and SHA-verified per-source provenance; synthetic only",
+      "2026-11-15 pending CI: reversible source-range provenance for offline PC MovesetPlus multi-mod editor index composition; synthetic-only, no Switch ABI",
+      "SHA256 gate for exact stock/R180 text before game writes",
+      "33-word RAM patch with consistent 1024 PRM/spcload loop bounds",
+      "raw condition lookup bounded by observed native allocation count",
+      "condition storage retirement on native reload and both destructor free paths",
+      "bounded configurable factory selector registry; 228 charcode-matched selectors; unknown placeholders rejected",
+      "PC specialCondParam reader and Python-only Android NSO data-profile packer",
+      "native factory hook preserves caller roster identity in tested initialization slices",
+      "explicit converted-PRM ownership marker for Event236, independent of roster ID",
+      "native reader-verified PRM conversion; original enemy-hide preserved for unmarked events",
+      "native enable/disable writers for all 20 source control selectors; compiled callback and 20 native consumer slices tested",
+      "CPK ownership-marker conversion for explicitly selected uncompressed PRMs with exact preservation of other archive bytes",
+      "explicit SHA256-validated CPK profiles, capacity 32 with distinct priorities; default empty",
+      "native result plus bind-ID validation; failed-only retry and reentry/concurrent duplicate suppression",
+      "Python-only CPK NSO profile packaging composes with factory profile edits without changing text/rodata",
+      "append-only PC conditionprmManager compiler preserves native 512-row descriptor prefix, including Switch-specific Sakura aura value",
+      "configurable 0..512 additional descriptors; four native loop bounds use the validated startup count; no hardcoded Tobi descriptor table",
+      "compiled descriptor getter and native name/hash/reaction/state/icon/status/aura consumers tested; 21 installer fingerprint failures reject before hooks",
+      "optional hash-pinned raw176 companion validation: every descriptor/raw ordinal name must match; malformed, reordered or count-mismatched companions rejected before output; review copy preserves all input bytes",
+      "single-archive condition bundle compiler validates actual CPK companion, converts only selected PC API PRMs, emits paired condition/CPK profiles, and optionally configures both NSO profiles without dropping unrelated registrations",
+      "safe condition-bundle module composition appends one CPK registration to pre-existing valid entries (max 32); rejects case/priority collisions and different pre-existing condition descriptors without overwriting either",
+      "hash-pinned raw176 stock-vs-candidate byte audit reports exact per-ordinal differing byte offsets and added row hashes; tested only with synthetic inputs",
+      "hash-pinned mmap-based multi-CPK path overlap audit with exact/casefold and stored-byte identity; conflict reject-before-output; no runtime winner inference",
+      "direct hash-pinned CPK-to-CPK conditionprm raw176 audit invokes existing manager/ordinal comparator without extracting files manually; synthetic integration PASS only",
+      "multi-archive condition batch compiler: one explicit global conditionprm owner, independent CPK PRM marking, source SHA256 pins, disjoint TOC path guard, atomic component output and composed NSO condition/CPK registration; synthetic CI PASS only",
+      "read-only exact SHA-pinned Switch 1.70 native CPK/file-load ARM64 direct-call census: 493563 direct B/BL candidate instructions and 10 verified source anchor windows; indirect callbacks, async completion, unbind and archive precedence remain unverified",
+      "SHA-pinned native NSO RELA/ADR/adjacent ADRP address-materialization audit for 10 CPK/fileloader anchors; CI verified 288312 relocation records, no exact-anchor address candidates in the supported patterns; indirect callbacks and function boundaries still unknown",
+      "PC ModdingAPI raw32 parameter payload readers for susanooCondParam and partnerSlotParam grounded in pinned upstream C++ source; validated exact public upstream 160-byte/256-byte NSC templates with matching Git blob SHA and observed SHA256; no native Switch reader or factory binding implemented",
+      "Three more PC source-verified raw parameter stream readers, with byte-authenticated public NSC Ougi (1 uint32), GudoBall (2 uint32) and CharRelation (30 variable-length records); CI PASS only, no native Switch integration",
+      "Pinned original v1.70 main static nearby file-load CPK B/BL/BR/BLR neighborhood census and adjacent R_AARCH64_RELATIVE executable-target relocation cluster grouping; 8 candidate adjacent tables, four witnessed slots reproducible; no vtable/async/unbind claim",
+      "All nine previously uncovered PC ModdingAPI parameter families now have source-pinned read-only format readers, validated with exact public raw samples; newest four: TUJ pairSpSkill (55x0x18), BGM (1x0x68), SpecialInteraction (4 count-prefixed records), GuardEffect (2x0xF8). 14 invalid inputs rejected. No Switch ABI/hook proof.",
+      "Exact SHA-pinned Switch 1.70 ARM64 Capstone code-window transcript (9 windows); 7 word-exact register/BLR witnesses, candidate 0x106F394 prolog from relocation, corrected former fileload_process 0x106F404 to mid-code BL to 0xFFF6A0. No CRI lifecycle proven.",
+      "SHA-pinned bounded ARM64 CFG exploration of relocated 0x106F394 candidate (147 reachable words, zero direct B/BL inbound, one RELA pointer, 4 observed terminal addresses), 0x106EDB8 candidate (3 words), and file-open 0x1170FB0 (52 words, one direct caller); no CRI ABI/lifecycle proof",
+      "2026-11-27 VERIFIED_CI_STATIC_ONLY: FileLoad immediate status argument constants and bounded direct-callee evidence recorded from exact original main. Code 0e84462e75faa2912bca6a5698987d38d23920eb (parent cf4fe8985bae1a76f3abe6d71b822cd54036a0a5). Foundation push run 46009242285/job 140540193791 COMPLETED SUCCESS; raw log inspected: NATIVE_STATUS5_CALLS_PASS and original main SHA guard; artifact 15202721886 contains native_fileload_status.json, native_fileload_call_targets.json and native_cpk_call_edges.json. Factory run 46009242146/job 140540193654 COMPLETED SUCCESS (13 tests); compressed PRM 46009242342/job 140540194218 COMPLETED SUCCESS (16 tests); MovesetPlus 46009242288/job 140540193634 COMPLETED SUCCESS (16 tests); raw logs inspected. This proves only static original-main callsite words and bounded target windows, not lock semantics, native consumer ABI, object ownership/lifecycle, async completion, archive precedence or Uzuy.",
+      "2026-11-27 PENDING_CI: Extend SHA-pinned FileLoad status evidence with a 128-byte disassembly window covering direct service-target candidates 0x1215358 and 0x1215374, full-text direct BL/B xref census, cross-checks for the status helper and FileLoad request path, and synthetic aligned-window positive/negative/boundary tests. No lock/unlock interpretation is promoted; function extents and service semantics remain unresolved. Parent 0e84462e75faa2912bca6a5698987d38d23920eb; CI pending.",
+      "2026-11-27 PENDING_HEAD_CI: FileLoad status-service evidence now follows the four exact direct dependencies of the 0x1158c90/0x1158d10 wrappers, records SHA-pinned bounded disassembly/CFG/xrefs, and adds an emulated-ARM64 test that executes the original wrapper bodies while modeling only four leaf targets. Regressions cover first/reentrant acquire, non-final/final release, underflow, zero provider result, different owner token and 32 status-helper cases. This proves only the literal wrapper owner/count transitions under modeled leaf returns; no OS mutex semantics, concurrency, native consumer ABI, lifecycle, archive precedence or Uzuy proof. Parent 5efd93a9d5d23ab96f3fd7a4404a46e50153c6ac; CI pending. Research pins ModManager 2.1.2.1 tag 502c38d (pinned project commit 276116e is its direct child), Toolbox 2.1.2.1 tag 789fe96 (relevant parser blobs unchanged from 2.1.2.0), PyCriCodecs 755055ee, REA 0386efd1. Original main blob 8af900db, SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. No hooks; preserve Sakura aura107, both Event236 forms and all three false flags.",
+      "2026-11-27 CI_REPAIR: Foundation run 46021414045/job 140581709219 failed in synthetic_service_dependency_window because entry 0x8 is NOP and falls through to RET at 0xc; expected return corrected to 0xc. Review of pinned dispatch bytes also caught ADD X0,X0,#8 at 0x1215360/0x121537c; the emulated wrapper now writes owner/count at the adjusted wrapper base (original status object +0x28/+0x2c), not the pre-adjustment subobject. Raw Foundation log inspected. New HEAD CI pending; no mutex/concurrency/consumer ABI or Uzuy claim.",
+      "2026-11-27 CI_REPAIR_2: Foundation run 46022245151/job 140584543848 failed in test_native_fileload_status.py because the report omitted service_target_semantics_verified after the new dispatch-offset fields were inserted. The missing explicit false field is restored. Raw job log inspected. The three other workflows for code HEAD 4c83d56 completed successfully and their raw logs were read; Foundation must be rerun.",
+      "2026-11-28 PENDING_CI: Added SHA-pinned registration target CFG analysis from the single DT_RELA R_AARCH64_RELATIVE pointer cell 0x215d2b0 -> text offset 0x116b888. The 0x100-byte bounded CFG records reachable instructions, register/memory operands, direct/indirect call barriers, returns, out-of-window edges, raw aligned-text B/BL word candidates and window SHA. Synthetic CFG positive/negative/boundary/budget regressions plus original-main SHA/relocation tests added. Not callback/destructor identity, function extent, runtime relocated pointer, ABI, ownership or Uzuy proof.",
+      "2026-11-28 FIXED_PENDING_CI: Foundation run 46076828184/job 140766410479 exposed that Capstone 5.0.6 Arm64Op has no .size. The analyzer now derives only explicit AArch64 memory widths from mnemonic/data-register class and leaves ambiguous widths null; tests add W, byte, register-pair and signed-word cases. Other three workflows on c62ff2e passed. Rerun Foundation and all push workflows before promotion.",
+      "2026-11-28 VERIFIED_CI_STATIC_ONLY: The registration pointer cell 0x215d2b0's single DT_RELA R_AARCH64_RELATIVE addend resolves to text offset 0x116b888. Bounded CFG on original main SHA reached 33 words, one direct call 0x116b8a4 -> 0x116b390, return 0x116b908, no indirect call/terminator or out-of-window edge; it loops 64 pointer-sized entries from 0x4371800 and clears a 0x200-byte table. Artifact 15234858334, JSON SHA256 7f70068c..., all four push workflows success and raw logs inspected. Callback/destructor/ABI/ownership still NOT proven.",
+      "2026-11-28 VERIFIED_CI_STATIC_ONLY: SHA-pinned FileLoad registration callee trace at 0x116b390 passed on code HEAD dffbf1bd2fc5257a72279186545bbd8d956ab0fe. Caller load 0x116b8a0 and BL 0x116b8a4 were verified against original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. The 0x200-byte callee window reached 24 instructions, one RET, three direct-call barriers, one BR X2 at 0x116b3d0, one out-of-window B to 0x116d820 and 114 raw aligned B/BL inbound candidates (not a function/call count). All four direct push workflows completed SUCCESS; raw logs inspected. Foundation artifact 15238645422, ZIP SHA256 0fd7633194afc59e31548bf8767ce2651776b79f2388fb3248d7695853512ed8; report JSON SHA256 2977741b1f6763aa3e80444607362c1f0429c2aa2bde486f071220e190b0103c; callee window SHA256 0c12e8360c74f94b501046964810bf996668d938fabcc87a93dd34e70a7afd55. Static/host only; no callback/destructor/object type/ownership/lock/async/rollback/unbind/ABI/archive precedence or Uzuy proof. No hook; release flags remain false.",
+      "2026-11-28 VERIFIED_CI_STATIC_ONLY: Dispatch-flow trace of the pinned 0x116b390 FileLoad callee passed on code HEAD 9c06a6bba6d5c69f49107ce3094cbee614d4f5df. It proves the local instruction chain X19<-X0; three direct calls; X8<-*[X0]; X2<-*[X8+0x58]; X1<-X19; and BR X2 at 0x116b3d0, plus CBZ exits and a 0x20-byte stack frame. Four 0x100-byte target windows were traced: 0x116b7b0 (31 reachable, 3 direct calls), 0x116d380 (15, no calls), 0x116b82c (18, one direct call to 0x12155a0), 0x116d820 (6, no calls). All four direct push workflows completed SUCCESS and raw logs were inspected. Foundation marker PINNED_FILELOAD_REGISTRATION_DISPATCH_PASS targets 4; artifact 15238396702 ZIP SHA256 d33b8fdc4bb728a9d1c7337674a87e6777dcd1a69e4752e36d6f08c51659966c; report JSON SHA256 f2eed43777e1679e2948f0a43ef02c0022ac623586997545573c12949214ab1a. BR X2 target, callback/vtable/destructor identity, object type, ownership, lock/unlock, async, rollback/unbind, ABI and archive precedence remain unproven. Static/host only; no Uzuy/new-analyzer ARM64. No hook; flags false.",
+      "2026-11-28 VERIFIED_CI_STATIC_ONLY: New pinned FileLoad registration-lifecycle trace on code HEAD 2b06a49730dc3bdf9816cc7f4f984231aa34b4fe (parent 3982db7cbea721a3308870945cd29dad6598a5ba). Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 verified. The 0x290 helper writes 24-byte records as x8/x1/x2 at offsets 0/8/16, using an atomic counter and two relocated table pointer cells both targeting 0x2161230; runtime table values remain unverified. Registered code-pointer candidate 0x116b888 walks 64 pointer-sized slots from 0x4371800, calls 0x116b390 per slot, then clears 0x200 bytes; callback/destructor identity is NOT proven. Guard imports at 0x12f3690/0x12f36a0 resolve to __cxa_guard_acquire/__cxa_guard_release for guard 0x43717d8. Alternate tail 0x116d830 -> PLT 0x12f49b0 resolves to nn::mem::StandardAllocator::Free(void*); receiver cell 0x215d2e8 relocates to BSS 0x4371a00 and X1 receives the alternate-path X19 value. Index-error call 0x116b864 -> 0x12155a0 passes rodata string 'BlockManager::GetBlock break\\n'. CI run 46086093686/job 140795884030 COMPLETED SUCCESS; raw log inspected; artifact 15238478983; ZIP SHA256 7e6362c66972f6d35588a73c6ae25cc9aed3d6285b674d9ef479a4789bd87fd3; JSON SHA256 51fb342cffdb2b39ea7d3c72aa21c21afcb20b6ea1c979a15f91eba4de74c949. Host/static only; no consumer ABI, ownership, destructor, async, rollback/unbind, archive precedence, emulated ARM64 or Uzuy proof. No hook; all three release flags false.",
+      "2026-11-28 IMPLEMENTED_AWAITING_CI: Added a SHA-pinned direct-reference census for FileLoad's 64-slot BSS table at 0x4371800. It follows bounded ADRP/ADD/MOV address chains, records direct reads/writes and scans RELA destinations/addends; synthetic positive, negative, boundary and malformed-input regressions added. No producer/ABI/ownership/destructor/Uzuy claim. CI pending.",
+      "2026-11-28 FOLLOW-UP: corrected the synthetic ADRP encoder (page delta is measured in pages, not bytes), required 8-byte-aligned table bounds, and attached the new census test/artifact to the already active FileLoad lifecycle workflow with explicit path filters. CI pending.",
+      "2026-11-28 FOLLOW-UP 2: raw CI log identified the missing reaching definition: X19 is zeroed immediately before ADRP, then ADD X8,X20,X19 forms the object base. The analyzer now scans a bounded 0x20-byte prefix and tracks only statically known register-add operands. Foundation workflow excludes this isolated FileLoad test to avoid rerunning the broad suite; the active lifecycle workflow remains authoritative for this slice. CI pending.",
+      "2026-11-28 EXTENSION_AWAITING_CI: Extended the FileLoad table census to both bounded traversal/zeroing paths, verified Q0 zero continuity through both 16-store sequences, and added direct B/BL inbound census for the per-slot helper. Synthetic branch boundary tests added. Prior revision 05afa CI passed; this extension is pending.",
+      "2026-11-28 VERIFIED_STATIC_CI_ONLY: Final FileLoad table census commit 0bc4cb45d713325cf8e33f0385b42535791fe5ab passed run 46089004753/job 140805260736. Raw log and artifact inspected. 89 ADRP refs, 34 direct accesses, 2 table traversal/zeroing paths, 2 reads, 32 zeroing stores, zero direct writes outside those sequences, zero RELA targets/addends in the table, and 114 direct B/BL callers to helper 0x116b390. No producer/ABI/runtime claim.",
+      "2026-11-28 IMPLEMENTED_AWAITING_CI: Added a SHA-pinned FileLoad helper inbound caller analyzer. It Capstone-confirms raw aligned B/BL candidates to 0x116b390, records bounded 0x40-byte prelude instructions/register/memory facts, and groups last-syntactic-write signatures for X0-X7. It verifies both known table-path calls are preceded by LDR X0,[X8,#0x28]. These are not reaching definitions or ABI proof; CI pending.",
+      "2026-11-28 FOLLOW-UP: the new workflow file did not schedule a push run, so the caller regression is now attached to the existing FileLoad lifecycle workflow. Its two previously passing tests are skipped for caller-source-only commits; the new caller test runs independently. CI pending.",
+      "2026-11-28 CI diagnosis: the first caller regression failed because it pinned a stale count of 101. Both authentic table-census artifacts were downloaded and inspected; each reports 114 direct B/BL inbound words to 0x116b390 (111 BL, 3 B). The regression expectation and checkpoint/status evidence are corrected; isolated CI retry pending.",
+      "2026-11-28 CI diagnosis 2: raw count 114, branch split 111 BL / 3 B, and both table-path X0 load assertions passed; a redundant second invariant still contained literal 101. It now compares confirmed plus unconfirmed candidates against the report's raw count. CI retry pending.",
+      "2026-11-28 VERIFIED_STATIC_CI_ONLY: the isolated caller census passed on code commit f3be353e044e5b471c35565da8c357d87f07d909 (run 46094178280/job 140821654312). It reproduced 114 direct B/BL words (111 BL, 3 B), Capstone-confirmed all 114, found 86 bounded-prelude signature clusters (histogram 7:1, 5:3, 4:1, 2:7, 1:74), and grouped the two table-path calls together. This is static-only; no ABI/ownership/runtime claim.",
+      "2026-11-28 broader foundation regression also completed successfully on code commit f3be353e044e5b471c35565da8c357d87f07d909: run 46094178264/job 140821654144, raw log inspected, 74 proof JSON files uploaded (artifact 15242338737). The prior commit 95dcd5d broad run 46094071894/job 140821324784 also completed success. This does not upgrade the caller slice beyond VERIFIED_STATIC_CI_ONLY.",
+      "2026-11-28 VERIFIED_STATIC_CI_ONLY: FileLoad helper 0x116b82c now has a reproduced bounded return-value proof and the 64-slot table scanner tracks symbolic UXTW-indexed aliases. Seven indexed reads resolve to base 0x4371800 + UXTW(W1)*8 (64 slots); no indexed writes were found in the scanned ADRP windows; 34 direct accesses include 2 reads and 32 zeroing writes, with 0 direct writers outside the two zeroing sequences. Helper returns a 64-bit memory-derived slot value on valid non-sentinel path and zero on out-of-range/sentinel path. Static evidence only; no ABI, producer lifecycle, ownership, callback, archive precedence, emulated ARM64 or Uzuy proof. Code commit e9555de6024a334b6ffcac1e7b9c091fee79d7e6; table run 46109004389/job 140868100989 and return run 46109004391/job 140868101178 completed success; raw logs and artifacts inspected.",
+      "2026-11-28 PENDING_CI: Added SHA-pinned FileLoad bounded CFG branch-path and static pointer-alias census. New analyzer follows in-window conditional/unconditional edges from ADRP references and traces only unique file-backed literal / symbol-zero R_AARCH64_RELATIVE pointer loads into the 0x4371000 page. Calls remain clobber barriers; out-of-window edges and BSS/heap aliases remain unresolved. Synthetic regressions cover branch-only writes, call barriers, RELA/literal pointer cells, ambiguity, exclusive-page boundary, BSS exclusion and state-budget exhaustion. Original main SHA256 is pinned; no runtime hook. Parent HEAD 4d5acd5a52e0ae3e72415a7ee3164ffc21082769; targeted Actions CI pending.",
+      "2026-11-28 VERIFIED_STATIC_CI_ONLY: FileLoad bounded CFG semantic-state dedup on code commit 63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1 (parent d1d6a77b0ae1c006b6313534a4206a2e9b055c6d). The exact pinned original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 was reproduced. The scan processed 4,055 ADRP references; equivalent-state dedup reduced references hitting the 256-state budget from 431 to 47 (89.1% reduction: target-page 10->2, pointer-page 421->45) while merging 7,510 equivalent branch histories and explicitly marking branch-path witness enumeration non-exhaustive. It now records 72 direct accesses, 7 indexed reads, 32 STP write rows, 214 candidate pointer cells, 271 loaded aliases, 1 ambiguous load, 10,581 call barriers, and 4,345 out-of-window edges; six additional bounded reads appear at 0x116bf70/0x116bfc8 for slot offsets 0x80/0x88/0x90. Target CFG and pointer alias trace remain INCOMPLETE; no complete writer census, producer identity, BR X2 target, native consumer ABI, ownership/lifecycle, callback/destructor, lock/unlock, async, rollback/unbind, archive precedence, emulated ARM64 for this analyzer, Uzuy or gameplay claim. Targeted run 46116650719/job 140891888185 and broad foundation run 46116650641/job 140891888072 COMPLETED SUCCESS; both raw logs inspected. Target artifact 15251304501, ZIP SHA256 f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b; report JSON SHA256 6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36; foundation artifact 15251649607, ZIP SHA256 7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159, 74 JSON files."
     ],
     "blocking_gaps": [
       "At FileLoad, the 0x290 helper is now byte-proven to write 24-byte records (x8/x1/x2 at 0/8/16) using an atomic counter; both relocated table pointer cells target 0x2161230. Its registered code-pointer candidate 0x116b888 walks 64 pointer slots at 0x4371800, calls 0x116b390 per slot, then clears 0x200 bytes. The static guard pair is __cxa_guard_acquire/__cxa_guard_release for 0x43717d8. Alternate tail 0x116d830 resolves to nn::mem::StandardAllocator::Free(void*) via PLT 0x12f49b0; receiver cell relocates to 0x4371a00 and X1 receives the alternate-path X19 value. Index-error path passes 'BlockManager::GetBlock break\\n' to 0x12155a0. However BR X2 target, object type, callback/destructor identity and invocation, runtime table values, allocator binding, ownership/lifetime, lock/unlock, async completion, rollback/unbind and archive precedence remain unresolved. No runtime hook.",
@@ -82,7 +189,10 @@
       "PC source-ZIP -> 9-family source pack is now byte/SHA-authenticated and callable in the built AArch64 module, but native Switch engine consumers and CRI resource ownership/lifecycle/async/teardown/precedence remain unconnected/unproven; not installable or Uzuy playable.",
       "Source-bound CRILAYLA candidate verifier has synthetic compressed CI proof only; original game PRM fixture, native consumer ABI, archive precedence and Uzuy remain unverified.",
       "FileLoad status service targets 0x1215358/0x1215374 are direct call/branch candidates only; their lock/unlock semantics, function boundaries and runtime binding remain unproven.",
-      "FileLoad status service dispatch targets 0x1158c90/0x1158d10/0x1158d30 are now bounded read-only analysis candidates; actual lock/unlock semantics, function extents, object ownership/lifecycle and async teardown remain unresolved."
+      "FileLoad status service dispatch targets 0x1158c90/0x1158d10/0x1158d30 are now bounded read-only analysis candidates; actual lock/unlock semantics, function extents, object ownership/lifecycle and async teardown remain unresolved.",
+      "FileLoad table producer remains unresolved after bounded CFG equivalent-state dedup: 4,055 ADRP references were processed; state-budget exhaustion fell from 431 to 47 (target page 2, pointer pages 45), but 7,510 equivalent branch histories were merged and witness enumeration is representative-only. The scan records 72 direct accesses, 7 indexed reads, 32 STP write rows in the two known zeroing sequences, 214 candidate pointer cells, 271 loaded aliases and one ambiguous load; six extra reads appear at 0x116bf70/0x116bfc8 (slot offsets 0x80/0x88/0x90). Target CFG and pointer alias trace remain incomplete. 114 direct B/BL callers to 0x116b390 remain; BR X2 target, dynamic BSS/heap writers, producer identity, object type, ownership/lifecycle, callback/destructor, lock/unlock, async, rollback/unbind and archive precedence remain unresolved.",
+      "FileLoad helper 0x116b390 has a VERIFIED_STATIC_CI_ONLY caller prelude/signature census: 114 direct B/BL candidates, 114 Capstone-confirmed, 86 clusters. Function extents, actual reaching definitions, BR X2 target, producer/writer, ABI, ownership and lifecycle remain unresolved.",
+      "Upstream source comparison confirms the repository pins NSC-ModManager 2.1.2.1 and NSC-Toolbox 2.1.2.1 (each one commit ahead of its release tag); PC API 2.1.2.1 command 29 TakeOverEnemyProjectiles is present in Windows source but has no proven Switch consumer ABI and is not ported."
     ],
     "proofs": [
       "reports/port_foundation/bootstrap.json",
@@ -125,7 +235,25 @@
       "reports/port_foundation/native_fileopen_returns_summary.json",
       "reports/port_foundation/native_fileload_entry_register_summary.json",
       "reports/port_foundation/pc_pack_staging_lease_summary.json",
-      "reports/port_foundation/native_fileload_status.json"
+      "reports/port_foundation/native_fileload_status.json",
+      "reports/port_foundation/native_fileload_registration_lifecycle.json",
+      "reports/port_foundation/native_fileload_table_access.json",
+      "handoff/evidence_fileload_helper_callers_20261128.md",
+      "https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178280/artifacts/15242915661",
+      {
+        "name": "FileLoad bounded CFG equivalent-state dedup",
+        "status": "VERIFIED_STATIC_CI_ONLY",
+        "code_commit": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
+        "parent_sha": "d1d6a77b0ae1c006b6313534a4206a2e9b055c6d",
+        "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+        "report_sha256": "6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36",
+        "targeted_run_id": 46116650719,
+        "targeted_job_id": 140891888185,
+        "foundation_run_id": 46116650641,
+        "foundation_job_id": 140891888072,
+        "raw_logs_inspected": true,
+        "limits": "bounded CFG and pointer alias trace incomplete; no native consumer ABI, ownership, archive precedence, Uzuy or gameplay"
+      }
     ],
     "parameter_family_coverage": {
       "conditionprmManager.xfbin": "PARTIAL: validated appended descriptors; stock edits and raw 176-byte companion integration pending",
@@ -1041,8 +1169,8 @@
       "reason": "test_pc_native_pack.py negatives counter referenced before assignment",
       "new_commit_ci": "PENDING"
     },
-    "latest_pending_code_commit": "35da1c3a860c15bd7cd3b96b57129b3d40934042",
-    "latest_pending_ci": "New FileLoad guard-state slice pending push CI; see native_fileload_guard_state_20261128.",
+    "latest_pending_code_commit": null,
+    "latest_pending_ci": null,
     "multi_mod_pc_source_path_ownership_guard": "OFFLINE_ONLY_PENDING_CI_NO_ENGINE_ARCHIVE_PRECEDENCE",
     "crilayla_total_output_limit": {
       "status": "pending_ci",
@@ -1161,7 +1289,7 @@
       "consumer_abi_proven": false,
       "emulator_tested": false
     },
-    "pending_ci_note": "2026-11-11: Call-free bounded BR witness classification added: shortest syntactic paths which do not traverse opaque BL/BLR, with positive, call-only negative, bypass, and authentic main byte replay regressions. This is NOT actual call feasibility, consumer ABI, ownership, archive precedence or Uzuy. Parent 91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb; CI PENDING. Upstream ModManager release 2.1.2.1; Toolbox 6f780cb; REA b2f3dc81; cpktools eff288cf9. Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 unchanged; three release flags false.",
+    "pending_ci_note": "No pending Actions runs remain for the branch after the CFI and P32 packaging commits; all latest relevant runs were completed and raw job logs inspected.",
     "native_fileopen_call_free_witness": {
       "status": "PENDING_CI",
       "parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
@@ -1598,7 +1726,7 @@
       "native_consumer_verified": false,
       "emulator_tested": false
     },
-    "latest_engineering_pending_ci": "2026-11-28 VERIFIED_CI_STATIC_ONLY: Fixed recursive FileLoad X19 proof-tree serialization. `analyze_stack_register_restore()` returns `nested_call_proofs` as a list; the parent serializer incorrectly called `.values()`, causing Foundation step 42 to raise AttributeError. Changed it to copy the list directly. Existing regression covers list shape, nested-call failure and cycle evidence. Code commit dbc23b155335c61602437c72e7f1ceabbe35553d (parent 255adab51824809ca8920c4b65dba6a3d326fb41). All four push workflows COMPLETED SUCCESS with raw logs inspected. Foundation artifact 15231780092 (336355 bytes, SHA256 598559d70ee9d2911c52fc6109b722465b87b96d3e5b9b77f2de8b99f38fc7aa); inbound-args JSON SHA256 d3a1ece8b05743da15643babe98d77fffa0995532477f0bf6e769bbec66102e5. Authentic original main SHA256 guard passed. Exact local X19 save/restore at SP-8 is proven, but nested call stack effects and unknown-base writes keep X19 at 0x116f280 -> 0x120a6c8 unresolved. Static proof only; no consumer ABI, ownership/lifecycle, archive precedence or Uzuy claim. All three release flags remain false.",
+    "latest_engineering_pending_ci": null,
     "ordered_factory_atomic_publication": {
       "state": "PENDING_HEAD_CI",
       "source_commit": "4a882d11426a7c55dfbb0c5468aa3375d165c190",
@@ -2110,35 +2238,32 @@
       "uzuy_verified": false,
       "next": "Inspect exact SP-relative X19 save/restore and all return paths in 0x120a6c8; require path-sensitive same-slot proof for every return and recursively apply only to exact direct targets. Preserve barriers for all unproven callees; no AAPCS64 assumption, no runtime hook."
     },
-    "latest_verified_code_commit": "2b06a49730dc3bdf9816cc7f4f984231aa34b4fe",
-    "latest_verified_code_parent": "3982db7cbea721a3308870945cd29dad6598a5ba",
+    "latest_verified_code_commit": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+    "latest_verified_code_parent": "2133abb9534561eeacf47ffeff54a08e99339880",
     "latest_verified_code_ci": {
-      "head": "2b06a49730dc3bdf9816cc7f4f984231aa34b4fe",
-      "parent": "3982db7cbea721a3308870945cd29dad6598a5ba",
-      "workflows": [
-        {
-          "name": "fileload_registration_lifecycle",
-          "run_id": 46086093686,
-          "job_id": 140795884030,
-          "run_number": 2,
-          "conclusion": "success",
-          "raw_log_inspected": true,
-          "artifact_id": 15238478983,
-          "artifact_zip_sha256": "7e6362c66972f6d35588a73c6ae25cc9aed3d6285b674d9ef479a4789bd87fd3",
-          "report_json_sha256": "51fb342cffdb2b39ea7d3c72aa21c21afcb20b6ea1c979a15f91eba4de74c949"
-        }
-      ],
+      "head": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+      "parent": "2133abb9534561eeacf47ffeff54a08e99339880",
       "all_completed_success": true,
       "raw_job_logs_inspected": true,
-      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-      "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
-      "original_main_size_bytes": 27701509,
-      "host_static_test_pass": true,
-      "emulated_arm64_for_new_analyzer": false,
-      "uzuy_runtime_tested": false,
-      "consumer_abi_verified": false,
-      "ownership_lifecycle_verified": false,
-      "archive_precedence_verified": false
+      "workflows": [
+        {
+          "name": "Build NSC P32 file-open vs XFBIN-read trace / unwind-proof",
+          "run_id": 46100321645,
+          "job_id": 140841047537,
+          "conclusion": "success",
+          "artifact_id": 15245162374,
+          "artifact_zip_sha256": "ac07da627905706da9e45f0a86b1620d1d32a3e6ee47059d0d2331e442a25101"
+        },
+        {
+          "name": "Verify Switch port foundation (not a gameplay release)",
+          "run_id": 46100321670,
+          "job_id": 140841047578,
+          "conclusion": "success",
+          "artifact_id": 15245303059,
+          "artifact_zip_sha256": "aaf920f3a76d53937a8f4faefb913eb9e430fe6b13329b538ca2f29d794868b5"
+        }
+      ],
+      "note": "The P32 build job was not run on this code commit; its build-only artifact was produced separately by fbd13b35c07e88642ba3e5afb5818e678176807a."
     },
     "native_fileload_x19_stack_restore_20261128": {
       "state": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
@@ -2316,7 +2441,7 @@
       "next": "Continue from 0x116b698 and nested 0x116b6c0 -> 0x116b7b0. Prove exact pointer/stack alias provenance for X1/X19 and each unknown store; investigate 0x12f3690/0x12f36a0 bounded control-flow exits without assuming function extent. Keep 0x116f280 -> 0x120a6c8 as a call barrier until every nested stack/alias condition is proven."
     },
     "native_fileload_guard_state_20261128": {
-      "state": "PENDING_CI",
+      "state": "VERIFIED_CI_STATIC_ONLY",
       "parent_sha": "261e4aab417b1aebaaeddb9a83160a46dc812255",
       "source": "tools/portlib/native_fileload_guard_state.py",
       "test": "tests/test_native_fileload_guard_state.py",
@@ -2349,7 +2474,485 @@
       "ownership_lifecycle_verified": false,
       "archive_precedence_verified": false,
       "uzuy_verified": false,
-      "next": "Read the new Foundation artifact's pointer-cell values and relocation records; trace the candidate callback only if the exact value resolves to an original-main code address. Keep opaque __cxa_guard imports and the parent X19 call barrier unresolved."
+      "next": "Trace the exact R_AARCH64_RELATIVE addend in registration cell 0x215d2b0 to bounded text target 0x116b888; do not identify a destructor or authorize a hook.",
+      "code_commit": "9975550ae11657970ae8905a808aa0360ad36710",
+      "code_parent": "5a512e760c48a78cbe2e4f1b24ecfef2f6dd8be2",
+      "ci": {
+        "head": "9975550ae11657970ae8905a808aa0360ad36710",
+        "runs": [
+          46074524822,
+          46074524869,
+          46074524831,
+          46074524880
+        ],
+        "jobs": [
+          140759011008,
+          140759011097,
+          140759011286,
+          140759010994
+        ],
+        "all_completed_success": true,
+        "raw_job_logs_inspected": true,
+        "foundation_marker": "PINNED_FILELOAD_GUARD_STATE_PASS",
+        "foundation_artifact_id": 15233949208,
+        "foundation_artifact_zip_sha256": "53075cb3fbadba6548a2dc0080f429b3aedadb66d898164aebb971860deb04ff",
+        "guard_json_sha256": "c04f854b2be460035599ed07355ed9993183a5c0e544e828f0f9f7bf43e649bb"
+      }
+    },
+    "native_fileload_registration_target_20261128": {
+      "state": "VERIFIED_CI_STATIC_ONLY",
+      "parent_sha": "c62ff2e537d845f6410b009045de423c103e0dce",
+      "code_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
+      "source": "tools/portlib/native_fileload_registration_target.py",
+      "source_blob": "8ee881958c72de9bc1fa14feea1a2806265ce952",
+      "test": "tests/test_native_fileload_registration_target.py",
+      "test_blob": "10b77976b8af26ef1c6720a30028c67cf7b96bd9",
+      "workflow": ".github/workflows/verify-port-foundation.yml",
+      "workflow_blob": "c087b353eb4dbbe5512f49ba821fc92974a89db0",
+      "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "original_main_size": 27701509,
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "registration_pointer_cell": "0x215d2b0",
+      "relocation_record_offset": "0x1976d80",
+      "relocation_type": "R_AARCH64_RELATIVE",
+      "relocation_addend_text_offset": "0x116b888",
+      "analysis_window_bytes": 256,
+      "function_extent_verified": false,
+      "callback_identity_verified": false,
+      "destructor_identity_verified": false,
+      "native_consumer_abi_verified": false,
+      "ownership_lifecycle_verified": false,
+      "archive_precedence_verified": false,
+      "native_hook_added": false,
+      "uzuy_verified": false,
+      "release_flags": {
+        "full_moddingapi": false,
+        "ready_for_gameplay_test": false,
+        "emulator_tested": false
+      },
+      "next": "Trace direct-call target 0x116b390 in a separate bounded window; verify what X0 points to, whether it invokes an indirect callback, and its ownership/lock/unlock behavior. Do not identify destructor semantics or install a hook until the full lifecycle is proven.",
+      "last_failed_commit": "c62ff2e537d845f6410b009045de423c103e0dce",
+      "failure": {
+        "commit": "c62ff2e537d845f6410b009045de423c103e0dce",
+        "run_id": 46076828184,
+        "job_id": 140766410479,
+        "conclusion": "failure",
+        "exception": "AttributeError: 'Arm64Op' object has no attribute 'size'",
+        "raw_log_inspected": true,
+        "fixed_in_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e"
+      },
+      "fix": {
+        "source_blob": "99044155b3ddb50c4bbbae4154baac730f2187ed",
+        "test_blob": "1b298593ac37bf4da039fb27b197464d0fb949b3",
+        "summary": "Replace unsupported operand.size with fail-closed width derivation from AArch64 mnemonic/data-register class; explicit widths for byte/halfword/signed word, register pairs and LDPSW; unknown width stays null. Add W-register, byte, pair and signed-word regressions."
+      },
+      "ci": {
+        "head": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e",
+        "runs": [
+          46077330193,
+          46077330238,
+          46077330215,
+          46077330236
+        ],
+        "jobs": [
+          140768008713,
+          140768008784,
+          140768008716,
+          140768008350
+        ],
+        "statuses": [
+          "success",
+          "success",
+          "success",
+          "success"
+        ],
+        "all_completed_success": true,
+        "raw_job_logs_inspected": true,
+        "foundation_marker": "PINNED_FILELOAD_REGISTRATION_TARGET_PASS 0x116b888 reachable 33 direct_calls 1 NO_CALLBACK_NO_DESTRUCTOR_NO_ABI_CLAIM",
+        "foundation_artifact_id": 15234858334,
+        "foundation_artifact_size_bytes": 509805,
+        "foundation_artifact_zip_sha256": "7dad9c43345b5094a7cc3531df03c11c10dc01fd5b86c145585952551eb3207a",
+        "registration_json_sha256": "7f70068cb9a900f95a40ed1adc9520a8441f635523acaf6c11b8a94fe43750e0",
+        "target_window_sha256": "877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec",
+        "host_static_test_pass": true,
+        "emulated_arm64_for_new_analyzer": false,
+        "uzuy_runtime_tested": false
+      },
+      "observations": {
+        "target_text_offset": "0x116b888",
+        "window": "[0x116b888,0x116b988)",
+        "window_bytes": 256,
+        "window_sha256": "877fcd30e1fb00f75bf143dfb499419122edb72acf95677b73219ee7f0a809ec",
+        "reachable_decoded_words": 33,
+        "return_sites": [
+          "0x116b908"
+        ],
+        "direct_calls_not_walked": [
+          {
+            "site": "0x116b8a4",
+            "target": "0x116b390"
+          }
+        ],
+        "unresolved_indirect_calls": [],
+        "indirect_terminators": [],
+        "out_of_window_edges": [],
+        "raw_aligned_text_B_BL_candidates_to_target": [],
+        "table_loop": {
+          "base_address": "0x43717d8",
+          "entry_start": "0x4371800",
+          "entry_count": 64,
+          "entry_stride_bytes": 8,
+          "loop_limit_bytes": "0x200",
+          "load_site": "0x116b8a0",
+          "load_operand": "ldr x0, [x8, #0x28]",
+          "call_site": "0x116b8a4",
+          "call_target": "0x116b390",
+          "index_increment": "0x8",
+          "index_compare": "0x200"
+        },
+        "clear_sequence": {
+          "first_store_site": "0x116b8c4",
+          "last_store_site": "0x116b900",
+          "instruction_count": 16,
+          "instruction": "stp q0, q0",
+          "covered_address_start": "0x4371800",
+          "covered_bytes": 512,
+          "interpretation": "bounded static store pattern only; no destructor/ownership identity"
+        },
+        "memory_operands_count": 21,
+        "callback_identity_verified": false,
+        "destructor_identity_verified": false,
+        "function_extent_verified": false,
+        "registration_table_runtime_target_verified": false,
+        "object_ownership_lifecycle_verified": false,
+        "async_rollback_unbind_verified": false,
+        "archive_precedence_verified": false,
+        "native_consumer_abi_verified": false
+      }
+    },
+    "latest_failed_code_commit": "c62ff2e537d845f6410b009045de423c103e0dce",
+    "latest_failed_ci": {
+      "run_id": 46076828184,
+      "job_id": 140766410479,
+      "exception": "AttributeError: 'Arm64Op' object has no attribute 'size'",
+      "raw_log_inspected": true,
+      "fixed_in_commit": "b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e"
+    },
+    "native_fileload_registration_callee_20261128": {
+      "state": "VERIFIED_CI_STATIC_ONLY",
+      "parent_sha": "a859b4454fe7f8b1b18c5930bba38c483e7b7b6c",
+      "source": "tools/portlib/native_fileload_registration_callee.py",
+      "source_blob": "3bf733dc6d3368a7569d79853bef557fd330a03d",
+      "test": "tests/test_native_fileload_registration_callee.py",
+      "test_blob": "b5d6190d3dd8e50ad29f1507c45734f8a0767504",
+      "workflow": ".github/workflows/verify-port-foundation.yml",
+      "workflow_blob": "68320ad7f4e5b3a728fe06a55528cc6225d6376b",
+      "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "original_main_size": 27701509,
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "caller_load_site": "0x116b8a0",
+      "caller_direct_call_site": "0x116b8a4",
+      "direct_callee_target": "0x116b390",
+      "callee_analysis_window_bytes": 512,
+      "function_extent_verified": false,
+      "callback_identity_verified": false,
+      "destructor_identity_verified": false,
+      "ownership_lifecycle_verified": false,
+      "lock_unlock_semantics_verified": false,
+      "async_rollback_unbind_verified": false,
+      "native_consumer_abi_verified": false,
+      "archive_precedence_verified": false,
+      "native_hook_added": false,
+      "uzuy_verified": false,
+      "release_flags": {
+        "full_moddingapi": false,
+        "ready_for_gameplay_test": false,
+        "emulator_tested": false
+      },
+      "next": "Trace the three exact direct callees and the X2 tail-branch source chain; do not identify the BR X2 target as a callback/vtable/destructor without further proof.",
+      "code_commit": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
+      "ci": {
+        "head": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
+        "parent": "a859b4454fe7f8b1b18c5930bba38c483e7b7b6c",
+        "workflows": [
+          {
+            "name": "foundation",
+            "run_id": 46082949640,
+            "job_id": 140785901176,
+            "conclusion": "success",
+            "raw_log_inspected": true,
+            "artifact_id": 15238645422
+          },
+          {
+            "name": "factory",
+            "run_id": 46082949657,
+            "job_id": 140785901415,
+            "conclusion": "success",
+            "raw_log_inspected": true
+          },
+          {
+            "name": "compressed_prm",
+            "run_id": 46082949728,
+            "job_id": 140785901575,
+            "conclusion": "success",
+            "raw_log_inspected": true
+          },
+          {
+            "name": "movesetplus",
+            "run_id": 46082949502,
+            "job_id": 140785901019,
+            "conclusion": "success",
+            "raw_log_inspected": true
+          }
+        ],
+        "all_completed_success": true,
+        "raw_job_logs_inspected": true,
+        "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+        "foundation_artifact_id": 15238645422,
+        "foundation_artifact_size_bytes": 513005,
+        "foundation_artifact_zip_sha256": "0fd7633194afc59e31548bf8767ce2651776b79f2388fb3248d7695853512ed8",
+        "registration_callee_json_sha256": "2977741b1f6763aa3e80444607362c1f0429c2aa2bde486f071220e190b0103c",
+        "callee_window_sha256": "0c12e8360c74f94b501046964810bf996668d938fabcc87a93dd34e70a7afd55",
+        "host_static_test_pass": true,
+        "emulated_arm64_for_new_analyzer": false,
+        "uzuy_runtime_tested": false
+      },
+      "observations": {
+        "caller_load_site": "0x116b8a0",
+        "caller_load_operand": "ldr x0, [x8, #0x28]",
+        "direct_call_site": "0x116b8a4",
+        "direct_callee_target": "0x116b390",
+        "window": "[0x116b390,0x116b590)",
+        "window_bytes": 512,
+        "window_sha256": "0c12e8360c74f94b501046964810bf996668d938fabcc87a93dd34e70a7afd55",
+        "reachable_decoded_words": 24,
+        "return_sites": [
+          "0x116b3dc"
+        ],
+        "direct_calls_not_walked": [
+          {
+            "site": "0x116b39c",
+            "target": "0x116b7b0"
+          },
+          {
+            "site": "0x116b3a4",
+            "target": "0x116d380"
+          },
+          {
+            "site": "0x116b3b0",
+            "target": "0x116b82c"
+          }
+        ],
+        "unresolved_indirect_calls": [],
+        "indirect_terminators": [
+          "0x116b3d0"
+        ],
+        "indirect_terminator_operand": "br x2",
+        "out_of_window_edges": [
+          {
+            "from": "0x116b3ec",
+            "kind": "unconditional",
+            "target": "0x116d820"
+          }
+        ],
+        "raw_aligned_text_B_BL_inbound_candidate_count": 114,
+        "function_extent_verified": false,
+        "callback_identity_verified": false,
+        "destructor_identity_verified": false,
+        "ownership_lifecycle_verified": false,
+        "native_consumer_abi_verified": false
+      },
+      "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags."
+    },
+    "native_fileload_registration_dispatch_20261128": {
+      "state": "VERIFIED_CI_STATIC_ONLY",
+      "parent_sha": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
+      "source": "tools/portlib/native_fileload_registration_dispatch.py",
+      "source_blob": "c8897caaacebb6d96eca351bcf775cd5cd468434",
+      "test": "tests/test_native_fileload_registration_dispatch.py",
+      "test_blob": "d16853b274be4c2a30a6f91141bfc8f615e6d236",
+      "workflow": ".github/workflows/verify-port-foundation.yml",
+      "workflow_blob": "766ec521f3214393c84afb8c6dd54ff69e34bc84",
+      "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "callee_target": "0x116b390",
+      "indirect_branch_site": "0x116b3d0",
+      "indirect_branch_register": "x2",
+      "indirect_branch_target_resolved": false,
+      "direct_targets": [
+        "0x116b7b0",
+        "0x116d380",
+        "0x116b82c"
+      ],
+      "alternate_branch_target": "0x116d820",
+      "target_window_bytes": 256,
+      "callback_identity_verified": false,
+      "vtable_identity_verified": false,
+      "destructor_identity_verified": false,
+      "ownership_lifecycle_verified": false,
+      "native_consumer_abi_verified": false,
+      "archive_precedence_verified": false,
+      "native_hook_added": false,
+      "release_flags": {
+        "full_moddingapi": false,
+        "ready_for_gameplay_test": false,
+        "emulator_tested": false
+      },
+      "next": "Trace only the exact nested direct-call targets 0x12f3690, 0x290, 0x12f36a0 and 0x12155a0 plus alternate branch 0x12f49b0; keep BR X2 unresolved unless an exact relocation/symbol proves it.",
+      "code_commit": "9c06a6bba6d5c69f49107ce3094cbee614d4f5df",
+      "ci": {
+        "head": "9c06a6bba6d5c69f49107ce3094cbee614d4f5df",
+        "parent": "dffbf1bd2fc5257a72279186545bbd8d956ab0fe",
+        "workflows": [
+          {
+            "name": "foundation",
+            "run_id": 46083883814,
+            "job_id": 140788864287,
+            "conclusion": "success",
+            "raw_log_inspected": true,
+            "artifact_id": 15238396702
+          },
+          {
+            "name": "factory",
+            "run_id": 46083883804,
+            "job_id": 140788864137,
+            "conclusion": "success",
+            "raw_log_inspected": true
+          },
+          {
+            "name": "compressed_prm",
+            "run_id": 46083883928,
+            "job_id": 140788864729,
+            "conclusion": "success",
+            "raw_log_inspected": true
+          },
+          {
+            "name": "movesetplus",
+            "run_id": 46083883860,
+            "job_id": 140788864262,
+            "conclusion": "success",
+            "raw_log_inspected": true
+          }
+        ],
+        "all_completed_success": true,
+        "raw_job_logs_inspected": true,
+        "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+        "foundation_artifact_id": 15238396702,
+        "foundation_artifact_size_bytes": 520490,
+        "foundation_artifact_zip_sha256": "d33b8fdc4bb728a9d1c7337674a87e6777dcd1a69e4752e36d6f08c51659966c",
+        "dispatch_json_sha256": "f2eed43777e1679e2948f0a43ef02c0022ac623586997545573c12949214ab1a",
+        "host_static_test_pass": true,
+        "emulated_arm64_for_new_analyzer": false,
+        "uzuy_runtime_tested": false
+      },
+      "observations": {
+        "callee_target": "0x116b390",
+        "callee_window_sha256": "0c12e8360c74f94b501046964810bf996668d938fabcc87a93dd34e70a7afd55",
+        "entry_x0_to_x19_site": "0x116b398",
+        "direct_call_sequence": [
+          {
+            "site": "0x116b39c",
+            "target": "0x116b7b0"
+          },
+          {
+            "site": "0x116b3a4",
+            "target": "0x116d380"
+          },
+          {
+            "site": "0x116b3b0",
+            "target": "0x116b82c"
+          }
+        ],
+        "x8_load": {
+          "site": "0x116b3bc",
+          "base": "x0",
+          "displacement": 0
+        },
+        "x2_load": {
+          "site": "0x116b3c4",
+          "base": "x8",
+          "displacement": 88
+        },
+        "indirect_tail_branch": {
+          "site": "0x116b3d0",
+          "register": "x2",
+          "target_resolved": false
+        },
+        "x1_source": {
+          "site": "0x116b3c0",
+          "register": "x19"
+        },
+        "conditional_paths": [
+          {
+            "site": "0x116b3b4",
+            "condition": "CBZ X19",
+            "target": "0x116b3d4"
+          },
+          {
+            "site": "0x116b3b8",
+            "condition": "CBZ X0",
+            "target": "0x116b3e0"
+          }
+        ],
+        "alternate_branch": {
+          "site": "0x116b3ec",
+          "target": "0x116d820"
+        },
+        "observed_stack_frame_bytes": 32,
+        "bounded_target_traces": {
+          "0x116b7b0": {
+            "window_sha256": "1708f9d926faec286e9e8e54ec5e47cbcf893c21e9b77a79cd087e93ce27269f",
+            "reachable": 31,
+            "returns": [
+              "0x116b7d0",
+              "0x116b828"
+            ],
+            "direct_calls": [
+              "0x12f3690",
+              "0x290",
+              "0x12f36a0"
+            ],
+            "inbound_candidates": 68
+          },
+          "0x116d380": {
+            "window_sha256": "e6851fc84addca8a3e47e395dc7ec111d8b8fb9f225c50e48291074f93518e08",
+            "reachable": 15,
+            "returns": [
+              "0x116d3b8"
+            ],
+            "direct_calls": [],
+            "inbound_candidates": 104
+          },
+          "0x116b82c": {
+            "window_sha256": "6ee694349865c253b3e056bddddf6ff7005f05e274a295f274c9f35b79d4258a",
+            "reachable": 18,
+            "returns": [
+              "0x116b858",
+              "0x116b870"
+            ],
+            "direct_calls": [
+              "0x12155a0"
+            ],
+            "inbound_candidates": 26
+          },
+          "0x116d820": {
+            "window_sha256": "471d009788dafcda76e1a826dea37acc6cb619e141d792243e17c3abffda2159",
+            "reachable": 6,
+            "returns": [
+              "0x116d834"
+            ],
+            "direct_calls": [],
+            "inbound_candidates": 145
+          }
+        },
+        "callback_identity_verified": false,
+        "vtable_identity_verified": false,
+        "destructor_identity_verified": false,
+        "ownership_lifecycle_verified": false,
+        "native_consumer_abi_verified": false,
+        "archive_precedence_verified": false
+      },
+      "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags."
     },
     "native_fileload_registration_lifecycle_20261128": {
       "state": "VERIFIED_CI_STATIC_ONLY",
@@ -2429,6 +3032,1062 @@
         "emulated_arm64": false,
         "uzuy": false
       }
+    },
+    "native_fileload_table_access_census_20261128": {
+      "state": "VERIFIED_STATIC_CI_ONLY",
+      "parent_sha": "05afa169bc47025b0ea18f3fae2b85da9601c54d",
+      "source": "tools/portlib/native_fileload_table_access.py",
+      "test": "tests/test_native_fileload_table_access.py",
+      "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
+      "evidence_note": "handoff/evidence_fileload_table_access_20261128.md",
+      "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "original_main_size_bytes": 27701509,
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "table": {
+        "start": "0x4371800",
+        "end_exclusive": "0x4371a00",
+        "slot_count": 64,
+        "slot_stride_bytes": 8
+      },
+      "address_trace": {
+        "prefix_bytes": 32,
+        "forward_window_bytes": 256,
+        "tracked_operations": [
+          "ADRP",
+          "ADD immediate",
+          "ADD register when both source values are statically known",
+          "MOV register"
+        ],
+        "control_flow_barrier": true
+      },
+      "expected_static_facts": {
+        "first_slot_load": "0x116b8a0",
+        "cleanup_clear_sites": [
+          "0x116b8c4",
+          "0x116b8c8",
+          "0x116b8cc",
+          "0x116b8d0",
+          "0x116b8d4",
+          "0x116b8d8",
+          "0x116b8dc",
+          "0x116b8e0",
+          "0x116b8e4",
+          "0x116b8e8",
+          "0x116b8ec",
+          "0x116b8f0",
+          "0x116b8f4",
+          "0x116b8f8",
+          "0x116b8fc",
+          "0x116b900"
+        ]
+      },
+      "research": {
+        "modmanager_latest_tag": "2.1.2.1",
+        "modmanager_latest_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+        "toolbox_latest_tag": "2.1.2.1",
+        "toolbox_latest_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+        "ultimate_storm_api_latest_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+        "pycricodecs_commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+        "rea_commit": "0386efd1e1dfa41af41f804a6be56c6f5b7615d4"
+      },
+      "ci": {
+        "state": "completed_success",
+        "code_commit": "0bc4cb45d713325cf8e33f0385b42535791fe5ab",
+        "run_id": 46089004753,
+        "run_number": 5,
+        "job_id": 140805260736,
+        "run_url": "https://github.com/Anovvoldigoad/switchmain/actions/runs/46089004753",
+        "job_conclusion": "success",
+        "raw_log_inspected": true,
+        "raw_log_markers": [
+          "PINNED_FILELOAD_REGISTRATION_LIFECYCLE_PASS",
+          "PINNED_FILELOAD_TABLE_ACCESS_CENSUS_PASS"
+        ],
+        "artifact_id": 15239987914,
+        "artifact_name": "FILELOAD_TABLE_ACCESS_STATIC_EVIDENCE",
+        "artifact_zip_sha256": "97f2b7734baef912d6becf291ed88c2b2bc59427f641ca238b96cc29751bca28",
+        "report_sha256": "49b68228ce6a598471d5778e9e847bdbb10c00e11bd7ae3e806618b923f7586d",
+        "failed_attempts": [
+          {
+            "run_id": 46088082330,
+            "job_id": 140802291968,
+            "commit": "30a06adf117ffc4f5657044922fcff360820d8b0",
+            "failure": "synthetic ADRP encoder treated page delta as bytes",
+            "raw_log_inspected": true
+          },
+          {
+            "run_id": 46088241951,
+            "job_id": 140802797820,
+            "commit": "3ba748262c0790f781249cbb8c1eb55410aa538c",
+            "failure": "missing register ADD reaching definition for X19=0 before first-slot load",
+            "raw_log_inspected": true
+          }
+        ],
+        "observed": {
+          "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+          "bss_start": "0x2161234",
+          "bss_end": "0x44cc000",
+          "table_start": "0x4371800",
+          "table_end_exclusive": "0x4371a00",
+          "slots": 64,
+          "slot_stride": 8,
+          "adrp_page_references": 89,
+          "direct_accesses": 34,
+          "direct_reads": 2,
+          "direct_writes": 32,
+          "bounded_zeroing_paths": 2,
+          "clear_stores_per_path": 16,
+          "bytes_cleared_per_path": 512,
+          "zero_vector_sites": [
+            "0x116b8b4",
+            "0x116b938"
+          ],
+          "direct_writes_outside_two_zeroing_sequences": 0,
+          "indexed_access_candidates": 0,
+          "dynamic_rela_records_scanned": 288973,
+          "relocation_destinations_in_table": 0,
+          "relocation_addends_pointing_into_table": 0,
+          "direct_b_bl_inbound_to_helper_0x116b390": 114,
+          "helper_calls_from_two_table_paths": [
+            "0x116b8a4",
+            "0x116b928"
+          ],
+          "direct_b_bl_inbound_to_bounded_path_b_start_0x116b918": 0
+        }
+      },
+      "limits": {
+        "producer_identity_verified": false,
+        "br_x2_target_resolved": false,
+        "native_consumer_abi_verified": false,
+        "ownership_lifecycle_verified": false,
+        "archive_precedence_verified": false,
+        "emulated_arm64": false,
+        "uzuy": false
+      },
+      "release_flags": {
+        "full_moddingapi": false,
+        "ready_for_gameplay_test": false,
+        "emulator_tested": false
+      },
+      "next": "Use the corrected 114 raw direct B/BL candidates (111 BL, 3 B) for the helper prelude/signature census. The earlier 101 value was stale; both authentic table artifacts contain 114. Do not repeat the passing table census.",
+      "previous_verified_revision": {
+        "code_commit": "05afa169bc47025b0ea18f3fae2b85da9601c54d",
+        "run_id": 46088613491,
+        "job_id": 140803970356,
+        "conclusion": "success",
+        "raw_log_inspected": true,
+        "table_artifact_id": 15240495894,
+        "table_artifact_zip_sha256": "d57051c1f0632439ad5ff042c01ccb67b10c790ad0b3bfc17c02e1daf12bfa9e",
+        "observed": {
+          "adrp_page_references": 89,
+          "direct_accesses": 34,
+          "direct_reads": 2,
+          "direct_writes": 32,
+          "writes_outside_first_clear_sequence": 16,
+          "dynamic_rela_records_scanned": 288973,
+          "relocation_destinations_in_table": 0,
+          "relocation_addends_pointing_into_table": 0
+        }
+      },
+      "current_extension": {
+        "two_bounded_windows": [
+          "0x116b888..0x116b988",
+          "0x116b918..0x116ba18"
+        ],
+        "first_slot_reads": [
+          "0x116b8a0",
+          "0x116b924"
+        ],
+        "clear_sequences": 2,
+        "clear_stores_per_sequence": 16,
+        "clear_bytes_per_sequence": 512,
+        "q0_zero_continuity_checked": true,
+        "direct_b_bl_inbound_to_helper": 114
+      },
+      "code_commit": "0bc4cb45d713325cf8e33f0385b42535791fe5ab",
+      "static_limits": {
+        "direct_b_bl_only": true,
+        "conditional_and_indirect_control_flow_not_scanned": true,
+        "function_extents_verified": false,
+        "writer_identity_verified": false,
+        "destructor_identity_verified": false,
+        "runtime_slot_values_verified": false,
+        "br_x2_target_resolved": false,
+        "ownership_lifecycle_verified": false,
+        "lock_unlock_async_rollback_unbind_verified": false,
+        "native_consumer_abi_verified": false,
+        "archive_precedence_verified": false,
+        "emulated_arm64": false,
+        "uzuy": false
+      },
+      "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags."
+    },
+    "native_fileload_helper_callers_20261128": {
+      "state": "VERIFIED_STATIC_CI_ONLY",
+      "parent_sha": "95dcd5dcb5ce8c52ee45a67be89a00c8f9afc83f",
+      "code_commit": "f3be353e044e5b471c35565da8c357d87f07d909",
+      "source": "tools/portlib/native_fileload_helper_callers.py",
+      "test": "tests/test_native_fileload_helper_callers.py",
+      "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
+      "evidence_note": "handoff/evidence_fileload_helper_callers_20261128.md",
+      "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "original_main_size_bytes": 27701509,
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "target": "0x116b390",
+      "expected_raw_inbound_candidates": 114,
+      "known_table_path_calls": [
+        {
+          "call_site": "0x116b8a4",
+          "load_site": "0x116b8a0",
+          "memory_base": "x8",
+          "displacement": "0x28"
+        },
+        {
+          "call_site": "0x116b928",
+          "load_site": "0x116b924",
+          "memory_base": "x8",
+          "displacement": "0x28"
+        }
+      ],
+      "research": {
+        "modmanager_latest_tag": "2.1.2.1",
+        "modmanager_latest_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+        "modmanager_previous_tag_commit": "a4a6e7e2aeec79cffa7d477e4b1a8fcd05823983",
+        "toolbox_latest_tag": "2.1.2.1",
+        "toolbox_latest_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+        "toolbox_previous_tag_commit": "dfe371dd4f1f0d1d1ad74a79e1bc8192a6d1fc31",
+        "ultimate_storm_api_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+        "pycricodecs_commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+        "rea_commit": "0386efd1e1dfa41af41f804a6be56c6f5b7615d4"
+      },
+      "ci": {
+        "state": "completed_success",
+        "code_commit": "f3be353e044e5b471c35565da8c357d87f07d909",
+        "run_id": 46094178280,
+        "job_id": 140821654312,
+        "run_url": "https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178280",
+        "job_url": "https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178280/job/140821654312",
+        "raw_log_inspected": true,
+        "success_marker": "PINNED_FILELOAD_HELPER_CALLER_CENSUS_PASS raw_candidates 114 capstone_confirmed 114 clusters 86 NO_ABI_NO_OWNER_NO_UZUY_CLAIM",
+        "artifact_id": 15242915661,
+        "artifact_url": "https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178280/artifacts/15242915661",
+        "artifact_zip_sha256": "5c0e87f550fe5edae556881aebd1f4094a8949b7f4c33d9a73f2db822da7057a",
+        "report_sha256": "86d3dc5b153d915c0b1c4ea70f03bf664fd5cc23329d630251c43e0f727e6bbb",
+        "report_bytes": 1469895,
+        "host_static_tests": "PASS",
+        "emulated_arm64": false,
+        "uzuy": false,
+        "failed_attempts": [
+          {
+            "run_id": 46093640387,
+            "job_id": 140819988501,
+            "commit": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
+            "failure": "test expected stale raw inbound count 101; authentic table-census artifacts show 114 (111 BL, 3 B)",
+            "raw_log_inspected": true
+          },
+          {
+            "run_id": 46094071904,
+            "job_id": 140821324819,
+            "commit": "95dcd5dcb5ce8c52ee45a67be89a00c8f9afc83f",
+            "failure": "second invariant still compared confirmed+unconfirmed rows to stale literal 101; raw 114 and 111/3 assertions plus known table-path checks passed",
+            "raw_log_inspected": true
+          }
+        ],
+        "corroborating_table_artifacts": [
+          {
+            "run_id": 46089004753,
+            "job_id": 140805260736,
+            "artifact_id": 15239987914,
+            "report_sha256": "49b68228ce6a598471d5778e9e847bdbb10c00e11bd7ae3e806618b923f7586d",
+            "observed_raw_inbound_count": 114,
+            "observed_branch_kind_counts": {
+              "BL": 111,
+              "B": 3
+            }
+          },
+          {
+            "run_id": 46093740773,
+            "job_id": 140820299581,
+            "artifact_id": 15242585556,
+            "artifact_zip_sha256": "a8396015dc0d26d12d3cb5b38cd1882aaa5ab8bac52b03071b51b3f88ce58da7",
+            "observed_raw_inbound_count": 114,
+            "observed_branch_kind_counts": {
+              "BL": 111,
+              "B": 3
+            }
+          }
+        ]
+      },
+      "limits": {
+        "prelude_last_writes_are_syntactic_not_reaching_definitions": true,
+        "function_extents_verified": false,
+        "producer_identity_verified": false,
+        "table_writer_identity_verified": false,
+        "br_x2_target_resolved": false,
+        "ownership_lifecycle_verified": false,
+        "lock_unlock_async_rollback_unbind_verified": false,
+        "native_consumer_abi_verified": false,
+        "archive_precedence_verified": false,
+        "emulated_arm64": false,
+        "uzuy": false
+      },
+      "release_flags": {
+        "full_moddingapi": false,
+        "ready_for_gameplay_test": false,
+        "emulator_tested": false
+      },
+      "next": "Next, verify whether the pinned original main exposes reliable FDE/unwind function extents for the two-member table-path caller cluster and the 114 direct callers. Only after proving extents from bytes, trace incoming edges and the register/memory provenance feeding BR X2 at 0x116b3d0. Do not promote bounded syntactic writes to ABI arguments or install hooks.",
+      "expected_raw_branch_kind_counts": {
+        "BL": 111,
+        "B": 3
+      },
+      "summary": {
+        "raw_candidates": 114,
+        "raw_branch_kind_counts": {
+          "BL": 111,
+          "B": 3
+        },
+        "capstone_confirmed": 114,
+        "unconfirmed": 0,
+        "signature_clusters": 86,
+        "cluster_size_histogram": {
+          "1": 74,
+          "2": 7,
+          "4": 1,
+          "5": 3,
+          "7": 1
+        },
+        "table_path_cluster_sha256": "23fde6c80ac55b89c09bc87436fd3ce0d6e2a424e07aa8fe5323bd18a748d4f8",
+        "table_path_cluster_count": 2,
+        "table_path_sites": [
+          "0x116b8a4",
+          "0x116b928"
+        ],
+        "table_path_only_last_write_in_x0_x7": "x0 <- LDR X0,[X8,#0x28]; x1-x7 have no syntactic write in the 0x40-byte window"
+      },
+      "report_text_sha256": "bbf6c62af46ce08c15a753c078accb2f638ad775e1f695256e452f9f197d7d21",
+      "report_text_bytes": 19881936,
+      "foundation_ci": {
+        "current_head_code_commit": "f3be353e044e5b471c35565da8c357d87f07d909",
+        "run_id": 46094178264,
+        "job_id": 140821654144,
+        "workflow": "Verify Switch port foundation (not a gameplay release)",
+        "state": "completed_success",
+        "raw_log_inspected": true,
+        "success_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF",
+        "artifact_id": 15242338737,
+        "artifact_url": "https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178264/artifacts/15242338737",
+        "artifact_zip_sha256": "3177c3357668f643b8ccfdc086cdedaf6bd6ccef75ba2c97f1041555f83c5f03",
+        "uploaded_json_files": 74,
+        "older_run_95d": {
+          "run_id": 46094071894,
+          "job_id": 140821324784,
+          "commit": "95dcd5dcb5ce8c52ee45a67be89a00c8f9afc83f",
+          "state": "completed_success",
+          "raw_log_inspected": true,
+          "success_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS",
+          "artifact_id": 15242816479,
+          "artifact_zip_sha256": "30ae8c3758ad669ed15fa6ea87057ea2ac63f170316c6e5bd121047ca96ce296"
+        }
+      },
+      "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags."
+    },
+    "upstream_pin_comparison_20261128": {
+      "nsc_mod_manager": {
+        "release_tag": "2.1.2.1",
+        "release_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+        "project_pin": "276116ebf5ba398a867793cb02ee6c33c0927645",
+        "matching_blobs": {
+          "XfbinParser.cs": "faf79d588fd8beb3f5761faebedd2252853b2f2b",
+          "Model/SkillCustomizeParamModel.cs": "6a891e237d27fdf01336f806dbef8767d609a304",
+          "Model/SpSkillCustomizeParamModel.cs": "2b518f6eeb9ef97895517582e393a2adf9ee6da0"
+        },
+        "conclusion": "The relevant parser/model blobs are byte-identical between the 2.1.2.1 tag and the project pin; no parser bump is needed for this slice."
+      },
+      "nsc_toolbox": {
+        "release_tag": "2.1.2.1",
+        "release_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+        "project_pin": "6f780cb6814f07e03c16b3e78d97dde4e4368983",
+        "matching_blobs": {
+          "XfbinParser.cs": "86c63708edf2698b5bc1c2a54c0480cce014b525",
+          "Model/SkillEditorModel.cs": "e165471682e4a7aed91094ef07f92df271f31639",
+          "Model/SkillCustomizeParamModel.cs": "1b45c89ca9d36b6db874603cdc28290d2b019f25",
+          "Model/SpSkillCustomizeParamModel.cs": "b684c33e2acec0ec5527864b86899e6277a15e53"
+        },
+        "conclusion": "The parser/editor/model blobs match the 2.1.2.1 tag exactly at the project pin."
+      },
+      "ultimate_storm_api": {
+        "project_pin": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+        "comparison_parent": "1c3460573fa70b595e6bfa70e52f83f1c3f74f12",
+        "file": "xinput9_1_0/MovesetPlus.cpp",
+        "pin_blob": "d7c5dbbebd60415f8d304321f083897658a86146",
+        "parent_blob": "e96af51210e96926a7bdaa70c44b6645f1a2b2b6",
+        "pin_size": 115197,
+        "parent_size": 111773,
+        "findings": {
+          "case_27_present_in_both": true,
+          "case_28_present_in_both": true,
+          "SetProjectileDeflection_present_in_both": true,
+          "case_29_present_only_in_pin": true,
+          "TakeOverEnemyProjectiles_present_only_in_pin": true
+        },
+        "command_29_semantics": "Reads player side at version-specific offset, snapshots GetTickCount64, locks g_deflectProjectileMutex, queues recently active projectile handles with target side and expiry now+250ms, and drops stale entries older than 250ms. PC Windows mutex/timing/engine hooks are not a Switch ABI."
+      },
+      "pycri_codecs": {
+        "commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+        "PyCriCodecs/cpk.py": "2ed2cbb2c6112124013ab52755dba8a443e91306",
+        "PyCriCodecs/utf.py": "d1662d140a48cae37a6696213ee441aed4076edb",
+        "role": "Independent CRI CPK/UTF format reference only; not proof of Storm engine ownership or archive precedence."
+      },
+      "rea": {
+        "commit": "0386efd1e1dfa41af41f804a6be56c6f5b7615d4",
+        "docs/binary-diagnostics.md": "b58b8d04dc799813d0ebe0dcd4889560c707553c",
+        "role": "The inspected diagnostics profile does not provide AArch64 support; not used to decode the Switch main."
+      },
+      "switch_v170_original_main": {
+        "git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+        "bytes": 27701509,
+        "sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+      }
+    },
+    "latest_p32_build": {
+      "state": "BUILD_ARTIFACT_CI_PASS_NOT_GAMEPLAY",
+      "commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+      "parent_sha": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+      "workflow": ".github/workflows/build-subsdk9-p32.yml",
+      "run_id": 46100950488,
+      "job_id": 140843020466,
+      "conclusion": "success",
+      "raw_log_inspected": true,
+      "unwind_proof_job": "skipped because the CFI test had already passed on code commit 48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+      "artifact_id": 15245441982,
+      "artifact_name": "NSC-P32-file-open-xfbin-read-trace-subsdk9",
+      "artifact_bytes": 101471,
+      "artifact_zip_sha256": "2b5cd550145ae661200e1ce574eff0c6688d611c1e6b9d9dd96b804e73e8e9d1",
+      "contents": [
+        "SHA256SUMS.txt",
+        "README_P32.txt",
+        "atmosphere/contents/0100FA10190A0000/exefs/subsdk9"
+      ],
+      "subsdk9_bytes": 128446,
+      "subsdk9_sha256": "fec2462e48e6960b225692f9ab2c68a481c21e049d800d51d91d09574a82b504",
+      "runtime_tested": false,
+      "uzuy_tested": false,
+      "gameplay_tested": false,
+      "full_moddingapi": false,
+      "fix": "Generated factual README_P32.txt during collection and removed copies of three untracked root files; artifact no longer fails on missing README/analyzer/P30 manifest."
+    },
+    "native_fileload_cfi_state_20261128": {
+      "state": "VERIFIED_STATIC_CI_ONLY",
+      "code_commit": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+      "parent_sha": "2133abb9534561eeacf47ffeff54a08e99339880",
+      "source_path": "tools/portlib/native_fileload_unwind.py",
+      "source_blob": "c6028a9e28fe644cea5a798bb40b3c7b4b78cbb8",
+      "test_path": "tests/test_native_fileload_unwind.py",
+      "test_blob": "c27d2a276bb0eb0592d88fe220546d845ecfbf0e",
+      "original_main_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "original_main_bytes": 27701509,
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "eh_frame_header": {
+        "segment_index": 1,
+        "segment_va": "0x12f6000",
+        "header_offset": "0x8ad0a8",
+        "header_va": "0x1ba30a8",
+        "header_sha256": "6d7ff19ab079d7c609426068ad42bfa18ed9f89f9763421e1fe1d2fb4c38be63",
+        "eh_frame_va": "0x1c49fd0",
+        "fde_count": 85474,
+        "pointer_encodings": {
+          "eh_frame_ptr": "0x1b",
+          "fde_count": "0x03",
+          "table": "0x3b"
+        }
+      },
+      "cfi_state_counts": {
+        "decoded": 6,
+        "unsupported": 0,
+        "unmapped": 0,
+        "ambiguous": 0
+      },
+      "cfi_program_sha256": {
+        "cie": "f8aaf13068d81140945b197220cd9bf478587c3c298f1296f7e986980f01e0d6",
+        "fde": "5be1cf4f1b3ddd888579050e7c8da5bf89b46a9d386aecabe02c647d61e7d6b5"
+      },
+      "targets": [
+        {
+          "name": "fileload_helper_entry",
+          "pc": "0x116b390",
+          "fde": "0x116b390..0x116b3f0",
+          "cfa": "SP+0",
+          "x19": "unspecified",
+          "lr": "unspecified"
+        },
+        {
+          "name": "fileload_helper_br_x2",
+          "pc": "0x116b3d0",
+          "fde": "0x116b390..0x116b3f0",
+          "cfa": "SP+0x20",
+          "x19": "CFA-8",
+          "lr": "CFA-0x20"
+        },
+        {
+          "name": "registration_walk_candidate",
+          "pc": "0x116b888",
+          "fde": "0x116b888..0x116b90c",
+          "cfa": "SP+0",
+          "x19": "unspecified",
+          "lr": "unspecified"
+        },
+        {
+          "name": "second_table_path_range_start",
+          "pc": "0x116b90c",
+          "fde": "0x116b90c..0x116b990",
+          "cfa": "SP+0",
+          "x19": "unspecified",
+          "lr": "unspecified"
+        },
+        {
+          "name": "table_path_call_0",
+          "pc": "0x116b8a4",
+          "fde": "0x116b888..0x116b90c",
+          "cfa": "SP+0x20",
+          "x19": "CFA-8",
+          "lr": "CFA-0x20"
+        },
+        {
+          "name": "table_path_call_1",
+          "pc": "0x116b928",
+          "fde": "0x116b90c..0x116b990",
+          "cfa": "SP+0x20",
+          "x19": "CFA-8",
+          "lr": "CFA-0x20"
+        }
+      ],
+      "interpretation": "CFI recovery rules at exact PCs, not runtime register capture. FDE ranges are unwind coverage, not proven function identity or ABI.",
+      "tests": {
+        "synthetic_positive": [
+          "CFA register+offset",
+          "X19 offset rule",
+          "restore rule at advance boundary"
+        ],
+        "synthetic_negative": [
+          "unsupported DW_CFA opcode",
+          "truncated operand"
+        ],
+        "synthetic_boundary": [
+          "query at FDE end rejected"
+        ],
+        "authentic_main": "six target PCs decoded; 0 unsupported/unmapped/ambiguous"
+      },
+      "ci": {
+        "run_id": 46100321645,
+        "job_id": 140841047537,
+        "conclusion": "success",
+        "raw_log_inspected": true,
+        "artifact_id": 15245162374,
+        "artifact_zip_sha256": "ac07da627905706da9e45f0a86b1620d1d32a3e6ee47059d0d2331e442a25101",
+        "report_json_sha256": "432a57d02bd7056861a45642d5bb2b96d56c8dae430e0de47a59cf6e9c3a1be9"
+      },
+      "broad_foundation_ci": {
+        "run_id": 46100321670,
+        "job_id": 140841047578,
+        "conclusion": "success",
+        "raw_log_inspected": true,
+        "artifact_id": 15245303059,
+        "artifact_zip_sha256": "aaf920f3a76d53937a8f4faefb913eb9e430fe6b13329b538ca2f29d794868b5",
+        "artifact_json_files": 74
+      },
+      "limits": {
+        "function_identity_verified": false,
+        "consumer_abi_verified": false,
+        "ownership_verified": false,
+        "callback_verified": false,
+        "lock_unlock_semantics_verified": false,
+        "async_lifecycle_verified": false,
+        "rollback_unbind_destructor_verified": false,
+        "archive_precedence_verified": false,
+        "arm64_emulated_cfi_test": false,
+        "uzuy_runtime_tested": false,
+        "gameplay_tested": false
+      },
+      "next_action": "Resolve the table slot producer and object/dataflow feeding [X8,#0x58] -> BR X2 at 0x116b3d0; preserve all FDE coverage labels as non-function-identity evidence."
+    },
+    "latest_historical_ci_failure_repaired": {
+      "run_id": 46099189607,
+      "job_id": 140837518830,
+      "commit": "962fe4467d8d2d50a6020123177809696bf69d17",
+      "conclusion": "failure",
+      "step": "Collect and verify output",
+      "cause": "README_P32.txt, analyze_p32_log.py, and P30_MANIFEST_ROW_AUDIT.json were absent at repository root; the module had compiled but artifact collection failed.",
+      "repaired_by": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+      "repaired_run": 46100950488
+    },
+    "latest_pending_head_ci": null,
+    "next_action": "Inspect the new FileLoad table CFG workflow on the exact code commit and read its raw job log. If it fails, fix the specific regression. Then use any authentic branch-path or static alias witnesses to prioritize producer/constructor tracing; dynamic BSS/heap writers and BR X2 lifecycle remain unresolved. Do not install hooks or change gameplay flags.",
+    "next_execution": {
+      "date": "2026-11-28",
+      "branch_head_before_checkpoint_commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+      "implementation_commit": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+      "implementation_parent": "2133abb9534561eeacf47ffeff54a08e99339880",
+      "build_workflow_commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+      "build_workflow_parent": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+      "cfi_state": {
+        "state": "VERIFIED_STATIC_CI_ONLY",
+        "code_commit": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+        "parent_sha": "2133abb9534561eeacf47ffeff54a08e99339880",
+        "source_path": "tools/portlib/native_fileload_unwind.py",
+        "source_blob": "c6028a9e28fe644cea5a798bb40b3c7b4b78cbb8",
+        "test_path": "tests/test_native_fileload_unwind.py",
+        "test_blob": "c27d2a276bb0eb0592d88fe220546d845ecfbf0e",
+        "original_main_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+        "original_main_bytes": 27701509,
+        "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+        "eh_frame_header": {
+          "segment_index": 1,
+          "segment_va": "0x12f6000",
+          "header_offset": "0x8ad0a8",
+          "header_va": "0x1ba30a8",
+          "header_sha256": "6d7ff19ab079d7c609426068ad42bfa18ed9f89f9763421e1fe1d2fb4c38be63",
+          "eh_frame_va": "0x1c49fd0",
+          "fde_count": 85474,
+          "pointer_encodings": {
+            "eh_frame_ptr": "0x1b",
+            "fde_count": "0x03",
+            "table": "0x3b"
+          }
+        },
+        "cfi_state_counts": {
+          "decoded": 6,
+          "unsupported": 0,
+          "unmapped": 0,
+          "ambiguous": 0
+        },
+        "cfi_program_sha256": {
+          "cie": "f8aaf13068d81140945b197220cd9bf478587c3c298f1296f7e986980f01e0d6",
+          "fde": "5be1cf4f1b3ddd888579050e7c8da5bf89b46a9d386aecabe02c647d61e7d6b5"
+        },
+        "targets": [
+          {
+            "name": "fileload_helper_entry",
+            "pc": "0x116b390",
+            "fde": "0x116b390..0x116b3f0",
+            "cfa": "SP+0",
+            "x19": "unspecified",
+            "lr": "unspecified"
+          },
+          {
+            "name": "fileload_helper_br_x2",
+            "pc": "0x116b3d0",
+            "fde": "0x116b390..0x116b3f0",
+            "cfa": "SP+0x20",
+            "x19": "CFA-8",
+            "lr": "CFA-0x20"
+          },
+          {
+            "name": "registration_walk_candidate",
+            "pc": "0x116b888",
+            "fde": "0x116b888..0x116b90c",
+            "cfa": "SP+0",
+            "x19": "unspecified",
+            "lr": "unspecified"
+          },
+          {
+            "name": "second_table_path_range_start",
+            "pc": "0x116b90c",
+            "fde": "0x116b90c..0x116b990",
+            "cfa": "SP+0",
+            "x19": "unspecified",
+            "lr": "unspecified"
+          },
+          {
+            "name": "table_path_call_0",
+            "pc": "0x116b8a4",
+            "fde": "0x116b888..0x116b90c",
+            "cfa": "SP+0x20",
+            "x19": "CFA-8",
+            "lr": "CFA-0x20"
+          },
+          {
+            "name": "table_path_call_1",
+            "pc": "0x116b928",
+            "fde": "0x116b90c..0x116b990",
+            "cfa": "SP+0x20",
+            "x19": "CFA-8",
+            "lr": "CFA-0x20"
+          }
+        ],
+        "interpretation": "CFI recovery rules at exact PCs, not runtime register capture. FDE ranges are unwind coverage, not proven function identity or ABI.",
+        "tests": {
+          "synthetic_positive": [
+            "CFA register+offset",
+            "X19 offset rule",
+            "restore rule at advance boundary"
+          ],
+          "synthetic_negative": [
+            "unsupported DW_CFA opcode",
+            "truncated operand"
+          ],
+          "synthetic_boundary": [
+            "query at FDE end rejected"
+          ],
+          "authentic_main": "six target PCs decoded; 0 unsupported/unmapped/ambiguous"
+        },
+        "ci": {
+          "run_id": 46100321645,
+          "job_id": 140841047537,
+          "conclusion": "success",
+          "raw_log_inspected": true,
+          "artifact_id": 15245162374,
+          "artifact_zip_sha256": "ac07da627905706da9e45f0a86b1620d1d32a3e6ee47059d0d2331e442a25101",
+          "report_json_sha256": "432a57d02bd7056861a45642d5bb2b96d56c8dae430e0de47a59cf6e9c3a1be9"
+        },
+        "broad_foundation_ci": {
+          "run_id": 46100321670,
+          "job_id": 140841047578,
+          "conclusion": "success",
+          "raw_log_inspected": true,
+          "artifact_id": 15245303059,
+          "artifact_zip_sha256": "aaf920f3a76d53937a8f4faefb913eb9e430fe6b13329b538ca2f29d794868b5",
+          "artifact_json_files": 74
+        },
+        "limits": {
+          "function_identity_verified": false,
+          "consumer_abi_verified": false,
+          "ownership_verified": false,
+          "callback_verified": false,
+          "lock_unlock_semantics_verified": false,
+          "async_lifecycle_verified": false,
+          "rollback_unbind_destructor_verified": false,
+          "archive_precedence_verified": false,
+          "arm64_emulated_cfi_test": false,
+          "uzuy_runtime_tested": false,
+          "gameplay_tested": false
+        },
+        "next_action": "Resolve the table slot producer and object/dataflow feeding [X8,#0x58] -> BR X2 at 0x116b3d0; preserve all FDE coverage labels as non-function-identity evidence."
+      },
+      "p32_build": {
+        "state": "BUILD_ARTIFACT_CI_PASS_NOT_GAMEPLAY",
+        "commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+        "parent_sha": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+        "workflow": ".github/workflows/build-subsdk9-p32.yml",
+        "run_id": 46100950488,
+        "job_id": 140843020466,
+        "conclusion": "success",
+        "raw_log_inspected": true,
+        "unwind_proof_job": "skipped because the CFI test had already passed on code commit 48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+        "artifact_id": 15245441982,
+        "artifact_name": "NSC-P32-file-open-xfbin-read-trace-subsdk9",
+        "artifact_bytes": 101471,
+        "artifact_zip_sha256": "2b5cd550145ae661200e1ce574eff0c6688d611c1e6b9d9dd96b804e73e8e9d1",
+        "contents": [
+          "SHA256SUMS.txt",
+          "README_P32.txt",
+          "atmosphere/contents/0100FA10190A0000/exefs/subsdk9"
+        ],
+        "subsdk9_bytes": 128446,
+        "subsdk9_sha256": "fec2462e48e6960b225692f9ab2c68a481c21e049d800d51d91d09574a82b504",
+        "runtime_tested": false,
+        "uzuy_tested": false,
+        "gameplay_tested": false,
+        "full_moddingapi": false,
+        "fix": "Generated factual README_P32.txt during collection and removed copies of three untracked root files; artifact no longer fails on missing README/analyzer/P30 manifest."
+      },
+      "ci": {
+        "head": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+        "parent": "2133abb9534561eeacf47ffeff54a08e99339880",
+        "all_completed_success": true,
+        "raw_job_logs_inspected": true,
+        "workflows": [
+          {
+            "name": "Build NSC P32 file-open vs XFBIN-read trace / unwind-proof",
+            "run_id": 46100321645,
+            "job_id": 140841047537,
+            "conclusion": "success",
+            "artifact_id": 15245162374,
+            "artifact_zip_sha256": "ac07da627905706da9e45f0a86b1620d1d32a3e6ee47059d0d2331e442a25101"
+          },
+          {
+            "name": "Verify Switch port foundation (not a gameplay release)",
+            "run_id": 46100321670,
+            "job_id": 140841047578,
+            "conclusion": "success",
+            "artifact_id": 15245303059,
+            "artifact_zip_sha256": "aaf920f3a76d53937a8f4faefb913eb9e430fe6b13329b538ca2f29d794868b5"
+          }
+        ],
+        "note": "The P32 build job was not run on this code commit; its build-only artifact was produced separately by fbd13b35c07e88642ba3e5afb5818e678176807a."
+      },
+      "upstream_pin_comparison": {
+        "nsc_mod_manager": {
+          "release_tag": "2.1.2.1",
+          "release_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+          "project_pin": "276116ebf5ba398a867793cb02ee6c33c0927645",
+          "matching_blobs": {
+            "XfbinParser.cs": "faf79d588fd8beb3f5761faebedd2252853b2f2b",
+            "Model/SkillCustomizeParamModel.cs": "6a891e237d27fdf01336f806dbef8767d609a304",
+            "Model/SpSkillCustomizeParamModel.cs": "2b518f6eeb9ef97895517582e393a2adf9ee6da0"
+          },
+          "conclusion": "The relevant parser/model blobs are byte-identical between the 2.1.2.1 tag and the project pin; no parser bump is needed for this slice."
+        },
+        "nsc_toolbox": {
+          "release_tag": "2.1.2.1",
+          "release_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+          "project_pin": "6f780cb6814f07e03c16b3e78d97dde4e4368983",
+          "matching_blobs": {
+            "XfbinParser.cs": "86c63708edf2698b5bc1c2a54c0480cce014b525",
+            "Model/SkillEditorModel.cs": "e165471682e4a7aed91094ef07f92df271f31639",
+            "Model/SkillCustomizeParamModel.cs": "1b45c89ca9d36b6db874603cdc28290d2b019f25",
+            "Model/SpSkillCustomizeParamModel.cs": "b684c33e2acec0ec5527864b86899e6277a15e53"
+          },
+          "conclusion": "The parser/editor/model blobs match the 2.1.2.1 tag exactly at the project pin."
+        },
+        "ultimate_storm_api": {
+          "project_pin": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+          "comparison_parent": "1c3460573fa70b595e6bfa70e52f83f1c3f74f12",
+          "file": "xinput9_1_0/MovesetPlus.cpp",
+          "pin_blob": "d7c5dbbebd60415f8d304321f083897658a86146",
+          "parent_blob": "e96af51210e96926a7bdaa70c44b6645f1a2b2b6",
+          "pin_size": 115197,
+          "parent_size": 111773,
+          "findings": {
+            "case_27_present_in_both": true,
+            "case_28_present_in_both": true,
+            "SetProjectileDeflection_present_in_both": true,
+            "case_29_present_only_in_pin": true,
+            "TakeOverEnemyProjectiles_present_only_in_pin": true
+          },
+          "command_29_semantics": "Reads player side at version-specific offset, snapshots GetTickCount64, locks g_deflectProjectileMutex, queues recently active projectile handles with target side and expiry now+250ms, and drops stale entries older than 250ms. PC Windows mutex/timing/engine hooks are not a Switch ABI."
+        },
+        "pycri_codecs": {
+          "commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+          "PyCriCodecs/cpk.py": "2ed2cbb2c6112124013ab52755dba8a443e91306",
+          "PyCriCodecs/utf.py": "d1662d140a48cae37a6696213ee441aed4076edb",
+          "role": "Independent CRI CPK/UTF format reference only; not proof of Storm engine ownership or archive precedence."
+        },
+        "rea": {
+          "commit": "0386efd1e1dfa41af41f804a6be56c6f5b7615d4",
+          "docs/binary-diagnostics.md": "b58b8d04dc799813d0ebe0dcd4889560c707553c",
+          "role": "The inspected diagnostics profile does not provide AArch64 support; not used to decode the Switch main."
+        },
+        "switch_v170_original_main": {
+          "git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+          "bytes": 27701509,
+          "sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+        }
+      },
+      "historical_failure_repaired": {
+        "run_id": 46099189607,
+        "job_id": 140837518830,
+        "commit": "962fe4467d8d2d50a6020123177809696bf69d17",
+        "conclusion": "failure",
+        "step": "Collect and verify output",
+        "cause": "README_P32.txt, analyze_p32_log.py, and P30_MANIFEST_ROW_AUDIT.json were absent at repository root; the module had compiled but artifact collection failed.",
+        "repaired_by": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+        "repaired_run": 46100950488
+      },
+      "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags."
+    },
+    "latest_release_flags_ci": {
+      "commit": "e6070b8f99c550318a5af5f446f1d919bf462509",
+      "parent_sha": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+      "run_id": 46101407733,
+      "job_id": 140844449951,
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "workflow": "Verify release flags (not a gameplay release)",
+      "artifact_id": 15245014970,
+      "artifact_name": "RELEASE_FLAGS_NOT_A_GAMEPLAY_RELEASE",
+      "artifact_zip_bytes": 388,
+      "artifact_zip_sha256": "43e96cdcdad07eb48ce49777a64478ce5a7bd1cdc166fc2f718e96da98511bce",
+      "report_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773",
+      "marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF",
+      "report_status": "RELEASE_FLAGS_FAIL_CLOSED_STATIC_CI_ONLY",
+      "negative_invalid_statuses_rejected": 26,
+      "flags": {
+        "full_moddingapi": false,
+        "ready_for_gameplay_test": false,
+        "emulator_tested": false
+      }
+    },
+    "documentation_commit": "2026-11-28 PENDING_CI: FileLoad bounded CFG branch-path + static pointer-alias census added on parent 4d5acd5a52e0ae3e72415a7ee3164ffc21082769; targeted Actions run pending.",
+    "native_fileload_table_cfg_20261128": {
+      "state": "VERIFIED_STATIC_CI_ONLY",
+      "parent_sha": "d1d6a77b0ae1c006b6313534a4206a2e9b055c6d",
+      "code_commit": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
+      "source": "tools/portlib/native_fileload_table_cfg.py",
+      "source_blob": "6657e5e5d7c76e8f4d1e57d1898d09bc431476db",
+      "test": "tests/test_native_fileload_table_cfg.py",
+      "test_blob": "911927174bd798a95237e5f6f72a33264fe372d0",
+      "evidence_note": "handoff/evidence_fileload_cfg_state_dedup_20261128.md",
+      "evidence_blob": "73fa9fe0cda0d1524c4576a72130a589b9ab6e96",
+      "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
+      "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "observed": {
+        "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+        "page_references": 4055,
+        "target_page_references": 89,
+        "pointer_page_references": 3966,
+        "state_budget_exceeded_references": 47,
+        "target_page_state_budget_exceeded_references": 2,
+        "pointer_page_state_budget_exceeded_references": 45,
+        "state_budget_exceeded_before_dedup": 431,
+        "state_budget_reduction_percent": 89.095,
+        "equivalent_branch_histories_merged": 7510,
+        "direct_accesses": 72,
+        "indexed_access_candidates": 7,
+        "branch_path_table_write_rows": 32,
+        "static_pointer_cells": 214,
+        "memory_loaded_aliases": 271,
+        "ambiguous_pointer_loads": 1,
+        "call_barriers": 10581,
+        "out_of_window_edges": 4345,
+        "newly_exposed_direct_read_rows": 6,
+        "newly_exposed_direct_read_sites": [
+          "0x116bf70",
+          "0x116bfc8"
+        ],
+        "newly_exposed_slot_offsets": [
+          "0x80",
+          "0x88",
+          "0x90"
+        ],
+        "target_page_cfg_complete": false,
+        "pointer_alias_trace_complete": false,
+        "bounded_in_window_cfg_complete": false,
+        "branch_path_witnesses_exhaustive": false
+      },
+      "ci": {
+        "all_completed_success": true,
+        "raw_job_logs_inspected": true,
+        "targeted": {
+          "run_id": 46116650719,
+          "job_id": 140891888185,
+          "conclusion": "success",
+          "artifact_id": 15251304501,
+          "artifact_zip_sha256": "f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b",
+          "report_json_sha256": "6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36",
+          "success_marker": "PINNED_FILELOAD_TABLE_CFG_PASS"
+        },
+        "foundation": {
+          "run_id": 46116650641,
+          "job_id": 140891888072,
+          "conclusion": "success",
+          "artifact_id": 15251649607,
+          "artifact_zip_sha256": "7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159",
+          "proof_json_files": 74,
+          "release_guard_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773"
+        }
+      },
+      "historical_failed_attempts": [
+        {
+          "run_id": 46115143110,
+          "job_id": 140887161526,
+          "root_cause": "ADRP reference budget exceeded while scanning non-target pointer pages; corrected to preserve target-page strictness and record skipped pages."
+        },
+        {
+          "run_id": 46115280209,
+          "job_id": 140887598475,
+          "root_cause": "same strict global ADRP reference budget; corrected by bounded page skipping rather than false completeness."
+        },
+        {
+          "run_id": 46115452263,
+          "job_id": 140888141364,
+          "root_cause": "KeyError for a pointer page without an ADRP candidate; corrected with candidates.get(page, [])."
+        },
+        {
+          "run_id": 46115503191,
+          "job_id": 140888301215,
+          "root_cause": "test asserted full target CFG completion despite state-budget exhaustion; corrected by separating reference-budget completeness from state-budget/undecodable completeness."
+        }
+      ],
+      "limits": {
+        "target_page_cfg_complete": false,
+        "pointer_alias_trace_complete": false,
+        "bounded_in_window_cfg_complete": false,
+        "branch_path_witnesses_exhaustive": false,
+        "complete_writer_census": false,
+        "producer_identity_verified": false,
+        "br_x2_target_resolved": false,
+        "object_type_verified": false,
+        "native_consumer_abi_verified": false,
+        "ownership_lifecycle_verified": false,
+        "callback_destructor_verified": false,
+        "lock_unlock_verified": false,
+        "async_verified": false,
+        "rollback_unbind_verified": false,
+        "archive_precedence_verified": false,
+        "host_static_tests": "PASS",
+        "emulated_arm64_for_this_analyzer": false,
+        "uzuy": false,
+        "gameplay": false
+      },
+      "research": {
+        "modmanager": {
+          "release_url": "https://github.com/TheLeonX/NSC-ModManager/releases/tag/2.1.2.1",
+          "release_tag": "2.1.2.1",
+          "published_at": "2026-08-30T15:00:05Z",
+          "tag_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+          "main_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+          "main_ahead_by": 1,
+          "parser_url": "https://github.com/TheLeonX/NSC-ModManager/blob/502c38d3ee832509f9ee3951b7d3339826538fec/XfbinParser.cs",
+          "parser_blob": "faf79d588fd8beb3f5761faebedd2252853b2f2b",
+          "skill_model_url": "https://github.com/TheLeonX/NSC-ModManager/blob/502c38d3ee832509f9ee3951b7d3339826538fec/Model/SkillCustomizeParamModel.cs",
+          "skill_model_blob": "6a891e237d27fdf01336f806dbef8767d609a304",
+          "relevant_blobs_identical_tag_to_main": true
+        },
+        "toolbox": {
+          "release_url": "https://github.com/TheLeonX/NSC-Toolbox/releases/tag/2.1.2.1",
+          "release_tag": "2.1.2.1",
+          "published_at": "2026-08-30T15:00:53Z",
+          "tag_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+          "main_commit": "6f780cb6814f07e03c16b3e78d97dde4e4368983",
+          "main_ahead_by": 1,
+          "parser_url": "https://github.com/TheLeonX/NSC-Toolbox/blob/789fe96f99cdaa77f952b90b563c6e3f49b6d697/XfbinParser.cs",
+          "parser_blob": "86c63708edf2698b5bc1c2a54c0480cce014b525",
+          "editor_model_url": "https://github.com/TheLeonX/NSC-Toolbox/blob/789fe96f99cdaa77f952b90b563c6e3f49b6d697/Model/SkillEditorModel.cs",
+          "editor_model_blob": "e165471682e4a7aed91094ef07f92df271f31639",
+          "skill_model_blob": "1b45c89ca9d36b6db874603cdc28290d2b019f25",
+          "relevant_blobs_identical_tag_to_main": true
+        },
+        "ultimate_storm_api": {
+          "current_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+          "parent_commit": "1c3460573fa70b595e6bfa70e52f83f1c3f74f12",
+          "current_movesetplus_url": "https://github.com/TheLeonX/UltimateStormAPI/blob/a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc/xinput9_1_0/MovesetPlus.cpp",
+          "current_blob": "d7c5dbbebd60415f8d304321f083897658a86146",
+          "parent_movesetplus_url": "https://github.com/TheLeonX/UltimateStormAPI/blob/1c3460573fa70b595e6bfa70e52f83f1c3f74f12/xinput9_1_0/MovesetPlus.cpp",
+          "parent_blob": "e96af51210e96926a7bdaa70c44b6645f1a2b2b6",
+          "delta": "case 29 TakeOverEnemyProjectiles added; cases 27/28 and SetProjectileDeflection already existed in parent",
+          "portability_limit": "command 29 uses Windows mutex/time and PC engine projectile state; no Switch consumer ABI proof"
+        },
+        "pycricodecs": {
+          "repo_url": "https://github.com/t-wy/PyCriCodecs",
+          "commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+          "cpk_url": "https://github.com/t-wy/PyCriCodecs/blob/755055ee7b056c9c1aefc6505a3daa3e45e2e111/PyCriCodecs/cpk.py",
+          "cpk_blob": "2ed2cbb2c6112124013ab52755dba8a443e91306",
+          "utf_url": "https://github.com/t-wy/PyCriCodecs/blob/755055ee7b056c9c1aefc6505a3daa3e45e2e111/PyCriCodecs/utf.py",
+          "utf_blob": "d1662d140a48cae37a6696213ee441aed4076edb"
+        },
+        "rea": {
+          "repo_url": "https://github.com/morluto/rea",
+          "commit": "8ff3570430ad682061b7932b9953d45b904cb487",
+          "diagnostics_url": "https://github.com/morluto/rea/blob/8ff3570430ad682061b7932b9953d45b904cb487/docs/guides/native/binary-diagnostics.md",
+          "diagnostics_blob": "76da9004df7abee2831a2b1d9bc32e99d0e03f1c",
+          "targets_url": "https://github.com/morluto/rea/blob/8ff3570430ad682061b7932b9953d45b904cb487/docs/guides/native/supported-targets.md",
+          "targets_blob": "b4fad121e917a1a6eb148e72c4ac1daef7d95265",
+          "limitation": "offline diagnostics; caller-supplied pwntools on Linux x64 for ELF64 little-endian AArch64; not live Switch ABI evidence"
+        },
+        "game_main": {
+          "url": "https://github.com/Anovvoldigoad/switchmain/blob/63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1/original/atmosphere/contents/0100FA10190A0000/exefs/main",
+          "git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+          "bytes": 27701509,
+          "sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+        }
+      },
+      "release_flags": {
+        "full_moddingapi": false,
+        "ready_for_gameplay_test": false,
+        "emulator_tested": false
+      },
+      "next": "Investigate the remaining two target-page state-budget references at 0x116bf54/0x116bfac and 45 pointer-page references. The new report shows repeated X20 += 8 and X21 + X20, plus bounded reads at 0x116bf70/0x116bfc8; test a conservative loop-induction/widening model that preserves distinct slot offsets. Then resolve the actual memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. No runtime hooks."
     }
   },
   "ci": {
@@ -2482,7 +4141,7 @@
   },
   "continuation": "Continue autonomous engineering on Anovvoldigoad/switchmain, branch port/full-api-v170. Always read the live branch HEAD first and do not rerun prior PASS tests without a relevant regression.\n\nVerified implementation commit: 48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3 (parent 2133abb9534561eeacf47ffeff54a08e99339880).\n- FileLoad CFI state decoder: tools/portlib/native_fileload_unwind.py; tests/test_native_fileload_unwind.py.\n- Dedicated CFI run 46100321645 / job 140841047537: COMPLETED SUCCESS, raw log inspected; 6/6 pinned targets decoded, 0 unsupported/unmapped/ambiguous.\n- Broad foundation run 46100321670 / job 140841047578: COMPLETED SUCCESS, raw log inspected, 74 proof JSON files.\n- P32 packaging fix commit fbd13b35c07e88642ba3e5afb5818e678176807a (parent 48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3). Run 46100950488 / build job 140843020466: COMPLETED SUCCESS; artifact 15245441982, ZIP SHA256 2b5cd550145ae661200e1ce574eff0c6688d611c1e6b9d9dd96b804e73e8e9d1; subsdk9 128446 bytes, SHA256 fec2462e48e6960b225692f9ab2c68a481c21e049d800d51d91d09574a82b504. Build-only; no Uzuy/gameplay test.\n- Historical P32 failure 46099189607 was repaired: artifact collection tried to copy three absent root files. Current workflow generates a factual README and no longer copies absent optional files.\n- Original main SHA256 remains 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. Preserve Sakura aura107 and Event236 marker 0x4E53 +0x2A plus no-marker variant.\n\nResearch findings:\n- NSC-ModManager and NSC-Toolbox project pins contain the same relevant parser/editor/model blobs as their 2.1.2.1 release tags.\n- UltimateStormAPI pin a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc includes command 29 TakeOverEnemyProjectiles, absent in comparison parent 1c3460573fa70b595e6bfa70e52f83f1c3f74f12. Cases 27/28 and SetProjectileDeflection existed in both. Command 29 uses PC Windows mutex/time/engine state; do not port without Switch ABI proof.\n- PyCriCodecs CPK/UTF sources were checked. REA binary diagnostics profile is not AArch64-capable.\n\nCFI evidence:\n- GNU .eh_frame_hdr: segment 1 VA 0x12f6000; header offset 0x8ad0a8 / VA 0x1ba30a8; .eh_frame VA 0x1c49fd0; 85,474 FDE records.\n- Helper BR X2 at 0x116b3d0 and table-path calls 0x116b8a4 / 0x116b928 each decode CFA=SP+0x20, X19 recovery at CFA-8, LR/X30 recovery at CFA-0x20.\n- FDE ranges are unwind coverage, NOT verified function identity. CFI is static unwind metadata, NOT runtime register capture. Function identity, consumer ABI, object ownership, callback, lock/unlock, async lifetime, rollback/unbind/destructor and archive precedence remain unresolved.\n\nNext vertical slice:\n1. Trace all static and indirect writers to the 64-slot FileLoad table at 0x4371800; distinguish the explicit zeroing path from any dynamic/aliased writer.\n2. Resolve the object/value returned by 0x116b82c and the memory source feeding [X8,#0x58] -> BR X2 at 0x116b3d0. Do not assume C++ vtable or object type.\n3. Map direct and indirect inbound edges to the relevant FDE coverage ranges; preserve the non-function-identity label.\n4. Only after dispatch identity, prove lock/unlock pairing, callbacks, async lifetime, rollback, unbind/destructor, then archive precedence.\n\nDo not install hooks or write game runtime until ABI, ownership/lifecycle, callback, lock/unlock, async, rollback, unbind/destructor and archive precedence are proven. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. The P32 artifact is build-only and must not be presented as gameplay-ready.",
   "verified_component_commit": "2b06a49730dc3bdf9816cc7f4f984231aa34b4fe",
-  "progress_since_previous_handoff": "2026-11-27 PENDING_CI_RETRY: First Foundation run 46017177259/job 140567169891 failed at synthetic geometry boundary: [0,12) is valid for a 16-byte buffer. Raw log inspected. Added a positive 12-byte-window case and changed the invalid end to 20. Parent 1ecdea1a0f48542c869aadfd6903be3e8f1894db; retry CI pending. No semantic/ABI claim.\n\n2026-11-28 VERIFIED_CI_STATIC_ONLY: Branch HEAD 261e4aab417b1aebaaeddb9a83160a46dc812255 resolves six FileLoad PLT/GOT imports from original main. Four workflows completed SUCCESS; raw job logs inspected. Foundation run/job 46071621142/140749655985 artifact 15233128327, ZIP SHA256 fbab9afc236c8a85356e9e7cf3f02e3f219ee208f003c00addadde7869dfc65b; imports JSON SHA256 2d6165fafb81c7ee90141def3aad8a3383aec528e87e2e479173907ced6f12f8. Factory 46071621080/140749655836, compressed PRM 46071621075/140749655778, MovesetPlus 46071621063/140749655794. The two nested FileLoad imports resolve to __cxa_guard_acquire/__cxa_guard_release names only; implementations/provider and all runtime semantics remain unresolved. A prior Foundation failure on 42d91238 was a stale synthetic SP-delta expectation (-16 vs 0); 10ca61ba corrected it and all four workflows passed.\n\n2026-11-28 PENDING_CI: New SHA-pinned FileLoad guard-state slice. It decodes ADRP/ADD and ADRP/LDR pairs, classifies the guard/object and explicit store ranges against original NSO text/rodata/data/BSS, verifies the two __cxa_guard import relocations and records the 0x290 helper's atomic counter, pointer cells and 24-byte three-register record shape. This does not identify the helper, callback/destructor, imported implementations, table target, native consumer ABI or ownership. Synthetic negative/boundary cases plus exact original-main SHA test added; Foundation workflow step added. Parent HEAD 261e4aab417b1aebaaeddb9a83160a46dc812255; commit SHA and push CI pending.",
+  "progress_since_previous_handoff": "2026-11-28 VERIFIED_STATIC_CI_ONLY: FileLoad bounded CFG semantic-state dedup on code commit 63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1 (parent d1d6a77b0ae1c006b6313534a4206a2e9b055c6d). The exact pinned original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 was reproduced. The scan processed 4,055 ADRP references; equivalent-state dedup reduced references hitting the 256-state budget from 431 to 47 (89.1% reduction: target-page 10->2, pointer-page 421->45) while merging 7,510 equivalent branch histories and explicitly marking branch-path witness enumeration non-exhaustive. It now records 72 direct accesses, 7 indexed reads, 32 STP write rows, 214 candidate pointer cells, 271 loaded aliases, 1 ambiguous load, 10,581 call barriers, and 4,345 out-of-window edges; six additional bounded reads appear at 0x116bf70/0x116bfc8 for slot offsets 0x80/0x88/0x90. Target CFG and pointer alias trace remain INCOMPLETE; no complete writer census, producer identity, BR X2 target, native consumer ABI, ownership/lifecycle, callback/destructor, lock/unlock, async, rollback/unbind, archive precedence, emulated ARM64 for this analyzer, Uzuy or gameplay claim. Targeted run 46116650719/job 140891888185 and broad foundation run 46116650641/job 140891888072 COMPLETED SUCCESS; both raw logs inspected. Target artifact 15251304501, ZIP SHA256 f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b; report JSON SHA256 6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36; foundation artifact 15251649607, ZIP SHA256 7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159, 74 JSON files.",
   "native_fileopen_branch_dependency_checkpoint": {
     "commit": "9a9b6cd755e19598735df3c85a5bb637254b36c6",
     "actions_run_id": 42016068823,
@@ -2820,7 +4479,8 @@
   "implemented_this_change": [
     "2026-11-17 PENDING_CI: code 31c692a45ee31c268110b0f904e4a42a16aded90 (parent 32df22134713b3e73fa8f9de9d2dd9685e6ea05e) independently verifies staged on-disk same-size CPK bytes using source/output SHA-pinned read-only mmap and semantic verifier before exclusive hard-link publication. Negative regression forces verifier failure and asserts no published output or staging residue. GitHub Actions push run/job/raw log for this code NOT VERIFIED; local tests not executed; no PASS. Earlier run 43928815687 job 133515411235 SUCCESS only for earlier code. Original Switch CPK and pinned main bytes unavailable for consumer ABI/ownership/lifecycle/async/rollback/archive precedence; no Uzuy. Preserve main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9, Sakura aura107, Event236 marked/unmarked; three release flags false. NEXT retrieve new push run and raw job logs, repair any failure, authenticate original game assets before native hooks.",
     "2026-11-06: Actions 42224723618 for 0f1a4077f8d743c5750da4b0d1db70cbf9e0feca COMPLETED SUCCESS; original job 127915210617 log inspected: PC_PACK_STAGING_LEASE_PASS 41 NO_ENGINE_ABI; release guard 26. New bind() self-overlap rejection with regressions, pending CI. No native engine ABI/Uzuy proof.",
-    "2026-11-28 VERIFIED_CI_STATIC_ONLY: New pinned FileLoad registration-lifecycle trace on code HEAD 2b06a49730dc3bdf9816cc7f4f984231aa34b4fe (parent 3982db7cbea721a3308870945cd29dad6598a5ba). Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 verified. The 0x290 helper writes 24-byte records as x8/x1/x2 at offsets 0/8/16, using an atomic counter and two relocated table pointer cells both targeting 0x2161230; runtime table values remain unverified. Registered code-pointer candidate 0x116b888 walks 64 pointer-sized slots from 0x4371800, calls 0x116b390 per slot, then clears 0x200 bytes; callback/destructor identity is NOT proven. Guard imports at 0x12f3690/0x12f36a0 resolve to __cxa_guard_acquire/__cxa_guard_release for guard 0x43717d8. Alternate tail 0x116d830 -> PLT 0x12f49b0 resolves to nn::mem::StandardAllocator::Free(void*); receiver cell 0x215d2e8 relocates to BSS 0x4371a00 and X1 receives the alternate-path X19 value. Index-error call 0x116b864 -> 0x12155a0 passes rodata string 'BlockManager::GetBlock break\\n'. CI run 46086093686/job 140795884030 COMPLETED SUCCESS; raw log inspected; artifact 15238478983; ZIP SHA256 7e6362c66972f6d35588a73c6ae25cc9aed3d6285b674d9ef479a4789bd87fd3; JSON SHA256 51fb342cffdb2b39ea7d3c72aa21c21afcb20b6ea1c979a15f91eba4de74c949. Host/static only; no consumer ABI, ownership, destructor, async, rollback/unbind, archive precedence, emulated ARM64 or Uzuy proof. No hook; all three release flags false."
+    "2026-11-28 VERIFIED_CI_STATIC_ONLY: New pinned FileLoad registration-lifecycle trace on code HEAD 2b06a49730dc3bdf9816cc7f4f984231aa34b4fe (parent 3982db7cbea721a3308870945cd29dad6598a5ba). Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 verified. The 0x290 helper writes 24-byte records as x8/x1/x2 at offsets 0/8/16, using an atomic counter and two relocated table pointer cells both targeting 0x2161230; runtime table values remain unverified. Registered code-pointer candidate 0x116b888 walks 64 pointer-sized slots from 0x4371800, calls 0x116b390 per slot, then clears 0x200 bytes; callback/destructor identity is NOT proven. Guard imports at 0x12f3690/0x12f36a0 resolve to __cxa_guard_acquire/__cxa_guard_release for guard 0x43717d8. Alternate tail 0x116d830 -> PLT 0x12f49b0 resolves to nn::mem::StandardAllocator::Free(void*); receiver cell 0x215d2e8 relocates to BSS 0x4371a00 and X1 receives the alternate-path X19 value. Index-error call 0x116b864 -> 0x12155a0 passes rodata string 'BlockManager::GetBlock break\\n'. CI run 46086093686/job 140795884030 COMPLETED SUCCESS; raw log inspected; artifact 15238478983; ZIP SHA256 7e6362c66972f6d35588a73c6ae25cc9aed3d6285b674d9ef479a4789bd87fd3; JSON SHA256 51fb342cffdb2b39ea7d3c72aa21c21afcb20b6ea1c979a15f91eba4de74c949. Host/static only; no consumer ABI, ownership, destructor, async, rollback/unbind, archive precedence, emulated ARM64 or Uzuy proof. No hook; all three release flags false.",
+    "2026-11-28 VERIFIED_STATIC_CI_ONLY: FileLoad bounded CFG semantic-state dedup on code commit 63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1 (parent d1d6a77b0ae1c006b6313534a4206a2e9b055c6d). The exact pinned original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 was reproduced. The scan processed 4,055 ADRP references; equivalent-state dedup reduced references hitting the 256-state budget from 431 to 47 (89.1% reduction: target-page 10->2, pointer-page 421->45) while merging 7,510 equivalent branch histories and explicitly marking branch-path witness enumeration non-exhaustive. It now records 72 direct accesses, 7 indexed reads, 32 STP write rows, 214 candidate pointer cells, 271 loaded aliases, 1 ambiguous load, 10,581 call barriers, and 4,345 out-of-window edges; six additional bounded reads appear at 0x116bf70/0x116bfc8 for slot offsets 0x80/0x88/0x90. Target CFG and pointer alias trace remain INCOMPLETE; no complete writer census, producer identity, BR X2 target, native consumer ABI, ownership/lifecycle, callback/destructor, lock/unlock, async, rollback/unbind, archive precedence, emulated ARM64 for this analyzer, Uzuy or gameplay claim. Targeted run 46116650719/job 140891888185 and broad foundation run 46116650641/job 140891888072 COMPLETED SUCCESS; both raw logs inspected. Target artifact 15251304501, ZIP SHA256 f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b; report JSON SHA256 6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36; foundation artifact 15251649607, ZIP SHA256 7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159, 74 JSON files."
   ],
   "pc_pack_bind_self_overlap_guard": {
     "status": "ci_verified",
@@ -2842,7 +4502,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Inspect the new FileLoad table CFG workflow on the exact code commit and read its raw job log. If it fails, fix the specific regression. Then use any authentic branch-path or static alias witnesses to prioritize producer/constructor tracing; dynamic BSS/heap writers and BR X2 lifecycle remain unresolved. Do not install hooks or change gameplay flags.",
+  "next_action": "Next, analyze the remaining 2 target-page and 45 pointer-page state-budget references. The target-page paths at 0x116bf54/0x116bfac show repeated X20 += 8 and X21 + X20; design conservative loop-induction/widening tests that preserve distinct table slot offsets. Then resolve the memory source feeding [X8,#0x58] -> BR X2 at 0x116b3d0, and prove lock/unlock, callback, async lifetime, rollback/unbind/destructor and archive precedence before any hook. Keep all gameplay flags false.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -2964,8 +4624,8 @@
     "proof": "proof-work/native_fileopen_external_edges.json",
     "next": "Inspect real unique external target path summaries, choose semantically likely caller/callee provenance; no hook until ABI and lifecycle proven."
   },
-  "pending_ci": false,
-  "last_parent_sha": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+  "pending_ci": null,
+  "last_parent_sha": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
   "native_fileopen_call_free_witness": {
     "status": "PENDING_CI",
     "parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
@@ -3780,7 +5440,7 @@
     "ci_log_inspected": false,
     "next": "Read push Actions logs for HEAD; run regression and fix failures; no hook before native ABI proof"
   },
-  "latest_engineering_pending_ci": "2026-11-21 PENDING_HEAD_CI: code dba80ee828b8bf759216258b4c47b785a9da1b7e (parent a8b18362cc33d47bcbf183b23713d127a1bab1ec) now attributes baseline add/remove/replace operations to before_source/after_source when SHA256-pinned baseline report is provided. Added positive add/remove/replace provenance and --verify-output replay regression. GitHub connector can read previous job 136800592579 log (run 44889037329, prior commit only), but HEAD push workflow run/job/log is not accessible yet. No host test execution or HEAD CI PASS claimed. ModManager and Toolbox tag 2.1.2.1 READMEs checked (blob SHA 8e9560b2 and 657f1613); original Switch main not available for byte rehash; native ABI/ownership/lifecycle/CPK precedence/Uzuy unresolved. Original main expected SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. Sakura aura107, marked/unmarked Event236 untouched; full_moddingapi=false ready_for_gameplay_test=false emulator_tested=false. NEXT inspect exact HEAD push Actions logs and repair failures; source-authenticate native consumer before any hook.",
+  "latest_engineering_pending_ci": null,
   "ordered_factory_atomic_publication": {
     "state": "PENDING_HEAD_CI",
     "source_commit": "4a882d11426a7c55dfbb0c5468aa3375d165c190",
@@ -3813,55 +5473,120 @@
   "latest_pending_head_ci": null,
   "latest_execution": {
     "date": "2026-11-28",
-    "slice": "FileLoad CFI register/stack state at six pinned anchors",
-    "code_commit": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
-    "parent_sha": "2133abb9534561eeacf47ffeff54a08e99339880",
-    "dedicated_ci": {
-      "run_id": 46100321645,
-      "job_id": 140841047537,
+    "slice": "FileLoad bounded CFG equivalent-state deduplication",
+    "code_commit": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
+    "parent_sha": "d1d6a77b0ae1c006b6313534a4206a2e9b055c6d",
+    "status": "VERIFIED_STATIC_CI_ONLY",
+    "targeted_ci": {
+      "run_id": 46116650719,
+      "job_id": 140891888185,
       "conclusion": "success",
-      "raw_log_inspected": true
+      "raw_log_inspected": true,
+      "artifact_id": 15251304501,
+      "artifact_zip_sha256": "f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b",
+      "report_json_sha256": "6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36"
     },
     "broad_ci": {
-      "run_id": 46100321670,
-      "job_id": 140841047578,
+      "run_id": 46116650641,
+      "job_id": 140891888072,
       "conclusion": "success",
-      "raw_log_inspected": true
+      "raw_log_inspected": true,
+      "artifact_id": 15251649607,
+      "artifact_zip_sha256": "7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159",
+      "proof_json_files": 74
     },
-    "p32_packaging": {
-      "commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
-      "run_id": 46100950488,
-      "job_id": 140843020466,
-      "conclusion": "success",
-      "artifact_id": 15245441982,
-      "subsdk9_sha256": "fec2462e48e6960b225692f9ab2c68a481c21e049d800d51d91d09574a82b504"
+    "metrics": {
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "page_references": 4055,
+      "target_page_references": 89,
+      "pointer_page_references": 3966,
+      "state_budget_exceeded_references": 47,
+      "target_page_state_budget_exceeded_references": 2,
+      "pointer_page_state_budget_exceeded_references": 45,
+      "state_budget_exceeded_before_dedup": 431,
+      "state_budget_reduction_percent": 89.095,
+      "equivalent_branch_histories_merged": 7510,
+      "direct_accesses": 72,
+      "indexed_access_candidates": 7,
+      "branch_path_table_write_rows": 32,
+      "static_pointer_cells": 214,
+      "memory_loaded_aliases": 271,
+      "ambiguous_pointer_loads": 1,
+      "call_barriers": 10581,
+      "out_of_window_edges": 4345,
+      "newly_exposed_direct_read_rows": 6,
+      "newly_exposed_direct_read_sites": [
+        "0x116bf70",
+        "0x116bfc8"
+      ],
+      "newly_exposed_slot_offsets": [
+        "0x80",
+        "0x88",
+        "0x90"
+      ],
+      "target_page_cfg_complete": false,
+      "pointer_alias_trace_complete": false,
+      "bounded_in_window_cfg_complete": false,
+      "branch_path_witnesses_exhaustive": false
     },
-    "status": "STATIC_CI_VERIFIED_ONLY",
-    "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags."
+    "next_action": "Investigate residual loop-indexed state budget references and resolve the BR X2 source/lifecycle without assuming vtable or engine ABI."
   },
   "latest_slice": {
-    "name": "FileLoad CFI register/stack state decode",
+    "name": "FileLoad bounded CFG equivalent-state dedup",
     "status": "VERIFIED_STATIC_CI_ONLY",
-    "code_commit": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
-    "targets_decoded": 6,
-    "cfi_counts": {
-      "decoded": 6,
-      "unsupported": 0,
-      "unmapped": 0,
-      "ambiguous": 0
+    "code_commit": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
+    "metrics": {
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "page_references": 4055,
+      "target_page_references": 89,
+      "pointer_page_references": 3966,
+      "state_budget_exceeded_references": 47,
+      "target_page_state_budget_exceeded_references": 2,
+      "pointer_page_state_budget_exceeded_references": 45,
+      "state_budget_exceeded_before_dedup": 431,
+      "state_budget_reduction_percent": 89.095,
+      "equivalent_branch_histories_merged": 7510,
+      "direct_accesses": 72,
+      "indexed_access_candidates": 7,
+      "branch_path_table_write_rows": 32,
+      "static_pointer_cells": 214,
+      "memory_loaded_aliases": 271,
+      "ambiguous_pointer_loads": 1,
+      "call_barriers": 10581,
+      "out_of_window_edges": 4345,
+      "newly_exposed_direct_read_rows": 6,
+      "newly_exposed_direct_read_sites": [
+        "0x116bf70",
+        "0x116bfc8"
+      ],
+      "newly_exposed_slot_offsets": [
+        "0x80",
+        "0x88",
+        "0x90"
+      ],
+      "target_page_cfg_complete": false,
+      "pointer_alias_trace_complete": false,
+      "bounded_in_window_cfg_complete": false,
+      "branch_path_witnesses_exhaustive": false
     },
     "limits": {
-      "function_identity_verified": false,
-      "consumer_abi_verified": false,
-      "ownership_verified": false,
-      "callback_verified": false,
-      "lock_unlock_semantics_verified": false,
-      "async_lifecycle_verified": false,
-      "rollback_unbind_destructor_verified": false,
+      "target_page_cfg_complete": false,
+      "pointer_alias_trace_complete": false,
+      "branch_path_witnesses_exhaustive": false,
+      "complete_writer_census": false,
+      "producer_identity_verified": false,
+      "br_x2_target_resolved": false,
+      "native_consumer_abi_verified": false,
+      "ownership_lifecycle_verified": false,
+      "callback_destructor_verified": false,
+      "lock_unlock_verified": false,
+      "async_verified": false,
+      "rollback_unbind_verified": false,
       "archive_precedence_verified": false,
-      "arm64_emulated_cfi_test": false,
-      "uzuy_runtime_tested": false,
-      "gameplay_tested": false
+      "host_static_tests": "PASS",
+      "emulated_arm64_for_this_analyzer": false,
+      "uzuy": false,
+      "gameplay": false
     }
   },
   "compressed_prm_noop_20261123": {
@@ -4578,7 +6303,7 @@
     },
     "next": "Prove exact stack slot save/restore for 0x120a6c8 and other X19-writing direct callees; require all-return path proof and explicit SP delta; retain barriers otherwise. Do not infer AAPCS64, pointer type, ownership or ABI."
   },
-  "latest_verified_code_commit": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+  "latest_verified_code_commit": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
   "latest_verified_ci_runs": [
     {
       "name": "fileload_registration_lifecycle",
@@ -4590,6 +6315,27 @@
       "artifact_id": 15238478983,
       "artifact_zip_sha256": "7e6362c66972f6d35588a73c6ae25cc9aed3d6285b674d9ef479a4789bd87fd3",
       "report_json_sha256": "51fb342cffdb2b39ea7d3c72aa21c21afcb20b6ea1c979a15f91eba4de74c949"
+    },
+    {
+      "name": "fileload_table_cfg_equivalent_state_dedup",
+      "run_id": 46116650719,
+      "job_id": 140891888185,
+      "conclusion": "success",
+      "raw_log_inspected": true,
+      "artifact_id": 15251304501,
+      "artifact_zip_sha256": "f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b",
+      "report_json_sha256": "6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36"
+    },
+    {
+      "name": "switch_port_foundation",
+      "run_id": 46116650641,
+      "job_id": 140891888072,
+      "conclusion": "success",
+      "raw_log_inspected": true,
+      "artifact_id": 15251649607,
+      "artifact_json_files": 74,
+      "artifact_zip_sha256": "7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159",
+      "release_guard_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773"
     }
   ],
   "native_fileload_x19_stack_restore_20261128": {
@@ -4767,31 +6513,34 @@
     "uzuy_verified": false,
     "next": "Continue from 0x116b698 and nested 0x116b6c0 -> 0x116b7b0. Prove exact pointer/stack alias provenance for X1/X19 and each unknown store; investigate 0x12f3690/0x12f36a0 bounded control-flow exits without assuming function extent. Keep 0x116f280 -> 0x120a6c8 as a call barrier until every nested stack/alias condition is proven."
   },
-  "latest_verified_code_parent": "2133abb9534561eeacf47ffeff54a08e99339880",
+  "latest_verified_code_parent": "d1d6a77b0ae1c006b6313534a4206a2e9b055c6d",
   "latest_verified_code_ci": {
-    "head": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
-    "parent": "2133abb9534561eeacf47ffeff54a08e99339880",
+    "head": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
+    "parent": "d1d6a77b0ae1c006b6313534a4206a2e9b055c6d",
     "all_completed_success": true,
     "raw_job_logs_inspected": true,
     "workflows": [
       {
-        "name": "Build NSC P32 file-open vs XFBIN-read trace / unwind-proof",
-        "run_id": 46100321645,
-        "job_id": 140841047537,
+        "name": "Verify pinned FileLoad registration lifecycle evidence",
+        "run_id": 46116650719,
+        "job_id": 140891888185,
         "conclusion": "success",
-        "artifact_id": 15245162374,
-        "artifact_zip_sha256": "ac07da627905706da9e45f0a86b1620d1d32a3e6ee47059d0d2331e442a25101"
+        "artifact_id": 15251304501,
+        "artifact_zip_sha256": "f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b",
+        "report_json_sha256": "6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36"
       },
       {
         "name": "Verify Switch port foundation (not a gameplay release)",
-        "run_id": 46100321670,
-        "job_id": 140841047578,
+        "run_id": 46116650641,
+        "job_id": 140891888072,
         "conclusion": "success",
-        "artifact_id": 15245303059,
-        "artifact_zip_sha256": "aaf920f3a76d53937a8f4faefb913eb9e430fe6b13329b538ca2f29d794868b5"
+        "artifact_id": 15251649607,
+        "artifact_zip_sha256": "7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159",
+        "proof_json_files": 74,
+        "release_guard_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773"
       }
     ],
-    "note": "The P32 build job was not run on this code commit; its build-only artifact was produced separately by fbd13b35c07e88642ba3e5afb5818e678176807a."
+    "note": "Targeted FileLoad CFG test is host/static only. The broad foundation run's emulated ARM64 checks cover other existing slices, not this CFG analyzer. No Uzuy or gameplay test."
   },
   "native_fileload_x19_recursive_proofs_20261128": {
     "state": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
@@ -6073,16 +7822,17 @@
     }
   },
   "background_ci": {
-    "run_id": 46100321670,
-    "job_id": 140841047578,
-    "head_sha": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+    "head": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
+    "run_id": 46116650641,
+    "job_id": 140891888072,
     "conclusion": "success",
     "raw_log_inspected": true,
-    "artifact_id": 15245303059,
-    "artifact_zip_sha256": "aaf920f3a76d53937a8f4faefb913eb9e430fe6b13329b538ca2f29d794868b5",
-    "proof_json_files": 74
+    "artifact_id": 15251649607,
+    "artifact_zip_sha256": "7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159",
+    "proof_json_files": 74,
+    "release_guard_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773"
   },
-  "checkpoint_update_parent_sha": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+  "checkpoint_update_parent_sha": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
   "latest_p32_build": {
     "state": "BUILD_ARTIFACT_CI_PASS_NOT_GAMEPLAY",
     "commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
@@ -6254,7 +8004,7 @@
     "repaired_by": "fbd13b35c07e88642ba3e5afb5818e678176807a",
     "repaired_run": 46100950488
   },
-  "documentation_commit_parent_sha": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+  "documentation_commit_parent_sha": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
   "native_fileload_return_provenance_20261128": {
     "state": "VERIFIED_STATIC_CI_ONLY",
     "parent_sha": "9fafb58369cd61a3bf691a99c1b134912787fedd",
@@ -6383,9 +8133,9 @@
     "next": "Extend the 89-reference sweep to bounded CFG branch paths and memory-loaded pointer aliases; locate all producer/writer paths for 0x4371800. Then resolve the runtime value feeding BR X2 only from proven object/vtable construction and lifetime. Do not add hooks."
   },
   "native_fileload_table_cfg_20261128": {
-    "state": "PENDING_CI",
-    "parent_sha": "4d5acd5a52e0ae3e72415a7ee3164ffc21082769",
-    "code_commit": null,
+    "state": "VERIFIED_STATIC_CI_ONLY",
+    "parent_sha": "d1d6a77b0ae1c006b6313534a4206a2e9b055c6d",
+    "code_commit": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
     "source": "tools/portlib/native_fileload_table_cfg.py",
     "test": "tests/test_native_fileload_table_cfg.py",
     "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
@@ -6395,20 +8145,66 @@
       "sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
     },
     "research": {
-      "modmanager_tag": "502c38d3ee832509f9ee3951b7d3339826538fec",
-      "modmanager_main": "276116ebf5ba398a867793cb02ee6c33c0927645",
-      "modmanager_xfbin_blob": "faf79d588fd8beb3f5761faebedd2252853b2f2b",
-      "toolbox_tag": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
-      "toolbox_main": "6f780cb6814f07e03c16b3e78d97dde4e4368983",
-      "toolbox_xfbin_blob": "86c63708edf2698b5bc1c2a54c0480cce014b525",
-      "toolbox_skill_editor_blob": "e165471682e4a7aed91094ef07f92df271f31639",
-      "ultimate_storm_api": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
-      "pycri_main": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
-      "pycri_cpk_blob": "2ed2cbb2c6112124013ab52755dba8a443e91306",
-      "pycri_utf_blob": "d1662d140a48cae37a6696213ee441aed4076edb",
-      "rea_main": "8ff3570430ad682061b7932b9953d45b904cb487",
-      "rea_binary_diagnostics_blob": "76da9004df7abee2831a2b1d9bc32e99d0e03f1c",
-      "rea_supported_targets_blob": "b4fad121e917a1a6eb148e72c4ac1daef7d95265"
+      "modmanager": {
+        "release_url": "https://github.com/TheLeonX/NSC-ModManager/releases/tag/2.1.2.1",
+        "release_tag": "2.1.2.1",
+        "published_at": "2026-08-30T15:00:05Z",
+        "tag_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+        "main_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+        "main_ahead_by": 1,
+        "parser_url": "https://github.com/TheLeonX/NSC-ModManager/blob/502c38d3ee832509f9ee3951b7d3339826538fec/XfbinParser.cs",
+        "parser_blob": "faf79d588fd8beb3f5761faebedd2252853b2f2b",
+        "skill_model_url": "https://github.com/TheLeonX/NSC-ModManager/blob/502c38d3ee832509f9ee3951b7d3339826538fec/Model/SkillCustomizeParamModel.cs",
+        "skill_model_blob": "6a891e237d27fdf01336f806dbef8767d609a304",
+        "relevant_blobs_identical_tag_to_main": true
+      },
+      "toolbox": {
+        "release_url": "https://github.com/TheLeonX/NSC-Toolbox/releases/tag/2.1.2.1",
+        "release_tag": "2.1.2.1",
+        "published_at": "2026-08-30T15:00:53Z",
+        "tag_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+        "main_commit": "6f780cb6814f07e03c16b3e78d97dde4e4368983",
+        "main_ahead_by": 1,
+        "parser_url": "https://github.com/TheLeonX/NSC-Toolbox/blob/789fe96f99cdaa77f952b90b563c6e3f49b6d697/XfbinParser.cs",
+        "parser_blob": "86c63708edf2698b5bc1c2a54c0480cce014b525",
+        "editor_model_url": "https://github.com/TheLeonX/NSC-Toolbox/blob/789fe96f99cdaa77f952b90b563c6e3f49b6d697/Model/SkillEditorModel.cs",
+        "editor_model_blob": "e165471682e4a7aed91094ef07f92df271f31639",
+        "skill_model_blob": "1b45c89ca9d36b6db874603cdc28290d2b019f25",
+        "relevant_blobs_identical_tag_to_main": true
+      },
+      "ultimate_storm_api": {
+        "current_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+        "parent_commit": "1c3460573fa70b595e6bfa70e52f83f1c3f74f12",
+        "current_movesetplus_url": "https://github.com/TheLeonX/UltimateStormAPI/blob/a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc/xinput9_1_0/MovesetPlus.cpp",
+        "current_blob": "d7c5dbbebd60415f8d304321f083897658a86146",
+        "parent_movesetplus_url": "https://github.com/TheLeonX/UltimateStormAPI/blob/1c3460573fa70b595e6bfa70e52f83f1c3f74f12/xinput9_1_0/MovesetPlus.cpp",
+        "parent_blob": "e96af51210e96926a7bdaa70c44b6645f1a2b2b6",
+        "delta": "case 29 TakeOverEnemyProjectiles added; cases 27/28 and SetProjectileDeflection already existed in parent",
+        "portability_limit": "command 29 uses Windows mutex/time and PC engine projectile state; no Switch consumer ABI proof"
+      },
+      "pycricodecs": {
+        "repo_url": "https://github.com/t-wy/PyCriCodecs",
+        "commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+        "cpk_url": "https://github.com/t-wy/PyCriCodecs/blob/755055ee7b056c9c1aefc6505a3daa3e45e2e111/PyCriCodecs/cpk.py",
+        "cpk_blob": "2ed2cbb2c6112124013ab52755dba8a443e91306",
+        "utf_url": "https://github.com/t-wy/PyCriCodecs/blob/755055ee7b056c9c1aefc6505a3daa3e45e2e111/PyCriCodecs/utf.py",
+        "utf_blob": "d1662d140a48cae37a6696213ee441aed4076edb"
+      },
+      "rea": {
+        "repo_url": "https://github.com/morluto/rea",
+        "commit": "8ff3570430ad682061b7932b9953d45b904cb487",
+        "diagnostics_url": "https://github.com/morluto/rea/blob/8ff3570430ad682061b7932b9953d45b904cb487/docs/guides/native/binary-diagnostics.md",
+        "diagnostics_blob": "76da9004df7abee2831a2b1d9bc32e99d0e03f1c",
+        "targets_url": "https://github.com/morluto/rea/blob/8ff3570430ad682061b7932b9953d45b904cb487/docs/guides/native/supported-targets.md",
+        "targets_blob": "b4fad121e917a1a6eb148e72c4ac1daef7d95265",
+        "limitation": "offline diagnostics; caller-supplied pwntools on Linux x64 for ELF64 little-endian AArch64; not live Switch ABI evidence"
+      },
+      "game_main": {
+        "url": "https://github.com/Anovvoldigoad/switchmain/blob/63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1/original/atmosphere/contents/0100FA10190A0000/exefs/main",
+        "git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+        "bytes": 27701509,
+        "sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+      }
     },
     "implementation": {
       "branch_path_cfg": true,
@@ -6421,10 +8217,27 @@
       "native_consumer_abi_verified": false
     },
     "ci": {
-      "status": "PENDING",
-      "run_id": null,
-      "job_id": null,
-      "raw_log_inspected": false
+      "state": "completed_success",
+      "all_completed_success": true,
+      "raw_job_logs_inspected": true,
+      "targeted": {
+        "run_id": 46116650719,
+        "job_id": 140891888185,
+        "conclusion": "success",
+        "artifact_id": 15251304501,
+        "artifact_zip_sha256": "f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b",
+        "report_json_sha256": "6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36",
+        "success_marker": "PINNED_FILELOAD_TABLE_CFG_PASS"
+      },
+      "foundation": {
+        "run_id": 46116650641,
+        "job_id": 140891888072,
+        "conclusion": "success",
+        "artifact_id": 15251649607,
+        "artifact_zip_sha256": "7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159",
+        "proof_json_files": 74,
+        "release_guard_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773"
+      }
     },
     "release_flags": {
       "full_moddingapi": false,
@@ -6437,6 +8250,89 @@
       "event236_marker_0x4e53_plus_0x2a_unchanged": true,
       "event236_no_marker_unchanged": true
     },
-    "next": "Inspect targeted push workflow raw log; repair any failure. Continue only from authentic branch-path or static pointer-alias evidence. No hook until ABI, ownership/lifecycle, callback, lock/unlock, async, rollback, unbind/destructor and archive precedence are proven."
+    "next": "Investigate the 2 target-page and 45 pointer-page state-budget references; the two target-page references show repeated X20 += 8 loop-index behavior. Preserve unknowns and distinct slot addresses. Then resolve [X8,#0x58] -> BR X2 at 0x116b3d0. Do not install hooks.",
+    "initial_parent_sha": "4d5acd5a52e0ae3e72415a7ee3164ffc21082769",
+    "source_blob": "6657e5e5d7c76e8f4d1e57d1898d09bc431476db",
+    "test_blob": "911927174bd798a95237e5f6f72a33264fe372d0",
+    "evidence_note": "handoff/evidence_fileload_cfg_state_dedup_20261128.md",
+    "evidence_blob": "73fa9fe0cda0d1524c4576a72130a589b9ab6e96",
+    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_size_bytes": 27701509,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "observed": {
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "page_references": 4055,
+      "target_page_references": 89,
+      "pointer_page_references": 3966,
+      "state_budget_exceeded_references": 47,
+      "target_page_state_budget_exceeded_references": 2,
+      "pointer_page_state_budget_exceeded_references": 45,
+      "state_budget_exceeded_before_dedup": 431,
+      "state_budget_reduction_percent": 89.095,
+      "equivalent_branch_histories_merged": 7510,
+      "direct_accesses": 72,
+      "indexed_access_candidates": 7,
+      "branch_path_table_write_rows": 32,
+      "static_pointer_cells": 214,
+      "memory_loaded_aliases": 271,
+      "ambiguous_pointer_loads": 1,
+      "call_barriers": 10581,
+      "out_of_window_edges": 4345,
+      "newly_exposed_direct_read_rows": 6,
+      "newly_exposed_direct_read_sites": [
+        "0x116bf70",
+        "0x116bfc8"
+      ],
+      "newly_exposed_slot_offsets": [
+        "0x80",
+        "0x88",
+        "0x90"
+      ],
+      "target_page_cfg_complete": false,
+      "pointer_alias_trace_complete": false,
+      "bounded_in_window_cfg_complete": false,
+      "branch_path_witnesses_exhaustive": false
+    },
+    "historical_failed_attempts": [
+      {
+        "run_id": 46115143110,
+        "job_id": 140887161526,
+        "root_cause": "ADRP reference budget exceeded on non-target pages; page skipping now recorded without claiming complete coverage."
+      },
+      {
+        "run_id": 46115280209,
+        "job_id": 140887598475,
+        "root_cause": "same strict global reference budget; bounded skip fixed."
+      },
+      {
+        "run_id": 46115452263,
+        "job_id": 140888141364,
+        "root_cause": "missing page key; fixed with candidates.get(page, [])."
+      },
+      {
+        "run_id": 46115503191,
+        "job_id": 140888301215,
+        "root_cause": "overstrong CFG-complete assertion; split reference-budget from state-budget/undecodable state."
+      }
+    ],
+    "limits": {
+      "target_page_cfg_complete": false,
+      "pointer_alias_trace_complete": false,
+      "bounded_in_window_cfg_complete": false,
+      "branch_path_witnesses_exhaustive": false,
+      "complete_writer_census": false,
+      "producer_identity_verified": false,
+      "br_x2_target_resolved": false,
+      "native_consumer_abi_verified": false,
+      "ownership_lifecycle_verified": false,
+      "callback_destructor_verified": false,
+      "lock_unlock_verified": false,
+      "async_verified": false,
+      "rollback_unbind_verified": false,
+      "archive_precedence_verified": false,
+      "emulated_arm64": false,
+      "uzuy": false,
+      "gameplay": false
+    }
   }
 }

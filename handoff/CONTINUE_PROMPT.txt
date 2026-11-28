@@ -34,9 +34,16 @@ Do not install hooks or write game runtime until ABI, ownership/lifecycle, callb
 - Next: extend the table scan through bounded CFG branch paths and memory-loaded pointer aliases to find producer/writer paths. Continue BR X2 source/lifetime analysis. Do not repeat the direct table census or install hooks.
 
 
-## 2026-11-28 FileLoad table CFG slice — PENDING_CI
-- New code: \`tools/portlib/native_fileload_table_cfg.py\`; test: \`tests/test_native_fileload_table_cfg.py\`; workflow: \`.github/workflows/verify-fileload-registration-lifecycle.yml\`.
-- Research pins and byte-level scope: \`handoff/evidence_fileload_table_cfg_20261128.md\`.
-- Inspect the exact code commit's push workflow run, job and raw log. Repair any failure before updating the evidence state.
-- The new scan follows bounded in-window branch paths and one-level file-backed/RELA-backed pointer loads. Calls are clobber barriers; dynamic BSS/heap pointer cells, paths outside the window, and all native consumer/lifecycle semantics remain unresolved.
-- Never install a runtime hook. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false.
+## 2026-11-28 FileLoad CFG equivalent-state dedup — VERIFIED_STATIC_CI_ONLY
+
+- Code commit: `63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1` (parent `d1d6a77b0ae1c006b6313534a4206a2e9b055c6d`).
+- Targeted FileLoad run 46116650719/job 140891888185: COMPLETED SUCCESS; raw log inspected; artifact 15251304501, ZIP SHA256 `f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b`, report JSON SHA256 `6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36`.
+- Broad foundation run 46116650641/job 140891888072: COMPLETED SUCCESS; raw log inspected; 74 JSON proofs; artifact 15251649607, ZIP SHA256 `7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159`. This CFG analyzer remains host/static only; no Uzuy.
+- Equivalent-state dedup reduced references hitting the 256-state budget from 431 to 47 (89.1%): target-page 10→2, pointer-page 421→45. It merged 7,510 equivalent branch histories and explicitly marks branch witnesses non-exhaustive.
+- New report: 4,055 ADRP refs, 72 direct accesses, 7 indexed reads, 32 STP writes, 214 pointer cells, 271 loaded aliases, 1 ambiguous load, 10,581 call barriers, 4,345 out-of-window edges; six extra reads at 0x116bf70/0x116bfc8 for slot offsets 0x80/0x88/0x90.
+- The 47 remaining budget-exhausted references mean target CFG and pointer alias trace remain incomplete. No complete writer census, producer identity, BR X2 target, consumer ABI, ownership/lifecycle, callback/destructor, lock/unlock, async, rollback/unbind, archive precedence, Uzuy or gameplay proof.
+- Historical failures inspected and repaired: ADRP budget overflow on non-target pages; missing candidate-page key; overstrong CFG-complete assertion. Details and raw run/job IDs are in `handoff/checkpoint.json`.
+- Upstream research: NSC-ModManager and NSC-Toolbox latest releases are both 2.1.2.1; their current main branches are one commit ahead but relevant parser/editor/model blobs are unchanged. PC API 2.1.2.1 adds command 29 `TakeOverEnemyProjectiles`; it is Windows/PC-specific and not Switch ABI evidence. PyCriCodecs CPK/UTF and REA offline diagnostics were checked; exact commits/blob hashes/URLs are in the evidence note.
+- Next: investigate residual references `0x116bf54` and `0x116bfac` plus 45 pointer-page references; test conservative loop-induction/widening around repeated `X20 += 8` while preserving slot offsets. Then resolve `[X8,#0x58] -> BR X2` at `0x116b3d0`, and prove lifecycle/ownership/precedence before any hook.
+
+Preserve Sakura aura107 and both Event236 variants. Keep `full_moddingapi=false`, `ready_for_gameplay_test=false`, `emulator_tested=false`.
