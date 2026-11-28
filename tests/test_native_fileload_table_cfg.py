@@ -512,6 +512,10 @@ def run(main, output):
 
     raw = main.read_bytes()
     report = inspect(raw)
+    output.mkdir(parents=True, exist_ok=True)
+    (output / "native_fileload_table_cfg.json").write_text(
+        json.dumps(report, indent=2) + "\n"
+    )
     assert report["original_main_sha256"] == MAIN_SHA256
     assert report["table"]["base"] == hex(TABLE_START)
     assert report["table"]["end_exclusive"] == hex(TABLE_END)
@@ -624,10 +628,6 @@ def run(main, output):
     mutated[0] ^= 1
     expect_reject(lambda: inspect(bytes(mutated)), "mutated original main")
 
-    output.mkdir(parents=True, exist_ok=True)
-    (output / "native_fileload_table_cfg.json").write_text(
-        json.dumps(report, indent=2) + "\n"
-    )
     print(
         "PINNED_FILELOAD_TABLE_CFG_PASS",
         "adrp_refs", cfg["page_reference_count"],

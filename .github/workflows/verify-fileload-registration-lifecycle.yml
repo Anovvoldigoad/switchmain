@@ -45,9 +45,11 @@ jobs:
       - name: Reproduce bounded CFG branch paths and retry pointer-page state budgets
         run: PYTHONPATH=tools python tests/test_native_fileload_table_cfg.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output table-cfg-proof-work
       - name: Hash exact analyzer, regression, workflow and evidence inputs
+        if: always()
         run: |
           sha256sum tools/portlib/native_fileload_table_cfg.py tests/test_native_fileload_table_cfg.py .github/workflows/verify-fileload-registration-lifecycle.yml handoff/evidence_fileload_pointer_retry_20261128.md > table-cfg-proof-work/SOURCE_SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: FILELOAD_TABLE_CFG_STATIC_EVIDENCE
           path: table-cfg-proof-work/
