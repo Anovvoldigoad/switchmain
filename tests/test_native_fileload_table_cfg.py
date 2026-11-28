@@ -180,7 +180,7 @@ def synthetic_dead_register_states_merge():
     put_word(code, 0x28, encode_str64(0, 8, 0x10))
 
     report = scan_address_pages_cfg(
-        bytes(code), {TABLE_PAGE}, {}, window_bytes=0x30, max_states=7
+        bytes(code), {TABLE_PAGE}, {}, window_bytes=0x30, max_states=8
     )
     assert report["state_budget_exceeded"] is False
     assert report["liveness_state_merges"] >= 1

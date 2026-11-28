@@ -24,7 +24,7 @@ The previous verified report from code commit `31dceba3697d2a50c41ad8c9ada9b2402
 The old state key included every tracked address register and its full provenance chain even when that register is overwritten before any use in the bounded window. The new bounded backward-liveness pass computes the union of conditional successors, treats direct/indirect calls as kill barriers (matching the tracer's reset of all tracked state at every call), and treats an undecodable in-window successor as keeping every tracked address register live. The state key now includes exact value/terms/provenance only for registers live at that PC. Dead-register merges are counted separately; live register provenance is never dropped. The per-reference cap remains 256; this is not a budget increase.
 
 Falsifiable tests:
-- Positive: two branch paths set X9 to different ADRP pages, but X9 is never read before the bounded window ends; at the join they should merge and stay within a seven-state budget while preserving the X8 table write.
+- Positive: two branch paths set X9 to different ADRP pages, but X9 is never read before the bounded window ends; at the join they should merge and stay within a eight-state budget while preserving the X8 table write.
 - Negative: two paths set X9 to different values and the join consumes X9 in `ADD X10,X8,X9`; both distinct table writes must remain.
 - Boundary: a conditional successor that consumes X9 keeps X9 live at the branch; a BLR target register remains live at the call, but a register used only after the call is not live across the call barrier.
 
