@@ -13,6 +13,7 @@ on:
       - 'handoff/evidence_fileload_pointer_retry_20261128.md'
       - 'handoff/evidence_fileload_pointer_loop_widening_20261128.md'
       - 'handoff/evidence_fileload_pointer_page_sampling_20261128.md'
+      - 'handoff/evidence_fileload_live_register_pruning_20261128.md'
       - 'original/atmosphere/contents/0100FA10190A0000/exefs/main'
       - '.github/workflows/verify-fileload-registration-lifecycle.yml'
 jobs:
@@ -50,7 +51,7 @@ jobs:
         if: always()
         run: |
           mkdir -p table-cfg-proof-work
-          sha256sum tools/portlib/native_fileload_table_cfg.py tests/test_native_fileload_table_cfg.py .github/workflows/verify-fileload-registration-lifecycle.yml handoff/evidence_fileload_pointer_retry_20261128.md handoff/evidence_fileload_pointer_loop_widening_20261128.md handoff/evidence_fileload_pointer_page_sampling_20261128.md > table-cfg-proof-work/SOURCE_SHA256SUMS.txt
+          sha256sum tools/portlib/native_fileload_table_cfg.py tests/test_native_fileload_table_cfg.py .github/workflows/verify-fileload-registration-lifecycle.yml handoff/evidence_fileload_pointer_retry_20261128.md handoff/evidence_fileload_pointer_loop_widening_20261128.md handoff/evidence_fileload_pointer_page_sampling_20261128.md handoff/evidence_fileload_live_register_pruning_20261128.md > table-cfg-proof-work/SOURCE_SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

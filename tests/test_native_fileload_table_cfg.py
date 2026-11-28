@@ -5,6 +5,8 @@ import struct
 import sys
 from pathlib import Path
 
+from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
@@ -15,6 +17,7 @@ from portlib.native_fileload_table_cfg import (
     inspect,
     scan_address_pages_cfg,
     _summarize_counted_slot_loop,
+    _window_live_in_registers,
 )
 
 
@@ -163,6 +166,86 @@ def synthetic_distinct_register_states_do_not_merge():
     assert report["equivalent_branch_histories_merged"] == 0
     assert report["branch_path_witnesses_exhaustive"] is True
     assert report["bounded_in_window_cfg_complete"] is True
+
+
+def synthetic_dead_register_states_merge():
+    code = bytearray(0x60)
+    put_word(code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
+    put_word(code, 0x04, encode_add(8, 8, TABLE_START - TABLE_PAGE))
+    put_word(code, 0x08, encode_b_cond(0x08, 0x20))
+    put_word(code, 0x0C, encode_adrp(0x0C, 9, 0x5000))
+    put_word(code, 0x10, encode_branch(0x10, 0x28))
+    put_word(code, 0x20, encode_adrp(0x20, 9, 0x6000))
+    put_word(code, 0x24, encode_branch(0x24, 0x28))
+    put_word(code, 0x28, encode_str64(0, 8, 0x10))
+
+    report = scan_address_pages_cfg(
+        bytes(code), {TABLE_PAGE}, {}, window_bytes=0x40, max_states=7
+    )
+    assert report["state_budget_exceeded"] is False
+    assert report["liveness_state_merges"] >= 1
+    assert report["equivalent_branch_histories_merged"] >= 1
+    assert report["liveness_pruned_register_count"] > 0
+    assert report["branch_path_witnesses_exhaustive"] is False
+    assert report["bounded_in_window_cfg_complete"] is True
+    writes = [
+        row for row in report["direct_accesses"]
+        if row["site"] == "0x28" and row["direction"] == "write"
+    ]
+    assert len(writes) == 1
+    assert writes[0]["effective_address"] == hex(TABLE_START + 0x10)
+
+
+def synthetic_live_register_states_do_not_merge():
+    code = bytearray(0x60)
+    put_word(code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
+    put_word(code, 0x04, encode_add(8, 8, TABLE_START - TABLE_PAGE))
+    put_word(code, 0x08, encode_b_cond(0x08, 0x20))
+    put_word(code, 0x0C, 0xAA1F03E9)  # mov x9, xzr
+    put_word(code, 0x10, encode_add(9, 9, 0x10))
+    put_word(code, 0x14, encode_branch(0x14, 0x28))
+    put_word(code, 0x20, 0xAA1F03E9)  # mov x9, xzr
+    put_word(code, 0x24, encode_add(9, 9, 0x20))
+    put_word(code, 0x28, encode_add_register(10, 8, 9))
+    put_word(code, 0x2C, encode_str64(0, 10, 0))
+
+    report = scan_address_pages_cfg(
+        bytes(code), {TABLE_PAGE}, {}, window_bytes=0x40, max_states=32
+    )
+    writes = [
+        row for row in report["direct_accesses"]
+        if row["site"] == "0x2c" and row["direction"] == "write"
+    ]
+    assert {row["effective_address"] for row in writes} == {
+        hex(TABLE_START + 0x10), hex(TABLE_START + 0x20)
+    }
+    assert len(writes) == 2
+    assert report["liveness_state_merges"] == 0
+
+
+def synthetic_liveness_call_barrier_and_branch_union():
+    code = bytearray(0x40)
+    put_word(code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
+    put_word(code, 0x04, encode_b_cond(0x04, 0x20))
+    put_word(code, 0x08, 0xD503201F)  # NOP
+    put_word(code, 0x0C, encode_branch(0x0C, 0x24))
+    put_word(code, 0x20, encode_add_register(10, 8, 9))
+    put_word(code, 0x24, 0xD65F03C0)  # RET
+
+    decoder = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
+    decoder.detail = True
+    live = _window_live_in_registers(decoder, bytes(code), 4, len(code))
+    assert "x9" in live[0x04]  # one conditional successor consumes X9
+
+    call_code = bytearray(0x30)
+    put_word(call_code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
+    put_word(call_code, 0x04, 0xD63F0100)  # blr x8
+    put_word(call_code, 0x08, encode_str64(0, 9, 0))
+    live_after_call = _window_live_in_registers(
+        decoder, bytes(call_code), 4, len(call_code)
+    )
+    assert "x8" in live_after_call[0x04]
+    assert "x9" not in live_after_call[0x04]
 
 
 def synthetic_call_barrier():
@@ -695,6 +778,9 @@ def run(main, output):
     synthetic_branch_path_write()
     synthetic_equivalent_branch_histories_merge()
     synthetic_distinct_register_states_do_not_merge()
+    synthetic_dead_register_states_merge()
+    synthetic_live_register_states_do_not_merge()
+    synthetic_liveness_call_barrier_and_branch_union()
     synthetic_call_barrier()
     synthetic_static_pointer_cells()
     synthetic_memory_loaded_alias()

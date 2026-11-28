@@ -41,6 +41,9 @@ DEFAULT_MAX_STATES = 256
 RELATIVE_RELOCATION_TYPE = 1027
 CALL_KINDS = {"call", "indirect_call_unresolved"}
 TERMINATOR_KINDS = {"return_or_indirect_terminator"}
+_ALL_TRACKED_REGISTERS = frozenset(
+    ["sp", "xzr"] + ["x%d" % index for index in range(31)]
+)
 
 
 def _clone_known(known):
@@ -54,22 +57,83 @@ def _clone_known(known):
     }
 
 
-def _state_signature(known, branch_reachable):
-    """Identify semantic register states, not every distinct branch history."""
+def _state_signature(known, branch_reachable, live_registers=None):
+    """Identify live address state while retaining its exact provenance."""
     registers = []
     for name, value in sorted(known.items()):
+        if live_registers is not None and name not in live_registers:
+            continue
         terms = tuple(
             (term.get("register"), term.get("extension"), term.get("scale"))
             for term in value.get("dynamic_terms", [])
         )
-        # Keep provenance distinct: equal addresses reached through different
-        # ADRP/ADD or static-cell chains must not collapse into one state.
+        # Keep provenance distinct for every live register: equal addresses
+        # reached through different ADRP/ADD or static-cell chains do not merge.
         chain = tuple(repr(step) for step in value.get("chain", []))
         registers.append((name, value["address"], terms, chain))
-    # Keep one branchless and one branch-reachable representative. Different
-    # branch histories with identical register provenance are equivalent for
-    # subsequent memory-address analysis.
+    # Keep one branchless and one branch-reachable representative. Values in
+    # registers overwritten before any in-window use are not semantic state.
     return tuple(registers), bool(branch_reachable)
+
+
+def _window_live_in_registers(decoder, text, start, window_end):
+    """Conservative backward liveness for one bounded CFG window.
+
+    Conditional successors are unioned. Calls kill cross-call liveness because
+    the consumer trace resets all tracked address state at every call barrier.
+    An undecodable in-window successor conservatively keeps every tracked
+    address register live.
+    """
+    instructions = {}
+    for pc in range(start, window_end, 4):
+        instruction = _decode_one(decoder, text, pc)
+        if instruction is None:
+            continue
+        try:
+            reads, writes = instruction.regs_access()
+            read_names = frozenset(
+                _reg_name(instruction, value) for value in reads
+            ) - {None}
+            written_names = frozenset(
+                _reg_name(instruction, value) for value in writes
+            ) - {None}
+        except Exception:
+            instructions[pc] = (
+                _ALL_TRACKED_REGISTERS, frozenset(), (), False
+            )
+            continue
+        edges = _edges(pc, instruction.mnemonic, instruction.op_str)
+        is_call = any(kind in CALL_KINDS for kind, _ in edges)
+        successors = []
+        if not is_call:
+            for kind, target in edges:
+                if kind in CALL_KINDS or kind in TERMINATOR_KINDS:
+                    continue
+                if (target is not None and start <= target < window_end
+                        and not (target & 3)):
+                    successors.append(target)
+        instructions[pc] = (
+            read_names, written_names, tuple(sorted(set(successors))), is_call
+        )
+
+    live_in = {pc: set(row[0]) for pc, row in instructions.items()}
+    changed = True
+    while changed:
+        changed = False
+        for pc in sorted(instructions, reverse=True):
+            reads, writes, successors, is_call = instructions[pc]
+            live_out = set()
+            if not is_call:
+                for target in successors:
+                    if target in live_in:
+                        live_out.update(live_in[target])
+                    else:
+                        live_out.update(_ALL_TRACKED_REGISTERS)
+            next_live = set(reads) | (live_out - set(writes))
+            if next_live != live_in[pc]:
+                live_in[pc] = next_live
+                changed = True
+    return live_in
 
 
 def _target_page(target_start):
@@ -435,6 +499,11 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
         raise ValueError("Unable to seed ADRP reaching state")
 
     start = pc + 4
+    live_in_registers = _window_live_in_registers(
+        decoder, text, start, window_end
+    )
+    liveness_pruned_register_count = 0
+    liveness_state_merges = 0
     queue = deque([(start, known, ())])
     visited = {}
     loop_entry_states = {}
@@ -476,16 +545,31 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
             continue
         loop_entry_states.setdefault(current_pc, _clone_known(current_known))
         reached_branches.update(branch_sites)
-        signature = _state_signature(current_known, bool(branch_sites))
+        live_registers = live_in_registers.get(
+            current_pc, _ALL_TRACKED_REGISTERS
+        )
+        liveness_pruned_register_count += len(
+            (set(current_known) - {"xzr"}) - live_registers
+        )
+        signature = _state_signature(
+            current_known, bool(branch_sites), live_registers
+        )
+        full_signature = _state_signature(current_known, bool(branch_sites))
         state_key = (current_pc, signature)
         if state_key in visited:
-            if visited[state_key] != tuple(branch_sites):
+            previous = visited[state_key]
+            if previous["branch_sites"] != tuple(branch_sites):
                 equivalent_branch_histories_merged += 1
+            if previous["full_signature"] != full_signature:
+                liveness_state_merges += 1
             continue
         if len(visited) >= max_states:
             budget_exceeded = True
             break
-        visited[state_key] = tuple(branch_sites)
+        visited[state_key] = {
+            "branch_sites": tuple(branch_sites),
+            "full_signature": full_signature,
+        }
         instruction = _decode_one(decoder, text, current_pc)
         if instruction is None:
             undecodable.add(current_pc)
@@ -700,8 +784,19 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                 if kind in {"conditional", "unconditional"} and target < current_pc:
                     header_state = loop_entry_states.get(target)
                     if header_state is not None:
+                        live_at_header = live_in_registers.get(
+                            target, _ALL_TRACKED_REGISTERS
+                        )
+                        header_state = {
+                            name: value for name, value in header_state.items()
+                            if name in live_at_header
+                        }
+                        backedge_state = {
+                            name: value for name, value in state_for_target.items()
+                            if name in live_at_header
+                        }
                         summaries = _detect_backedge_induction(
-                            header_state, state_for_target, target, current_pc
+                            header_state, backedge_state, target, current_pc
                         )
                         for summary in summaries:
                             key = (
@@ -737,12 +832,22 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
         "window_sha256": hashlib.sha256(text[pc:window_end]).hexdigest(),
         "reachable_state_count": len(visited),
         "decoded_instruction_count": len(decoded_sites),
+        "liveness_analysis": {
+            "decoded_window_instruction_count": len(live_in_registers),
+            "signature_register_pruned_count": liveness_pruned_register_count,
+            "state_merges_due_to_dead_registers": liveness_state_merges,
+            "conditional_successors_union": True,
+            "calls_are_kill_barriers": True,
+            "unknown_in_window_successor_keeps_all_tracked_registers_live": True,
+            "out_of_window_successors_followed": False,
+        },
         "branch_sites_reached": sorted(reached_branches, key=lambda value: int(value, 16)),
         "state_budget_exceeded": budget_exceeded,
         "equivalent_branch_histories_merged": equivalent_branch_histories_merged,
         "branch_path_witnesses_exhaustive": (
-            equivalent_branch_histories_merged == 0 and not budget_exceeded
-            and not loop_widening["applied"] and not dynamic_loop_widenings
+            equivalent_branch_histories_merged == 0 and liveness_state_merges == 0
+            and not budget_exceeded and not loop_widening["applied"]
+            and not dynamic_loop_widenings
         ),
         "loop_widening": loop_widening,
         "dynamic_loop_widenings": sorted(
@@ -1032,6 +1137,18 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         )),
         "undecodable_words": [_hex(value) for value in sorted(undecodable)],
         "state_budget_exceeded": state_budget_exceeded,
+        "liveness_pruned_register_count": sum(
+            row["liveness_analysis"]["signature_register_pruned_count"]
+            for row in references
+        ),
+        "liveness_state_merges": sum(
+            row["liveness_analysis"]["state_merges_due_to_dead_registers"]
+            for row in references
+        ),
+        "liveness_decoded_window_instruction_count": sum(
+            row["liveness_analysis"]["decoded_window_instruction_count"]
+            for row in references
+        ),
         "equivalent_branch_histories_merged": sum(
             row["equivalent_branch_histories_merged"] for row in references
         ),
@@ -1053,9 +1170,10 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
             )
         ),
         "state_identity": (
-            "pc+tracked-address-registers+dynamic-terms+origin-chain+"
+            "pc+live-in-tracked-address-registers+dynamic-terms+origin-chain+"
             "branch-reachable-class+exact-and-unknown-bound-backedge-induction; "
-            "one representative path per equivalent state"
+            "dead-register differences are counted separately and do not merge "
+            "live address provenance"
         ),
         "bounded_in_window_cfg_complete": (
             target_page_cfg_complete and pointer_alias_trace_complete
