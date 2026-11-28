@@ -118,6 +118,9 @@ def synthetic_call_barrier():
 
 def synthetic_static_pointer_cells():
     memory = bytearray(0x6000)
+    text_data = bytearray(0x100)
+    struct.pack_into("<Q", text_data, 0x80, TABLE_PAGE + 0x7D8)
+    memory[0:0x100] = text_data
     data = bytearray(0x100)
     struct.pack_into("<Q", data, 0x80, TABLE_PAGE + 0x7D8)
     struct.pack_into("<Q", memory, 0x200, 0x5090)
@@ -128,10 +131,11 @@ def synthetic_static_pointer_cells():
     struct.pack_into("<q", memory, 0x228, TABLE_PAGE + 0x1000)
     memory[0x5000:0x5100] = data
     cells = collect_static_pointer_cells(
-        [(0x5000, bytes(data), 0x5000)],
+        [(0x0000, bytes(text_data), 0x0000), (0x5000, bytes(data), 0x5000)],
         memory,
         {7: 0x200, 8: 48, 9: 24},
     )
+    assert 0x0080 not in cells  # Executable text words are not pointer-cell candidates.
     assert cells[0x5080] == [
         {"value": TABLE_PAGE + 0x7D8, "source": "FILE_BACKED_LITERAL"}
     ]
@@ -142,13 +146,13 @@ def synthetic_static_pointer_cells():
     assert 0x5200 not in cells  # BSS bytes are not treated as file-backed literals.
 
     expect_reject(lambda: collect_static_pointer_cells(
-        [(0x5000, bytes(data), 0x5000)], memory, {7: 0x200, 8: 48, 9: 16}
+        [(0x0000, bytes(text_data), 0x0000), (0x5000, bytes(data), 0x5000)], memory, {7: 0x200, 8: 48, 9: 16}
     ), "invalid RELA entry size")
     expect_reject(lambda: collect_static_pointer_cells(
-        [(0x5000, bytes(data), 0x5000)], memory, {7: 0x5FF0, 8: 24, 9: 24}
+        [(0x0000, bytes(text_data), 0x0000), (0x5000, bytes(data), 0x5000)], memory, {7: 0x5FF0, 8: 24, 9: 24}
     ), "out-of-bounds RELA table")
     expect_reject(lambda: collect_static_pointer_cells(
-        [(0x5000, bytes(data), 0x5000)], memory, {7: 0x200}
+        [(0x0000, bytes(text_data), 0x0000), (0x5000, bytes(data), 0x5000)], memory, {7: 0x200}
     ), "incomplete RELA tag pair")
 
 

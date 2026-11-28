@@ -13,7 +13,7 @@ from collections import deque
 from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM
 from capstone.arm64_const import ARM64_OP_MEM, ARM64_OP_REG
 
-from .native_cpk_cfg import AUTHENTICATED_CALLS, _edges
+from .native_cpk_cfg import _edges
 from .native_cpk_graph import MAIN_SHA256
 from .native_fileload_guard_state import _decode_adrp_page
 from .native_fileload_registration_target import _memory_access_width
@@ -101,7 +101,9 @@ def collect_static_pointer_cells(rows, memory, tags, target_start=TABLE_START,
         if row not in entries:
             entries.append(row)
 
-    for segment in rows:
+    for segment_index, segment in enumerate(rows):
+        if segment_index == 0:
+            continue  # NSO segment 0 is executable text, not a data pointer-cell pool.
         if not isinstance(segment, (list, tuple)) or len(segment) < 2:
             raise ValueError("Malformed file-backed NSO segment row")
         va, raw = segment[0], segment[1]
@@ -178,7 +180,8 @@ def _pointer_cell_report(pointer_cells, target_start=TABLE_START):
         "file_backed_literal_rows": literal_count,
         "relative_relocation_rows": relative_count,
         "cells": cells,
-        "file_backed_segments_scanned": True,
+        "non_text_file_backed_segments_scanned": True,
+        "executable_text_segment_literal_words_scanned": False,
         "dynamic_relative_relocations_scanned": True,
         "bss_or_heap_cells_without_relocations_scanned": False,
         "runtime_pointer_values_resolved": False,
@@ -703,7 +706,8 @@ def inspect(nso):
             "conditional_and_unconditional_in_window_edges_followed": True,
             "out_of_window_edges_recorded_not_followed": True,
             "direct_and_authenticated_calls_are_clobber_barriers": True,
-            "file_backed_8_byte_pointer_literals_scanned": True,
+            "non_text_file_backed_8_byte_pointer_literals_scanned": True,
+            "executable_text_segment_literal_words_scanned": False,
             "R_AARCH64_RELATIVE_pointer_addends_scanned": True,
             "single_level_static_pointer_loads_traced": True,
             "bss_or_heap_pointer_cells_without_relocations_scanned": False,
