@@ -62,3 +62,34 @@ The original table-census artifact `15239987914` (run `46089004753`) was downloa
 
 
 The corrected-count retry (run `46094071904`, job `140821324819`, commit `95dcd5dcb5ce8c52ee45a67be89a00c8f9afc83f`) passed the 114 raw-count and 111 BL / 3 B assertions, plus both exact table-path X0-load assertions. It then failed because a second redundant invariant still compared confirmed + unconfirmed rows against the old literal 101. That invariant now compares against the report's raw candidate count, so it cannot drift from the pinned count assertion. Raw job log inspected.
+
+
+## Repository pin comparison (corrected assumption)
+
+The project status pins `pc_mod_manager_commit=276116ebf5ba398a867793cb02ee6c33c0927645`, which is one commit **ahead** of the NSC-ModManager 2.1.2.1 tag commit `502c38d3ee832509f9ee3951b7d3339826538fec`. Its commit message is `2.1.2.1 update`; the diff is version/configuration and generated IDE/build metadata. The exact XFBIN parser and skill model blobs match the 2.1.2.1 tag: `XfbinParser.cs` `faf79d588fd8beb3f5761faebedd2252853b2f2b`, `SkillCustomizeParamModel.cs` `6a891e237d27fdf01336f806dbef8767d609a304`, `SpSkillCustomizeParamModel.cs` `2b518f6eeb9ef97895517582e393a2adf9ee6da0`.
+
+The project Toolbox pin `6f780cb6814f07e03c16b3e78d97dde4e4368983` is one commit **ahead** of the NSC-Toolbox 2.1.2.1 tag commit `789fe96f99cdaa77f952b90b563c6e3f49b6d697`, also a `2.1.2.1 update`. The exact parser/editor blobs match the tag: `XfbinParser.cs` `86c63708edf2698b5bc1c2a54c0480cce014b525`, `SkillEditorModel.cs` `e165471682e4a7aed91094ef07f92df271f31639`, `SkillEditorViewModel.cs` `870af492c41f26c2aab07c216b6fa5fd00ac2cbf`, `ConditionPrmModel.cs` `2827ca9e484eafb0c7435f066d42ff3e9345e17c`. Therefore the assumption that the repository pins an older 2.1.2.0 parser/editor is false. Its pins already include 2.1.2.1 source.
+
+The repository PC API pin is exactly `a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc` (2.1.2.1 update). The new PC command 29 is present in that source, but it uses Windows-side state/locking and PC object layouts; no Switch ARM64 consumer or ownership ABI has been established.
+
+## Final static CI result
+
+Implementation code commit: `f3be353e044e5b471c35565da8c357d87f07d909`  
+Workflow: [Verify pinned FileLoad helper inbound caller census](https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178280)  
+Job: [verify / 140821654312](https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178280/job/140821654312)  
+Result: **COMPLETED SUCCESS**; raw job log inspected. Exact marker: `PINNED_FILELOAD_HELPER_CALLER_CENSUS_PASS raw_candidates 114 capstone_confirmed 114 clusters 86 NO_ABI_NO_OWNER_NO_UZUY_CLAIM`.
+
+Artifact: [FILELOAD_HELPER_CALLER_STATIC_EVIDENCE](https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178280/artifacts/15242915661)  
+Artifact ZIP SHA256: `5c0e87f550fe5edae556881aebd1f4094a8949b7f4c33d9a73f2db822da7057a`  
+JSON report: 1,469,895 bytes; SHA256 `86d3dc5b153d915c0b1c4ea70f03bf664fd5cc23329d630251c43e0f727e6bbb`.  
+Pinned text SHA256: `bbf6c62af46ce08c15a753c078accb2f638ad775e1f695256e452f9f197d7d21` (19,881,936 bytes).
+
+Observed results: 114 raw candidates (111 BL, 3 B); Capstone confirmed 114; 0 unconfirmed; 86 signature clusters with size histogram `{7:1,5:3,4:1,2:7,1:74}`. The two known table-path calls are the only members of signature cluster `23fde6c80ac55b89c09bc87436fd3ce0d6e2a424e07aa8fe5323bd18a748d4f8` (count 2). Within their 0x40-byte linear preludes, the only X0-X7 syntactic write is `LDR X0,[X8,#0x28]`; X1-X7 have no syntactic write in that window. This is not proof of actual reaching definitions or parameter semantics.
+
+A broader `verify-port-foundation` run `46094178264` on the same code commit was still in progress at the last poll. It is not used to mark this isolated slice successful. The broad workflow currently matches all `native_*.py` files, so its path filter is narrowed to exclude this caller analyzer; its dedicated workflow remains authoritative for this slice.
+
+## Status and next step
+
+This slice is `VERIFIED_STATIC_CI_ONLY`. It does not prove function extents, actual parameter meanings, producer/table writer, BR X2 target, callback/vtable/destructor, ownership/lifetime, lock/unlock, async, rollback/unbind, archive precedence, runtime consumer, emulated ARM64, or Uzuy. No hook or game writes were added. Global release flags remain false.
+
+Next: verify whether reliable FDE/unwind/function-boundary metadata exists for the 114 callsites, starting with the two-member table-path cluster. If such metadata is absent or ambiguous, do not invent extents; continue with bounded CFG and direct-reference evidence only.

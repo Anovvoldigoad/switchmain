@@ -20,6 +20,8 @@ on:
       - '!tests/test_native_fileload_registration_lifecycle.py'
       - '!tools/portlib/native_fileload_table_access.py'
       - '!tests/test_native_fileload_table_access.py'
+      - '!tools/portlib/native_fileload_helper_callers.py'
+      - '!tests/test_native_fileload_helper_callers.py'
 jobs:
   verify:
     runs-on: ubuntu-latest

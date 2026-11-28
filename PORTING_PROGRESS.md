@@ -1445,3 +1445,16 @@ The first caller test failed because the handoff pinned an incorrect count of 10
 
 
 Caller regression retry: run 46094071904/job 140821324819 passed the corrected raw count (114), branch split (111 BL, 3 B), and both known table-path X0-load assertions. It failed only at a second invariant still containing the stale literal 101; that invariant now compares confirmed plus unconfirmed rows to the report's raw count. Raw log inspected; CI retry pending.
+
+
+## 2026-11-28 — FileLoad helper inbound caller census VERIFIED_STATIC_CI_ONLY
+
+The isolated caller workflow passed on code commit `f3be353e044e5b471c35565da8c357d87f07d909`: [run 46094178280](https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178280), job 140821654312. Raw job log inspected; marker `PINNED_FILELOAD_HELPER_CALLER_CENSUS_PASS`. Artifact [15242915661](https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178280/artifacts/15242915661), ZIP SHA256 `5c0e87f550fe5edae556881aebd1f4094a8949b7f4c33d9a73f2db822da7057a`, JSON report SHA256 `86d3dc5b153d915c0b1c4ea70f03bf664fd5cc23329d630251c43e0f727e6bbb` (1,469,895 bytes).
+
+The pinned original main yielded 114 raw direct B/BL words to `0x116b390` (111 BL, 3 B); Capstone confirmed all 114. The 0x40-byte bounded prelude analyzer produced 86 signature clusters with size histogram `{7:1,5:3,4:1,2:7,1:74}`. The two known table-path calls `0x116b8a4` and `0x116b928` are the only members of the same two-entry signature cluster; each has `LDR X0,[X8,#0x28]` as the only X0-X7 syntactic write in its bounded window. These are static observations, not ABI or reaching-definition proof.
+
+Research-first pin check corrected the stale-version assumption: repository pins `276116eb...` (NSC-ModManager) and `6f780cb...` (NSC-Toolbox) are each one commit ahead of their respective 2.1.2.1 release tags; all inspected parser/editor blob IDs are identical to the 2.1.2.1 tag source. PC API pin `a2d0f...` includes PC command 29 `TakeOverEnemyProjectiles`, but its Windows implementation is not a Switch ABI. See `handoff/evidence_fileload_helper_callers_20261128.md`.
+
+The broad foundation workflow run 46094178264 on this code commit was still in progress at last poll and is recorded separately; it is not used to claim this isolated slice. The foundation workflow path filter now excludes the new caller analyzer so future changes use the dedicated workflow instead of rerunning the broad suite.
+
+Status: `VERIFIED_STATIC_CI_ONLY`; no ABI, ownership/lifecycle, callback, lock/unlock, async, rollback/unbind, destructor, archive precedence, runtime, emulated ARM64 or Uzuy claim. All gameplay release flags remain false. Next: prove or reject reliable FDE/unwind function extents for the 114 callsites, starting with the two-member table-path cluster.

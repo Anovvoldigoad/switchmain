@@ -1,33 +1,31 @@
-# Continue FULL PC ModdingAPI -> Switch v1.70
+# Continue FULL PC ModdingAPI -> Naruto Storm Connections Switch v1.70
 
 Branch: `port/full-api-v170`
-Current implementation parent: `e70d151e7c7fffec838126f47d2f375e65e8ba34`
-Latest code proof before this slice: `0bc4cb45d713325cf8e33f0385b42535791fe5ab`
-Original Switch v1.70 main SHA256: `2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9`
+Verified code commit: `f3be353e044e5b471c35565da8c357d87f07d909`
+Isolated CI: [run 46094178280](https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178280), job 140821654312 — COMPLETED SUCCESS, raw log inspected.
+Artifact: [15242915661](https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178280/artifacts/15242915661)
+Original main SHA256: `2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9`
 
-## Verified baseline
+## Verified static FileLoad caller slice
 
-- FileLoad 64-slot table census is `VERIFIED_STATIC_CI_ONLY` on `0bc4cb45d713325cf8e33f0385b42535791fe5ab`; run `46089004753`, job `140805260736`, raw log inspected, artifact `15239987914`.
-- Table: `[0x4371800,0x4371a00)`, 64 qword slots; two bounded 512-byte clear sequences; 89 ADRP page references; 34 direct accesses; 288,973 RELA records; 114 raw aligned B/BL inbound candidates to `0x116b390`.
-- The latest branch HEAD before this implementation was documentation-only `e70d151e7c7fffec838126f47d2f375e65e8ba34`; direct Actions API showed no run for that docs-only commit. No queued/in-progress run was present in the direct push run list.
-- Historical failed table-census jobs were checked from raw logs and their root causes are recorded in the evidence note. Do not rerun their fixed tests unless source changes.
+- 114 raw aligned direct B/BL candidates to `0x116b390`: 111 BL, 3 B.
+- Capstone confirmed all 114; 0 unconfirmed.
+- 86 bounded 0x40-byte prelude signature clusters; size histogram `{7:1,5:3,4:1,2:7,1:74}`.
+- The two table-path calls `0x116b8a4` and `0x116b928` are the only members of one two-entry signature group. Both have `LDR X0,[X8,#0x28]` as the only X0-X7 syntactic write in their 0x40-byte linear window.
+- The last writes are explicitly not proven reaching definitions; no ABI or parameter meaning is claimed.
+- Artifact report SHA256 `86d3dc5b153d915c0b1c4ea70f03bf664fd5cc23329d630251c43e0f727e6bbb`.
 
-## Current vertical slice — IMPLEMENTED_AWAITING_CI
+## Upstream pin finding
 
-Source: `tools/portlib/native_fileload_helper_callers.py`  
-Test: `tests/test_native_fileload_helper_callers.py`  
-Workflow: `.github/workflows/verify-fileload-helper-callers.yml` (isolated caller workflow)  
-Research note: `handoff/evidence_fileload_helper_callers_20261128.md`
+The repo does **not** pin an older 2.1.2.0 parser/editor. NSC-ModManager pin `276116eb...` and NSC-Toolbox pin `6f780cb...` are each one commit ahead of their 2.1.2.1 release tag; inspected XFBIN parser/model/editor blobs match the 2.1.2.1 tag. PC API pin `a2d0f...` includes command 29 `TakeOverEnemyProjectiles` in Windows source, but no Switch ARM64 ABI is proven. Details and blob IDs are in `handoff/evidence_fileload_helper_callers_20261128.md`.
 
-The new analyzer Capstone-confirms raw direct B/BL candidates to `0x116b390`, captures each fixed 0x40-byte prelude, records instruction words, register reads/writes and memory operands, and groups callers by last-syntactic-write signatures for X0-X7. It verifies the two known table-path helper calls at `0x116b8a4` / `0x116b928` are preceded by the exact `LDR X0,[X8,#0x28]` at `0x116b8a0` / `0x116b924`.
+## Next required engineering slice
 
-## Required next action
+1. Inspect the original main's ELF/NSO metadata for reliable FDE/unwind/function-boundary records covering the 114 caller sites, starting with `0x116b8a4` and `0x116b928`.
+2. If reliable extents exist, map each callsite to its exact containing function and trace direct incoming edges; if not, record the absence and stay with bounded CFG/direct-reference evidence.
+3. Continue tracing the register/memory provenance feeding `BR X2` at `0x116b3d0`, but do not infer object type, callback, vtable or consumer ABI from register shape alone.
+4. Preserve the verified 114/111/3 count; do not rerun the previous table census unless source changes.
 
-1. Inspect the existing FileLoad lifecycle workflow's direct push run through `actions/runs` API; read the original job log and download/inspect its JSON artifact.
-2. If a test fails, fix the exact failing assertion from the raw log, push with a fresh expected HEAD and rerun only this isolated workflow.
-3. After CI success, synchronize checkpoint/status/progress and this prompt with the actual run/job/artifact SHA values.
-4. Continue only from byte-backed caller groups or a concrete code/data edge. Do not call last syntactic writes reaching definitions. Resolve BR X2 and any indirect table writer only with further read-only proof.
+## Safety
 
-## Hard safety limits
-
-No runtime hook or game writes. No parameter/ABI, class, callback/vtable/destructor, producer, ownership/lifetime, lock/unlock, async, rollback/unbind or archive-precedence claim. No emulated ARM64 or Uzuy claim. Keep `full_moddingapi=false`, `ready_for_gameplay_test=false`, `emulator_tested=false`. Preserve Sakura aura107 and Event236 marker `0x4E53 +0x2A` plus unmarked Event236.
+No runtime hooks or game writes. No consumer ABI, ownership/lifetime, lock/unlock, async, rollback/unbind, destructor, archive precedence, emulated ARM64 or Uzuy claim. Keep `full_moddingapi=false`, `ready_for_gameplay_test=false`, `emulator_tested=false`. Preserve Sakura aura107 and Event236 marker `0x4E53 +0x2A` plus unmarked Event236.
