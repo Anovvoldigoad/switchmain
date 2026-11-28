@@ -1581,3 +1581,7 @@ Implementation commit: \`48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3\` (parent \`21
 - Scope is static host analysis plus synthetic CFG regressions. The analyzer itself was not executed under emulated ARM64 and no Uzuy test occurred. No native consumer ABI, object ownership, callback/lifecycle, lock/unlock, async, rollback/unbind/destructor, archive precedence or gameplay proof. No hook or game-byte change; Sakura aura107 and both Event236 variants preserved; all three release flags remain false.
 - Next: address the 8 skipped pointer pages (61,914 ADRP candidates versus the 4,096 cap) using a bounded per-page or prefilter strategy, then continue the exact FileLoad producer and `[X8,#0x58] -> BR X2` path at `0x116b3d0`. Keep unknown-bound loops symbolic and all call barriers opaque.
 
+### 2026-11-28 documentation-guard correction
+
+The first R277H6 documentation sync made `checkpoint.port_status` a compact summary with the release booleans nested under `flags`. The existing `release_flag_guard.py` contract requires the full status object and its three booleans at the top level. Push run `46136146075` / job `140951782999` failed on that exact schema mismatch; the raw log was inspected. The checkpoint now stores the complete `PORT_STATUS.json` object again, preserving `full_moddingapi=false`, `ready_for_gameplay_test=false`, and `emulator_tested=false`. A new release-flag workflow run on this repair commit must pass before this documentation correction is considered verified.
+
