@@ -148,7 +148,7 @@ def synthetic_static_pointer_cells():
         [(0x5000, bytes(data), 0x5000)], memory, {7: 0x5FF0, 8: 24, 9: 24}
     ), "out-of-bounds RELA table")
     expect_reject(lambda: collect_static_pointer_cells(
-        [(0x5000, bytes(data), 0x5000)], memory, {7: 0x200, 8: 24}
+        [(0x5000, bytes(data), 0x5000)], memory, {7: 0x200}
     ), "incomplete RELA tag pair")
 
 
