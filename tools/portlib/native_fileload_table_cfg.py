@@ -264,15 +264,23 @@ def _detect_backedge_induction(header_known, backedge_known, target, branch_pc):
     This records an unbounded symbolic term. It does not infer a loop bound,
     callback preservation, runtime iterations, or an effective address.
     """
-    if set(header_known) != set(backedge_known):
-        return None
+    common = (set(header_known) & set(backedge_known)) - {"xzr"}
     changed = []
-    for name in sorted(set(header_known) - {"xzr"}):
+    for name in sorted(common):
         before = header_known[name]
         after = backedge_known[name]
         if (before["address"], before.get("dynamic_terms", [])) != (
                 after["address"], after.get("dynamic_terms", [])):
             changed.append(name)
+    for name in (set(header_known) ^ set(backedge_known)) - {"xzr"}:
+        info = header_known.get(name) or backedge_known.get(name)
+        chain = info.get("chain", [])
+        if chain:
+            last = chain[-1]
+            if (last.get("kind") == "ADD_IMMEDIATE"
+                    and last.get("source_register") == name
+                    and last.get("destination_register") == name):
+                return None
     if len(changed) != 1:
         return None
     name = changed[0]

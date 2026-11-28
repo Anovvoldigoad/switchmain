@@ -48,7 +48,8 @@ jobs:
       - name: Hash exact analyzer, regression, workflow and evidence inputs
         if: always()
         run: |
-          sha256sum tools/portlib/native_fileload_table_cfg.py tests/test_native_fileload_table_cfg.py .github/workflows/verify-fileload-registration-lifecycle.yml handoff/evidence_fileload_pointer_retry_20261128.md > table-cfg-proof-work/SOURCE_SHA256SUMS.txt
+          mkdir -p table-cfg-proof-work
+          sha256sum tools/portlib/native_fileload_table_cfg.py tests/test_native_fileload_table_cfg.py .github/workflows/verify-fileload-registration-lifecycle.yml handoff/evidence_fileload_pointer_retry_20261128.md handoff/evidence_fileload_pointer_loop_widening_20261128.md > table-cfg-proof-work/SOURCE_SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
