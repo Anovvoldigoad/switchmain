@@ -514,6 +514,64 @@ def synthetic_unknown_bound_backedge_widening():
     assert non_self["dynamic_loop_widening_count"] == 0
 
 
+def synthetic_derived_register_widening():
+    pointer_page = 0x5000
+    target_start = 0x5080
+    target_end = 0x5090
+
+    def build(unrelated_new_register=False):
+        code = bytearray(0x50)
+        put_word(code, 0x00, encode_adrp(0x00, 8, pointer_page))
+        put_word(code, 0x04, 0xAA1F03E9)  # mov x9, xzr
+        put_word(code, 0x08, encode_add_register(10, 8, 9))  # preheader X10
+        put_word(code, 0x0C, encode_add_register(10, 8, 9))  # loop-header X10
+        put_word(code, 0x10, encode_ldr64(0, 10, 0x80))
+        put_word(code, 0x14, encode_add(9, 9, 8))
+        put_word(code, 0x18, encode_add_register(10, 8, 9))
+        if unrelated_new_register:
+            put_word(code, 0x1C, encode_add_register(11, 8, 8))
+            put_word(code, 0x20, encode_branch(0x20, 0x0C))
+        else:
+            put_word(code, 0x1C, encode_branch(0x1C, 0x0C))
+        return bytes(code)
+
+    positive = scan_address_pages_cfg(
+        build(), {pointer_page}, {}, window_bytes=0x40, max_states=32,
+        target_start=target_start, target_end=target_end,
+    )
+    assert positive["dynamic_loop_widening_count"] == 1
+    widening = positive["page_references"][0]["dynamic_loop_widenings"][0]
+    assert widening["counter_register"] == "x9"
+    assert len(widening["derived_registers"]) == 1
+    derived = widening["derived_registers"][0]
+    assert derived["register"] == "x10"
+    assert derived["depends_on_counters"] == ["x9"]
+    assert derived["runtime_value_verified"] is False
+    assert derived["effective_address_resolved"] is False
+    assert any(
+        step.get("kind") == "ADD_REGISTER"
+        and step.get("right_source") == "x9"
+        for step in derived["origin_chain"]
+    )
+    indexed = [
+        row for row in positive["indexed_access_candidates"]
+        if row["site"] == "0x10"
+    ]
+    assert len(indexed) == 1
+    assert indexed[0]["effective_address_resolved"] is False
+    assert indexed[0]["dynamic_index_terms"][0]["register"] == "x9"
+    assert indexed[0]["dynamic_index_terms"][0]["extension"] == (
+        "LOOP_INDUCTION_UNKNOWN_BOUND"
+    )
+
+    unrelated = scan_address_pages_cfg(
+        build(unrelated_new_register=True), {pointer_page}, {},
+        window_bytes=0x40, max_states=32,
+        target_start=target_start, target_end=target_end,
+    )
+    assert unrelated["dynamic_loop_widening_count"] == 0
+
+
 def synthetic_pointer_page_budget_fail_closed():
     code = bytearray(0x40)
     pointer_page = 0x5000
@@ -532,7 +590,9 @@ def synthetic_pointer_page_budget_fail_closed():
     assert reference["state_budget_exceeded"] is True
     assert reference["bounded_in_window_cfg_complete"] is False
     assert report["pointer_alias_trace_complete"] is False
-    assert len(report["pointer_page_budget_reference_disassembly"]) == 1
+    assert report["page_reference_count"] == 1
+    assert report["page_references"] == [reference]
+    assert report["reference_budget_exceeded"] is False
 
 
 
@@ -586,6 +646,7 @@ def run(main, output):
     synthetic_counted_slot_loop()
     synthetic_loop_induction_widening()
     synthetic_unknown_bound_backedge_widening()
+    synthetic_derived_register_widening()
     synthetic_pointer_page_budget_fail_closed()
     synthetic_limits()
 

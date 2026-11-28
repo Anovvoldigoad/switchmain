@@ -272,6 +272,23 @@ def _chain_sources(chain):
             sources.update(_chain_sources(nested))
     return sources
 
+ 
+def _derived_register_evidence(name, info, candidate_registers):
+    chain = info.get("chain", [])
+    address = info.get("address")
+    dependencies = sorted(_chain_sources(chain) & candidate_registers)
+    if not chain or not isinstance(address, int) or not dependencies:
+        return None
+    return {
+        "register": name,
+        "depends_on_counters": dependencies,
+        "abstract_address_at_observed_backedge": _hex(address),
+        "dynamic_terms": [dict(term) for term in info.get("dynamic_terms", [])],
+        "origin_chain": [dict(step) for step in chain],
+        "runtime_value_verified": False,
+        "effective_address_resolved": False,
+    }
+
 
 def _detect_backedge_induction(header_known, backedge_known, target, branch_pc):
     """Return exact self-ADD counters observed on an in-window backward edge.
@@ -332,9 +349,12 @@ def _detect_backedge_induction(header_known, backedge_known, target, branch_pc):
     if not candidates:
         return []
     candidate_registers = {row["counter_register"] for row in candidates}
+    derived_evidence = []
     for name, info in derived:
-        if not (_chain_sources(info.get("chain", [])) & candidate_registers):
+        evidence = _derived_register_evidence(name, info, candidate_registers)
+        if evidence is None:
             return []
+        derived_evidence.append(evidence)
     for name in (set(backedge_known) - set(header_known)) - {"xzr"}:
         info = backedge_known[name]
         chain = info.get("chain", [])
@@ -344,8 +364,16 @@ def _detect_backedge_induction(header_known, backedge_known, target, branch_pc):
                     and last.get("source_register") == name
                     and last.get("destination_register") == name):
                 return []
-            if not (_chain_sources(chain) & candidate_registers):
+            evidence = _derived_register_evidence(name, info, candidate_registers)
+            if evidence is None:
                 return []
+            derived_evidence.append(evidence)
+    for candidate in candidates:
+        counter = candidate["counter_register"]
+        candidate["derived_registers"] = [
+            row for row in derived_evidence
+            if counter in row["depends_on_counters"]
+        ]
     return candidates
 
 
