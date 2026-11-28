@@ -564,11 +564,13 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
             existing["origin_candidates"].append(origin)
 
     target_page = _target_page(target_start)
-    page_order = [target_page] + sorted(page for page in page_set if page != target_page)
+    page_order = ([target_page] if target_page in page_set else []) + sorted(
+        page for page in page_set if page != target_page
+    )
     processed_pages = []
     skipped_pages = []
     for page in page_order:
-        page_candidates = candidates[page]
+        page_candidates = candidates.get(page, [])
         remaining = max_references - len(references)
         if len(page_candidates) > remaining:
             if page == target_page:
@@ -629,6 +631,7 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         row for row in direct_rows + indexed_rows
         if row["branch_path_witnesses"]
     ]
+    target_page_scanned = target_page in page_set
     target_references = [
         row for row in references if row["target_page"] == _hex(target_page)
     ]
@@ -636,7 +639,8 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         row for row in references if row["target_page"] != _hex(target_page)
     ]
     target_page_cfg_complete = (
-        len(target_references) == len(candidates[target_page])
+        target_page_scanned
+        and len(target_references) == len(candidates.get(target_page, []))
         and all(row["bounded_in_window_cfg_complete"] for row in target_references)
     )
     pointer_alias_trace_complete = (
@@ -648,6 +652,7 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         "pages_skipped": skipped_pages,
         "candidate_reference_count": sum(len(rows) for rows in candidates.values()),
         "page_reference_count": len(references),
+        "target_page_scanned": target_page_scanned,
         "target_page_reference_count": len(target_references),
         "target_page_cfg_complete": target_page_cfg_complete,
         "pointer_alias_trace_complete": pointer_alias_trace_complete,
