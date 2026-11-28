@@ -25,7 +25,7 @@ jobs:
           mkdir -p proof-work
           python tools/pc_moveset_functions.py --commands > proof-work/pc_movesetplus_commands.json
           python tools/pc_moveset_functions.py --command-id 29 > proof-work/command_29.json
-          sha256sum proof-work/pc_movesetplus_commands.json proof-work/command_29.json > proof-work/SHA256SUMS.txt
+          (cd proof-work && sha256sum pc_movesetplus_commands.json command_29.json > SHA256SUMS.txt)
       - uses: actions/upload-artifact@v4
         with:
           name: PC_MOVESETPLUS_COMMAND_REGISTRY_SOURCE_EVIDENCE

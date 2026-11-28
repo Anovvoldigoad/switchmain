@@ -7,8 +7,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from pc_moveset_functions import (CATALOG, COMMAND_CATALOG, lookup, compare,
-                                  commands, lookup_command)
+from pc_moveset_functions import (CATALOG, lookup, compare, commands,
+                                  lookup_command)
 
 
 class SourcePinnedMovesetNames(unittest.TestCase):
@@ -83,6 +83,20 @@ class SourcePinnedMovesetNames(unittest.TestCase):
         self.assertFalse(source["switch_engine_abi_verified"])
         self.assertFalse(source["native_switch_hook_added"])
         self.assertFalse(source["uzuy_tested"])
+
+    def test_start_stop_deflect_commands_preexist_and_toggle_per_side(self):
+        rows = commands()["commands"][:2]
+        self.assertEqual([row["id"] for row in rows], [27, 28])
+        for row, enabled, action in zip(rows, (True, False),
+                                       ("START_DEFLECT", "STOP_DEFLECT")):
+            self.assertTrue(row["present_in_parent"])
+            self.assertEqual(row["action"], action)
+            self.assertEqual(row["pc_implementation"]["valid_side_values"], [0, 1])
+            self.assertEqual(
+                row["pc_implementation"]["side_offset_rule"],
+                'GameVersion == "1.70" ? 0xE60 : 0xC88')
+            self.assertTrue(row["pc_implementation"]["state_update"].endswith(
+                f"exchange({str(enabled).lower()})"))
 
     def test_command_29_records_pc_windows_freshness_and_lock_semantics(self):
         row = lookup_command(29)["command"]
