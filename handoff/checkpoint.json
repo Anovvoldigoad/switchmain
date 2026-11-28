@@ -26,7 +26,7 @@
   "repository": "https://github.com/Anovvoldigoad/switchmain",
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
-  "documentation_commit": "2026-11-28 PENDING_CI: FileLoad bounded CFG branch-path + static pointer-alias census added on parent 4d5acd5a52e0ae3e72415a7ee3164ffc21082769; targeted Actions run pending.",
+  "documentation_commit": "2026-11-28 VERIFIED_STATIC_CI_ONLY: code 63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1; evidence/status/handoff commit 653c29d23c49c73efdcf6fcbcb96868b12c56b89; targeted FileLoad run 46116650719/job 140891888185 and broad foundation run 46116650641/job 140891888072 COMPLETED SUCCESS with raw logs inspected; release-flag guard run 46117521438/job 140894559264 COMPLETED SUCCESS with raw log inspected and all three release flags false. The CFG analyzer remains host/static only; no native consumer ABI, Uzuy or gameplay proof.",
   "prior_storm_checkpoint_id": "80be5308-6dfa-44d8-91e9-71c92a4f00e2",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
@@ -4625,7 +4625,7 @@
     "next": "Inspect real unique external target path summaries, choose semantically likely caller/callee provenance; no hook until ABI and lifecycle proven."
   },
   "pending_ci": null,
-  "last_parent_sha": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
+  "last_parent_sha": "653c29d23c49c73efdcf6fcbcb96868b12c56b89",
   "native_fileopen_call_free_witness": {
     "status": "PENDING_CI",
     "parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
@@ -6336,6 +6336,23 @@
       "artifact_json_files": 74,
       "artifact_zip_sha256": "7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159",
       "release_guard_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773"
+    },
+    {
+      "name": "release_flags_guard",
+      "run_id": 46117521438,
+      "job_id": 140894559264,
+      "conclusion": "success",
+      "raw_log_inspected": true,
+      "success_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF",
+      "artifact_id": 15252615686,
+      "artifact_zip_sha256": "a157c00edcb7424eff614f1aba285602e5d1334d1d045877a7c8107fe5269ec9",
+      "report_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773",
+      "verified_head": "653c29d23c49c73efdcf6fcbcb96868b12c56b89",
+      "flags": {
+        "full_moddingapi": false,
+        "ready_for_gameplay_test": false,
+        "emulator_tested": false
+      }
     }
   ],
   "native_fileload_x19_stack_restore_20261128": {
@@ -7832,7 +7849,7 @@
     "proof_json_files": 74,
     "release_guard_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773"
   },
-  "checkpoint_update_parent_sha": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
+  "checkpoint_update_parent_sha": "653c29d23c49c73efdcf6fcbcb96868b12c56b89",
   "latest_p32_build": {
     "state": "BUILD_ARTIFACT_CI_PASS_NOT_GAMEPLAY",
     "commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
@@ -8333,6 +8350,23 @@
       "emulated_arm64": false,
       "uzuy": false,
       "gameplay": false
+    }
+  },
+  "latest_release_flags_ci": {
+    "name": "release_flags_guard",
+    "run_id": 46117521438,
+    "job_id": 140894559264,
+    "conclusion": "success",
+    "raw_log_inspected": true,
+    "success_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF",
+    "artifact_id": 15252615686,
+    "artifact_zip_sha256": "a157c00edcb7424eff614f1aba285602e5d1334d1d045877a7c8107fe5269ec9",
+    "report_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773",
+    "verified_head": "653c29d23c49c73efdcf6fcbcb96868b12c56b89",
+    "flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
     }
   }
 }
