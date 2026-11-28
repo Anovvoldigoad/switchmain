@@ -724,6 +724,50 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
     }
 
 
+
+def _bounded_reference_disassembly(text, site, window_bytes=DEFAULT_WINDOW_BYTES):
+    """Retain exact bytes and decoded control-flow edges for a pinned window."""
+    decoder = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
+    decoder.detail = True
+    end = min(len(text), site + window_bytes)
+    rows = []
+    for pc in range(site, end, 4):
+        word = bytes(text[pc:pc + 4])
+        instruction = _decode_one(decoder, text, pc)
+        if instruction is None:
+            rows.append({
+                "site": _hex(pc),
+                "word_le": word.hex(),
+                "decoded": False,
+                "edges": [],
+            })
+            continue
+        edges = _edges(pc, instruction.mnemonic, instruction.op_str)
+        rows.append({
+            "site": _hex(pc),
+            "word_le": word.hex(),
+            "decoded": True,
+            "mnemonic": instruction.mnemonic,
+            "operands": instruction.op_str,
+            "edges": [
+                {
+                    "kind": kind,
+                    "target": _hex(target) if target is not None else None,
+                }
+                for kind, target in edges
+            ],
+        })
+    return {
+        "site": _hex(site),
+        "window_end_exclusive": _hex(end),
+        "window_sha256": hashlib.sha256(text[site:end]).hexdigest(),
+        "instruction_count": len(rows),
+        "decoded_instruction_count": sum(row["decoded"] for row in rows),
+        "rows": rows,
+    }
+
+
+
 def inspect(nso):
     digest = hashlib.sha256(nso).hexdigest()
     if digest != MAIN_SHA256:
@@ -743,6 +787,15 @@ def inspect(nso):
     pages = {_target_page(TABLE_START)}
     pages.update(cell & ~0xFFF for cell in pointer_cells)
     cfg = scan_address_pages_cfg(text, pages, pointer_cells)
+    target_budget_refs = [
+        row for row in cfg["page_references"]
+        if row["target_page"] == _hex(_target_page(TABLE_START))
+        and row["state_budget_exceeded"]
+    ]
+    target_page_budget_disassembly = [
+        _bounded_reference_disassembly(text, int(row["site"], 16))
+        for row in target_budget_refs
+    ]
 
     def access_key(row):
         return (
@@ -782,6 +835,7 @@ def inspect(nso):
             "all_baseline_witnesses_preserved": True,
         },
         "static_pointer_cells": _pointer_cell_report(pointer_cells),
+        "target_page_budget_reference_disassembly": target_page_budget_disassembly,
         "branch_cfg_scan": cfg,
         "analysis_scope": {
             "all_aligned_adrp_words_for_selected_pages_scanned": True,

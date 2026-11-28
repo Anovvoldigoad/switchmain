@@ -314,6 +314,31 @@ def run(main, output):
         "0x116bbc0", "0x116bc88", "0x116bd54",
     } <= indexed_sites
     assert report["linear_baseline"]["all_baseline_witnesses_preserved"] is True
+    disassembly = report["target_page_budget_reference_disassembly"]
+    assert [row["site"] for row in disassembly] == [
+        "0x116bf54", "0x116bfac",
+    ]
+    assert [row["window_sha256"] for row in disassembly] == [
+        "35246d71f911eb9179aaf35adabd7a48c503f39edd46e51940d0ea96cffbd26e",
+        "0cb0fe2184caaf35f15df9931b964ee00198761bb6884b83f37d839210d23d12",
+    ]
+    for row in disassembly:
+        assert row["instruction_count"] == 64
+        assert row["decoded_instruction_count"] == 64
+        assert all(item["decoded"] and len(item["word_le"]) == 8
+                   for item in row["rows"])
+        assert any(
+            edge["kind"] in {"conditional", "unconditional"}
+            for item in row["rows"] for edge in item["edges"]
+        )
+    read_sites = {
+        item["site"]: item
+        for row in disassembly for item in row["rows"]
+    }
+    assert read_sites["0x116bf70"]["mnemonic"] == "ldr"
+    assert read_sites["0x116bf70"]["operands"] == "x0, [x8, #0x28]"
+    assert read_sites["0x116bfc8"]["mnemonic"] == "ldr"
+    assert read_sites["0x116bfc8"]["operands"] == "x0, [x8, #0x28]"
     assert report["static_pointer_cells"]["bss_or_heap_cells_without_relocations_scanned"] is False
     for key, value in report["limits"].items():
         assert value is False, (key, value)
