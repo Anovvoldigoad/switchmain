@@ -1461,3 +1461,39 @@ Status: `VERIFIED_STATIC_CI_ONLY`; no ABI, ownership/lifecycle, callback, lock/u
 
 
 Additional CI closure: the broad `Verify Switch port foundation (not a gameplay release)` workflow completed successfully on code commit `f3be353e044e5b471c35565da8c357d87f07d909`: run 46094178264/job 140821654144. Raw log inspected; marker `RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF`; 74 JSON proof files uploaded as artifact 15242338737 (ZIP SHA256 `3177c3357668f643b8ccfdc086cdedaf6bd6ccef75ba2c97f1041555f83c5f03`). The older 95d broad run 46094071894/job 140821324784 also completed success and its raw log was inspected. No pending CI remained at the final poll.
+
+
+## 2026-11-28 — FileLoad CFI register/stack state decoded (static evidence only)
+
+Implementation commit: \`48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3\` (parent \`2133abb9534561eeacf47ffeff54a08e99339880\`).
+
+- Extended the pinned GNU CIE/FDE parser to retain bounded CFI instruction ranges and decode common DW_CFA state transitions at exact query PCs. Unknown opcodes and unsupported DW_CFA_set_loc fail closed; expression bytecode is retained as hex and is not evaluated.
+- Original Switch v1.70 main: 27,701,509 bytes, Git blob \`8af900db0d7003255b4ddb3cbd1289cd5a15458e\`, SHA256 \`2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9\`.
+- Reproduced .eh_frame_hdr at segment index 1 / VA \`0x12f6000\`, header offset \`0x8ad0a8\`, header VA \`0x1ba30a8\`, header SHA256 \`6d7ff19ab079d7c609426068ad42bfa18ed9f89f9763421e1fe1d2fb4c38be63\`, .eh_frame VA \`0x1c49fd0\`, 85,474 validated FDE records. Pointer encodings: eh_frame_ptr \`0x1b\`, FDE count \`0x03\`, table \`0x3b\`.
+- Six pinned targets decoded with 0 unsupported, 0 unmapped and 0 ambiguous:
+  - helper entry \`0x116b390\`, coverage \`0x116b390..0x116b3f0\`;
+  - helper indirect branch \`BR X2\` at \`0x116b3d0\`, same coverage;
+  - registration-walk candidate \`0x116b888\`, coverage \`0x116b888..0x116b90c\`;
+  - second table-path range start \`0x116b90c\`, coverage \`0x116b90c..0x116b990\`;
+  - table-path callsites \`0x116b8a4\` and \`0x116b928\`, each in its own adjacent coverage interval.
+- At \`0x116b3d0\`, \`0x116b8a4\`, and \`0x116b928\`, CFI reports CFA = SP + 0x20, X19 recovery rule = CFA - 8, and LR/X30 recovery rule = CFA - 0x20. This is unwind metadata, not a runtime capture of the register values or proof of object identity.
+- The FDE ranges remain labeled as unwind coverage, not exact function identity. No ABI, callback, ownership, lock/unlock, async lifetime, rollback, unbind, destructor, archive precedence or gameplay claim was promoted.
+- Regression coverage: synthetic positive CFA/X19 save/restore rows; negative unsupported opcode and truncated operand; FDE-end boundary rejection; authentic original-main assertions for all six targets.
+- Targeted CI: run \`46100321645\`, job \`140841047537\`, COMPLETED SUCCESS; raw log inspected. Artifact \`15245162374\`, zip SHA256 \`ac07da627905706da9e45f0a86b1620d1d32a3e6ee47059d0d2331e442a25101\`; JSON SHA256 \`432a57d02bd7056861a45642d5bb2b96d56c8dae430e0de47a59cf6e9c3a1be9\`.
+- Broad foundation CI: run \`46100321670\`, job \`140841047578\`, COMPLETED SUCCESS; raw log inspected; 74 proof JSON files uploaded as artifact \`15245303059\`, zip SHA256 \`aaf920f3a76d53937a8f4faefb913eb9e430fe6b13329b538ca2f29d794868b5\`.
+- The dedicated P32 workflow already runs this test. The broad foundation workflow now excludes \`native_fileload_unwind.py\` and its test to avoid repeating the 94-step suite on future CFI-only edits.
+
+## 2026-11-28 — P32 build artifact packaging failure repaired
+
+- Prior P32 run \`46099189607\`, job \`140837518830\`, failed only in \`Collect and verify output\`: \`README_P32.txt\`, \`analyze_p32_log.py\`, and \`P30_MANIFEST_ROW_AUDIT.json\` were not tracked at repository root. The toolchain had already compiled a 128,446-byte \`subsdk9\` with SHA256 \`fec2462e48e6960b225692f9ab2c68a481c21e049d800d51d91d09574a82b504\`.
+- Workflow fix commit \`fbd13b35c07e88642ba3e5afb5818e678176807a\` (parent \`48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3\`) generates a factual build-only README and no longer copies absent optional analyzer/manifest files. The already-passed CFI job is skipped on this packaging-only commit to avoid rerunning it.
+- P32 run \`46100950488\`, build job \`140843020466\`, COMPLETED SUCCESS; raw log inspected. Artifact \`15245441982\` contains only \`SHA256SUMS.txt\`, \`README_P32.txt\`, and \`atmosphere/contents/0100FA10190A0000/exefs/subsdk9\`. ZIP: 101,471 bytes, SHA256 \`2b5cd550145ae661200e1ce574eff0c6688d611c1e6b9d9dd96b804e73e8e9d1\`. Module: 128,446 bytes, SHA256 \`fec2462e48e6960b225692f9ab2c68a481c21e049d800d51d91d09574a82b504\`.
+- This is a CI build artifact only. No Uzuy or in-game test was run; it is not a gameplay release or proof of FULL PC ModdingAPI compatibility.
+
+## Upstream source gate (2026-11-28)
+
+- NSC-ModManager tag 2.1.2.1 commit \`502c38d3ee832509f9ee3951b7d3339826538fec\`; project pin \`276116ebf5ba398a867793cb02ee6c33c0927645\`. Relevant blobs match: \`XfbinParser.cs\` \`faf79d588fd8beb3f5761faebedd2252853b2f2b\`, \`SkillCustomizeParamModel.cs\` \`6a891e237d27fdf01336f806dbef8767d609a304\`, \`SpSkillCustomizeParamModel.cs\` \`2b518f6eeb9ef97895517582e393a2adf9ee6da0\`.
+- NSC-Toolbox tag 2.1.2.1 commit \`789fe96f99cdaa77f952b90b563c6e3f49b6d697\`; project pin \`6f780cb6814f07e03c16b3e78d97dde4e4368983\`. Relevant parser/editor/model blobs match: \`XfbinParser.cs\` \`86c63708edf2698b5bc1c2a54c0480cce014b525\`, \`SkillEditorModel.cs\` \`e165471682e4a7aed91094ef07f92df271f31639\`, \`SkillCustomizeParamModel.cs\` \`1b45c89ca9d36b6db874603cdc28290d2b019f25\`, \`SpSkillCustomizeParamModel.cs\` \`b684c33e2acec0ec5527864b86899e6277a15e53\`.
+- UltimateStormAPI project pin \`a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc\`, file \`MovesetPlus.cpp\` blob \`d7c5dbbebd60415f8d304321f083897658a86146\`; comparison parent \`1c3460573fa70b595e6bfa70e52f83f1c3f74f12\`, file blob \`e96af51210e96926a7bdaa70c44b6645f1a2b2b6\`. Cases 27/28 and \`SetProjectileDeflection\` exist in both; case 29 and \`TakeOverEnemyProjectiles\` exist only in the pinned source. The new method queues recent projectile handles under a Windows mutex with a 250 ms freshness/expiry window using \`GetTickCount64\`. This is PC Windows behavior, not a Switch ABI.
+- Independent CRI reference: PyCriCodecs commit \`755055ee7b056c9c1aefc6505a3daa3e45e2e111\`, CPK blob \`2ed2cbb2c6112124013ab52755dba8a443e91306\`, UTF blob \`d1662d140a48cae37a6696213ee441aed4076edb\`. REA commit \`0386efd1e1dfa41af41f804a6be56c6f5b7615d4\`, binary-diagnostics doc blob \`b58b8d04dc799813d0ebe0dcd4889560c707553c\`; the inspected diagnostics profile does not provide AArch64 support, so it was not used to decode the Switch main.
+- Sources: https://github.com/TheLeonX/NSC-ModManager/releases/tag/2.1.2.1 ; https://github.com/TheLeonX/NSC-Toolbox/releases/tag/2.1.2.1 ; https://github.com/TheLeonX/UltimateStormAPI/tree/a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc ; https://github.com/t-wy/PyCriCodecs/tree/755055ee7b056c9c1aefc6505a3daa3e45e2e111 ; https://github.com/morluto/rea/tree/0386efd1e1dfa41af41f804a6be56c6f5b7615d4 .

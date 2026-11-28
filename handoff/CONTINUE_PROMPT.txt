@@ -1,31 +1,27 @@
-# Continue FULL PC ModdingAPI -> Naruto Storm Connections Switch v1.70
+Continue autonomous engineering on Anovvoldigoad/switchmain, branch port/full-api-v170. Always read the live branch HEAD first and do not rerun prior PASS tests without a relevant regression.
 
-Branch: `port/full-api-v170`
-Verified code commit: `f3be353e044e5b471c35565da8c357d87f07d909`
-Isolated CI: [run 46094178280](https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178280), job 140821654312 — COMPLETED SUCCESS, raw log inspected.
-Artifact: [15242915661](https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178280/artifacts/15242915661)
-Original main SHA256: `2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9`
+Verified implementation commit: 48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3 (parent 2133abb9534561eeacf47ffeff54a08e99339880).
+- FileLoad CFI state decoder: tools/portlib/native_fileload_unwind.py; tests/test_native_fileload_unwind.py.
+- Dedicated CFI run 46100321645 / job 140841047537: COMPLETED SUCCESS, raw log inspected; 6/6 pinned targets decoded, 0 unsupported/unmapped/ambiguous.
+- Broad foundation run 46100321670 / job 140841047578: COMPLETED SUCCESS, raw log inspected, 74 proof JSON files.
+- P32 packaging fix commit fbd13b35c07e88642ba3e5afb5818e678176807a (parent 48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3). Run 46100950488 / build job 140843020466: COMPLETED SUCCESS; artifact 15245441982, ZIP SHA256 2b5cd550145ae661200e1ce574eff0c6688d611c1e6b9d9dd96b804e73e8e9d1; subsdk9 128446 bytes, SHA256 fec2462e48e6960b225692f9ab2c68a481c21e049d800d51d91d09574a82b504. Build-only; no Uzuy/gameplay test.
+- Historical P32 failure 46099189607 was repaired: artifact collection tried to copy three absent root files. Current workflow generates a factual README and no longer copies absent optional files.
+- Original main SHA256 remains 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9. Preserve Sakura aura107 and Event236 marker 0x4E53 +0x2A plus no-marker variant.
 
-## Verified static FileLoad caller slice
+Research findings:
+- NSC-ModManager and NSC-Toolbox project pins contain the same relevant parser/editor/model blobs as their 2.1.2.1 release tags.
+- UltimateStormAPI pin a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc includes command 29 TakeOverEnemyProjectiles, absent in comparison parent 1c3460573fa70b595e6bfa70e52f83f1c3f74f12. Cases 27/28 and SetProjectileDeflection existed in both. Command 29 uses PC Windows mutex/time/engine state; do not port without Switch ABI proof.
+- PyCriCodecs CPK/UTF sources were checked. REA binary diagnostics profile is not AArch64-capable.
 
-- 114 raw aligned direct B/BL candidates to `0x116b390`: 111 BL, 3 B.
-- Capstone confirmed all 114; 0 unconfirmed.
-- 86 bounded 0x40-byte prelude signature clusters; size histogram `{7:1,5:3,4:1,2:7,1:74}`.
-- The two table-path calls `0x116b8a4` and `0x116b928` are the only members of one two-entry signature group. Both have `LDR X0,[X8,#0x28]` as the only X0-X7 syntactic write in their 0x40-byte linear window.
-- The last writes are explicitly not proven reaching definitions; no ABI or parameter meaning is claimed.
-- Artifact report SHA256 `86d3dc5b153d915c0b1c4ea70f03bf664fd5cc23329d630251c43e0f727e6bbb`.
+CFI evidence:
+- GNU .eh_frame_hdr: segment 1 VA 0x12f6000; header offset 0x8ad0a8 / VA 0x1ba30a8; .eh_frame VA 0x1c49fd0; 85,474 FDE records.
+- Helper BR X2 at 0x116b3d0 and table-path calls 0x116b8a4 / 0x116b928 each decode CFA=SP+0x20, X19 recovery at CFA-8, LR/X30 recovery at CFA-0x20.
+- FDE ranges are unwind coverage, NOT verified function identity. CFI is static unwind metadata, NOT runtime register capture. Function identity, consumer ABI, object ownership, callback, lock/unlock, async lifetime, rollback/unbind/destructor and archive precedence remain unresolved.
 
-## Upstream pin finding
+Next vertical slice:
+1. Trace all static and indirect writers to the 64-slot FileLoad table at 0x4371800; distinguish the explicit zeroing path from any dynamic/aliased writer.
+2. Resolve the object/value returned by 0x116b82c and the memory source feeding [X8,#0x58] -> BR X2 at 0x116b3d0. Do not assume C++ vtable or object type.
+3. Map direct and indirect inbound edges to the relevant FDE coverage ranges; preserve the non-function-identity label.
+4. Only after dispatch identity, prove lock/unlock pairing, callbacks, async lifetime, rollback, unbind/destructor, then archive precedence.
 
-The repo does **not** pin an older 2.1.2.0 parser/editor. NSC-ModManager pin `276116eb...` and NSC-Toolbox pin `6f780cb...` are each one commit ahead of their 2.1.2.1 release tag; inspected XFBIN parser/model/editor blobs match the 2.1.2.1 tag. PC API pin `a2d0f...` includes command 29 `TakeOverEnemyProjectiles` in Windows source, but no Switch ARM64 ABI is proven. Details and blob IDs are in `handoff/evidence_fileload_helper_callers_20261128.md`.
-
-## Next required engineering slice
-
-1. Inspect the original main's ELF/NSO metadata for reliable FDE/unwind/function-boundary records covering the 114 caller sites, starting with `0x116b8a4` and `0x116b928`.
-2. If reliable extents exist, map each callsite to its exact containing function and trace direct incoming edges; if not, record the absence and stay with bounded CFG/direct-reference evidence.
-3. Continue tracing the register/memory provenance feeding `BR X2` at `0x116b3d0`, but do not infer object type, callback, vtable or consumer ABI from register shape alone.
-4. Preserve the verified 114/111/3 count; do not rerun the previous table census unless source changes.
-
-## Safety
-
-No runtime hooks or game writes. No consumer ABI, ownership/lifetime, lock/unlock, async, rollback/unbind, destructor, archive precedence, emulated ARM64 or Uzuy claim. Keep `full_moddingapi=false`, `ready_for_gameplay_test=false`, `emulator_tested=false`. Preserve Sakura aura107 and Event236 marker `0x4E53 +0x2A` plus unmarked Event236.
+Do not install hooks or write game runtime until ABI, ownership/lifecycle, callback, lock/unlock, async, rollback, unbind/destructor and archive precedence are proven. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. The P32 artifact is build-only and must not be presented as gameplay-ready.

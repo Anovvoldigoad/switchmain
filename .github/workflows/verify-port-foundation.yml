@@ -22,6 +22,8 @@ on:
       - '!tests/test_native_fileload_table_access.py'
       - '!tools/portlib/native_fileload_helper_callers.py'
       - '!tests/test_native_fileload_helper_callers.py'
+      - '!tools/portlib/native_fileload_unwind.py'
+      - '!tests/test_native_fileload_unwind.py'
 jobs:
   verify:
     runs-on: ubuntu-latest

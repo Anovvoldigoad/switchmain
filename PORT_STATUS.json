@@ -1242,7 +1242,7 @@
     "consumer_abi_proven": false,
     "emulator_tested": false
   },
-  "pending_ci_note": "No pending CI for the latest static-analysis code commit. The registration target CFG is VERIFIED_CI_STATIC_ONLY on HEAD b094f345bb27b071fcb509b1fbc7cdf3eee5ac5e; runtime ABI, ownership, destructor, archive precedence and Uzuy remain unresolved.",
+  "pending_ci_note": "No pending Actions runs remain for the branch after the CFI and P32 packaging commits; all latest relevant runs were completed and raw job logs inspected.",
   "native_fileopen_call_free_witness": {
     "status": "PENDING_CI",
     "parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
@@ -2191,35 +2191,32 @@
     "uzuy_verified": false,
     "next": "Inspect exact SP-relative X19 save/restore and all return paths in 0x120a6c8; require path-sensitive same-slot proof for every return and recursively apply only to exact direct targets. Preserve barriers for all unproven callees; no AAPCS64 assumption, no runtime hook."
   },
-  "latest_verified_code_commit": "2b06a49730dc3bdf9816cc7f4f984231aa34b4fe",
-  "latest_verified_code_parent": "3982db7cbea721a3308870945cd29dad6598a5ba",
+  "latest_verified_code_commit": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+  "latest_verified_code_parent": "2133abb9534561eeacf47ffeff54a08e99339880",
   "latest_verified_code_ci": {
-    "head": "2b06a49730dc3bdf9816cc7f4f984231aa34b4fe",
-    "parent": "3982db7cbea721a3308870945cd29dad6598a5ba",
-    "workflows": [
-      {
-        "name": "fileload_registration_lifecycle",
-        "run_id": 46086093686,
-        "job_id": 140795884030,
-        "run_number": 2,
-        "conclusion": "success",
-        "raw_log_inspected": true,
-        "artifact_id": 15238478983,
-        "artifact_zip_sha256": "7e6362c66972f6d35588a73c6ae25cc9aed3d6285b674d9ef479a4789bd87fd3",
-        "report_json_sha256": "51fb342cffdb2b39ea7d3c72aa21c21afcb20b6ea1c979a15f91eba4de74c949"
-      }
-    ],
+    "head": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+    "parent": "2133abb9534561eeacf47ffeff54a08e99339880",
     "all_completed_success": true,
     "raw_job_logs_inspected": true,
-    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-    "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
-    "original_main_size_bytes": 27701509,
-    "host_static_test_pass": true,
-    "emulated_arm64_for_new_analyzer": false,
-    "uzuy_runtime_tested": false,
-    "consumer_abi_verified": false,
-    "ownership_lifecycle_verified": false,
-    "archive_precedence_verified": false
+    "workflows": [
+      {
+        "name": "Build NSC P32 file-open vs XFBIN-read trace / unwind-proof",
+        "run_id": 46100321645,
+        "job_id": 140841047537,
+        "conclusion": "success",
+        "artifact_id": 15245162374,
+        "artifact_zip_sha256": "ac07da627905706da9e45f0a86b1620d1d32a3e6ee47059d0d2331e442a25101"
+      },
+      {
+        "name": "Verify Switch port foundation (not a gameplay release)",
+        "run_id": 46100321670,
+        "job_id": 140841047578,
+        "conclusion": "success",
+        "artifact_id": 15245303059,
+        "artifact_zip_sha256": "aaf920f3a76d53937a8f4faefb913eb9e430fe6b13329b538ca2f29d794868b5"
+      }
+    ],
+    "note": "The P32 build job was not run on this code commit; its build-only artifact was produced separately by fbd13b35c07e88642ba3e5afb5818e678176807a."
   },
   "native_fileload_x19_stack_restore_20261128": {
     "state": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
@@ -2717,7 +2714,8 @@
       "destructor_identity_verified": false,
       "ownership_lifecycle_verified": false,
       "native_consumer_abi_verified": false
-    }
+    },
+    "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags."
   },
   "native_fileload_registration_dispatch_20261128": {
     "state": "VERIFIED_CI_STATIC_ONLY",
@@ -2906,7 +2904,8 @@
       "ownership_lifecycle_verified": false,
       "native_consumer_abi_verified": false,
       "archive_precedence_verified": false
-    }
+    },
+    "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags."
   },
   "native_fileload_registration_lifecycle_20261128": {
     "state": "VERIFIED_CI_STATIC_ONLY",
@@ -3173,7 +3172,8 @@
       "archive_precedence_verified": false,
       "emulated_arm64": false,
       "uzuy": false
-    }
+    },
+    "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags."
   },
   "native_fileload_helper_callers_20261128": {
     "state": "VERIFIED_STATIC_CI_ONLY",
@@ -3342,41 +3342,501 @@
         "artifact_id": 15242816479,
         "artifact_zip_sha256": "30ae8c3758ad669ed15fa6ea87057ea2ac63f170316c6e5bd121047ca96ce296"
       }
-    }
+    },
+    "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags."
   },
   "upstream_pin_comparison_20261128": {
-    "manager": {
-      "repository": "TheLeonX/NSC-ModManager",
-      "repo_pin": "276116ebf5ba398a867793cb02ee6c33c0927645",
+    "nsc_mod_manager": {
       "release_tag": "2.1.2.1",
-      "tag_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
-      "relationship": "repo pin is one commit ahead of the release tag; commit message 2.1.2.1 update",
-      "code_blobs_identical": {
+      "release_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+      "project_pin": "276116ebf5ba398a867793cb02ee6c33c0927645",
+      "matching_blobs": {
         "XfbinParser.cs": "faf79d588fd8beb3f5761faebedd2252853b2f2b",
         "Model/SkillCustomizeParamModel.cs": "6a891e237d27fdf01336f806dbef8767d609a304",
         "Model/SpSkillCustomizeParamModel.cs": "2b518f6eeb9ef97895517582e393a2adf9ee6da0"
-      }
+      },
+      "conclusion": "The relevant parser/model blobs are byte-identical between the 2.1.2.1 tag and the project pin; no parser bump is needed for this slice."
     },
-    "toolbox": {
-      "repository": "TheLeonX/NSC-Toolbox",
-      "repo_pin": "6f780cb6814f07e03c16b3e78d97dde4e4368983",
+    "nsc_toolbox": {
       "release_tag": "2.1.2.1",
-      "tag_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
-      "relationship": "repo pin is one commit ahead of the release tag; commit message 2.1.2.1 update",
-      "code_blobs_identical": {
+      "release_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+      "project_pin": "6f780cb6814f07e03c16b3e78d97dde4e4368983",
+      "matching_blobs": {
         "XfbinParser.cs": "86c63708edf2698b5bc1c2a54c0480cce014b525",
         "Model/SkillEditorModel.cs": "e165471682e4a7aed91094ef07f92df271f31639",
-        "ViewModel/SkillEditorViewModel.cs": "870af492c41f26c2aab07c216b6fa5fd00ac2cbf",
-        "Model/ConditionPrmModel.cs": "2827ca9e484eafb0c7435f066d42ff3e9345e17c"
+        "Model/SkillCustomizeParamModel.cs": "1b45c89ca9d36b6db874603cdc28290d2b019f25",
+        "Model/SpSkillCustomizeParamModel.cs": "b684c33e2acec0ec5527864b86899e6277a15e53"
+      },
+      "conclusion": "The parser/editor/model blobs match the 2.1.2.1 tag exactly at the project pin."
+    },
+    "ultimate_storm_api": {
+      "project_pin": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+      "comparison_parent": "1c3460573fa70b595e6bfa70e52f83f1c3f74f12",
+      "file": "xinput9_1_0/MovesetPlus.cpp",
+      "pin_blob": "d7c5dbbebd60415f8d304321f083897658a86146",
+      "parent_blob": "e96af51210e96926a7bdaa70c44b6645f1a2b2b6",
+      "pin_size": 115197,
+      "parent_size": 111773,
+      "findings": {
+        "case_27_present_in_both": true,
+        "case_28_present_in_both": true,
+        "SetProjectileDeflection_present_in_both": true,
+        "case_29_present_only_in_pin": true,
+        "TakeOverEnemyProjectiles_present_only_in_pin": true
+      },
+      "command_29_semantics": "Reads player side at version-specific offset, snapshots GetTickCount64, locks g_deflectProjectileMutex, queues recently active projectile handles with target side and expiry now+250ms, and drops stale entries older than 250ms. PC Windows mutex/timing/engine hooks are not a Switch ABI."
+    },
+    "pycri_codecs": {
+      "commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+      "PyCriCodecs/cpk.py": "2ed2cbb2c6112124013ab52755dba8a443e91306",
+      "PyCriCodecs/utf.py": "d1662d140a48cae37a6696213ee441aed4076edb",
+      "role": "Independent CRI CPK/UTF format reference only; not proof of Storm engine ownership or archive precedence."
+    },
+    "rea": {
+      "commit": "0386efd1e1dfa41af41f804a6be56c6f5b7615d4",
+      "docs/binary-diagnostics.md": "b58b8d04dc799813d0ebe0dcd4889560c707553c",
+      "role": "The inspected diagnostics profile does not provide AArch64 support; not used to decode the Switch main."
+    },
+    "switch_v170_original_main": {
+      "git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "bytes": 27701509,
+      "sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+    }
+  },
+  "latest_p32_build": {
+    "state": "BUILD_ARTIFACT_CI_PASS_NOT_GAMEPLAY",
+    "commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+    "parent_sha": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+    "workflow": ".github/workflows/build-subsdk9-p32.yml",
+    "run_id": 46100950488,
+    "job_id": 140843020466,
+    "conclusion": "success",
+    "raw_log_inspected": true,
+    "unwind_proof_job": "skipped because the CFI test had already passed on code commit 48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+    "artifact_id": 15245441982,
+    "artifact_name": "NSC-P32-file-open-xfbin-read-trace-subsdk9",
+    "artifact_bytes": 101471,
+    "artifact_zip_sha256": "2b5cd550145ae661200e1ce574eff0c6688d611c1e6b9d9dd96b804e73e8e9d1",
+    "contents": [
+      "SHA256SUMS.txt",
+      "README_P32.txt",
+      "atmosphere/contents/0100FA10190A0000/exefs/subsdk9"
+    ],
+    "subsdk9_bytes": 128446,
+    "subsdk9_sha256": "fec2462e48e6960b225692f9ab2c68a481c21e049d800d51d91d09574a82b504",
+    "runtime_tested": false,
+    "uzuy_tested": false,
+    "gameplay_tested": false,
+    "full_moddingapi": false,
+    "fix": "Generated factual README_P32.txt during collection and removed copies of three untracked root files; artifact no longer fails on missing README/analyzer/P30 manifest."
+  },
+  "native_fileload_cfi_state_20261128": {
+    "state": "VERIFIED_STATIC_CI_ONLY",
+    "code_commit": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+    "parent_sha": "2133abb9534561eeacf47ffeff54a08e99339880",
+    "source_path": "tools/portlib/native_fileload_unwind.py",
+    "source_blob": "c6028a9e28fe644cea5a798bb40b3c7b4b78cbb8",
+    "test_path": "tests/test_native_fileload_unwind.py",
+    "test_blob": "c27d2a276bb0eb0592d88fe220546d845ecfbf0e",
+    "original_main_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+    "original_main_bytes": 27701509,
+    "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+    "eh_frame_header": {
+      "segment_index": 1,
+      "segment_va": "0x12f6000",
+      "header_offset": "0x8ad0a8",
+      "header_va": "0x1ba30a8",
+      "header_sha256": "6d7ff19ab079d7c609426068ad42bfa18ed9f89f9763421e1fe1d2fb4c38be63",
+      "eh_frame_va": "0x1c49fd0",
+      "fde_count": 85474,
+      "pointer_encodings": {
+        "eh_frame_ptr": "0x1b",
+        "fde_count": "0x03",
+        "table": "0x3b"
       }
     },
-    "pc_api": {
-      "repository": "TheLeonX/UltimateStormAPI",
-      "repo_pin": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
-      "relationship": "pinned 2.1.2.1 update commit",
-      "movesetplus_cpp_blob": "d7c5dbbebd60415f8d304321f083897658a86146",
-      "command_29": "TakeOverEnemyProjectiles exists in PC Windows source; not yet implemented for Switch"
+    "cfi_state_counts": {
+      "decoded": 6,
+      "unsupported": 0,
+      "unmapped": 0,
+      "ambiguous": 0
     },
-    "conclusion": "The repository does not pin an older ModManager/Toolbox 2.1.2.0 source. Both local pins are one commit ahead of the 2.1.2.1 release tags, and the inspected parser/editor source blobs match the 2.1.2.1 tags."
+    "cfi_program_sha256": {
+      "cie": "f8aaf13068d81140945b197220cd9bf478587c3c298f1296f7e986980f01e0d6",
+      "fde": "5be1cf4f1b3ddd888579050e7c8da5bf89b46a9d386aecabe02c647d61e7d6b5"
+    },
+    "targets": [
+      {
+        "name": "fileload_helper_entry",
+        "pc": "0x116b390",
+        "fde": "0x116b390..0x116b3f0",
+        "cfa": "SP+0",
+        "x19": "unspecified",
+        "lr": "unspecified"
+      },
+      {
+        "name": "fileload_helper_br_x2",
+        "pc": "0x116b3d0",
+        "fde": "0x116b390..0x116b3f0",
+        "cfa": "SP+0x20",
+        "x19": "CFA-8",
+        "lr": "CFA-0x20"
+      },
+      {
+        "name": "registration_walk_candidate",
+        "pc": "0x116b888",
+        "fde": "0x116b888..0x116b90c",
+        "cfa": "SP+0",
+        "x19": "unspecified",
+        "lr": "unspecified"
+      },
+      {
+        "name": "second_table_path_range_start",
+        "pc": "0x116b90c",
+        "fde": "0x116b90c..0x116b990",
+        "cfa": "SP+0",
+        "x19": "unspecified",
+        "lr": "unspecified"
+      },
+      {
+        "name": "table_path_call_0",
+        "pc": "0x116b8a4",
+        "fde": "0x116b888..0x116b90c",
+        "cfa": "SP+0x20",
+        "x19": "CFA-8",
+        "lr": "CFA-0x20"
+      },
+      {
+        "name": "table_path_call_1",
+        "pc": "0x116b928",
+        "fde": "0x116b90c..0x116b990",
+        "cfa": "SP+0x20",
+        "x19": "CFA-8",
+        "lr": "CFA-0x20"
+      }
+    ],
+    "interpretation": "CFI recovery rules at exact PCs, not runtime register capture. FDE ranges are unwind coverage, not proven function identity or ABI.",
+    "tests": {
+      "synthetic_positive": [
+        "CFA register+offset",
+        "X19 offset rule",
+        "restore rule at advance boundary"
+      ],
+      "synthetic_negative": [
+        "unsupported DW_CFA opcode",
+        "truncated operand"
+      ],
+      "synthetic_boundary": [
+        "query at FDE end rejected"
+      ],
+      "authentic_main": "six target PCs decoded; 0 unsupported/unmapped/ambiguous"
+    },
+    "ci": {
+      "run_id": 46100321645,
+      "job_id": 140841047537,
+      "conclusion": "success",
+      "raw_log_inspected": true,
+      "artifact_id": 15245162374,
+      "artifact_zip_sha256": "ac07da627905706da9e45f0a86b1620d1d32a3e6ee47059d0d2331e442a25101",
+      "report_json_sha256": "432a57d02bd7056861a45642d5bb2b96d56c8dae430e0de47a59cf6e9c3a1be9"
+    },
+    "broad_foundation_ci": {
+      "run_id": 46100321670,
+      "job_id": 140841047578,
+      "conclusion": "success",
+      "raw_log_inspected": true,
+      "artifact_id": 15245303059,
+      "artifact_zip_sha256": "aaf920f3a76d53937a8f4faefb913eb9e430fe6b13329b538ca2f29d794868b5",
+      "artifact_json_files": 74
+    },
+    "limits": {
+      "function_identity_verified": false,
+      "consumer_abi_verified": false,
+      "ownership_verified": false,
+      "callback_verified": false,
+      "lock_unlock_semantics_verified": false,
+      "async_lifecycle_verified": false,
+      "rollback_unbind_destructor_verified": false,
+      "archive_precedence_verified": false,
+      "arm64_emulated_cfi_test": false,
+      "uzuy_runtime_tested": false,
+      "gameplay_tested": false
+    },
+    "next_action": "Resolve the table slot producer and object/dataflow feeding [X8,#0x58] -> BR X2 at 0x116b3d0; preserve all FDE coverage labels as non-function-identity evidence."
+  },
+  "latest_historical_ci_failure_repaired": {
+    "run_id": 46099189607,
+    "job_id": 140837518830,
+    "commit": "962fe4467d8d2d50a6020123177809696bf69d17",
+    "conclusion": "failure",
+    "step": "Collect and verify output",
+    "cause": "README_P32.txt, analyze_p32_log.py, and P30_MANIFEST_ROW_AUDIT.json were absent at repository root; the module had compiled but artifact collection failed.",
+    "repaired_by": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+    "repaired_run": 46100950488
+  },
+  "latest_pending_head_ci": null,
+  "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags.",
+  "next_execution": {
+    "date": "2026-11-28",
+    "branch_head_before_checkpoint_commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+    "implementation_commit": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+    "implementation_parent": "2133abb9534561eeacf47ffeff54a08e99339880",
+    "build_workflow_commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+    "build_workflow_parent": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+    "cfi_state": {
+      "state": "VERIFIED_STATIC_CI_ONLY",
+      "code_commit": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+      "parent_sha": "2133abb9534561eeacf47ffeff54a08e99339880",
+      "source_path": "tools/portlib/native_fileload_unwind.py",
+      "source_blob": "c6028a9e28fe644cea5a798bb40b3c7b4b78cbb8",
+      "test_path": "tests/test_native_fileload_unwind.py",
+      "test_blob": "c27d2a276bb0eb0592d88fe220546d845ecfbf0e",
+      "original_main_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "original_main_bytes": 27701509,
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "eh_frame_header": {
+        "segment_index": 1,
+        "segment_va": "0x12f6000",
+        "header_offset": "0x8ad0a8",
+        "header_va": "0x1ba30a8",
+        "header_sha256": "6d7ff19ab079d7c609426068ad42bfa18ed9f89f9763421e1fe1d2fb4c38be63",
+        "eh_frame_va": "0x1c49fd0",
+        "fde_count": 85474,
+        "pointer_encodings": {
+          "eh_frame_ptr": "0x1b",
+          "fde_count": "0x03",
+          "table": "0x3b"
+        }
+      },
+      "cfi_state_counts": {
+        "decoded": 6,
+        "unsupported": 0,
+        "unmapped": 0,
+        "ambiguous": 0
+      },
+      "cfi_program_sha256": {
+        "cie": "f8aaf13068d81140945b197220cd9bf478587c3c298f1296f7e986980f01e0d6",
+        "fde": "5be1cf4f1b3ddd888579050e7c8da5bf89b46a9d386aecabe02c647d61e7d6b5"
+      },
+      "targets": [
+        {
+          "name": "fileload_helper_entry",
+          "pc": "0x116b390",
+          "fde": "0x116b390..0x116b3f0",
+          "cfa": "SP+0",
+          "x19": "unspecified",
+          "lr": "unspecified"
+        },
+        {
+          "name": "fileload_helper_br_x2",
+          "pc": "0x116b3d0",
+          "fde": "0x116b390..0x116b3f0",
+          "cfa": "SP+0x20",
+          "x19": "CFA-8",
+          "lr": "CFA-0x20"
+        },
+        {
+          "name": "registration_walk_candidate",
+          "pc": "0x116b888",
+          "fde": "0x116b888..0x116b90c",
+          "cfa": "SP+0",
+          "x19": "unspecified",
+          "lr": "unspecified"
+        },
+        {
+          "name": "second_table_path_range_start",
+          "pc": "0x116b90c",
+          "fde": "0x116b90c..0x116b990",
+          "cfa": "SP+0",
+          "x19": "unspecified",
+          "lr": "unspecified"
+        },
+        {
+          "name": "table_path_call_0",
+          "pc": "0x116b8a4",
+          "fde": "0x116b888..0x116b90c",
+          "cfa": "SP+0x20",
+          "x19": "CFA-8",
+          "lr": "CFA-0x20"
+        },
+        {
+          "name": "table_path_call_1",
+          "pc": "0x116b928",
+          "fde": "0x116b90c..0x116b990",
+          "cfa": "SP+0x20",
+          "x19": "CFA-8",
+          "lr": "CFA-0x20"
+        }
+      ],
+      "interpretation": "CFI recovery rules at exact PCs, not runtime register capture. FDE ranges are unwind coverage, not proven function identity or ABI.",
+      "tests": {
+        "synthetic_positive": [
+          "CFA register+offset",
+          "X19 offset rule",
+          "restore rule at advance boundary"
+        ],
+        "synthetic_negative": [
+          "unsupported DW_CFA opcode",
+          "truncated operand"
+        ],
+        "synthetic_boundary": [
+          "query at FDE end rejected"
+        ],
+        "authentic_main": "six target PCs decoded; 0 unsupported/unmapped/ambiguous"
+      },
+      "ci": {
+        "run_id": 46100321645,
+        "job_id": 140841047537,
+        "conclusion": "success",
+        "raw_log_inspected": true,
+        "artifact_id": 15245162374,
+        "artifact_zip_sha256": "ac07da627905706da9e45f0a86b1620d1d32a3e6ee47059d0d2331e442a25101",
+        "report_json_sha256": "432a57d02bd7056861a45642d5bb2b96d56c8dae430e0de47a59cf6e9c3a1be9"
+      },
+      "broad_foundation_ci": {
+        "run_id": 46100321670,
+        "job_id": 140841047578,
+        "conclusion": "success",
+        "raw_log_inspected": true,
+        "artifact_id": 15245303059,
+        "artifact_zip_sha256": "aaf920f3a76d53937a8f4faefb913eb9e430fe6b13329b538ca2f29d794868b5",
+        "artifact_json_files": 74
+      },
+      "limits": {
+        "function_identity_verified": false,
+        "consumer_abi_verified": false,
+        "ownership_verified": false,
+        "callback_verified": false,
+        "lock_unlock_semantics_verified": false,
+        "async_lifecycle_verified": false,
+        "rollback_unbind_destructor_verified": false,
+        "archive_precedence_verified": false,
+        "arm64_emulated_cfi_test": false,
+        "uzuy_runtime_tested": false,
+        "gameplay_tested": false
+      },
+      "next_action": "Resolve the table slot producer and object/dataflow feeding [X8,#0x58] -> BR X2 at 0x116b3d0; preserve all FDE coverage labels as non-function-identity evidence."
+    },
+    "p32_build": {
+      "state": "BUILD_ARTIFACT_CI_PASS_NOT_GAMEPLAY",
+      "commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+      "parent_sha": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+      "workflow": ".github/workflows/build-subsdk9-p32.yml",
+      "run_id": 46100950488,
+      "job_id": 140843020466,
+      "conclusion": "success",
+      "raw_log_inspected": true,
+      "unwind_proof_job": "skipped because the CFI test had already passed on code commit 48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+      "artifact_id": 15245441982,
+      "artifact_name": "NSC-P32-file-open-xfbin-read-trace-subsdk9",
+      "artifact_bytes": 101471,
+      "artifact_zip_sha256": "2b5cd550145ae661200e1ce574eff0c6688d611c1e6b9d9dd96b804e73e8e9d1",
+      "contents": [
+        "SHA256SUMS.txt",
+        "README_P32.txt",
+        "atmosphere/contents/0100FA10190A0000/exefs/subsdk9"
+      ],
+      "subsdk9_bytes": 128446,
+      "subsdk9_sha256": "fec2462e48e6960b225692f9ab2c68a481c21e049d800d51d91d09574a82b504",
+      "runtime_tested": false,
+      "uzuy_tested": false,
+      "gameplay_tested": false,
+      "full_moddingapi": false,
+      "fix": "Generated factual README_P32.txt during collection and removed copies of three untracked root files; artifact no longer fails on missing README/analyzer/P30 manifest."
+    },
+    "ci": {
+      "head": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
+      "parent": "2133abb9534561eeacf47ffeff54a08e99339880",
+      "all_completed_success": true,
+      "raw_job_logs_inspected": true,
+      "workflows": [
+        {
+          "name": "Build NSC P32 file-open vs XFBIN-read trace / unwind-proof",
+          "run_id": 46100321645,
+          "job_id": 140841047537,
+          "conclusion": "success",
+          "artifact_id": 15245162374,
+          "artifact_zip_sha256": "ac07da627905706da9e45f0a86b1620d1d32a3e6ee47059d0d2331e442a25101"
+        },
+        {
+          "name": "Verify Switch port foundation (not a gameplay release)",
+          "run_id": 46100321670,
+          "job_id": 140841047578,
+          "conclusion": "success",
+          "artifact_id": 15245303059,
+          "artifact_zip_sha256": "aaf920f3a76d53937a8f4faefb913eb9e430fe6b13329b538ca2f29d794868b5"
+        }
+      ],
+      "note": "The P32 build job was not run on this code commit; its build-only artifact was produced separately by fbd13b35c07e88642ba3e5afb5818e678176807a."
+    },
+    "upstream_pin_comparison": {
+      "nsc_mod_manager": {
+        "release_tag": "2.1.2.1",
+        "release_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+        "project_pin": "276116ebf5ba398a867793cb02ee6c33c0927645",
+        "matching_blobs": {
+          "XfbinParser.cs": "faf79d588fd8beb3f5761faebedd2252853b2f2b",
+          "Model/SkillCustomizeParamModel.cs": "6a891e237d27fdf01336f806dbef8767d609a304",
+          "Model/SpSkillCustomizeParamModel.cs": "2b518f6eeb9ef97895517582e393a2adf9ee6da0"
+        },
+        "conclusion": "The relevant parser/model blobs are byte-identical between the 2.1.2.1 tag and the project pin; no parser bump is needed for this slice."
+      },
+      "nsc_toolbox": {
+        "release_tag": "2.1.2.1",
+        "release_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+        "project_pin": "6f780cb6814f07e03c16b3e78d97dde4e4368983",
+        "matching_blobs": {
+          "XfbinParser.cs": "86c63708edf2698b5bc1c2a54c0480cce014b525",
+          "Model/SkillEditorModel.cs": "e165471682e4a7aed91094ef07f92df271f31639",
+          "Model/SkillCustomizeParamModel.cs": "1b45c89ca9d36b6db874603cdc28290d2b019f25",
+          "Model/SpSkillCustomizeParamModel.cs": "b684c33e2acec0ec5527864b86899e6277a15e53"
+        },
+        "conclusion": "The parser/editor/model blobs match the 2.1.2.1 tag exactly at the project pin."
+      },
+      "ultimate_storm_api": {
+        "project_pin": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+        "comparison_parent": "1c3460573fa70b595e6bfa70e52f83f1c3f74f12",
+        "file": "xinput9_1_0/MovesetPlus.cpp",
+        "pin_blob": "d7c5dbbebd60415f8d304321f083897658a86146",
+        "parent_blob": "e96af51210e96926a7bdaa70c44b6645f1a2b2b6",
+        "pin_size": 115197,
+        "parent_size": 111773,
+        "findings": {
+          "case_27_present_in_both": true,
+          "case_28_present_in_both": true,
+          "SetProjectileDeflection_present_in_both": true,
+          "case_29_present_only_in_pin": true,
+          "TakeOverEnemyProjectiles_present_only_in_pin": true
+        },
+        "command_29_semantics": "Reads player side at version-specific offset, snapshots GetTickCount64, locks g_deflectProjectileMutex, queues recently active projectile handles with target side and expiry now+250ms, and drops stale entries older than 250ms. PC Windows mutex/timing/engine hooks are not a Switch ABI."
+      },
+      "pycri_codecs": {
+        "commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+        "PyCriCodecs/cpk.py": "2ed2cbb2c6112124013ab52755dba8a443e91306",
+        "PyCriCodecs/utf.py": "d1662d140a48cae37a6696213ee441aed4076edb",
+        "role": "Independent CRI CPK/UTF format reference only; not proof of Storm engine ownership or archive precedence."
+      },
+      "rea": {
+        "commit": "0386efd1e1dfa41af41f804a6be56c6f5b7615d4",
+        "docs/binary-diagnostics.md": "b58b8d04dc799813d0ebe0dcd4889560c707553c",
+        "role": "The inspected diagnostics profile does not provide AArch64 support; not used to decode the Switch main."
+      },
+      "switch_v170_original_main": {
+        "git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+        "bytes": 27701509,
+        "sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+      }
+    },
+    "historical_failure_repaired": {
+      "run_id": 46099189607,
+      "job_id": 140837518830,
+      "commit": "962fe4467d8d2d50a6020123177809696bf69d17",
+      "conclusion": "failure",
+      "step": "Collect and verify output",
+      "cause": "README_P32.txt, analyze_p32_log.py, and P30_MANIFEST_ROW_AUDIT.json were absent at repository root; the module had compiled but artifact collection failed.",
+      "repaired_by": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+      "repaired_run": 46100950488
+    },
+    "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags."
   }
 }

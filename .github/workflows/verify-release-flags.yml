@@ -1,0 +1,27 @@
+name: Verify release flags (not a gameplay release)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [port/full-api-v170]
+    paths:
+      - "PORT_STATUS.json"
+      - "tests/test_release_flags.py"
+      - ".github/workflows/verify-release-flags.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reject untested gameplay release flags
+        run: python tests/test_release_flags.py --status PORT_STATUS.json --checkpoint handoff/checkpoint.json --output release-flags-work
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RELEASE_FLAGS_NOT_A_GAMEPLAY_RELEASE
+          path: release-flags-work/*.json
+          if-no-files-found: error
