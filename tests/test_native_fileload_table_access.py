@@ -16,6 +16,7 @@ from portlib.native_fileload_table_access import (
     inspect,
     scan_address_page,
     scan_relocations_to_range,
+    scan_direct_b_bl_inbound,
 )
 
 
@@ -71,6 +72,33 @@ def encode_mov64(rd, rm):
 
 def encode_add_reg(rd, rn, rm):
     return 0x8B000000 | (rm << 16) | (rn << 5) | rd
+
+
+
+def encode_branch(pc, target, link=False):
+    delta = target - pc
+    if delta % 4:
+        raise ValueError("Synthetic branch target is not word aligned")
+    immediate = delta // 4
+    if not -(1 << 25) <= immediate < (1 << 25):
+        raise ValueError("Synthetic branch target is out of range")
+    return (0x94000000 if link else 0x14000000) | (immediate & 0x03FFFFFF)
+
+
+def synthetic_direct_branch_scan():
+    code = bytearray(0x40)
+    put_word(code, 0x00, encode_branch(0x00, 0x20, link=True))
+    put_word(code, 0x04, encode_branch(0x04, 0x20, link=False))
+    put_word(code, 0x08, encode_branch(0x08, 0x30, link=True))
+    put_word(code, 0x20, encode_branch(0x20, 0x00, link=False))
+    rows = scan_direct_b_bl_inbound(bytes(code), 0x20)
+    assert [(row["site"], row["kind"]) for row in rows] == [
+        ("0x0", "BL"), ("0x4", "B")
+    ]
+    assert scan_direct_b_bl_inbound(bytes(code), 0x40) == []
+    expect_reject(lambda: scan_direct_b_bl_inbound(bytes(code), 0x21),
+                  "unaligned direct branch target")
+
 
 
 def synthetic_page_scan():
@@ -174,6 +202,7 @@ def synthetic_relocations():
 
 
 def run(main, output):
+    synthetic_direct_branch_scan()
     synthetic_page_scan()
     synthetic_register_add_scan()
     synthetic_relocations()
@@ -189,15 +218,15 @@ def run(main, output):
     assert int(table["bss_end"], 16) >= TABLE_END
 
     refs = {row["site"] for row in report["adrp_page_scan"]["page_references"]}
-    assert {"0x116b894", "0x116b8bc"} <= refs
-    assert report["first_slot_load"]["site"] == "0x116b8a0"
-    assert report["first_slot_load"]["effective_address"] == hex(TABLE_START)
-    assert len(report["cleanup_clear_writes"]) == 16
-    assert [row["site"] for row in report["cleanup_clear_writes"]] == [
-        hex(site) for site in range(0x116B8C4, 0x116B904, 4)
-    ]
-    assert all(row["width_bytes"] == 32
-               for row in report["cleanup_clear_writes"])
+    assert {"0x116b894", "0x116b8bc", "0x116b940"} <= refs
+    assert [row["first_slot_read"]["site"] for row in report["bounded_table_traversal_and_zeroing_candidates"]] == ["0x116b8a0", "0x116b924"]
+    assert all(row["clear_covered_bytes"] == 512 and row["q0_zero_through_last_store_in_bounded_cfg"] for row in report["bounded_table_traversal_and_zeroing_candidates"])
+    assert len(report["direct_reads"]) == 2
+    assert len(report["direct_writes"]) == 32
+    assert report["direct_write_candidates_outside_two_zeroing_sequences"] == []
+    helper_sites = {row["site"] for row in report["direct_b_bl_inbound"]["per_slot_helper_0x116b390"]}
+    assert {"0x116b8a4", "0x116b928"} <= helper_sites
+    assert any(call["site"] == "0x116b928" and call["target"] == "0x116b390" for call in report["bounded_table_traversal_and_zeroing_candidates"][1]["bounded_window"]["direct_calls_not_walked"])
     assert report["relocations"]["range_end_exclusive"] == hex(TABLE_END)
     for key, value in report["limits"].items():
         assert value is False, (key, value)
@@ -214,8 +243,8 @@ def run(main, output):
         "PINNED_FILELOAD_TABLE_ACCESS_CENSUS_PASS",
         "adrp_refs", report["adrp_page_scan"]["page_reference_count"],
         "direct_accesses", len(report["adrp_page_scan"]["direct_accesses"]),
-        "direct_writers_outside_cleanup",
-        len(report["direct_write_candidates_outside_cleanup"]),
+        "direct_writers_outside_two_zeroing_sequences",
+        len(report["direct_write_candidates_outside_two_zeroing_sequences"]),
         "NO_PRODUCER_NO_ABI_NO_UZUY_CLAIM",
     )
 

@@ -12,7 +12,7 @@ from capstone.arm64_const import ARM64_OP_IMM, ARM64_OP_MEM, ARM64_OP_REG
 
 from .native_cpk_graph import MAIN_SHA256
 from .native_fileload_guard_state import _decode_adrp_page
-from .native_fileload_registration_target import _memory_access_width
+from .native_fileload_registration_target import _memory_access_width, analyze_window
 from .native_fileopen_import import _read_image, _tags
 
 TABLE_START = 0x4371800
@@ -410,6 +410,54 @@ def scan_relocations_to_range(memory, tags, target_start=TABLE_START,
     }
 
 
+
+def scan_direct_b_bl_inbound(text, target):
+    """Inventory direct AArch64 B/BL immediate references to one aligned target."""
+    if (not isinstance(text, (bytes, bytearray, memoryview))
+            or not isinstance(target, int) or target < 0 or (target & 3)):
+        raise ValueError("Invalid direct B/BL scan inputs")
+    rows = []
+    for pc in range(0, len(text) - 3, 4):
+        word = struct.unpack_from("<I", text, pc)[0]
+        if word & 0x7C000000 != 0x14000000:
+            continue
+        immediate = word & 0x03FFFFFF
+        if immediate & (1 << 25):
+            immediate -= 1 << 26
+        destination = pc + (immediate << 2)
+        if destination == target:
+            rows.append({
+                "site": _hex(pc),
+                "kind": "BL" if word & 0x80000000 else "B",
+                "target": _hex(destination),
+                "word_le": bytes(text[pc:pc + 4]).hex(),
+            })
+    return rows
+
+
+def _verify_zero_vector_before_stores(window, clear_sites):
+    instructions = window["decoded_reachable_instructions"]
+    first_site = min(clear_sites)
+    last_site = max(clear_sites)
+    zero_defs = [
+        row for row in instructions
+        if int(row["pc"], 16) < first_site
+        and row["mnemonic"] == "movi"
+        and "v0" in row["written_registers"]
+        and "0x0" in row["immediates"]
+    ]
+    if not zero_defs:
+        raise ValueError("No reachable MOVI V0,#0 before the table clear sequence")
+    zero = max(zero_defs, key=lambda row: int(row["pc"], 16))
+    zero_pc = int(zero["pc"], 16)
+    for row in instructions:
+        pc = int(row["pc"], 16)
+        if zero_pc < pc <= last_site and {"v0", "q0", "d0", "s0", "h0", "b0"} & set(row["written_registers"]):
+            raise ValueError("V0/Q0 is modified after zeroing and before the last clear store")
+    return zero["pc"]
+
+
+
 def inspect(nso):
     digest = hashlib.sha256(nso).hexdigest()
     if digest != MAIN_SHA256:
@@ -427,28 +475,77 @@ def inspect(nso):
     scan = scan_address_page(text)
     accesses = scan["direct_accesses"]
     by_site = {row["site"]: row for row in accesses}
-    read = by_site.get("0x116b8a0")
-    if (read is None or read["direction"] != "read"
-            or read["effective_address"] != _hex(TABLE_START)
-            or read["width_bytes"] != 8):
-        raise ValueError("Expected direct first-slot load at 0x116b8a0 was not reproduced")
+    sequence_specs = [
+        {
+            "name": "bounded_path_a",
+            "window_start": 0x116B888,
+            "window_end": 0x116B988,
+            "read_site": 0x116B8A0,
+            "clear_start": 0x116B8C4,
+            "clear_end": 0x116B904,
+        },
+        {
+            "name": "bounded_path_b",
+            "window_start": 0x116B918,
+            "window_end": 0x116BA18,
+            "read_site": 0x116B924,
+            "clear_start": 0x116B948,
+            "clear_end": 0x116B988,
+        },
+    ]
+    clear_sequences = []
+    all_clear_sites = set()
+    for spec in sequence_specs:
+        window = analyze_window(text, spec["window_start"], spec["window_end"])
+        read_site = _hex(spec["read_site"])
+        read = by_site.get(read_site)
+        if (read is None or read["direction"] != "read"
+                or read["effective_address"] != _hex(TABLE_START)
+                or read["width_bytes"] != 8):
+            raise ValueError("Expected first-slot load was not reproduced at " + read_site)
+        if read_site not in {row["pc"] for row in window["memory_operands"]}:
+            raise ValueError("Bounded CFG window does not contain its first-slot load")
 
-    cleanup_offsets = list(range(0x1E0, -1, -0x20))
-    cleanup_sites = list(range(CLEANUP_START, CLEANUP_END, 4))
-    if len(cleanup_sites) != 16 or len(cleanup_offsets) != 16:
-        raise ValueError("Cleanup clear-range boundary constants are inconsistent")
-    cleanup_writes = []
-    for site, offset in zip(cleanup_sites, cleanup_offsets):
-        row = by_site.get(_hex(site))
-        if (row is None or row["direction"] != "write"
-                or row["effective_address"] != _hex(TABLE_START + offset)
-                or row["width_bytes"] != 32):
-            raise ValueError("Expected 32-byte table clear store changed at " + _hex(site))
-        cleanup_writes.append(row)
+        sites = list(range(spec["clear_start"], spec["clear_end"], 4))
+        offsets = list(range(0x1E0, -1, -0x20))
+        if len(sites) != 16 or len(offsets) != 16:
+            raise ValueError("Clear-sequence boundary constants are inconsistent")
+        clear_rows = []
+        for site, offset in zip(sites, offsets):
+            row = by_site.get(_hex(site))
+            if (row is None or row["direction"] != "write"
+                    or row["effective_address"] != _hex(TABLE_START + offset)
+                    or row["width_bytes"] != 32):
+                raise ValueError("Expected 32-byte table store changed at " + _hex(site))
+            clear_rows.append(row)
+            all_clear_sites.add(_hex(site))
+        if not set(_hex(site) for site in sites) <= {
+            row["pc"] for row in window["memory_operands"]
+        }:
+            raise ValueError("Bounded CFG window is missing a table clear store")
+        zero_site = _verify_zero_vector_before_stores(window, sites)
+        clear_sequences.append({
+            "name": spec["name"],
+            "bounded_window": window,
+            "first_slot_read": read,
+            "zero_vector_definition": zero_site,
+            "clear_store_sites": [_hex(site) for site in sites],
+            "clear_store_offsets": [_hex(offset) for offset in offsets],
+            "clear_store_width_bytes": 32,
+            "clear_covered_bytes": 512,
+            "q0_zero_through_last_store_in_bounded_cfg": True,
+            "function_extent_verified": False,
+            "destructor_identity_verified": False,
+        })
 
-    cleanup_set = {_hex(site) for site in cleanup_sites}
+    direct_reads = [row for row in accesses if row["direction"] == "read"]
     direct_writes = [row for row in accesses if row["direction"] == "write"]
-    outside_cleanup = [row for row in direct_writes if row["site"] not in cleanup_set]
+    outside_clear = [row for row in direct_writes if row["site"] not in all_clear_sites]
+    inbound = {
+        "per_slot_helper_0x116b390": scan_direct_b_bl_inbound(text, 0x116B390),
+        "bounded_path_a_start_0x116b888": scan_direct_b_bl_inbound(text, 0x116B888),
+        "bounded_path_b_start_0x116b918": scan_direct_b_bl_inbound(text, 0x116B918),
+    }
     relocations = scan_relocations_to_range(memory, _tags(memory))
 
     return {
@@ -464,15 +561,20 @@ def inspect(nso):
             "runtime_slot_values_verified": False,
         },
         "adrp_page_scan": scan,
-        "first_slot_load": read,
-        "cleanup_clear_writes": cleanup_writes,
-        "direct_write_candidates_outside_cleanup": outside_cleanup,
+        "bounded_table_traversal_and_zeroing_candidates": clear_sequences,
+        "direct_reads": direct_reads,
+        "direct_writes": direct_writes,
+        "direct_write_candidates_outside_two_zeroing_sequences": outside_clear,
+        "direct_b_bl_inbound": inbound,
         "relocations": relocations,
         "analysis_scope": {
             "all_aligned_adrp_words_to_page_scanned": True,
             "each_candidate_followed_linearly_until_control_flow_or_0x100_bytes": True,
-            "only_adrp_derived_register_addresses_and_statically_known_register_adds_are_followed": True,
-            "bounded_prefix_tracks_reaching_constants_before_each_adrp": True,
+            "bounded_0x20_byte_prefix_tracks_reaching_constants": True,
+            "register_add_only_propagated_when_both_values_are_known": True,
+            "two_bounded_cfg_windows_cover_both_read_and_zeroing_sequences": True,
+            "q0_zero_propagation_checked_inside_each_bounded_cfg_window": True,
+            "direct_b_bl_inbound_only_not_all_control_flow_edges": True,
             "indirect_pointer_aliases_and_indexed_effective_addresses_not_resolved": True,
             "a_missing_direct_writer_does_not_exclude_dynamic_or_aliased_writers": True,
             "no_function_extent_or_cxx_object_layout_inference": True,

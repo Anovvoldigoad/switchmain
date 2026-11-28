@@ -5670,7 +5670,7 @@
   },
   "native_fileload_table_access_census_20261128": {
     "state": "IMPLEMENTED_AWAITING_CI",
-    "parent_sha": "3ba748262c0790f781249cbb8c1eb55410aa538c",
+    "parent_sha": "05afa169bc47025b0ea18f3fae2b85da9601c54d",
     "source": "tools/portlib/native_fileload_table_access.py",
     "test": "tests/test_native_fileload_table_access.py",
     "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
@@ -5762,6 +5762,40 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Read the corrected lifecycle workflow raw job log and the table-access artifact. Direct reference candidates are not proof of complete writers; indirect aliases and runtime slot values remain unresolved. No hooks."
+    "next": "Read the extended lifecycle workflow raw log and artifact. Confirm the second bounded window, both zero-vector clear sequences and direct B/BL inbound callsites. Do not infer producer/destructor/ownership/ABI or runtime slot values.",
+    "previous_verified_revision": {
+      "code_commit": "05afa169bc47025b0ea18f3fae2b85da9601c54d",
+      "run_id": 46088613491,
+      "job_id": 140803970356,
+      "conclusion": "success",
+      "raw_log_inspected": true,
+      "table_artifact_id": 15240495894,
+      "table_artifact_zip_sha256": "d57051c1f0632439ad5ff042c01ccb67b10c790ad0b3bfc17c02e1daf12bfa9e",
+      "observed": {
+        "adrp_page_references": 89,
+        "direct_accesses": 34,
+        "direct_reads": 2,
+        "direct_writes": 32,
+        "writes_outside_first_clear_sequence": 16,
+        "dynamic_rela_records_scanned": 288973,
+        "relocation_destinations_in_table": 0,
+        "relocation_addends_pointing_into_table": 0
+      }
+    },
+    "current_extension": {
+      "two_bounded_windows": [
+        "0x116b888..0x116b988",
+        "0x116b918..0x116ba18"
+      ],
+      "first_slot_reads": [
+        "0x116b8a0",
+        "0x116b924"
+      ],
+      "clear_sequences": 2,
+      "clear_stores_per_sequence": 16,
+      "clear_bytes_per_sequence": 512,
+      "q0_zero_continuity_checked": true,
+      "direct_b_bl_inbound_to_helper": 18264976
+    }
   }
 }

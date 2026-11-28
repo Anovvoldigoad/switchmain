@@ -1409,3 +1409,10 @@ The first push added a separate workflow file but no Actions run was emitted for
 Raw lifecycle job 46088241951 / job 140802797820 showed why the first-slot assertion failed: X19 is set to XZR at 0x116b890, ADRP X20 is at 0x116b894, ADD X20,X20,#0x7d8 at 0x116b898, ADD X8,X20,X19 at 0x116b89c, and LDR X0,[X8,#0x28] at 0x116b8a0. The scanner only tracked immediate ADD. It now includes a bounded 0x20-byte prefix, models XZR and MOV, and propagates ADD-register only when both source values are known. Unknown values remain unresolved.
 
 The broad foundation workflow now excludes this isolated analyzer/test to avoid rerunning unrelated PASS suites; the already active FileLoad lifecycle workflow runs the new test and uploads a separate artifact. Previous failed attempts and raw-log inspection are recorded in the checkpoint. Follow-up parent: 3ba748262c0790f781249cbb8c1eb55410aa538c. CI pending.
+
+
+## 2026-11-28 — Dual FileLoad table traversal/zeroing census (IMPLEMENTED_AWAITING_CI)
+
+The first passing table artifact (run 46088613491, job 140803970356) showed 89 ADRP page references, 34 direct accesses, 2 first-slot reads, 32 32-byte stores and zero RELA destinations/addends pointing into the 64-slot range. The 16 writes outside the first known sequence were a second matching 16-store path, not a producer.
+
+The extension now decodes bounded CFG windows at 0x116b888..0x116b988 and 0x116b918..0x116ba18, verifies reads at 0x116b8a0 and 0x116b924, verifies two reverse 16-store 512-byte sequences, checks MOVI V0,#0 remains intact through the last Q0 store, and enumerates direct B/BL inbound callsites to helper 0x116b390. Conditional/indirect inbound edges remain outside this census. Synthetic B/BL positive, negative and alignment-boundary tests were added. CI pending.
