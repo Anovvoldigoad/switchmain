@@ -103,6 +103,50 @@ def synthetic_branch_path_write():
     assert any(row["target"] == "0x80" for row in report["out_of_window_edges"])
 
 
+def synthetic_equivalent_branch_histories_merge():
+    code = bytearray(0x60)
+    put_word(code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
+    put_word(code, 0x04, encode_add(8, 8, TABLE_START - TABLE_PAGE))
+    put_word(code, 0x08, encode_b_cond(0x08, 0x20))
+    put_word(code, 0x0C, 0xD503201F)  # NOP on the fallthrough path.
+    put_word(code, 0x10, encode_branch(0x10, 0x20))
+    put_word(code, 0x20, encode_str64(0, 8, 0x10))
+    report = scan_address_pages_cfg(bytes(code), {TABLE_PAGE}, {}, window_bytes=0x40)
+    writes = [row for row in report["direct_accesses"]
+              if row["site"] == "0x20" and row["direction"] == "write"]
+    assert len(writes) == 1
+    assert writes[0]["effective_address"] == hex(TABLE_START + 0x10)
+    assert len(writes[0]["branch_path_witnesses"]) == 1
+    assert writes[0]["branch_path_witnesses"][0] in (
+        ["0x8"], ["0x10"]
+    )
+    assert report["equivalent_branch_histories_merged"] >= 1
+    assert report["branch_path_witnesses_exhaustive"] is False
+    assert report["bounded_in_window_cfg_complete"] is True
+
+
+def synthetic_distinct_register_states_do_not_merge():
+    code = bytearray(0x60)
+    put_word(code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
+    put_word(code, 0x04, encode_add(8, 8, TABLE_START - TABLE_PAGE))
+    put_word(code, 0x08, encode_b_cond(0x08, 0x1C))
+    put_word(code, 0x0C, encode_add(8, 8, 0x10))
+    put_word(code, 0x10, encode_branch(0x10, 0x28))
+    put_word(code, 0x1C, encode_add(8, 8, 0x20))
+    put_word(code, 0x20, encode_branch(0x20, 0x28))
+    put_word(code, 0x28, encode_str64(0, 8, 0))
+    report = scan_address_pages_cfg(bytes(code), {TABLE_PAGE}, {}, window_bytes=0x40)
+    writes = [row for row in report["direct_accesses"]
+              if row["site"] == "0x28" and row["direction"] == "write"]
+    assert {row["effective_address"] for row in writes} == {
+        hex(TABLE_START + 0x10), hex(TABLE_START + 0x20)
+    }
+    assert len(writes) == 2
+    assert report["equivalent_branch_histories_merged"] == 0
+    assert report["branch_path_witnesses_exhaustive"] is True
+    assert report["bounded_in_window_cfg_complete"] is True
+
+
 def synthetic_call_barrier():
     code = bytearray(0x40)
     put_word(code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
@@ -248,6 +292,8 @@ def synthetic_limits():
 
 def run(main, output):
     synthetic_branch_path_write()
+    synthetic_equivalent_branch_histories_merge()
+    synthetic_distinct_register_states_do_not_merge()
     synthetic_call_barrier()
     synthetic_static_pointer_cells()
     synthetic_memory_loaded_alias()

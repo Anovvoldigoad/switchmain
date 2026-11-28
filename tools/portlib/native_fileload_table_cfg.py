@@ -53,15 +53,22 @@ def _clone_known(known):
     }
 
 
-def _state_signature(known, branch_sites):
+def _state_signature(known, branch_reachable):
+    """Identify semantic register states, not every distinct branch history."""
     registers = []
     for name, value in sorted(known.items()):
         terms = tuple(
             (term.get("register"), term.get("extension"), term.get("scale"))
             for term in value.get("dynamic_terms", [])
         )
-        registers.append((name, value["address"], terms))
-    return tuple(registers), tuple(branch_sites)
+        # Keep provenance distinct: equal addresses reached through different
+        # ADRP/ADD or static-cell chains must not collapse into one state.
+        chain = tuple(repr(step) for step in value.get("chain", []))
+        registers.append((name, value["address"], terms, chain))
+    # Keep one branchless and one branch-reachable representative. Different
+    # branch histories with identical register provenance are equivalent for
+    # subsequent memory-address analysis.
+    return tuple(registers), bool(branch_reachable)
 
 
 def _target_page(target_start):
@@ -217,7 +224,8 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
 
     start = pc + 4
     queue = deque([(start, known, ())])
-    visited = set()
+    visited = {}
+    equivalent_branch_histories_merged = 0
     decoded_sites = set()
     direct = {}
     indexed = {}
@@ -251,20 +259,22 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                 "target": _hex(current_pc),
             }
             continue
-        signature = _state_signature(current_known, branch_sites)
+        reached_branches.update(branch_sites)
+        signature = _state_signature(current_known, bool(branch_sites))
         state_key = (current_pc, signature)
         if state_key in visited:
+            if visited[state_key] != tuple(branch_sites):
+                equivalent_branch_histories_merged += 1
             continue
         if len(visited) >= max_states:
             budget_exceeded = True
             break
-        visited.add(state_key)
+        visited[state_key] = tuple(branch_sites)
         instruction = _decode_one(decoder, text, current_pc)
         if instruction is None:
             undecodable.add(current_pc)
             continue
         decoded_sites.add(current_pc)
-        reached_branches.update(branch_sites)
 
         try:
             reads, writes = instruction.regs_access()
@@ -474,6 +484,10 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
         "decoded_instruction_count": len(decoded_sites),
         "branch_sites_reached": sorted(reached_branches, key=lambda value: int(value, 16)),
         "state_budget_exceeded": budget_exceeded,
+        "equivalent_branch_histories_merged": equivalent_branch_histories_merged,
+        "branch_path_witnesses_exhaustive": (
+            equivalent_branch_histories_merged == 0 and not budget_exceeded
+        ),
         "undecodable_words": [_hex(value) for value in sorted(undecodable)],
         "bounded_in_window_cfg_complete": not budget_exceeded and not undecodable,
         "calls_are_clobber_barriers": True,
@@ -688,6 +702,18 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         )),
         "undecodable_words": [_hex(value) for value in sorted(undecodable)],
         "state_budget_exceeded": state_budget_exceeded,
+        "equivalent_branch_histories_merged": sum(
+            row["equivalent_branch_histories_merged"] for row in references
+        ),
+        "branch_path_witnesses_exhaustive": (
+            not skipped_pages and all(
+                row["branch_path_witnesses_exhaustive"] for row in references
+            )
+        ),
+        "state_identity": (
+            "pc+tracked-address-registers+dynamic-terms+origin-chain+"
+            "branch-reachable-class; one representative path per equivalent state"
+        ),
         "bounded_in_window_cfg_complete": (
             target_page_cfg_complete and pointer_alias_trace_complete
             and not state_budget_exceeded and not undecodable
