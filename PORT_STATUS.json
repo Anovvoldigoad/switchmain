@@ -113,7 +113,8 @@
     "2026-11-28 FOLLOW-UP 2: raw CI log identified the missing reaching definition: X19 is zeroed immediately before ADRP, then ADD X8,X20,X19 forms the object base. The analyzer now scans a bounded 0x20-byte prefix and tracks only statically known register-add operands. Foundation workflow excludes this isolated FileLoad test to avoid rerunning the broad suite; the active lifecycle workflow remains authoritative for this slice. CI pending.",
     "2026-11-28 EXTENSION_AWAITING_CI: Extended the FileLoad table census to both bounded traversal/zeroing paths, verified Q0 zero continuity through both 16-store sequences, and added direct B/BL inbound census for the per-slot helper. Synthetic branch boundary tests added. Prior revision 05afa CI passed; this extension is pending.",
     "2026-11-28 VERIFIED_STATIC_CI_ONLY: Final FileLoad table census commit 0bc4cb45d713325cf8e33f0385b42535791fe5ab passed run 46089004753/job 140805260736. Raw log and artifact inspected. 89 ADRP refs, 34 direct accesses, 2 table traversal/zeroing paths, 2 reads, 32 zeroing stores, zero direct writes outside those sequences, zero RELA targets/addends in the table, and 101 direct B/BL callers to helper 0x116b390. No producer/ABI/runtime claim.",
-    "2026-11-28 IMPLEMENTED_AWAITING_CI: Added a SHA-pinned FileLoad helper inbound caller analyzer. It Capstone-confirms raw aligned B/BL candidates to 0x116b390, records bounded 0x40-byte prelude instructions/register/memory facts, and groups last-syntactic-write signatures for X0-X7. It verifies both known table-path calls are preceded by LDR X0,[X8,#0x28]. These are not reaching definitions or ABI proof; CI pending."
+    "2026-11-28 IMPLEMENTED_AWAITING_CI: Added a SHA-pinned FileLoad helper inbound caller analyzer. It Capstone-confirms raw aligned B/BL candidates to 0x116b390, records bounded 0x40-byte prelude instructions/register/memory facts, and groups last-syntactic-write signatures for X0-X7. It verifies both known table-path calls are preceded by LDR X0,[X8,#0x28]. These are not reaching definitions or ABI proof; CI pending.",
+    "2026-11-28 FOLLOW-UP: the new workflow file did not schedule a push run, so the caller regression is now attached to the existing FileLoad lifecycle workflow. Its two previously passing tests are skipped for caller-source-only commits; the new caller test runs independently. CI pending."
   ],
   "blocking_gaps": [
     "At FileLoad, the 0x290 helper is now byte-proven to write 24-byte records (x8/x1/x2 at 0/8/16) using an atomic counter; both relocated table pointer cells target 0x2161230. Its registered code-pointer candidate 0x116b888 walks 64 pointer slots at 0x4371800, calls 0x116b390 per slot, then clears 0x200 bytes. The static guard pair is __cxa_guard_acquire/__cxa_guard_release for 0x43717d8. Alternate tail 0x116d830 resolves to nn::mem::StandardAllocator::Free(void*) via PLT 0x12f49b0; receiver cell relocates to 0x4371a00 and X1 receives the alternate-path X19 value. Index-error path passes 'BlockManager::GetBlock break\\n' to 0x12155a0. However BR X2 target, object type, callback/destructor identity and invocation, runtime table values, allocator binding, ownership/lifetime, lock/unlock, async completion, rollback/unbind and archive precedence remain unresolved. No runtime hook.",
@@ -3170,12 +3171,12 @@
     }
   },
   "native_fileload_helper_callers_20261128": {
-    "state": "IMPLEMENTED_AWAITING_CI",
+    "state": "IMPLEMENTED_AWAITING_CI_RETRY",
     "parent_sha": "e70d151e7c7fffec838126f47d2f375e65e8ba34",
     "code_commit": null,
     "source": "tools/portlib/native_fileload_helper_callers.py",
     "test": "tests/test_native_fileload_helper_callers.py",
-    "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
+    "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
     "evidence_note": "handoff/evidence_fileload_helper_callers_20261128.md",
     "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
     "original_main_size_bytes": 27701509,
@@ -3216,7 +3217,13 @@
       "artifact_id": null,
       "artifact_zip_sha256": null,
       "report_sha256": null,
-      "failed_attempts": []
+      "failed_attempts": [],
+      "first_push": {
+        "code_commit": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
+        "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
+        "direct_push_run_found": false,
+        "note": "The new workflow file was not scheduled by GitHub; no code test result is claimed."
+      }
     },
     "limits": {
       "prelude_last_writes_are_syntactic_not_reaching_definitions": true,
@@ -3236,6 +3243,6 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Inspect this isolated direct-push workflow's raw job log and JSON artifact. If a falsifiable caller grouping or concrete direct edge emerges, trace only that byte-backed path; otherwise keep BR X2, writer, ABI, ownership and lifecycle unresolved. No hook."
+    "next": "Inspect the existing FileLoad lifecycle workflow's caller-only push run. The caller source/test path is changed so the workflow should run the new caller step while skipping the two previously passing FileLoad steps. Read the raw job log and artifact."
   }
 }

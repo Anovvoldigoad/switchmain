@@ -16,14 +16,14 @@ Original Switch v1.70 main SHA256: `2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f
 
 Source: `tools/portlib/native_fileload_helper_callers.py`  
 Test: `tests/test_native_fileload_helper_callers.py`  
-Workflow: `.github/workflows/verify-fileload-helper-callers.yml`  
+Workflow: `.github/workflows/verify-fileload-registration-lifecycle.yml` (isolated caller step)  
 Research note: `handoff/evidence_fileload_helper_callers_20261128.md`
 
 The new analyzer Capstone-confirms raw direct B/BL candidates to `0x116b390`, captures each fixed 0x40-byte prelude, records instruction words, register reads/writes and memory operands, and groups callers by last-syntactic-write signatures for X0-X7. It verifies the two known table-path helper calls at `0x116b8a4` / `0x116b928` are preceded by the exact `LDR X0,[X8,#0x28]` at `0x116b8a0` / `0x116b924`.
 
 ## Required next action
 
-1. Inspect the direct push workflow run for the new code commit through `actions/runs` API; read the original job log and download/inspect its JSON artifact.
+1. Inspect the existing FileLoad lifecycle workflow's direct push run through `actions/runs` API; read the original job log and download/inspect its JSON artifact.
 2. If a test fails, fix the exact failing assertion from the raw log, push with a fresh expected HEAD and rerun only this isolated workflow.
 3. After CI success, synchronize checkpoint/status/progress and this prompt with the actual run/job/artifact SHA values.
 4. Continue only from byte-backed caller groups or a concrete code/data edge. Do not call last syntactic writes reaching definitions. Resolve BR X2 and any indirect table writer only with further read-only proof.

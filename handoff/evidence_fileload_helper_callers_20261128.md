@@ -32,7 +32,7 @@ Earlier failed table-census attempts were checked from raw logs:
 
 New source: `tools/portlib/native_fileload_helper_callers.py`  
 New regression: `tests/test_native_fileload_helper_callers.py`  
-Isolated workflow: `.github/workflows/verify-fileload-helper-callers.yml`
+Isolated workflow: `.github/workflows/verify-fileload-registration-lifecycle.yml`
 
 The analyzer:
 1. Reproduces the raw aligned B/BL scan for target `0x116b390`.
@@ -51,4 +51,4 @@ The analyzer:
 
 ## Status
 
-The new implementation is awaiting its isolated direct-push GitHub Actions run. Do not promote this note to verified until the exact commit's job is COMPLETED SUCCESS, the original raw log is inspected, and the JSON artifact is verified.
+The first push commit added a new workflow file but GitHub did not schedule it; the caller test is now routed through the already active FileLoad lifecycle workflow with a path-filtered step, while its previously passing steps are skipped on caller-source-only commits. The rerouted workflow is awaiting CI. Do not promote this note to verified until the exact commit's job is COMPLETED SUCCESS, the original raw log is inspected, and the JSON artifact is verified.

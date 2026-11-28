@@ -142,6 +142,7 @@ def run(main, output):
     assert report["original_main_sha256"] == MAIN_SHA256
     assert report["helper_target"] == hex(HELPER_TARGET)
     assert report["raw_aligned_direct_b_bl_inbound_count"] == 101
+    assert report["prelude_bytes_per_caller"] == 0x40
     assert report["capstone_confirmed_direct_branch_count"] + len(
         report["capstone_unconfirmed_raw_candidates"]
     ) == 101

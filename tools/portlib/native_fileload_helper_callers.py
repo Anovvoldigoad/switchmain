@@ -337,6 +337,7 @@ def inspect(nso):
         "text_bytes": len(text),
         "helper_target": _hex(HELPER_TARGET),
         "raw_aligned_direct_b_bl_inbound_count": len(raw_candidates),
+        "prelude_bytes_per_caller": PRELUDE_BYTES,
         "capstone_confirmed_direct_branch_count": len(callers),
         "capstone_unconfirmed_raw_candidates": unconfirmed,
         "branch_kind_counts": branch_kind_counts,

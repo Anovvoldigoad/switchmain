@@ -26,7 +26,7 @@
   "repository": "https://github.com/Anovvoldigoad/switchmain",
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
-  "documentation_commit": "2026-11-28 caller census implementation pending direct-push CI",
+  "documentation_commit": "2026-11-28 reroute caller census through existing FileLoad workflow; CI pending",
   "prior_storm_checkpoint_id": "80be5308-6dfa-44d8-91e9-71c92a4f00e2",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
@@ -2842,7 +2842,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Inspect this isolated direct-push workflow's raw job log and JSON artifact. If a falsifiable caller grouping or concrete direct edge emerges, trace only that byte-backed path; otherwise keep BR X2, writer, ABI, ownership and lifecycle unresolved. No hook.",
+  "next_action": "Inspect the existing FileLoad lifecycle workflow's caller-only push run. The caller source/test path is changed so the workflow should run the new caller step while skipping the two previously passing FileLoad steps. Read the raw job log and artifact.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -2857,11 +2857,12 @@
   },
   "latest_pending_code_commit": null,
   "latest_pending_ci": {
-    "parent_sha": "e70d151e7c7fffec838126f47d2f375e65e8ba34",
+    "parent_sha": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
     "code_commit": null,
-    "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
+    "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
     "state": "pending",
-    "raw_log_inspected": false
+    "raw_log_inspected": false,
+    "previous_workflow_no_run": true
   },
   "crilayla_total_output_limit": {
     "status": "pending_ci",
@@ -3818,17 +3819,17 @@
   },
   "latest_pending_head_ci": null,
   "latest_execution": {
-    "status": "IMPLEMENTED_AWAITING_CI_FILELOAD_HELPER_CALLER_CENSUS",
-    "parent_sha": "e70d151e7c7fffec838126f47d2f375e65e8ba34",
+    "status": "IMPLEMENTED_AWAITING_CI_RETRY_FILELOAD_HELPER_CALLER_CENSUS",
+    "parent_sha": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
     "source": "tools/portlib/native_fileload_helper_callers.py",
     "test": "tests/test_native_fileload_helper_callers.py",
-    "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
+    "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
     "expected_raw_inbound_candidates": 101,
-    "next": "Inspect this isolated direct-push workflow's raw job log and JSON artifact. If a falsifiable caller grouping or concrete direct edge emerges, trace only that byte-backed path; otherwise keep BR X2, writer, ABI, ownership and lifecycle unresolved. No hook."
+    "next": "Inspect the existing FileLoad lifecycle workflow's caller-only push run. The caller source/test path is changed so the workflow should run the new caller step while skipping the two previously passing FileLoad steps. Read the raw job log and artifact."
   },
   "latest_slice": {
-    "state": "IMPLEMENTED_AWAITING_CI_FILELOAD_HELPER_CALLER_CENSUS",
-    "parent_sha": "e70d151e7c7fffec838126f47d2f375e65e8ba34",
+    "state": "IMPLEMENTED_AWAITING_CI_RETRY_FILELOAD_HELPER_CALLER_CENSUS",
+    "parent_sha": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
     "source": "tools/portlib/native_fileload_helper_callers.py",
     "test": "tests/test_native_fileload_helper_callers.py",
     "consumer_abi_verified": false,
@@ -5843,12 +5844,12 @@
     }
   },
   "native_fileload_helper_callers_20261128": {
-    "state": "IMPLEMENTED_AWAITING_CI",
+    "state": "IMPLEMENTED_AWAITING_CI_RETRY",
     "parent_sha": "e70d151e7c7fffec838126f47d2f375e65e8ba34",
     "code_commit": null,
     "source": "tools/portlib/native_fileload_helper_callers.py",
     "test": "tests/test_native_fileload_helper_callers.py",
-    "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
+    "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
     "evidence_note": "handoff/evidence_fileload_helper_callers_20261128.md",
     "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
     "original_main_size_bytes": 27701509,
@@ -5889,7 +5890,13 @@
       "artifact_id": null,
       "artifact_zip_sha256": null,
       "report_sha256": null,
-      "failed_attempts": []
+      "failed_attempts": [],
+      "first_push": {
+        "code_commit": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
+        "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
+        "direct_push_run_found": false,
+        "note": "The new workflow file was not scheduled by GitHub; no code test result is claimed."
+      }
     },
     "limits": {
       "prelude_last_writes_are_syntactic_not_reaching_definitions": true,
@@ -5909,6 +5916,6 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Inspect this isolated direct-push workflow's raw job log and JSON artifact. If a falsifiable caller grouping or concrete direct edge emerges, trace only that byte-backed path; otherwise keep BR X2, writer, ABI, ownership and lifecycle unresolved. No hook."
+    "next": "Inspect the existing FileLoad lifecycle workflow's caller-only push run. The caller source/test path is changed so the workflow should run the new caller step while skipping the two previously passing FileLoad steps. Read the raw job log and artifact."
   }
 }
