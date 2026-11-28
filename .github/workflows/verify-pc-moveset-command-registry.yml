@@ -1,0 +1,33 @@
+name: Verify PC MovesetPlus numeric command registry (source-only)
+on:
+  workflow_dispatch:
+  push:
+    branches: [port/full-api-v170]
+    paths:
+      - 'tools/pc_moveset_functions.py'
+      - 'profiles/pc_moveset_function_names_2121.json'
+      - 'profiles/pc_movesetplus_commands_2121.json'
+      - 'tests/test_pc_moveset_function_names.py'
+      - '.github/workflows/verify-pc-moveset-command-registry.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run source-pinned ME name and numeric command regressions
+        run: PYTHONPATH=tools python -m unittest discover -s tests -p test_pc_moveset_function_names.py -v
+      - name: Emit command registry proof
+        run: |
+          mkdir -p proof-work
+          python tools/pc_moveset_functions.py --commands > proof-work/pc_movesetplus_commands.json
+          python tools/pc_moveset_functions.py --command-id 29 > proof-work/command_29.json
+          sha256sum proof-work/pc_movesetplus_commands.json proof-work/command_29.json > proof-work/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PC_MOVESETPLUS_COMMAND_REGISTRY_SOURCE_EVIDENCE
+          path: proof-work
+          if-no-files-found: error

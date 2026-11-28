@@ -1,0 +1,110 @@
+{
+  "status": "SOURCE_GROUNDED_PC_MOVESETPLUS_NUMERIC_DISPATCH_NOT_SWITCH_ABI",
+  "source_repo": "TheLeonX/UltimateStormAPI",
+  "source_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+  "source_parent_commit": "1c3460573fa70b595e6bfa70e52f83f1c3f74f12",
+  "source_path": "xinput9_1_0/MovesetPlus.cpp",
+  "source_git_blob_sha1": "d7c5dbbebd60415f8d304321f083897658a86146",
+  "parent_source_git_blob_sha1": "e96af51210e96926a7bdaa70c44b6645f1a2b2b6",
+  "header_path": "xinput9_1_0/MovesetPlus.h",
+  "header_git_blob_sha1": "74f6ff6c0243a01d7e49d8565c9933089b8c7a2c",
+  "release_tag": "2.1.2.1",
+  "release_published_at": "2026-08-30T15:00:53Z",
+  "release_note": "Added new Moveset Function: Switch Projectiles Target",
+  "dispatch_function": "MovesetPlus::meTest",
+  "commands": [
+    {
+      "id": 27,
+      "action": "START_DEFLECT",
+      "symbol": "SetProjectileDeflection",
+      "present_in_parent": true,
+      "dispatch_case": "MovesetPlus::SetProjectileDeflection(a1, true)",
+      "me_function_index": null,
+      "source_lines": [
+        651,
+        652
+      ],
+      "pc_implementation": {
+        "side_offset_rule": "GameVersion == \"1.70\" ? 0xE60 : 0xC88",
+        "valid_side_values": [
+          0,
+          1
+        ],
+        "state_update": "projectileDeflectionEnabled[side].exchange(true)"
+      },
+      "platform": "Windows x64 PC"
+    },
+    {
+      "id": 28,
+      "action": "STOP_DEFLECT",
+      "symbol": "SetProjectileDeflection",
+      "present_in_parent": true,
+      "dispatch_case": "MovesetPlus::SetProjectileDeflection(a1, false)",
+      "me_function_index": null,
+      "source_lines": [
+        654,
+        655
+      ],
+      "pc_implementation": {
+        "side_offset_rule": "GameVersion == \"1.70\" ? 0xE60 : 0xC88",
+        "valid_side_values": [
+          0,
+          1
+        ],
+        "state_update": "projectileDeflectionEnabled[side].exchange(false)"
+      },
+      "platform": "Windows x64 PC"
+    },
+    {
+      "id": 29,
+      "action": "SWITCH_PROJECTILES_TARGET",
+      "symbol": "TakeOverEnemyProjectiles",
+      "present_in_parent": false,
+      "dispatch_case": "MovesetPlus::TakeOverEnemyProjectiles(a1)",
+      "release_feature": "Switch Projectiles Target",
+      "me_function_index": null,
+      "source_lines": [
+        657,
+        658
+      ],
+      "pc_implementation": {
+        "side_offset_rule": "GameVersion == \"1.70\" ? 0xE60 : 0xC88",
+        "valid_side_values": [
+          0,
+          1
+        ],
+        "target_side": "newSide",
+        "previous_owner_side": "1 - newSide",
+        "source_collection": "g_activeDeflectableProjectiles",
+        "mutex": "g_deflectProjectileMutex",
+        "clock": "GetTickCount64",
+        "freshness_window_ms": 250,
+        "pending_takeover_expiry_ms": 250,
+        "cached_projectile_pointer_dereferenced": false
+      },
+      "platform": "Windows x64 PC"
+    }
+  ],
+  "distinction": {
+    "pc_meTest_numeric_commands_are_not_nsc_toolbox_ME_name_indices": true,
+    "nsc_toolbox_ns4_names": 289,
+    "nsc_toolbox_nsc_names": 300,
+    "shared_same_index_names": 289,
+    "nsc_only_names": 11,
+    "projectile_target_or_deflect_ME_index_assigned": false
+  },
+  "source_platform_markers": [
+    "Windows.h",
+    "__int64",
+    "IsBadReadPtr",
+    "GetTickCount64",
+    "std::mutex"
+  ],
+  "switch_engine_abi_verified": false,
+  "native_switch_hook_added": false,
+  "uzuy_tested": false,
+  "gameplay_tested": false,
+  "full_moddingapi": false,
+  "ready_for_gameplay_test": false,
+  "note": "Commands 27/28 are Start/Stop Deflect and already exist in the comparison parent. Command 29 is new in 2.1.2.1 and is the source-backed Switch Projectiles Target operation. These are PC meTest dispatch IDs, not ME_* editor indices; do not transplant the Windows offsets, mutex, timing or hook logic to Switch without Switch-native ABI and lifecycle proof."
+}
