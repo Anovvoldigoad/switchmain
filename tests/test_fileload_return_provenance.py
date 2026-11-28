@@ -50,6 +50,22 @@ def encode_cbz64(site, target, rt):
     return 0xB4000000 | (((delta >> 2) & 0x7ffff) << 5) | rt
 
 
+def synthetic_compare_alias_does_not_clobber_inputs():
+    code = bytearray(0x80)
+    put_word(code, 0x00, encode_mov64(0, 1))
+    put_word(code, 0x04, 0xEB08001F)  # CMP X0,X8; flags only.
+    put_word(code, 0x08, RET)
+    report = trace_return_registers(code, analyze_window(code, 0x00, 0x40))
+    assert report["return_sites"][0]["x0_origins"] == ["ENTRY_X1"]
+
+    code = bytearray(0x80)
+    put_word(code, 0x00, 0x7100FC3F)  # CMP W1,#0x3f; flags only.
+    put_word(code, 0x04, encode_mov64(0, 1))
+    put_word(code, 0x08, RET)
+    report = trace_return_registers(code, analyze_window(code, 0x00, 0x40))
+    assert report["return_sites"][0]["x0_origins"] == ["ENTRY_X1"]
+
+
 def synthetic_register_copy_and_load():
     code = bytearray(0x80)
     put_word(code, 0x00, encode_mov64(0, 1))
@@ -124,6 +140,7 @@ def synthetic_rejections():
 
 
 def run(main, output):
+    synthetic_compare_alias_does_not_clobber_inputs()
     synthetic_register_copy_and_load()
     synthetic_call_barrier_and_redefinition()
     synthetic_conditional_paths()
@@ -139,6 +156,19 @@ def run(main, output):
         "0x116b858", "0x116b870"
     ]
     assert report["return_provenance"]["return_site_count"] == 2
+    assert report["return_provenance"]["classification"] == "PATH_DEPENDENT_ORIGINS"
+    return_map = {row["return_site"]: row["x0_origins"]
+                  for row in report["return_provenance"]["return_sites"]}
+    assert return_map["0x116b858"][0].startswith("LOAD(MEM(")
+    assert return_map["0x116b870"] == ["CONST(0x0)"]
+    assert report["table_lookup"]["slot_base"] == "0x4371800"
+    assert report["table_lookup"]["slot_count"] == 64
+    assert report["table_lookup"]["slot_stride_bytes"] == 8
+    assert report["table_lookup"]["index_register"] == "w1"
+    assert report["table_lookup"]["index_extension"] == "UXTW"
+    assert report["table_lookup"]["index_scale_bytes"] == 8
+    assert report["table_lookup"]["index_max_inclusive"] == 63
+    assert report["table_lookup"]["slot_load_site"] == "0x116b844"
     assert len(report["bounded_cfg"]["decoded_instructions"]) == 18
     print("FILELOAD_TARGET_INSTRUCTIONS", json.dumps(
         report["bounded_cfg"]["decoded_instructions"], sort_keys=True
@@ -159,6 +189,8 @@ def run(main, output):
         "PINNED_FILELOAD_RETURN_PROVENANCE_PASS",
         "return_sites", report["return_provenance"]["return_site_count"],
         "classification", report["return_provenance"]["classification"],
+        "table_base", report["table_lookup"]["slot_base"],
+        "slots", report["table_lookup"]["slot_count"],
         "call_barriers", len(report["return_provenance"]["call_barrier_sites"]),
         "NO_ABI_NO_OWNER_NO_UZUY_CLAIM",
     )

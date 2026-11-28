@@ -14,6 +14,7 @@ from capstone.arm64_const import ARM64_OP_IMM, ARM64_OP_MEM, ARM64_OP_REG
 from .native_cpk_graph import MAIN_SHA256
 from .native_fileload_registration_dispatch import inspect as inspect_dispatch
 from .native_fileload_registration_target import analyze_window
+from .native_fileload_table_access import TABLE_START, TABLE_END
 from .native_fileopen_import import _read_image
 
 TARGET = 0x116B82C
@@ -147,6 +148,10 @@ def _memory_origin(state, ins, operand):
 
 
 def _unknown_written_registers(ins, state, handled, pc):
+    # Capstone 5 reports the left compare operand as written for CMP aliases.
+    # CMP/CMN/TST/CCMP/CCMN update flags, not the GPR operands.
+    if ins.mnemonic.lower() in {"cmp", "cmn", "tst", "ccmp", "ccmn"}:
+        return
     try:
         _reads, writes = ins.regs_access()
     except Exception as exc:
@@ -198,6 +203,10 @@ def _transfer(ins, state, pc):
                 right = frozenset({"CONST(" + _hex(int(right_operand.imm) << shift) + ")"})
             elif right_operand.type == ARM64_OP_REG:
                 right = _source_values(state, ins, right_operand)
+                if "uxtw" in ins.op_str.lower():
+                    right = _cap("UXTW(" + value + ")" for value in right)
+                elif "sxtw" in ins.op_str.lower():
+                    right = _cap("SXTW(" + value + ")" for value in right)
                 shift = getattr(getattr(right_operand, "shift", None), "value", 0) or 0
                 if shift:
                     right = _cap("LSL(" + value + "," + str(shift) + ")" for value in right)
@@ -417,6 +426,70 @@ def inspect(nso):
         raise ValueError("Pinned bounded diagnostic call at 0x116b864 changed")
 
     provenance = trace_return_registers(text, window)
+    instruction_rows = {
+        row["pc"]: row for row in window["decoded_reachable_instructions"]
+    }
+
+    def required_instruction(pc, mnemonic, operands):
+        row = instruction_rows.get(pc)
+        if row is None or row["mnemonic"] != mnemonic or row["operands"] != operands:
+            raise ValueError("Pinned FileLoad table lookup instruction changed at " + pc)
+        return row
+
+    bounds_cmp = required_instruction("0x116b830", "cmp", "w1, #0x3f")
+    bounds_branch = required_instruction("0x116b834", "b.hi", "#0x116b868")
+    table_adrp = required_instruction("0x116b838", "adrp", "x8, #0x4371000")
+    table_add = required_instruction("0x116b83c", "add", "x8, x8, #0x7d8")
+    index_add = required_instruction("0x116b840", "add", "x8, x8, w1, uxtw #3")
+    slot_load = required_instruction("0x116b844", "ldr", "x0, [x8, #0x28]")
+    sentinel_value = required_instruction("0x116b848", "mov", "w8, #0x3f800000")
+    sentinel_cmp = required_instruction("0x116b84c", "cmp", "x0, x8")
+    sentinel_branch = required_instruction("0x116b850", "b.eq", "#0x116b85c")
+    null_value = required_instruction("0x116b868", "mov", "x0, xzr")
+
+    page = int(table_adrp["immediates"][0], 16)
+    table_offset = int(table_add["immediates"][0], 16)
+    load_displacement = slot_load["memory_operands"][0]["displacement"]
+    computed_slot_base = page + table_offset + load_displacement
+    slot_count = (TABLE_END - TABLE_START) // 8
+    if computed_slot_base != TABLE_START or slot_count != 64:
+        raise ValueError("Indexed helper load no longer resolves to the 64-slot table")
+    if "uxtw #3" not in index_add["operands"] or "w1" not in index_add["operands"]:
+        raise ValueError("Indexed helper no longer uses UXTW(W1)*8")
+    return_sites = {row["return_site"]: row["x0_origins"]
+                    for row in provenance["return_sites"]}
+    if return_sites.get("0x116b858", [""])[0].startswith("UNKNOWN"):
+        raise ValueError("Valid-slot return provenance remains unknown")
+    if return_sites.get("0x116b870") != ["CONST(0x0)"]:
+        raise ValueError("Error-path return is no longer proven null")
+
+    table_lookup = {
+        "slot_base": _hex(computed_slot_base),
+        "slot_end_exclusive": _hex(TABLE_END),
+        "slot_count": slot_count,
+        "slot_stride_bytes": 8,
+        "address_expression": "0x4371800 + UXTW(w1)*8",
+        "index_register": "w1",
+        "index_extension": "UXTW",
+        "index_scale_bytes": 8,
+        "index_min": 0,
+        "index_max_inclusive": 0x3f,
+        "bounds_compare_site": bounds_cmp["pc"],
+        "bounds_compare_immediate": bounds_cmp["immediates"][0],
+        "out_of_range_branch_site": bounds_branch["pc"],
+        "out_of_range_branch_target": bounds_branch["immediates"][0],
+        "slot_load_site": slot_load["pc"],
+        "slot_load_width_bytes": slot_load["memory_operands"][0]["access_size_bytes"],
+        "loaded_value_compare_site": sentinel_cmp["pc"],
+        "loaded_value_sentinel": sentinel_value["immediates"][0],
+        "sentinel_equal_branch_site": sentinel_branch["pc"],
+        "valid_non_sentinel_return_site": "0x116b858",
+        "valid_non_sentinel_return_x0_origins": return_sites["0x116b858"],
+        "out_of_range_or_sentinel_return_site": "0x116b870",
+        "out_of_range_or_sentinel_return_x0_origins": return_sites["0x116b870"],
+        "runtime_slot_values_verified": False,
+        "slot_value_semantic_type_verified": False,
+    }
     return {
         "status": "PINNED_FILELOAD_RETURN_REGISTER_PROVENANCE_STATIC_ONLY",
         "original_main_sha256": digest,
@@ -441,12 +514,18 @@ def inspect(nso):
             "direct_calls_not_walked": window["direct_calls_not_walked"],
             "indirect_terminators": window["indirect_terminators"],
             "decoded_instructions": window["decoded_reachable_instructions"],
-            "x0_write_sites": [
+            "capstone_reported_x0_write_candidates": [
                 row for row in window["decoded_reachable_instructions"]
                 if {"x0", "w0"} & set(row["written_registers"])
             ],
+            "compare_alias_write_candidates": [
+                row for row in window["decoded_reachable_instructions"]
+                if row["mnemonic"] in {"cmp", "cmn", "tst", "ccmp", "ccmn"}
+                and {"x0", "w0"} & set(row["written_registers"])
+            ],
         },
         "return_provenance": provenance,
+        "table_lookup": table_lookup,
         "limits": {
             "function_identity_verified": False,
             "return_semantics_verified": False,

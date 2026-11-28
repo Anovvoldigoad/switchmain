@@ -77,6 +77,7 @@ def _zero_register_state():
     return {
         "xzr": {
             "address": 0,
+            "dynamic_terms": [],
             "chain": [{"kind": "ZERO_REGISTER", "register": "xzr"}],
         }
     }
@@ -92,6 +93,7 @@ def _update_known(ins, text, pc, known):
             name = "x%d" % rd
             known[name] = {
                 "address": target_page,
+                "dynamic_terms": [],
                 "chain": [{
                     "site": _hex(pc),
                     "kind": "ADRP",
@@ -114,9 +116,11 @@ def _update_known(ins, text, pc, known):
                 shift = getattr(getattr(op2, "shift", None), "value", 0) or 0
                 if source_name in known and shift in (0, 12):
                     immediate = int(op2.imm) << shift
+                    source_info = known[source_name]
                     known[destination_name] = {
-                        "address": known[source_name]["address"] + immediate,
-                        "chain": known[source_name]["chain"] + [{
+                        "address": source_info["address"] + immediate,
+                        "dynamic_terms": list(source_info.get("dynamic_terms", [])),
+                        "chain": source_info["chain"] + [{
                             "site": _hex(pc),
                             "kind": "ADD_IMMEDIATE",
                             "source_register": source_name,
@@ -135,16 +139,40 @@ def _update_known(ins, text, pc, known):
                 if (source_name in known and source2_name in known
                         and source2_raw.startswith("x") and shift == 0
                         and extension in (0, None)):
+                    left = known[source_name]
                     right = known[source2_name]
                     known[destination_name] = {
-                        "address": known[source_name]["address"] + right["address"],
-                        "chain": known[source_name]["chain"] + [{
+                        "address": left["address"] + right["address"],
+                        "dynamic_terms": list(left.get("dynamic_terms", []))
+                                        + list(right.get("dynamic_terms", [])),
+                        "chain": left["chain"] + [{
                             "site": _hex(pc),
                             "kind": "ADD_REGISTER",
                             "left_source": source_name,
                             "right_source": source2_name,
                             "right_value": right["address"],
                             "right_chain": right["chain"],
+                            "destination_register": destination_name,
+                        }],
+                    }
+                elif (source_name in known and source2_raw.startswith("w")
+                      and "uxtw" in ins.op_str.lower() and shift in (0, 1, 2, 3, 4)):
+                    left = known[source_name]
+                    scale = 1 << shift
+                    term = {
+                        "register": source2_raw,
+                        "extension": "UXTW",
+                        "scale": scale,
+                    }
+                    known[destination_name] = {
+                        "address": left["address"],
+                        "dynamic_terms": list(left.get("dynamic_terms", [])) + [term],
+                        "chain": left["chain"] + [{
+                            "site": _hex(pc),
+                            "kind": "ADD_DYNAMIC_INDEX",
+                            "source_register": source2_raw,
+                            "extension": "UXTW",
+                            "scale": scale,
                             "destination_register": destination_name,
                         }],
                     }
@@ -160,9 +188,11 @@ def _update_known(ins, text, pc, known):
             source_raw = ins.reg_name(op1.reg).lower()
             if (destination_raw.startswith("x") and source_name in known
                     and (source_raw.startswith("x") or source_raw == "xzr")):
+                source_info = known[source_name]
                 known[destination_name] = {
-                    "address": known[source_name]["address"],
-                    "chain": known[source_name]["chain"] + [{
+                    "address": source_info["address"],
+                    "dynamic_terms": list(source_info.get("dynamic_terms", [])),
+                    "chain": source_info["chain"] + [{
                         "site": _hex(pc),
                         "kind": "MOV_REGISTER",
                         "source_register": source_name,
@@ -173,6 +203,8 @@ def _update_known(ins, text, pc, known):
                 known.pop(destination_name, None)
             handled_destination = destination_name
 
+    if ins.mnemonic.lower() in {"cmp", "cmn", "tst", "ccmp", "ccmn"}:
+        return True
     try:
         _, writes = ins.regs_access()
     except Exception:
@@ -213,23 +245,36 @@ def _trace_page_candidate(text, start, page, destination, window_bytes, decoder,
                 index = _reg_name(ins, operand.mem.index)
                 if base not in known:
                     continue
-                base_address = known[base]["address"] + operand.mem.disp
+                base_info = known[base]
+                base_address = base_info["address"] + operand.mem.disp
                 width, width_source = _memory_access_width(ins)
-                if index:
+                dynamic_terms = list(base_info.get("dynamic_terms", []))
+                if index or dynamic_terms:
+                    terms = dynamic_terms[:]
+                    if index:
+                        terms.append({
+                            "register": index,
+                            "extension": "MEMORY_INDEX_UNRESOLVED",
+                            "scale": None,
+                        })
                     if _overlaps(base_address, width, target_start, target_end):
+                        primary = terms[0] if terms else {"register": index}
                         indexed.append({
                             "site": _hex(pc),
                             "word_le": bytes(text[pc:pc + 4]).hex(),
                             "mnemonic": ins.mnemonic,
                             "operands": ins.op_str,
                             "base_register": base,
-                            "index_register": index,
+                            "index_register": primary.get("register"),
+                            "index_scale": primary.get("scale"),
+                            "index_extension": primary.get("extension"),
+                            "dynamic_index_terms": terms,
                             "base_plus_displacement": _hex(base_address),
                             "displacement": operand.mem.disp,
                             "width_bytes": width,
                             "direction": _direction(ins.mnemonic),
                             "effective_address_resolved": False,
-                            "origin_chain": list(known[base]["chain"]),
+                            "origin_chain": list(base_info["chain"]),
                         })
                     continue
                 if not _overlaps(base_address, width, target_start, target_end):
@@ -251,7 +296,7 @@ def _trace_page_candidate(text, start, page, destination, window_bytes, decoder,
                     "read_registers": read_names,
                     "written_registers": written_names,
                     "effective_address_resolved": True,
-                    "origin_chain": list(known[base]["chain"]),
+                    "origin_chain": list(base_info["chain"]),
                 })
 
         if not _update_known(ins, text, pc, known):
@@ -564,6 +609,11 @@ def inspect(nso):
         "bounded_table_traversal_and_zeroing_candidates": clear_sequences,
         "direct_reads": direct_reads,
         "direct_writes": direct_writes,
+        "indexed_access_candidates": scan["indexed_access_candidates"],
+        "indexed_write_candidates": [
+            row for row in scan["indexed_access_candidates"]
+            if row["direction"] == "write"
+        ],
         "direct_write_candidates_outside_two_zeroing_sequences": outside_clear,
         "direct_b_bl_inbound": inbound,
         "relocations": relocations,
@@ -575,7 +625,9 @@ def inspect(nso):
             "two_bounded_cfg_windows_cover_both_read_and_zeroing_sequences": True,
             "q0_zero_propagation_checked_inside_each_bounded_cfg_window": True,
             "direct_b_bl_inbound_only_not_all_control_flow_edges": True,
-            "indirect_pointer_aliases_and_indexed_effective_addresses_not_resolved": True,
+            "scaled_uxtw_index_terms_symbolically_traced": True,
+            "dynamic_index_values_not_resolved": True,
+            "memory_loaded_pointer_aliases_not_resolved": True,
             "a_missing_direct_writer_does_not_exclude_dynamic_or_aliased_writers": True,
             "no_function_extent_or_cxx_object_layout_inference": True,
         },

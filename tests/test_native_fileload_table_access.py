@@ -73,6 +73,12 @@ def encode_mov64(rd, rm):
 def encode_add_reg(rd, rn, rm):
     return 0x8B000000 | (rm << 16) | (rn << 5) | rd
 
+def encode_add_uxtw_reg(rd, rn, rm, shift, option=2):
+    if not 0 <= shift <= 4 or option not in (2, 6):
+        raise ValueError("Synthetic extended ADD parameters are out of range")
+    return (0x8B200000 | (rm << 16) | (option << 13)
+            | (shift << 10) | (rn << 5) | rd)
+
 
 
 def encode_branch(pc, target, link=False):
@@ -169,6 +175,51 @@ def synthetic_register_add_scan():
     assert scan_address_page(bytes(unknown), window_bytes=0x40)["direct_accesses"] == []
 
 
+def synthetic_dynamic_index_scan():
+    code = bytearray(0x40)
+    put_word(code, 0x00, encode_adrp(0, 8, TABLE_PAGE))
+    put_word(code, 0x04, encode_add(8, 8, 0x7D8))
+    put_word(code, 0x08, encode_add_uxtw_reg(8, 8, 1, 3))
+    put_word(code, 0x0C, encode_ldr64(0, 8, 0x28))
+    report = scan_address_page(bytes(code), window_bytes=0x30)
+    assert len(report["indexed_access_candidates"]) == 1
+    row = report["indexed_access_candidates"][0]
+    assert row["site"] == "0xc"
+    assert row["base_plus_displacement"] == hex(TABLE_START)
+    assert row["index_register"] == "w1"
+    assert row["index_scale"] == 8
+    assert row["index_extension"] == "UXTW"
+    assert row["direction"] == "read"
+    assert row["effective_address_resolved"] is False
+
+    code = bytearray(0x40)
+    put_word(code, 0x00, encode_adrp(0, 8, TABLE_PAGE))
+    put_word(code, 0x04, encode_add(8, 8, 0x7D8))
+    put_word(code, 0x08, encode_add_uxtw_reg(9, 8, 1, 3))
+    put_word(code, 0x0C, encode_mov64(10, 9))
+    put_word(code, 0x10, encode_str64(0, 10, 0x28))
+    report = scan_address_page(bytes(code), window_bytes=0x30)
+    assert len(report["indexed_access_candidates"]) == 1
+    row = report["indexed_access_candidates"][0]
+    assert row["site"] == "0x10" and row["direction"] == "write"
+    assert row["index_register"] == "w1"
+    assert any(step["kind"] == "MOV_REGISTER" for step in row["origin_chain"])
+
+    boundary = bytearray(0x40)
+    put_word(boundary, 0x00, encode_adrp(0, 8, TABLE_PAGE))
+    put_word(boundary, 0x04, encode_add(8, 8, TABLE_END - TABLE_PAGE - 0x28))
+    put_word(boundary, 0x08, encode_add_uxtw_reg(8, 8, 1, 3))
+    put_word(boundary, 0x0C, encode_ldr64(0, 8, 0x28))
+    assert scan_address_page(bytes(boundary), window_bytes=0x30)["indexed_access_candidates"] == []
+
+    unsupported = bytearray(0x40)
+    put_word(unsupported, 0x00, encode_adrp(0, 8, TABLE_PAGE))
+    put_word(unsupported, 0x04, encode_add(8, 8, 0x7D8))
+    put_word(unsupported, 0x08, encode_add_uxtw_reg(8, 8, 1, 3, option=6))
+    put_word(unsupported, 0x0C, encode_ldr64(0, 8, 0x28))
+    assert scan_address_page(bytes(unsupported), window_bytes=0x30)["indexed_access_candidates"] == []
+
+
 def synthetic_relocations():
     memory = bytearray(0x200)
     records = [
@@ -205,6 +256,7 @@ def run(main, output):
     synthetic_direct_branch_scan()
     synthetic_page_scan()
     synthetic_register_add_scan()
+    synthetic_dynamic_index_scan()
     synthetic_relocations()
     raw = main.read_bytes()
     report = inspect(raw)
@@ -223,6 +275,15 @@ def run(main, output):
     assert all(row["clear_covered_bytes"] == 512 and row["q0_zero_through_last_store_in_bounded_cfg"] for row in report["bounded_table_traversal_and_zeroing_candidates"])
     assert len(report["direct_reads"]) == 2
     assert len(report["direct_writes"]) == 32
+    indexed = [row for row in report["indexed_access_candidates"]
+               if row["site"] == "0x116b844"]
+    assert len(indexed) == 1
+    assert indexed[0]["base_plus_displacement"] == hex(TABLE_START)
+    assert indexed[0]["index_register"] == "w1"
+    assert indexed[0]["index_scale"] == 8
+    assert indexed[0]["index_extension"] == "UXTW"
+    assert indexed[0]["direction"] == "read"
+    assert indexed[0]["effective_address_resolved"] is False
     assert report["direct_write_candidates_outside_two_zeroing_sequences"] == []
     helper_sites = {row["site"] for row in report["direct_b_bl_inbound"]["per_slot_helper_0x116b390"]}
     assert {"0x116b8a4", "0x116b928"} <= helper_sites
@@ -243,6 +304,8 @@ def run(main, output):
         "PINNED_FILELOAD_TABLE_ACCESS_CENSUS_PASS",
         "adrp_refs", report["adrp_page_scan"]["page_reference_count"],
         "direct_accesses", len(report["adrp_page_scan"]["direct_accesses"]),
+        "indexed_accesses", len(report["indexed_access_candidates"]),
+        "indexed_writers", len(report["indexed_write_candidates"]),
         "direct_writers_outside_two_zeroing_sequences",
         len(report["direct_write_candidates_outside_two_zeroing_sequences"]),
         "NO_PRODUCER_NO_ABI_NO_UZUY_CLAIM",
