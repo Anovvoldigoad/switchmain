@@ -2,7 +2,9 @@
 
 Date: 2026-11-28  
 Branch: port/full-api-v170  
-State: source evidence committed; targeted CI pending at this checkpoint
+State: VERIFIED_UPSTREAM_PC_SOURCE_ONLY_CI
+
+Code commits: 51b8b50928809942e3efe238056bbf422c78edaa; b7df04c64fb41c1403cb8b456164aeb9a45a9d6c
 
 ## Research-first primary sources
 
@@ -42,3 +44,14 @@ TakeOverEnemyProjectiles reads the same PC-specific side field, selects the oppo
 ## Scope boundary
 
 This is upstream PC source inventory plus host-side registry tests. It does not implement projectile deflection or target switching on Switch. No Switch hook, engine consumer, object ownership, callbacks, lock/unlock pairing, async lifetime, rollback/unbind/destructor, archive precedence, Uzuy or gameplay behavior is claimed. All release flags remain false.
+
+
+## CI verification — completed 2026-11-28
+
+Final code head: b7df04c64fb41c1403cb8b456164aeb9a45a9d6c (parent 51b8b50928809942e3efe238056bbf422c78edaa). Initial implementation commit: 51b8b50928809942e3efe238056bbf422c78edaa (parent 41a77a98067b411a7575bd3b0b457a250ccd95a8).
+
+- Targeted run [46126953689](https://github.com/Anovvoldigoad/switchmain/actions/runs/46126953689), job 140923548062: COMPLETED SUCCESS; raw job log inspected; 9 tests passed. Artifact 15255972970, ZIP SHA256 c010a30453000e844a6927b359b2c416e2b6da9cfeaa51e9f8156b6a5e6c15fd. The downloaded artifact's internal SHA256SUMS was independently checked and both JSON files passed.
+- Offline multi-mod regression run [46126953701](https://github.com/Anovvoldigoad/switchmain/actions/runs/46126953701), job 140923548214: COMPLETED SUCCESS; raw job log inspected; all merge/reassemble/split/source-replay/remove/replace/batch-patch/reorder test suites passed.
+- First run 46126791253/job 140923044694 passed 8 tests but its artifact SHA file contained a path prefix removed by upload-artifact. The workflow now writes basenames; a Start/Stop-specific regression was added; the final 9-test run and self-verifying artifact above supersede it.
+
+CI verifies the source-pinned PC command inventory and offline tooling only. It does not verify a Switch projectile consumer or any runtime ABI.

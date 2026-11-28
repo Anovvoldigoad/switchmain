@@ -4653,7 +4653,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Continue the 45 pointer-page state-budget references and trace the exact BSS table producer / unresolved BR X2 target. Keep callback register preservation unassumed and do not install hooks.",
+  "next_action": "Continue the 45 unresolved FileLoad pointer-page CFG state-budget references and trace the exact BSS table producer / [X8,#0x58] -> BR X2 source at 0x116b3d0. Keep calls as clobber barriers; prove ownership, callback, lock/unlock, async, rollback/unbind/destructor and archive precedence before any hook. Do not port PC Windows MovesetPlus command 29 to Switch without a separate Switch-native ABI proof.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -4775,14 +4775,8 @@
     "proof": "proof-work/native_fileopen_external_edges.json",
     "next": "Inspect real unique external target path summaries, choose semantically likely caller/callee provenance; no hook until ABI and lifecycle proven."
   },
-  "pending_ci": {
-    "workflow": "Verify Switch port foundation (not a gameplay release)",
-    "run_id": 46124031004,
-    "job_id": 140914502057,
-    "status": "IN_PROGRESS",
-    "raw_log_inspected": false
-  },
-  "last_parent_sha": "2101530170402945bfa4165b1c01e06d944c2e48",
+  "pending_ci": null,
+  "last_parent_sha": "51b8b50928809942e3efe238056bbf422c78edaa",
   "native_fileopen_call_free_witness": {
     "status": "PENDING_CI",
     "parent_sha": "91325517c4ff7b4eedfef0ce55bfdbf18a66c8fb",
@@ -5627,130 +5621,96 @@
     "original_main_rehashed": false,
     "next": "Inspect HEAD Foundation job log and resolve failures; trace original consumer lifecycle before hooks."
   },
-  "latest_pending_head_ci": {
-    "workflow": "Verify Switch port foundation (not a gameplay release)",
-    "run_id": 46124031004,
-    "job_id": 140914502057,
-    "status": "IN_PROGRESS",
-    "raw_log_inspected": false
-  },
+  "latest_pending_head_ci": null,
   "latest_execution": {
     "date": "2026-11-28",
-    "slice": "FileLoad bounded CFG equivalent-state deduplication",
-    "code_commit": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
-    "parent_sha": "d1d6a77b0ae1c006b6313534a4206a2e9b055c6d",
-    "status": "VERIFIED_STATIC_CI_ONLY",
+    "slice": "PC MovesetPlus numeric command registry and upstream 2.1.2.1 delta",
+    "status": "VERIFIED_UPSTREAM_PC_SOURCE_ONLY_CI",
+    "parent_sha": "41a77a98067b411a7575bd3b0b457a250ccd95a8",
+    "code_commits": [
+      "51b8b50928809942e3efe238056bbf422c78edaa",
+      "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c"
+    ],
     "targeted_ci": {
-      "run_id": 46116650719,
-      "job_id": 140891888185,
+      "name": "Verify PC MovesetPlus numeric command registry (source-only)",
+      "run_id": 46126953689,
+      "job_id": 140923548062,
+      "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
       "conclusion": "success",
-      "raw_log_inspected": true,
-      "artifact_id": 15251304501,
-      "artifact_zip_sha256": "f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b",
-      "report_json_sha256": "6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36"
+      "raw_job_log_inspected": true,
+      "tests_passed": 9,
+      "artifact_id": 15255972970,
+      "artifact_name": "PC_MOVESETPLUS_COMMAND_REGISTRY_SOURCE_EVIDENCE",
+      "artifact_zip_sha256": "c010a30453000e844a6927b359b2c416e2b6da9cfeaa51e9f8156b6a5e6c15fd",
+      "artifact_sha256_manifest_verified": true
     },
-    "broad_ci": {
-      "run_id": 46116650641,
-      "job_id": 140891888072,
+    "multi_mod_ci": {
+      "name": "Verify offline PC MovesetPlus multi-mod composition",
+      "run_id": 46126953701,
+      "job_id": 140923548214,
+      "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
       "conclusion": "success",
-      "raw_log_inspected": true,
-      "artifact_id": 15251649607,
-      "artifact_zip_sha256": "7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159",
-      "proof_json_files": 74
-    },
-    "metrics": {
-      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-      "page_references": 4055,
-      "target_page_references": 89,
-      "pointer_page_references": 3966,
-      "state_budget_exceeded_references": 47,
-      "target_page_state_budget_exceeded_references": 2,
-      "pointer_page_state_budget_exceeded_references": 45,
-      "state_budget_exceeded_before_dedup": 431,
-      "state_budget_reduction_percent": 89.095,
-      "equivalent_branch_histories_merged": 7510,
-      "direct_accesses": 72,
-      "indexed_access_candidates": 7,
-      "branch_path_table_write_rows": 32,
-      "static_pointer_cells": 214,
-      "memory_loaded_aliases": 271,
-      "ambiguous_pointer_loads": 1,
-      "call_barriers": 10581,
-      "out_of_window_edges": 4345,
-      "newly_exposed_direct_read_rows": 6,
-      "newly_exposed_direct_read_sites": [
-        "0x116bf70",
-        "0x116bfc8"
+      "raw_job_log_inspected": true,
+      "all_steps_completed": true,
+      "suites": [
+        "merge",
+        "reassemble",
+        "split",
+        "source replay",
+        "remove",
+        "replace",
+        "batch patch",
+        "reorder"
       ],
-      "newly_exposed_slot_offsets": [
-        "0x80",
-        "0x88",
-        "0x90"
-      ],
-      "target_page_cfg_complete": false,
-      "pointer_alias_trace_complete": false,
-      "bounded_in_window_cfg_complete": false,
-      "branch_path_witnesses_exhaustive": false
+      "switch_runtime_tested": false
     },
-    "next_action": "Investigate residual loop-indexed state budget references and resolve the BR X2 source/lifecycle without assuming vtable or engine ABI."
+    "evidence_note": "handoff/evidence_movesetplus_command_delta_20261128.md",
+    "next_action": "Continue the 45 unresolved FileLoad pointer-page CFG state-budget references and trace the exact BSS table producer / [X8,#0x58] -> BR X2 source at 0x116b3d0. Keep calls as clobber barriers; prove ownership, callback, lock/unlock, async, rollback/unbind/destructor and archive precedence before any hook. Do not port PC Windows MovesetPlus command 29 to Switch without a separate Switch-native ABI proof."
   },
   "latest_slice": {
-    "name": "FileLoad bounded CFG equivalent-state dedup",
-    "status": "VERIFIED_STATIC_CI_ONLY",
-    "code_commit": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
-    "metrics": {
-      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
-      "page_references": 4055,
-      "target_page_references": 89,
-      "pointer_page_references": 3966,
-      "state_budget_exceeded_references": 47,
-      "target_page_state_budget_exceeded_references": 2,
-      "pointer_page_state_budget_exceeded_references": 45,
-      "state_budget_exceeded_before_dedup": 431,
-      "state_budget_reduction_percent": 89.095,
-      "equivalent_branch_histories_merged": 7510,
-      "direct_accesses": 72,
-      "indexed_access_candidates": 7,
-      "branch_path_table_write_rows": 32,
-      "static_pointer_cells": 214,
-      "memory_loaded_aliases": 271,
-      "ambiguous_pointer_loads": 1,
-      "call_barriers": 10581,
-      "out_of_window_edges": 4345,
-      "newly_exposed_direct_read_rows": 6,
-      "newly_exposed_direct_read_sites": [
-        "0x116bf70",
-        "0x116bfc8"
-      ],
-      "newly_exposed_slot_offsets": [
-        "0x80",
-        "0x88",
-        "0x90"
-      ],
-      "target_page_cfg_complete": false,
-      "pointer_alias_trace_complete": false,
-      "bounded_in_window_cfg_complete": false,
-      "branch_path_witnesses_exhaustive": false
+    "date": "2026-11-28",
+    "slice": "PC MovesetPlus numeric command registry and upstream 2.1.2.1 delta",
+    "status": "VERIFIED_UPSTREAM_PC_SOURCE_ONLY_CI",
+    "parent_sha": "41a77a98067b411a7575bd3b0b457a250ccd95a8",
+    "code_commits": [
+      "51b8b50928809942e3efe238056bbf422c78edaa",
+      "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c"
+    ],
+    "targeted_ci": {
+      "name": "Verify PC MovesetPlus numeric command registry (source-only)",
+      "run_id": 46126953689,
+      "job_id": 140923548062,
+      "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "tests_passed": 9,
+      "artifact_id": 15255972970,
+      "artifact_name": "PC_MOVESETPLUS_COMMAND_REGISTRY_SOURCE_EVIDENCE",
+      "artifact_zip_sha256": "c010a30453000e844a6927b359b2c416e2b6da9cfeaa51e9f8156b6a5e6c15fd",
+      "artifact_sha256_manifest_verified": true
     },
-    "limits": {
-      "target_page_cfg_complete": false,
-      "pointer_alias_trace_complete": false,
-      "branch_path_witnesses_exhaustive": false,
-      "complete_writer_census": false,
-      "producer_identity_verified": false,
-      "br_x2_target_resolved": false,
-      "native_consumer_abi_verified": false,
-      "ownership_lifecycle_verified": false,
-      "callback_destructor_verified": false,
-      "lock_unlock_verified": false,
-      "async_verified": false,
-      "rollback_unbind_verified": false,
-      "archive_precedence_verified": false,
-      "host_static_tests": "PASS",
-      "emulated_arm64_for_this_analyzer": false,
-      "uzuy": false,
-      "gameplay": false
-    }
+    "multi_mod_ci": {
+      "name": "Verify offline PC MovesetPlus multi-mod composition",
+      "run_id": 46126953701,
+      "job_id": 140923548214,
+      "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "all_steps_completed": true,
+      "suites": [
+        "merge",
+        "reassemble",
+        "split",
+        "source replay",
+        "remove",
+        "replace",
+        "batch patch",
+        "reorder"
+      ],
+      "switch_runtime_tested": false
+    },
+    "evidence_note": "handoff/evidence_movesetplus_command_delta_20261128.md",
+    "next_action": "Continue the 45 unresolved FileLoad pointer-page CFG state-budget references and trace the exact BSS table producer / [X8,#0x58] -> BR X2 source at 0x116b3d0. Keep calls as clobber barriers; prove ownership, callback, lock/unlock, async, rollback/unbind/destructor and archive precedence before any hook. Do not port PC Windows MovesetPlus command 29 to Switch without a separate Switch-native ABI proof."
   },
   "compressed_prm_noop_20261123": {
     "state": "PENDING_HEAD_CI",
@@ -6466,7 +6426,7 @@
     },
     "next": "Prove exact stack slot save/restore for 0x120a6c8 and other X19-writing direct callees; require all-return path proof and explicit SP delta; retain barriers otherwise. Do not infer AAPCS64, pointer type, ownership or ABI."
   },
-  "latest_verified_code_commit": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
+  "latest_verified_code_commit": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
   "latest_verified_ci_runs": [
     {
       "name": "fileload_registration_lifecycle",
@@ -6516,6 +6476,22 @@
         "ready_for_gameplay_test": false,
         "emulator_tested": false
       }
+    },
+    {
+      "name": "Verify PC MovesetPlus numeric command registry (source-only)",
+      "run_id": 46126953689,
+      "job_id": 140923548062,
+      "conclusion": "success",
+      "raw_log_inspected": true,
+      "artifact_id": 15255972970,
+      "artifact_zip_sha256": "c010a30453000e844a6927b359b2c416e2b6da9cfeaa51e9f8156b6a5e6c15fd"
+    },
+    {
+      "name": "Verify offline PC MovesetPlus multi-mod composition",
+      "run_id": 46126953701,
+      "job_id": 140923548214,
+      "conclusion": "success",
+      "raw_log_inspected": true
     }
   ],
   "native_fileload_x19_stack_restore_20261128": {
@@ -6693,34 +6669,48 @@
     "uzuy_verified": false,
     "next": "Continue from 0x116b698 and nested 0x116b6c0 -> 0x116b7b0. Prove exact pointer/stack alias provenance for X1/X19 and each unknown store; investigate 0x12f3690/0x12f36a0 bounded control-flow exits without assuming function extent. Keep 0x116f280 -> 0x120a6c8 as a call barrier until every nested stack/alias condition is proven."
   },
-  "latest_verified_code_parent": "d1d6a77b0ae1c006b6313534a4206a2e9b055c6d",
+  "latest_verified_code_parent": "51b8b50928809942e3efe238056bbf422c78edaa",
   "latest_verified_code_ci": {
-    "head": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
-    "parent": "d1d6a77b0ae1c006b6313534a4206a2e9b055c6d",
+    "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
+    "parent": "51b8b50928809942e3efe238056bbf422c78edaa",
     "all_completed_success": true,
     "raw_job_logs_inspected": true,
     "workflows": [
       {
-        "name": "Verify pinned FileLoad registration lifecycle evidence",
-        "run_id": 46116650719,
-        "job_id": 140891888185,
+        "name": "Verify PC MovesetPlus numeric command registry (source-only)",
+        "run_id": 46126953689,
+        "job_id": 140923548062,
+        "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
         "conclusion": "success",
-        "artifact_id": 15251304501,
-        "artifact_zip_sha256": "f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b",
-        "report_json_sha256": "6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36"
+        "raw_job_log_inspected": true,
+        "tests_passed": 9,
+        "artifact_id": 15255972970,
+        "artifact_name": "PC_MOVESETPLUS_COMMAND_REGISTRY_SOURCE_EVIDENCE",
+        "artifact_zip_sha256": "c010a30453000e844a6927b359b2c416e2b6da9cfeaa51e9f8156b6a5e6c15fd",
+        "artifact_sha256_manifest_verified": true
       },
       {
-        "name": "Verify Switch port foundation (not a gameplay release)",
-        "run_id": 46116650641,
-        "job_id": 140891888072,
+        "name": "Verify offline PC MovesetPlus multi-mod composition",
+        "run_id": 46126953701,
+        "job_id": 140923548214,
+        "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
         "conclusion": "success",
-        "artifact_id": 15251649607,
-        "artifact_zip_sha256": "7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159",
-        "proof_json_files": 74,
-        "release_guard_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773"
+        "raw_job_log_inspected": true,
+        "all_steps_completed": true,
+        "suites": [
+          "merge",
+          "reassemble",
+          "split",
+          "source replay",
+          "remove",
+          "replace",
+          "batch patch",
+          "reorder"
+        ],
+        "switch_runtime_tested": false
       }
     ],
-    "note": "Targeted FileLoad CFG test is host/static only. The broad foundation run's emulated ARM64 checks cover other existing slices, not this CFG analyzer. No Uzuy or gameplay test."
+    "note": "Host/static source-registry and offline multi-mod regressions only; no Switch runtime or ABI claim."
   },
   "native_fileload_x19_recursive_proofs_20261128": {
     "state": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
@@ -8012,7 +8002,7 @@
     "proof_json_files": 74,
     "release_guard_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773"
   },
-  "checkpoint_update_parent_sha": "2101530170402945bfa4165b1c01e06d944c2e48",
+  "checkpoint_update_parent_sha": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
   "latest_p32_build": {
     "state": "BUILD_ARTIFACT_CI_PASS_NOT_GAMEPLAY",
     "commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
@@ -8184,7 +8174,7 @@
     "repaired_by": "fbd13b35c07e88642ba3e5afb5818e678176807a",
     "repaired_run": 46100950488
   },
-  "documentation_commit_parent_sha": "2101530170402945bfa4165b1c01e06d944c2e48",
+  "documentation_commit_parent_sha": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
   "native_fileload_return_provenance_20261128": {
     "state": "VERIFIED_STATIC_CI_ONLY",
     "parent_sha": "9fafb58369cd61a3bf691a99c1b134912787fedd",
@@ -8675,5 +8665,238 @@
       "gameplay": false
     },
     "evidence_note_blob": "d6a4fc146f261e7d98b98bf8d966b1d4cdda4014"
+  },
+  "previous_latest_execution_fileload_20261128": {
+    "date": "2026-11-28",
+    "slice": "FileLoad bounded CFG equivalent-state deduplication",
+    "code_commit": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
+    "parent_sha": "d1d6a77b0ae1c006b6313534a4206a2e9b055c6d",
+    "status": "VERIFIED_STATIC_CI_ONLY",
+    "targeted_ci": {
+      "run_id": 46116650719,
+      "job_id": 140891888185,
+      "conclusion": "success",
+      "raw_log_inspected": true,
+      "artifact_id": 15251304501,
+      "artifact_zip_sha256": "f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b",
+      "report_json_sha256": "6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36"
+    },
+    "broad_ci": {
+      "run_id": 46116650641,
+      "job_id": 140891888072,
+      "conclusion": "success",
+      "raw_log_inspected": true,
+      "artifact_id": 15251649607,
+      "artifact_zip_sha256": "7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159",
+      "proof_json_files": 74
+    },
+    "metrics": {
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "page_references": 4055,
+      "target_page_references": 89,
+      "pointer_page_references": 3966,
+      "state_budget_exceeded_references": 47,
+      "target_page_state_budget_exceeded_references": 2,
+      "pointer_page_state_budget_exceeded_references": 45,
+      "state_budget_exceeded_before_dedup": 431,
+      "state_budget_reduction_percent": 89.095,
+      "equivalent_branch_histories_merged": 7510,
+      "direct_accesses": 72,
+      "indexed_access_candidates": 7,
+      "branch_path_table_write_rows": 32,
+      "static_pointer_cells": 214,
+      "memory_loaded_aliases": 271,
+      "ambiguous_pointer_loads": 1,
+      "call_barriers": 10581,
+      "out_of_window_edges": 4345,
+      "newly_exposed_direct_read_rows": 6,
+      "newly_exposed_direct_read_sites": [
+        "0x116bf70",
+        "0x116bfc8"
+      ],
+      "newly_exposed_slot_offsets": [
+        "0x80",
+        "0x88",
+        "0x90"
+      ],
+      "target_page_cfg_complete": false,
+      "pointer_alias_trace_complete": false,
+      "bounded_in_window_cfg_complete": false,
+      "branch_path_witnesses_exhaustive": false
+    },
+    "next_action": "Investigate residual loop-indexed state budget references and resolve the BR X2 source/lifecycle without assuming vtable or engine ABI."
+  },
+  "previous_latest_slice_fileload_20261128": {
+    "name": "FileLoad bounded CFG equivalent-state dedup",
+    "status": "VERIFIED_STATIC_CI_ONLY",
+    "code_commit": "63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1",
+    "metrics": {
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "page_references": 4055,
+      "target_page_references": 89,
+      "pointer_page_references": 3966,
+      "state_budget_exceeded_references": 47,
+      "target_page_state_budget_exceeded_references": 2,
+      "pointer_page_state_budget_exceeded_references": 45,
+      "state_budget_exceeded_before_dedup": 431,
+      "state_budget_reduction_percent": 89.095,
+      "equivalent_branch_histories_merged": 7510,
+      "direct_accesses": 72,
+      "indexed_access_candidates": 7,
+      "branch_path_table_write_rows": 32,
+      "static_pointer_cells": 214,
+      "memory_loaded_aliases": 271,
+      "ambiguous_pointer_loads": 1,
+      "call_barriers": 10581,
+      "out_of_window_edges": 4345,
+      "newly_exposed_direct_read_rows": 6,
+      "newly_exposed_direct_read_sites": [
+        "0x116bf70",
+        "0x116bfc8"
+      ],
+      "newly_exposed_slot_offsets": [
+        "0x80",
+        "0x88",
+        "0x90"
+      ],
+      "target_page_cfg_complete": false,
+      "pointer_alias_trace_complete": false,
+      "bounded_in_window_cfg_complete": false,
+      "branch_path_witnesses_exhaustive": false
+    },
+    "limits": {
+      "target_page_cfg_complete": false,
+      "pointer_alias_trace_complete": false,
+      "branch_path_witnesses_exhaustive": false,
+      "complete_writer_census": false,
+      "producer_identity_verified": false,
+      "br_x2_target_resolved": false,
+      "native_consumer_abi_verified": false,
+      "ownership_lifecycle_verified": false,
+      "callback_destructor_verified": false,
+      "lock_unlock_verified": false,
+      "async_verified": false,
+      "rollback_unbind_verified": false,
+      "archive_precedence_verified": false,
+      "host_static_tests": "PASS",
+      "emulated_arm64_for_this_analyzer": false,
+      "uzuy": false,
+      "gameplay": false
+    }
+  },
+  "pc_movesetplus_command_registry_20261128": {
+    "state": "VERIFIED_UPSTREAM_PC_SOURCE_ONLY_CI",
+    "parent_sha": "41a77a98067b411a7575bd3b0b457a250ccd95a8",
+    "code_commits": [
+      "51b8b50928809942e3efe238056bbf422c78edaa",
+      "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c"
+    ],
+    "final_code_head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
+    "sources": {
+      "ultimate_storm_api_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+      "ultimate_storm_api_parent": "1c3460573fa70b595e6bfa70e52f83f1c3f74f12",
+      "movesetplus_blob": "d7c5dbbebd60415f8d304321f083897658a86146",
+      "parent_movesetplus_blob": "e96af51210e96926a7bdaa70c44b6645f1a2b2b6",
+      "modmanager_tag": "2.1.2.1",
+      "modmanager_tag_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+      "modmanager_parser_blob": "faf79d588fd8beb3f5761faebedd2252853b2f2b",
+      "toolbox_tag": "2.1.2.1",
+      "toolbox_tag_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+      "toolbox_program_blob": "9d5f3e0dfa4ed51cf7924b503081a87b12146f64",
+      "pycricodecs_commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+      "rea_commit": "76e319b80fe207f05b6558053a8f66264680820d",
+      "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+    },
+    "observed": {
+      "command_27": "Start Deflect; present in parent",
+      "command_28": "Stop Deflect; present in parent",
+      "command_29": "Switch Projectiles Target / TakeOverEnemyProjectiles; new in 2.1.2.1",
+      "me_function_index_assigned": false,
+      "command_29_pc_freshness_window_ms": 250,
+      "command_29_pc_pending_expiry_ms": 250,
+      "command_29_pc_uses_windows_mutex_and_GetTickCount64": true
+    },
+    "implementation": {
+      "tool": "tools/pc_moveset_functions.py",
+      "tool_blob": "32bb4cc37c3fe8bbcc91b1b7e2e570baec05466a",
+      "profile": "profiles/pc_movesetplus_commands_2121.json",
+      "profile_blob": "625d32234b6e0a00ba60d29fd39be776d5a0ee28",
+      "tests": "tests/test_pc_moveset_function_names.py",
+      "test_blob": "30ddb6bd668551dde3b710a4c0a185a380a4a75b",
+      "workflow": ".github/workflows/verify-pc-moveset-command-registry.yml",
+      "workflow_blob": "2c661a30237a9c0ab5e6c951332f3709810e377e",
+      "evidence_note": "handoff/evidence_movesetplus_command_delta_20261128.md",
+      "evidence_blob": "a54aa70457745c50e08739095ab2ca4c71e49d80"
+    },
+    "ci": {
+      "targeted": {
+        "name": "Verify PC MovesetPlus numeric command registry (source-only)",
+        "run_id": 46126953689,
+        "job_id": 140923548062,
+        "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
+        "conclusion": "success",
+        "raw_job_log_inspected": true,
+        "tests_passed": 9,
+        "artifact_id": 15255972970,
+        "artifact_name": "PC_MOVESETPLUS_COMMAND_REGISTRY_SOURCE_EVIDENCE",
+        "artifact_zip_sha256": "c010a30453000e844a6927b359b2c416e2b6da9cfeaa51e9f8156b6a5e6c15fd",
+        "artifact_sha256_manifest_verified": true
+      },
+      "multimod": {
+        "name": "Verify offline PC MovesetPlus multi-mod composition",
+        "run_id": 46126953701,
+        "job_id": 140923548214,
+        "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
+        "conclusion": "success",
+        "raw_job_log_inspected": true,
+        "all_steps_completed": true,
+        "suites": [
+          "merge",
+          "reassemble",
+          "split",
+          "source replay",
+          "remove",
+          "replace",
+          "batch patch",
+          "reorder"
+        ],
+        "switch_runtime_tested": false
+      },
+      "all_completed_success": true,
+      "raw_job_logs_inspected": true
+    },
+    "limits": {
+      "switch_engine_abi_verified": false,
+      "native_switch_hook_added": false,
+      "switch_projectile_consumer_verified": false,
+      "ownership_lifecycle_verified": false,
+      "lock_unlock_verified": false,
+      "async_verified": false,
+      "rollback_unbind_destructor_verified": false,
+      "archive_precedence_verified": false,
+      "emulated_arm64_for_this_slice": false,
+      "uzuy": false,
+      "gameplay": false,
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next": "Continue static FileLoad pointer-page references and the unresolved BR X2 source/lifecycle. Do not port the PC Windows projectile code or infer Switch ABI."
+  },
+  "next_execution": {
+    "date": "2026-11-28",
+    "branch_head_before_checkpoint_commit": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
+    "next_action": "Continue the 45 unresolved FileLoad pointer-page CFG state-budget references and trace the exact BSS table producer / [X8,#0x58] -> BR X2 source at 0x116b3d0. Keep calls as clobber barriers; prove ownership, callback, lock/unlock, async, rollback/unbind/destructor and archive precedence before any hook. Do not port PC Windows MovesetPlus command 29 to Switch without a separate Switch-native ABI proof.",
+    "do_not_repeat": [
+      "PC MovesetPlus command registry 9-test targeted CI",
+      "PC MovesetPlus offline multi-mod regression CI",
+      "FileLoad loop-induction widening targeted CI already verified"
+    ],
+    "primary_unresolved": [
+      "45 pointer-page FileLoad CFG state-budget references",
+      "exact BSS table producer and [X8,#0x58] -> BR X2 source at 0x116b3d0",
+      "callback identity, ownership/lifecycle, lock/unlock, async, rollback/unbind/destructor, archive precedence"
+    ]
   }
 }

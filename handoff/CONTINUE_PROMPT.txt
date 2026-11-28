@@ -57,3 +57,14 @@ Preserve Sakura aura107 and both Event236 variants. Keep `full_moddingapi=false`
 - Release flags guard run [46124031110](https://github.com/Anovvoldigoad/switchmain/actions/runs/46124031110), job `140914502015`, COMPLETED SUCCESS; raw log inspected. Flags remain false.
 - Broad foundation run `46124031004` / job `140914502057` was IN_PROGRESS at this checkpoint.
 - Next: continue the 45 pointer-page CFG references and resolve the table producer / BR X2 value path. No runtime hook until ABI, ownership and lifecycle are proven.
+
+
+## Latest verified slice — 2026-11-28 (PC MovesetPlus command delta)
+
+- Final code head: `b7df04c64fb41c1403cb8b456164aeb9a45a9d6c`; parent chain starts at `41a77a98067b411a7575bd3b0b457a250ccd95a8`.
+- Upstream UltimateStormAPI 2.1.2.1 proves command 27 Start Deflect and 28 Stop Deflect already existed in parent `1c3460573fa70b595e6bfa70e52f83f1c3f74f12`; command 29 TakeOverEnemyProjectiles / Switch Projectiles Target is new. These are numeric PC meTest commands, not NSC-Toolbox ME_* name indices.
+- Added source-pinned command registry and CLI `--commands` / `--command-id`; 9 targeted tests pass. Run [46126953689](https://github.com/Anovvoldigoad/switchmain/actions/runs/46126953689), job 140923548062, raw log inspected; artifact 15255972970, ZIP SHA256 `c010a30453000e844a6927b359b2c416e2b6da9cfeaa51e9f8156b6a5e6c15fd`; internal checksum manifest independently verified.
+- Multi-mod regression run [46126953701](https://github.com/Anovvoldigoad/switchmain/actions/runs/46126953701), job 140923548214, COMPLETED SUCCESS; raw log inspected.
+- Command 29 is explicitly PC Windows-only in the source: offset rule, std::mutex, GetTickCount64, 250 ms freshness/expiry. No Switch hook or ABI is inferred. All release flags remain false.
+
+Next: continue the 45 unresolved FileLoad pointer-page CFG references and the exact table producer / BR X2 source at `0x116b3d0`. Preserve call-clobber barriers and do not install a runtime hook until Switch ABI, ownership/lifecycle, callback, lock/unlock, async, rollback/unbind/destructor and archive precedence are proven. Do not repeat the passing command-registry or multi-mod CI slices.

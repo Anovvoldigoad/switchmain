@@ -122,7 +122,8 @@
     "2026-11-28 VERIFIED_STATIC_CI_ONLY: FileLoad helper 0x116b82c now has a reproduced bounded return-value proof and the 64-slot table scanner tracks symbolic UXTW-indexed aliases. Seven indexed reads resolve to base 0x4371800 + UXTW(W1)*8 (64 slots); no indexed writes were found in the scanned ADRP windows; 34 direct accesses include 2 reads and 32 zeroing writes, with 0 direct writers outside the two zeroing sequences. Helper returns a 64-bit memory-derived slot value on valid non-sentinel path and zero on out-of-range/sentinel path. Static evidence only; no ABI, producer lifecycle, ownership, callback, archive precedence, emulated ARM64 or Uzuy proof. Code commit e9555de6024a334b6ffcac1e7b9c091fee79d7e6; table run 46109004389/job 140868100989 and return run 46109004391/job 140868101178 completed success; raw logs and artifacts inspected.",
     "2026-11-28 PENDING_CI: Added SHA-pinned FileLoad bounded CFG branch-path and static pointer-alias census. New analyzer follows in-window conditional/unconditional edges from ADRP references and traces only unique file-backed literal / symbol-zero R_AARCH64_RELATIVE pointer loads into the 0x4371000 page. Calls remain clobber barriers; out-of-window edges and BSS/heap aliases remain unresolved. Synthetic regressions cover branch-only writes, call barriers, RELA/literal pointer cells, ambiguity, exclusive-page boundary, BSS exclusion and state-budget exhaustion. Original main SHA256 is pinned; no runtime hook. Parent HEAD 4d5acd5a52e0ae3e72415a7ee3164ffc21082769; targeted Actions CI pending.",
     "2026-11-28 VERIFIED_STATIC_CI_ONLY: FileLoad bounded CFG semantic-state dedup on code commit 63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1 (parent d1d6a77b0ae1c006b6313534a4206a2e9b055c6d). The exact pinned original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 was reproduced. The scan processed 4,055 ADRP references; equivalent-state dedup reduced references hitting the 256-state budget from 431 to 47 (89.1% reduction: target-page 10->2, pointer-page 421->45) while merging 7,510 equivalent branch histories and explicitly marking branch-path witness enumeration non-exhaustive. It now records 72 direct accesses, 7 indexed reads, 32 STP write rows, 214 candidate pointer cells, 271 loaded aliases, 1 ambiguous load, 10,581 call barriers, and 4,345 out-of-window edges; six additional bounded reads appear at 0x116bf70/0x116bfc8 for slot offsets 0x80/0x88/0x90. Target CFG and pointer alias trace remain INCOMPLETE; no complete writer census, producer identity, BR X2 target, native consumer ABI, ownership/lifecycle, callback/destructor, lock/unlock, async, rollback/unbind, archive precedence, emulated ARM64 for this analyzer, Uzuy or gameplay claim. Targeted run 46116650719/job 140891888185 and broad foundation run 46116650641/job 140891888072 COMPLETED SUCCESS; both raw logs inspected. Target artifact 15251304501, ZIP SHA256 f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b; report JSON SHA256 6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36; foundation artifact 15251649607, ZIP SHA256 7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159, 74 JSON files.",
-    "2026-11-28 VERIFIED_STATIC_CI_ONLY: Exact FileLoad X20 loop-induction widening on code commit 2101530170402945bfa4165b1c01e06d944c2e48 (parent c0649a2c899eb74c69bb0df177c232e413cc9846). Target-page state-budget refs 2→0 and target-page bounded CFG is complete; global state-budget refs 47→45, leaving 45 pointer-page refs unresolved. Two new indexed reads at 0x116bf70/0x116bfc8 resolve symbolically to 0x4371800 + X20, width 8, stride 8, bound 0x200 (64 slots only if X20 is preserved). BLR remains a clobber barrier; callback preservation and runtime 64-slot visitation remain unverified. Targeted run 46124030962/job 140914501509 COMPLETED SUCCESS; raw log and artifact 15255315717 inspected (ZIP SHA256 f8a95dc28b93472956194ddc457326616cdb971252191841e5ddd9a743c12cc9; report SHA256 19e379f8e8595d1138fe7db417e28e2c4e320147a811116fe8302e93af1c19ba). Release guard run 46124031110/job 140914502015 COMPLETED SUCCESS; raw log inspected; all release flags remain false. Broad foundation run 46124031004/job 140914502057 was still in progress."
+    "2026-11-28 VERIFIED_STATIC_CI_ONLY: Exact FileLoad X20 loop-induction widening on code commit 2101530170402945bfa4165b1c01e06d944c2e48 (parent c0649a2c899eb74c69bb0df177c232e413cc9846). Target-page state-budget refs 2→0 and target-page bounded CFG is complete; global state-budget refs 47→45, leaving 45 pointer-page refs unresolved. Two new indexed reads at 0x116bf70/0x116bfc8 resolve symbolically to 0x4371800 + X20, width 8, stride 8, bound 0x200 (64 slots only if X20 is preserved). BLR remains a clobber barrier; callback preservation and runtime 64-slot visitation remain unverified. Targeted run 46124030962/job 140914501509 COMPLETED SUCCESS; raw log and artifact 15255315717 inspected (ZIP SHA256 f8a95dc28b93472956194ddc457326616cdb971252191841e5ddd9a743c12cc9; report SHA256 19e379f8e8595d1138fe7db417e28e2c4e320147a811116fe8302e93af1c19ba). Release guard run 46124031110/job 140914502015 COMPLETED SUCCESS; raw log inspected; all release flags remain false. Broad foundation run 46124031004/job 140914502057 was still in progress.",
+    "2026-11-28 VERIFIED_UPSTREAM_PC_SOURCE_ONLY_CI: added a separate numeric PC meTest registry for commands 27/28/29 and CLI --commands/--command-id. Upstream diff proves 27/28 pre-existed in the comparison parent; command 29 TakeOverEnemyProjectiles is new in UltimateStormAPI 2.1.2.1 and implements PC Windows 250 ms projectile takeover queuing. Kept numeric meTest IDs separate from NSC-Toolbox ME_* name indices (289 NS4 / 300 NSC). Targeted run 46126953689/job 140923548062 passed 9 tests; raw log inspected; artifact 15255972970 ZIP SHA256 c010a30453000e844a6927b359b2c416e2b6da9cfeaa51e9f8156b6a5e6c15fd and internal SHA256SUMS verified. Multi-mod run 46126953701/job 140923548214 completed success; raw log inspected. No Switch ABI, runtime hook, Uzuy or gameplay proof."
   ],
   "blocking_gaps": [
     "At FileLoad, the 0x290 helper is now byte-proven to write 24-byte records (x8/x1/x2 at 0/8/16) using an atomic counter; both relocated table pointer cells target 0x2161230. Its registered code-pointer candidate 0x116b888 walks 64 pointer slots at 0x4371800, calls 0x116b390 per slot, then clears 0x200 bytes. The static guard pair is __cxa_guard_acquire/__cxa_guard_release for 0x43717d8. Alternate tail 0x116d830 resolves to nn::mem::StandardAllocator::Free(void*) via PLT 0x12f49b0; receiver cell relocates to 0x4371a00 and X1 receives the alternate-path X19 value. Index-error path passes 'BlockManager::GetBlock break\\n' to 0x12155a0. However BR X2 target, object type, callback/destructor identity and invocation, runtime table values, allocator binding, ownership/lifetime, lock/unlock, async completion, rollback/unbind and archive precedence remain unresolved. No runtime hook.",
@@ -1140,14 +1141,8 @@
     "reason": "test_pc_native_pack.py negatives counter referenced before assignment",
     "new_commit_ci": "PENDING"
   },
-  "latest_pending_code_commit": "2101530170402945bfa4165b1c01e06d944c2e48",
-  "latest_pending_ci": {
-    "workflow": "Verify Switch port foundation (not a gameplay release)",
-    "run_id": 46124031004,
-    "job_id": 140914502057,
-    "status": "IN_PROGRESS",
-    "raw_log_inspected": false
-  },
+  "latest_pending_code_commit": null,
+  "latest_pending_ci": null,
   "multi_mod_pc_source_path_ownership_guard": "OFFLINE_ONLY_PENDING_CI_NO_ENGINE_ARCHIVE_PRECEDENCE",
   "crilayla_total_output_limit": {
     "status": "pending_ci",
@@ -1185,7 +1180,7 @@
     "uzuy_tested": false
   },
   "pc_moveset_function_catalog": {
-    "status": "PENDING_CI_SOURCE_GROUNDED_PC_EDITOR_INDEX_ONLY",
+    "status": "VERIFIED_CI_SOURCE_GROUNDED_PC_EDITOR_INDEX_ONLY",
     "upstream": "TheLeonX/NSC-Toolbox@6f780cb6814f07e03c16b3e78d97dde4e4368983",
     "source_git_blob": "9d5f3e0dfa4ed51cf7924b503081a87b12146f64",
     "ns4_count": 289,
@@ -1194,7 +1189,15 @@
     "nsc_only_count": 11,
     "projectiles_target_function_index_verified": false,
     "deflect_function_index_verified": false,
-    "switch_engine_abi_verified": false
+    "switch_engine_abi_verified": false,
+    "ci": {
+      "code_commit": "2101530170402945bfa4165b1c01e06d944c2e48",
+      "run_id": 46124031004,
+      "job_id": 140914502057,
+      "conclusion": "success",
+      "raw_job_log_inspected": true,
+      "tests": "test_full_source_index_catalog_and_prefix; test_new_nsc_only_names_and_release_gap"
+    }
   },
   "fileopen_br_register_provenance": {
     "status": "PENDING_CI",
@@ -2215,32 +2218,49 @@
     "uzuy_verified": false,
     "next": "Inspect exact SP-relative X19 save/restore and all return paths in 0x120a6c8; require path-sensitive same-slot proof for every return and recursively apply only to exact direct targets. Preserve barriers for all unproven callees; no AAPCS64 assumption, no runtime hook."
   },
-  "latest_verified_code_commit": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
-  "latest_verified_code_parent": "2133abb9534561eeacf47ffeff54a08e99339880",
+  "latest_verified_code_commit": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
+  "latest_verified_code_parent": "51b8b50928809942e3efe238056bbf422c78edaa",
   "latest_verified_code_ci": {
-    "head": "48b742b865dbdc17d3d6f4265dc6a8b2b81a81d3",
-    "parent": "2133abb9534561eeacf47ffeff54a08e99339880",
+    "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
+    "parent": "51b8b50928809942e3efe238056bbf422c78edaa",
     "all_completed_success": true,
     "raw_job_logs_inspected": true,
     "workflows": [
       {
-        "name": "Build NSC P32 file-open vs XFBIN-read trace / unwind-proof",
-        "run_id": 46100321645,
-        "job_id": 140841047537,
+        "name": "Verify PC MovesetPlus numeric command registry (source-only)",
+        "run_id": 46126953689,
+        "job_id": 140923548062,
+        "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
         "conclusion": "success",
-        "artifact_id": 15245162374,
-        "artifact_zip_sha256": "ac07da627905706da9e45f0a86b1620d1d32a3e6ee47059d0d2331e442a25101"
+        "raw_job_log_inspected": true,
+        "tests_passed": 9,
+        "artifact_id": 15255972970,
+        "artifact_name": "PC_MOVESETPLUS_COMMAND_REGISTRY_SOURCE_EVIDENCE",
+        "artifact_zip_sha256": "c010a30453000e844a6927b359b2c416e2b6da9cfeaa51e9f8156b6a5e6c15fd",
+        "artifact_sha256_manifest_verified": true
       },
       {
-        "name": "Verify Switch port foundation (not a gameplay release)",
-        "run_id": 46100321670,
-        "job_id": 140841047578,
+        "name": "Verify offline PC MovesetPlus multi-mod composition",
+        "run_id": 46126953701,
+        "job_id": 140923548214,
+        "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
         "conclusion": "success",
-        "artifact_id": 15245303059,
-        "artifact_zip_sha256": "aaf920f3a76d53937a8f4faefb913eb9e430fe6b13329b538ca2f29d794868b5"
+        "raw_job_log_inspected": true,
+        "all_steps_completed": true,
+        "suites": [
+          "merge",
+          "reassemble",
+          "split",
+          "source replay",
+          "remove",
+          "replace",
+          "batch patch",
+          "reorder"
+        ],
+        "switch_runtime_tested": false
       }
     ],
-    "note": "The P32 build job was not run on this code commit; its build-only artifact was produced separately by fbd13b35c07e88642ba3e5afb5818e678176807a."
+    "note": "Host/static source-registry and offline multi-mod regressions only; no Switch runtime or ABI claim."
   },
   "native_fileload_x19_stack_restore_20261128": {
     "state": "VERIFIED_CI_STATIC_ONLY_RECURSIVE_PROOF_TREE",
@@ -3599,7 +3619,7 @@
     "repaired_run": 46100950488
   },
   "latest_pending_head_ci": null,
-  "next_action": "Continue the 45 pointer-page state-budget references and trace the exact BSS table producer / unresolved BR X2 target. Keep callback register preservation unassumed and do not install hooks.",
+  "next_action": "Continue the 45 unresolved FileLoad pointer-page CFG state-budget references and trace the exact BSS table producer / [X8,#0x58] -> BR X2 source at 0x116b3d0. Keep calls as clobber barriers; prove ownership, callback, lock/unlock, async, rollback/unbind/destructor and archive precedence before any hook. Do not port PC Windows MovesetPlus command 29 to Switch without a separate Switch-native ABI proof.",
   "next_execution": {
     "date": "2026-11-28",
     "branch_head_before_checkpoint_commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
@@ -4209,5 +4229,105 @@
       "gameplay": false
     },
     "evidence_note_blob": "d6a4fc146f261e7d98b98bf8d966b1d4cdda4014"
+  },
+  "pc_movesetplus_command_registry_20261128": {
+    "state": "VERIFIED_UPSTREAM_PC_SOURCE_ONLY_CI",
+    "parent_sha": "41a77a98067b411a7575bd3b0b457a250ccd95a8",
+    "code_commits": [
+      "51b8b50928809942e3efe238056bbf422c78edaa",
+      "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c"
+    ],
+    "final_code_head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
+    "sources": {
+      "ultimate_storm_api_commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+      "ultimate_storm_api_parent": "1c3460573fa70b595e6bfa70e52f83f1c3f74f12",
+      "movesetplus_blob": "d7c5dbbebd60415f8d304321f083897658a86146",
+      "parent_movesetplus_blob": "e96af51210e96926a7bdaa70c44b6645f1a2b2b6",
+      "modmanager_tag": "2.1.2.1",
+      "modmanager_tag_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+      "modmanager_parser_blob": "faf79d588fd8beb3f5761faebedd2252853b2f2b",
+      "toolbox_tag": "2.1.2.1",
+      "toolbox_tag_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+      "toolbox_program_blob": "9d5f3e0dfa4ed51cf7924b503081a87b12146f64",
+      "pycricodecs_commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+      "rea_commit": "76e319b80fe207f05b6558053a8f66264680820d",
+      "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+    },
+    "observed": {
+      "command_27": "Start Deflect; present in parent",
+      "command_28": "Stop Deflect; present in parent",
+      "command_29": "Switch Projectiles Target / TakeOverEnemyProjectiles; new in 2.1.2.1",
+      "me_function_index_assigned": false,
+      "command_29_pc_freshness_window_ms": 250,
+      "command_29_pc_pending_expiry_ms": 250,
+      "command_29_pc_uses_windows_mutex_and_GetTickCount64": true
+    },
+    "implementation": {
+      "tool": "tools/pc_moveset_functions.py",
+      "tool_blob": "32bb4cc37c3fe8bbcc91b1b7e2e570baec05466a",
+      "profile": "profiles/pc_movesetplus_commands_2121.json",
+      "profile_blob": "625d32234b6e0a00ba60d29fd39be776d5a0ee28",
+      "tests": "tests/test_pc_moveset_function_names.py",
+      "test_blob": "30ddb6bd668551dde3b710a4c0a185a380a4a75b",
+      "workflow": ".github/workflows/verify-pc-moveset-command-registry.yml",
+      "workflow_blob": "2c661a30237a9c0ab5e6c951332f3709810e377e",
+      "evidence_note": "handoff/evidence_movesetplus_command_delta_20261128.md",
+      "evidence_blob": "a54aa70457745c50e08739095ab2ca4c71e49d80"
+    },
+    "ci": {
+      "targeted": {
+        "name": "Verify PC MovesetPlus numeric command registry (source-only)",
+        "run_id": 46126953689,
+        "job_id": 140923548062,
+        "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
+        "conclusion": "success",
+        "raw_job_log_inspected": true,
+        "tests_passed": 9,
+        "artifact_id": 15255972970,
+        "artifact_name": "PC_MOVESETPLUS_COMMAND_REGISTRY_SOURCE_EVIDENCE",
+        "artifact_zip_sha256": "c010a30453000e844a6927b359b2c416e2b6da9cfeaa51e9f8156b6a5e6c15fd",
+        "artifact_sha256_manifest_verified": true
+      },
+      "multimod": {
+        "name": "Verify offline PC MovesetPlus multi-mod composition",
+        "run_id": 46126953701,
+        "job_id": 140923548214,
+        "head": "b7df04c64fb41c1403cb8b456164aeb9a45a9d6c",
+        "conclusion": "success",
+        "raw_job_log_inspected": true,
+        "all_steps_completed": true,
+        "suites": [
+          "merge",
+          "reassemble",
+          "split",
+          "source replay",
+          "remove",
+          "replace",
+          "batch patch",
+          "reorder"
+        ],
+        "switch_runtime_tested": false
+      },
+      "all_completed_success": true,
+      "raw_job_logs_inspected": true
+    },
+    "limits": {
+      "switch_engine_abi_verified": false,
+      "native_switch_hook_added": false,
+      "switch_projectile_consumer_verified": false,
+      "ownership_lifecycle_verified": false,
+      "lock_unlock_verified": false,
+      "async_verified": false,
+      "rollback_unbind_destructor_verified": false,
+      "archive_precedence_verified": false,
+      "emulated_arm64_for_this_slice": false,
+      "uzuy": false,
+      "gameplay": false,
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next": "Continue static FileLoad pointer-page references and the unresolved BR X2 source/lifecycle. Do not port the PC Windows projectile code or infer Switch ABI."
   }
 }
