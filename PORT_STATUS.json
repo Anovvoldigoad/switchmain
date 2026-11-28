@@ -109,7 +109,8 @@
     "2026-11-28 VERIFIED_CI_STATIC_ONLY: Dispatch-flow trace of the pinned 0x116b390 FileLoad callee passed on code HEAD 9c06a6bba6d5c69f49107ce3094cbee614d4f5df. It proves the local instruction chain X19<-X0; three direct calls; X8<-*[X0]; X2<-*[X8+0x58]; X1<-X19; and BR X2 at 0x116b3d0, plus CBZ exits and a 0x20-byte stack frame. Four 0x100-byte target windows were traced: 0x116b7b0 (31 reachable, 3 direct calls), 0x116d380 (15, no calls), 0x116b82c (18, one direct call to 0x12155a0), 0x116d820 (6, no calls). All four direct push workflows completed SUCCESS and raw logs were inspected. Foundation marker PINNED_FILELOAD_REGISTRATION_DISPATCH_PASS targets 4; artifact 15238396702 ZIP SHA256 d33b8fdc4bb728a9d1c7337674a87e6777dcd1a69e4752e36d6f08c51659966c; report JSON SHA256 f2eed43777e1679e2948f0a43ef02c0022ac623586997545573c12949214ab1a. BR X2 target, callback/vtable/destructor identity, object type, ownership, lock/unlock, async, rollback/unbind, ABI and archive precedence remain unproven. Static/host only; no Uzuy/new-analyzer ARM64. No hook; flags false.",
     "2026-11-28 VERIFIED_CI_STATIC_ONLY: New pinned FileLoad registration-lifecycle trace on code HEAD 2b06a49730dc3bdf9816cc7f4f984231aa34b4fe (parent 3982db7cbea721a3308870945cd29dad6598a5ba). Original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 verified. The 0x290 helper writes 24-byte records as x8/x1/x2 at offsets 0/8/16, using an atomic counter and two relocated table pointer cells both targeting 0x2161230; runtime table values remain unverified. Registered code-pointer candidate 0x116b888 walks 64 pointer-sized slots from 0x4371800, calls 0x116b390 per slot, then clears 0x200 bytes; callback/destructor identity is NOT proven. Guard imports at 0x12f3690/0x12f36a0 resolve to __cxa_guard_acquire/__cxa_guard_release for guard 0x43717d8. Alternate tail 0x116d830 -> PLT 0x12f49b0 resolves to nn::mem::StandardAllocator::Free(void*); receiver cell 0x215d2e8 relocates to BSS 0x4371a00 and X1 receives the alternate-path X19 value. Index-error call 0x116b864 -> 0x12155a0 passes rodata string 'BlockManager::GetBlock break\\n'. CI run 46086093686/job 140795884030 COMPLETED SUCCESS; raw log inspected; artifact 15238478983; ZIP SHA256 7e6362c66972f6d35588a73c6ae25cc9aed3d6285b674d9ef479a4789bd87fd3; JSON SHA256 51fb342cffdb2b39ea7d3c72aa21c21afcb20b6ea1c979a15f91eba4de74c949. Host/static only; no consumer ABI, ownership, destructor, async, rollback/unbind, archive precedence, emulated ARM64 or Uzuy proof. No hook; all three release flags false.",
     "2026-11-28 IMPLEMENTED_AWAITING_CI: Added a SHA-pinned direct-reference census for FileLoad's 64-slot BSS table at 0x4371800. It follows bounded ADRP/ADD/MOV address chains, records direct reads/writes and scans RELA destinations/addends; synthetic positive, negative, boundary and malformed-input regressions added. No producer/ABI/ownership/destructor/Uzuy claim. CI pending.",
-    "2026-11-28 FOLLOW-UP: corrected the synthetic ADRP encoder (page delta is measured in pages, not bytes), required 8-byte-aligned table bounds, and attached the new census test/artifact to the already active FileLoad lifecycle workflow with explicit path filters. CI pending."
+    "2026-11-28 FOLLOW-UP: corrected the synthetic ADRP encoder (page delta is measured in pages, not bytes), required 8-byte-aligned table bounds, and attached the new census test/artifact to the already active FileLoad lifecycle workflow with explicit path filters. CI pending.",
+    "2026-11-28 FOLLOW-UP 2: raw CI log identified the missing reaching definition: X19 is zeroed immediately before ADRP, then ADD X8,X20,X19 forms the object base. The analyzer now scans a bounded 0x20-byte prefix and tracks only statically known register-add operands. Foundation workflow excludes this isolated FileLoad test to avoid rerunning the broad suite; the active lifecycle workflow remains authoritative for this slice. CI pending."
   ],
   "blocking_gaps": [
     "At FileLoad, the 0x290 helper is now byte-proven to write 24-byte records (x8/x1/x2 at 0/8/16) using an atomic counter; both relocated table pointer cells target 0x2161230. Its registered code-pointer candidate 0x116b888 walks 64 pointer slots at 0x4371800, calls 0x116b390 per slot, then clears 0x200 bytes. The static guard pair is __cxa_guard_acquire/__cxa_guard_release for 0x43717d8. Alternate tail 0x116d830 resolves to nn::mem::StandardAllocator::Free(void*) via PLT 0x12f49b0; receiver cell relocates to 0x4371a00 and X1 receives the alternate-path X19 value. Index-error path passes 'BlockManager::GetBlock break\\n' to 0x12155a0. However BR X2 target, object type, callback/destructor identity and invocation, runtime table values, allocator binding, ownership/lifetime, lock/unlock, async completion, rollback/unbind and archive precedence remain unresolved. No runtime hook.",
@@ -2976,7 +2977,7 @@
   },
   "native_fileload_table_access_census_20261128": {
     "state": "IMPLEMENTED_AWAITING_CI",
-    "parent_sha": "30a06adf117ffc4f5657044922fcff360820d8b0",
+    "parent_sha": "3ba748262c0790f781249cbb8c1eb55410aa538c",
     "source": "tools/portlib/native_fileload_table_access.py",
     "test": "tests/test_native_fileload_table_access.py",
     "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
@@ -2989,6 +2990,17 @@
       "end_exclusive": "0x4371a00",
       "slot_count": 64,
       "slot_stride_bytes": 8
+    },
+    "address_trace": {
+      "prefix_bytes": 32,
+      "forward_window_bytes": 256,
+      "tracked_operations": [
+        "ADRP",
+        "ADD immediate",
+        "ADD register when both source values are statically known",
+        "MOV register"
+      ],
+      "control_flow_barrier": true
     },
     "expected_static_facts": {
       "first_slot_load": "0x116b8a0",
@@ -3025,7 +3037,23 @@
       "code_commit": null,
       "run_id": null,
       "job_id": null,
-      "raw_log_inspected": false
+      "raw_log_inspected": false,
+      "failed_attempts": [
+        {
+          "run_id": 46088082330,
+          "job_id": 140802291968,
+          "commit": "30a06adf117ffc4f5657044922fcff360820d8b0",
+          "failure": "synthetic ADRP encoder incorrectly tested page delta as bytes",
+          "raw_log_inspected": true
+        },
+        {
+          "run_id": 46088241951,
+          "job_id": 140802797820,
+          "commit": "3ba748262c0790f781249cbb8c1eb55410aa538c",
+          "failure": "authentic first-slot read not found because ADD X8,X20,X19 and prior MOV X19,XZR were not tracked",
+          "raw_log_inspected": true
+        }
+      ]
     },
     "limits": {
       "producer_identity_verified": false,
@@ -3041,6 +3069,6 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Read the new push workflow raw job log and artifact. If no direct writer outside cleanup is found, do not infer absence of indirect writers; continue from unresolved BR X2 and runtime slot values or switch to a source-grounded semantic consumer slice. No hooks."
+    "next": "Read the corrected lifecycle workflow raw job log and the table-access artifact. Direct reference candidates are not proof of complete writers; indirect aliases and runtime slot values remain unresolved. No hooks."
   }
 }

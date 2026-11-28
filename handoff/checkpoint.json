@@ -5670,7 +5670,7 @@
   },
   "native_fileload_table_access_census_20261128": {
     "state": "IMPLEMENTED_AWAITING_CI",
-    "parent_sha": "30a06adf117ffc4f5657044922fcff360820d8b0",
+    "parent_sha": "3ba748262c0790f781249cbb8c1eb55410aa538c",
     "source": "tools/portlib/native_fileload_table_access.py",
     "test": "tests/test_native_fileload_table_access.py",
     "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
@@ -5683,6 +5683,17 @@
       "end_exclusive": "0x4371a00",
       "slot_count": 64,
       "slot_stride_bytes": 8
+    },
+    "address_trace": {
+      "prefix_bytes": 32,
+      "forward_window_bytes": 256,
+      "tracked_operations": [
+        "ADRP",
+        "ADD immediate",
+        "ADD register when both source values are statically known",
+        "MOV register"
+      ],
+      "control_flow_barrier": true
     },
     "expected_static_facts": {
       "first_slot_load": "0x116b8a0",
@@ -5719,7 +5730,23 @@
       "code_commit": null,
       "run_id": null,
       "job_id": null,
-      "raw_log_inspected": false
+      "raw_log_inspected": false,
+      "failed_attempts": [
+        {
+          "run_id": 46088082330,
+          "job_id": 140802291968,
+          "commit": "30a06adf117ffc4f5657044922fcff360820d8b0",
+          "failure": "synthetic ADRP encoder incorrectly tested page delta as bytes",
+          "raw_log_inspected": true
+        },
+        {
+          "run_id": 46088241951,
+          "job_id": 140802797820,
+          "commit": "3ba748262c0790f781249cbb8c1eb55410aa538c",
+          "failure": "authentic first-slot read not found because ADD X8,X20,X19 and prior MOV X19,XZR were not tracked",
+          "raw_log_inspected": true
+        }
+      ]
     },
     "limits": {
       "producer_identity_verified": false,
@@ -5735,6 +5762,6 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Read the new push workflow raw job log and artifact. If no direct writer outside cleanup is found, do not infer absence of indirect writers; continue from unresolved BR X2 and runtime slot values or switch to a source-grounded semantic consumer slice. No hooks."
+    "next": "Read the corrected lifecycle workflow raw job log and the table-access artifact. Direct reference candidates are not proof of complete writers; indirect aliases and runtime slot values remain unresolved. No hooks."
   }
 }

@@ -19,6 +19,7 @@ TABLE_START = 0x4371800
 TABLE_END = 0x4371A00
 TABLE_PAGE = TABLE_START & ~0xFFF
 WINDOW_BYTES = 0x100
+PREFIX_BYTES = 0x20
 CLEANUP_START = 0x116B8C4
 CLEANUP_END = 0x116B904
 
@@ -72,105 +73,44 @@ def _overlaps(address, width, start, end):
     return address < end and address + extent > start
 
 
-def _trace_page_candidate(text, start, page, destination, window_bytes, decoder,
-                          target_start, target_end):
-    end = min(len(text), start + window_bytes)
-    known = {
-        "x%d" % destination: {
-            "address": page,
-            "chain": [{
-                "site": _hex(start),
-                "kind": "ADRP",
-                "page": _hex(page),
-                "destination_register": "x%d" % destination,
-            }],
+def _zero_register_state():
+    return {
+        "xzr": {
+            "address": 0,
+            "chain": [{"kind": "ZERO_REGISTER", "register": "xzr"}],
         }
     }
-    accesses = []
-    indexed = []
 
-    for pc in range(start + 4, end, 4):
-        ins = _decode_one(decoder, text, pc)
-        if ins is None:
-            break
-        try:
-            reads, writes = ins.regs_access()
-        except Exception:
-            break
-        read_names = sorted({_reg_name(ins, value) for value in reads} - {None})
-        written_names = sorted({_reg_name(ins, value) for value in writes} - {None})
 
-        for operand_index, operand in enumerate(ins.operands):
-            if operand.type != ARM64_OP_MEM:
-                continue
-            base = _reg_name(ins, operand.mem.base)
-            index = _reg_name(ins, operand.mem.index)
-            if base not in known:
-                continue
-            base_address = known[base]["address"] + operand.mem.disp
-            width, width_source = _memory_access_width(ins)
-            if index:
-                if _overlaps(base_address, width, target_start, target_end):
-                    indexed.append({
-                        "site": _hex(pc),
-                        "word_le": bytes(text[pc:pc + 4]).hex(),
-                        "mnemonic": ins.mnemonic,
-                        "operands": ins.op_str,
-                        "base_register": base,
-                        "index_register": index,
-                        "base_plus_displacement": _hex(base_address),
-                        "displacement": operand.mem.disp,
-                        "width_bytes": width,
-                        "direction": _direction(ins.mnemonic),
-                        "effective_address_resolved": False,
-                        "origin_chain": list(known[base]["chain"]),
-                    })
-                continue
-            if not _overlaps(base_address, width, target_start, target_end):
-                continue
-            accesses.append({
-                "site": _hex(pc),
-                "operand_index": operand_index,
-                "word_le": bytes(text[pc:pc + 4]).hex(),
-                "mnemonic": ins.mnemonic,
-                "operands": ins.op_str,
-                "direction": _direction(ins.mnemonic),
-                "effective_address": _hex(base_address),
-                "width_bytes": width,
-                "width_source": width_source,
-                "base_register": base,
-                "index_register": None,
-                "displacement": operand.mem.disp,
-                "writeback": bool(getattr(ins, "writeback", False)),
-                "read_registers": read_names,
-                "written_registers": written_names,
-                "effective_address_resolved": True,
-                "origin_chain": list(known[base]["chain"]),
-            })
-
-        handled_destination = None
-        if ins.mnemonic == "adrp" and len(ins.operands) >= 2:
-            op0, op1 = ins.operands[0], ins.operands[1]
-            if op0.type == ARM64_OP_REG and op1.type == ARM64_OP_IMM:
-                word = struct.unpack_from("<I", text, pc)[0]
-                target_page, rd = _decode_adrp_page(word, pc)
-                name = "x%d" % rd
-                known[name] = {
-                    "address": target_page,
-                    "chain": [{
-                        "site": _hex(pc),
-                        "kind": "ADRP",
-                        "page": _hex(target_page),
-                        "destination_register": name,
-                    }],
-                }
-                handled_destination = name
-        elif ins.mnemonic == "add" and len(ins.operands) >= 3:
-            op0, op1, op2 = ins.operands[:3]
-            if (op0.type == ARM64_OP_REG and op1.type == ARM64_OP_REG
-                    and op2.type == ARM64_OP_IMM):
-                destination_name = _reg_name(ins, op0.reg)
-                source_name = _reg_name(ins, op1.reg)
+def _update_known(ins, text, pc, known):
+    handled_destination = None
+    if ins.mnemonic == "adrp" and len(ins.operands) >= 2:
+        op0, op1 = ins.operands[0], ins.operands[1]
+        if op0.type == ARM64_OP_REG and op1.type == ARM64_OP_IMM:
+            word = struct.unpack_from("<I", text, pc)[0]
+            target_page, rd = _decode_adrp_page(word, pc)
+            name = "x%d" % rd
+            known[name] = {
+                "address": target_page,
+                "chain": [{
+                    "site": _hex(pc),
+                    "kind": "ADRP",
+                    "page": _hex(target_page),
+                    "destination_register": name,
+                }],
+            }
+            handled_destination = name
+    elif ins.mnemonic == "add" and len(ins.operands) >= 3:
+        op0, op1, op2 = ins.operands[:3]
+        if op0.type == ARM64_OP_REG and op1.type == ARM64_OP_REG:
+            destination_name = _reg_name(ins, op0.reg)
+            source_name = _reg_name(ins, op1.reg)
+            destination_raw = ins.reg_name(op0.reg).lower()
+            source_raw = ins.reg_name(op1.reg).lower()
+            if not destination_raw.startswith("x") or not source_raw.startswith("x"):
+                known.pop(destination_name, None)
+                handled_destination = destination_name
+            elif op2.type == ARM64_OP_IMM:
                 shift = getattr(getattr(op2, "shift", None), "value", 0) or 0
                 if source_name in known and shift in (0, 12):
                     immediate = int(op2.imm) << shift
@@ -187,37 +127,145 @@ def _trace_page_candidate(text, start, page, destination, window_bytes, decoder,
                 else:
                     known.pop(destination_name, None)
                 handled_destination = destination_name
-        elif ins.mnemonic == "mov" and len(ins.operands) >= 2:
-            op0, op1 = ins.operands[:2]
-            if op0.type == ARM64_OP_REG and op1.type == ARM64_OP_REG:
-                destination_name = _reg_name(ins, op0.reg)
-                source_name = _reg_name(ins, op1.reg)
-                if source_name in known:
+            elif op2.type == ARM64_OP_REG:
+                source2_name = _reg_name(ins, op2.reg)
+                source2_raw = ins.reg_name(op2.reg).lower()
+                shift = getattr(getattr(op2, "shift", None), "value", 0) or 0
+                extension = getattr(op2, "ext", 0)
+                if (source_name in known and source2_name in known
+                        and source2_raw.startswith("x") and shift == 0
+                        and extension in (0, None)):
+                    right = known[source2_name]
                     known[destination_name] = {
-                        "address": known[source_name]["address"],
+                        "address": known[source_name]["address"] + right["address"],
                         "chain": known[source_name]["chain"] + [{
                             "site": _hex(pc),
-                            "kind": "MOV_REGISTER",
-                            "source_register": source_name,
+                            "kind": "ADD_REGISTER",
+                            "left_source": source_name,
+                            "right_source": source2_name,
+                            "right_value": right["address"],
+                            "right_chain": right["chain"],
                             "destination_register": destination_name,
                         }],
                     }
                 else:
                     known.pop(destination_name, None)
                 handled_destination = destination_name
+    elif ins.mnemonic == "mov" and len(ins.operands) >= 2:
+        op0, op1 = ins.operands[:2]
+        if op0.type == ARM64_OP_REG and op1.type == ARM64_OP_REG:
+            destination_name = _reg_name(ins, op0.reg)
+            source_name = _reg_name(ins, op1.reg)
+            destination_raw = ins.reg_name(op0.reg).lower()
+            source_raw = ins.reg_name(op1.reg).lower()
+            if (destination_raw.startswith("x") and source_name in known
+                    and (source_raw.startswith("x") or source_raw == "xzr")):
+                known[destination_name] = {
+                    "address": known[source_name]["address"],
+                    "chain": known[source_name]["chain"] + [{
+                        "site": _hex(pc),
+                        "kind": "MOV_REGISTER",
+                        "source_register": source_name,
+                        "destination_register": destination_name,
+                    }],
+                }
+            else:
+                known.pop(destination_name, None)
+            handled_destination = destination_name
 
-        for name in written_names:
-            if name != handled_destination:
-                known.pop(name, None)
-        if any(bool(getattr(ins, "writeback", False)) for op in ins.operands
-               if op.type == ARM64_OP_MEM):
-            for op in ins.operands:
-                if op.type == ARM64_OP_MEM:
-                    known.pop(_reg_name(ins, op.mem.base), None)
+    try:
+        _, writes = ins.regs_access()
+    except Exception:
+        return False
+    for register in writes:
+        name = _reg_name(ins, register)
+        if name and name != handled_destination:
+            known.pop(name, None)
+    return True
+
+
+def _trace_page_candidate(text, start, page, destination, window_bytes, decoder,
+                          target_start, target_end):
+    prefix_start = max(0, start - PREFIX_BYTES)
+    end = min(len(text), start + window_bytes)
+    known = _zero_register_state()
+    accesses = []
+    indexed = []
+
+    for pc in range(prefix_start, end, 4):
+        ins = _decode_one(decoder, text, pc)
+        if ins is None:
+            if pc < start:
+                known = _zero_register_state()
+                continue
+            break
+        if pc >= start:
+            try:
+                reads, writes = ins.regs_access()
+            except Exception:
+                break
+            read_names = sorted({_reg_name(ins, value) for value in reads} - {None})
+            written_names = sorted({_reg_name(ins, value) for value in writes} - {None})
+            for operand_index, operand in enumerate(ins.operands):
+                if operand.type != ARM64_OP_MEM:
+                    continue
+                base = _reg_name(ins, operand.mem.base)
+                index = _reg_name(ins, operand.mem.index)
+                if base not in known:
+                    continue
+                base_address = known[base]["address"] + operand.mem.disp
+                width, width_source = _memory_access_width(ins)
+                if index:
+                    if _overlaps(base_address, width, target_start, target_end):
+                        indexed.append({
+                            "site": _hex(pc),
+                            "word_le": bytes(text[pc:pc + 4]).hex(),
+                            "mnemonic": ins.mnemonic,
+                            "operands": ins.op_str,
+                            "base_register": base,
+                            "index_register": index,
+                            "base_plus_displacement": _hex(base_address),
+                            "displacement": operand.mem.disp,
+                            "width_bytes": width,
+                            "direction": _direction(ins.mnemonic),
+                            "effective_address_resolved": False,
+                            "origin_chain": list(known[base]["chain"]),
+                        })
+                    continue
+                if not _overlaps(base_address, width, target_start, target_end):
+                    continue
+                accesses.append({
+                    "site": _hex(pc),
+                    "operand_index": operand_index,
+                    "word_le": bytes(text[pc:pc + 4]).hex(),
+                    "mnemonic": ins.mnemonic,
+                    "operands": ins.op_str,
+                    "direction": _direction(ins.mnemonic),
+                    "effective_address": _hex(base_address),
+                    "width_bytes": width,
+                    "width_source": width_source,
+                    "base_register": base,
+                    "index_register": None,
+                    "displacement": operand.mem.disp,
+                    "writeback": bool(getattr(ins, "writeback", False)),
+                    "read_registers": read_names,
+                    "written_registers": written_names,
+                    "effective_address_resolved": True,
+                    "origin_chain": list(known[base]["chain"]),
+                })
+
+        if not _update_known(ins, text, pc, known):
+            if pc < start:
+                known = _zero_register_state()
+                continue
+            break
         if _is_control_flow(ins):
+            if pc < start:
+                known = _zero_register_state()
+                continue
             break
 
-    return end, accesses, indexed
+    return prefix_start, end, accesses, indexed
 
 
 def scan_address_page(text, page=TABLE_PAGE, target_start=TABLE_START,
@@ -252,7 +300,7 @@ def scan_address_page(text, page=TABLE_PAGE, target_start=TABLE_START,
         ins = _decode_one(decoder, text, pc)
         if ins is None or ins.mnemonic != "adrp":
             continue
-        window_end, accesses, indexed = _trace_page_candidate(
+        prefix_start, window_end, accesses, indexed = _trace_page_candidate(
             text, pc, target_page, rd, window_bytes, decoder,
             target_start, target_end
         )
@@ -260,6 +308,8 @@ def scan_address_page(text, page=TABLE_PAGE, target_start=TABLE_START,
             "site": _hex(pc),
             "destination_register": "x%d" % rd,
             "target_page": _hex(target_page),
+            "prefix_start": _hex(prefix_start),
+            "prefix_sha256": hashlib.sha256(text[prefix_start:pc]).hexdigest(),
             "window_end_exclusive": _hex(window_end),
             "window_sha256": hashlib.sha256(text[pc:window_end]).hexdigest(),
             "bounded_linear_window_not_function_extent": True,
@@ -299,6 +349,7 @@ def scan_address_page(text, page=TABLE_PAGE, target_start=TABLE_START,
         "page_reference_census_complete": True,
         "direct_access_census_complete": False,
         "window_bytes_per_reference": window_bytes,
+        "prefix_bytes_per_reference": PREFIX_BYTES,
         "indirect_register_aliases_traced": False,
         "function_extents_verified": False,
     }
@@ -420,7 +471,8 @@ def inspect(nso):
         "analysis_scope": {
             "all_aligned_adrp_words_to_page_scanned": True,
             "each_candidate_followed_linearly_until_control_flow_or_0x100_bytes": True,
-            "only_adrp_derived_register_addresses_are_followed": True,
+            "only_adrp_derived_register_addresses_and_statically_known_register_adds_are_followed": True,
+            "bounded_prefix_tracks_reaching_constants_before_each_adrp": True,
             "indirect_pointer_aliases_and_indexed_effective_addresses_not_resolved": True,
             "a_missing_direct_writer_does_not_exclude_dynamic_or_aliased_writers": True,
             "no_function_extent_or_cxx_object_layout_inference": True,

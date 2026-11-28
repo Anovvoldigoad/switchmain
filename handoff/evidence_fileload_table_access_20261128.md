@@ -26,3 +26,10 @@ Synthetic regressions cover positive direct store/load/pair-store, exact exclusi
 ## Explicit limits
 
 This is a static direct-reference census only. It does not resolve indexed effective addresses, indirect register aliases, heap objects, function extents, the dynamic BR X2 value at 0x116b3d0, callback/vtable/destructor identity, ownership, locks, async, rollback/unbind, allocator implementation, archive precedence, emulated ARM64 or Uzuy. No hook is added. full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false.
+
+
+## Follow-up failure and root cause (raw log inspected)
+
+- Commit 30a06adf117ffc4f5657044922fcff360820d8b0: workflow 46088082330, job 140802291968 failed in the synthetic ADRP encoder because the test incorrectly treated a page delta (already in pages) as a byte offset. Corrected in commit 3ba748262c0790f781249cbb8c1eb55410aa538c.
+- Commit 3ba748262c0790f781249cbb8c1eb55410aa538c: workflow 46088241951, job 140802797820 failed the authentic first-slot read assertion. The inspected prior CI artifact shows the actual reaching expression: 0x116b890 MOV X19,XZR; 0x116b894 ADRP X20,0x4371000; 0x116b898 ADD X20,X20,#0x7d8; 0x116b89c ADD X8,X20,X19; 0x116b8a0 LDR X0,[X8,#0x28]. The initial scanner handled immediate ADD but not the preceding zero definition plus register ADD. This patch adds a 0x20-byte bounded prefix and propagates only statically known X-register values; unknown register operands remain fail-closed.
+- The generic foundation workflow is now explicitly excluded for this one isolated FileLoad analyzer/test so future changes run the active FileLoad workflow instead of repeating the broad foundation suite.

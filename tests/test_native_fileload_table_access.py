@@ -69,6 +69,10 @@ def encode_mov64(rd, rm):
     return 0xAA0003E0 | (rm << 16) | rd
 
 
+def encode_add_reg(rd, rn, rm):
+    return 0x8B000000 | (rm << 16) | (rn << 5) | rd
+
+
 def synthetic_page_scan():
     code = bytearray(0x80)
     put_word(code, 0x00, encode_adrp(0, 8, TABLE_PAGE))
@@ -112,6 +116,31 @@ def synthetic_page_scan():
                   "cross-page target range")
 
 
+def synthetic_register_add_scan():
+    code = bytearray(0x40)
+    put_word(code, 0x00, encode_mov64(19, 31))  # X19 = XZR = 0 before ADRP.
+    put_word(code, 0x04, encode_adrp(4, 20, TABLE_PAGE))
+    put_word(code, 0x08, encode_add(20, 20, 0x7D8))
+    put_word(code, 0x0C, encode_add_reg(8, 20, 19))
+    put_word(code, 0x10, encode_ldr64(0, 8, 0x28))
+    report = scan_address_page(bytes(code), window_bytes=0x40)
+    assert len(report["direct_accesses"]) == 1
+    row = report["direct_accesses"][0]
+    assert row["site"] == "0x10"
+    assert row["effective_address"] == hex(TABLE_START)
+    kinds = [step["kind"] for step in row["origin_chain"]]
+    assert "ADD_REGISTER" in kinds
+    add = next(step for step in row["origin_chain"] if step["kind"] == "ADD_REGISTER")
+    assert any(step["kind"] == "MOV_REGISTER" for step in add["right_chain"])
+
+    unknown = bytearray(0x40)
+    put_word(unknown, 0x04, encode_adrp(4, 20, TABLE_PAGE))
+    put_word(unknown, 0x08, encode_add(20, 20, 0x7D8))
+    put_word(unknown, 0x0C, encode_add_reg(8, 20, 19))  # X19 has no reaching value.
+    put_word(unknown, 0x10, encode_ldr64(0, 8, 0x28))
+    assert scan_address_page(bytes(unknown), window_bytes=0x40)["direct_accesses"] == []
+
+
 def synthetic_relocations():
     memory = bytearray(0x200)
     records = [
@@ -146,6 +175,7 @@ def synthetic_relocations():
 
 def run(main, output):
     synthetic_page_scan()
+    synthetic_register_add_scan()
     synthetic_relocations()
     raw = main.read_bytes()
     report = inspect(raw)

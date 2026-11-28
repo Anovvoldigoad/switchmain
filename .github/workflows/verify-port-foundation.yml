@@ -18,6 +18,8 @@ on:
       - 'tests/test_release_flags.py'
       - '!tools/portlib/native_fileload_registration_lifecycle.py'
       - '!tests/test_native_fileload_registration_lifecycle.py'
+      - '!tools/portlib/native_fileload_table_access.py'
+      - '!tests/test_native_fileload_table_access.py'
 jobs:
   verify:
     runs-on: ubuntu-latest

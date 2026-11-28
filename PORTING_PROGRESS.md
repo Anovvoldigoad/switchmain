@@ -1402,3 +1402,10 @@ CI is pending. This is not a producer identity, callback/destructor, BR X2 targe
 ## 2026-11-28 — FileLoad table census workflow correction (IMPLEMENTED_AWAITING_CI)
 
 The first push added a separate workflow file but no Actions run was emitted for that commit. Corrected the synthetic ADRP page encoder (page delta is measured in pages, not bytes), tightened table range alignment, and moved the new regression into the already active FileLoad registration lifecycle workflow. The workflow now has explicit source/test path filters and uploads the table-access JSON separately. Follow-up parent: 30a06adf117ffc4f5657044922fcff360820d8b0. No PASS claim until the new push job log and artifact are inspected.
+
+
+## 2026-11-28 — FileLoad table reaching-definition correction (IMPLEMENTED_AWAITING_CI)
+
+Raw lifecycle job 46088241951 / job 140802797820 showed why the first-slot assertion failed: X19 is set to XZR at 0x116b890, ADRP X20 is at 0x116b894, ADD X20,X20,#0x7d8 at 0x116b898, ADD X8,X20,X19 at 0x116b89c, and LDR X0,[X8,#0x28] at 0x116b8a0. The scanner only tracked immediate ADD. It now includes a bounded 0x20-byte prefix, models XZR and MOV, and propagates ADD-register only when both source values are known. Unknown values remain unresolved.
+
+The broad foundation workflow now excludes this isolated analyzer/test to avoid rerunning unrelated PASS suites; the already active FileLoad lifecycle workflow runs the new test and uploads a separate artifact. Previous failed attempts and raw-log inspection are recorded in the checkpoint. Follow-up parent: 3ba748262c0790f781249cbb8c1eb55410aa538c. CI pending.
