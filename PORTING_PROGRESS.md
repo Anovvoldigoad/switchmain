@@ -1397,3 +1397,8 @@ Parent HEAD: 9ea102fe95646d1d595ec33335aa16a563e5ef97. Research-first re-read co
 New analyzer tools/portlib/native_fileload_table_access.py scans every aligned ADRP targeting page 0x4371000, follows only 0x100-byte bounded linear ADRP/ADD/MOV chains, and inventories direct memory accesses overlapping [0x4371800,0x4371a00). It also inventories dynamic RELA destinations in that range and addends pointing into it. Synthetic regressions cover direct load/store/pair-store, exact end boundary, branch barrier, register clobber, malformed windows, relocation boundaries and overlapping tables. The original main SHA256 is pinned. Expected authentic checks include the slot read at 0x116b8a0 and 16 existing 32-byte clear stores at 0x116b8c4..0x116b900.
 
 CI is pending. This is not a producer identity, callback/destructor, BR X2 target, ownership, ABI, archive-precedence or runtime proof. No hook. All release flags remain false. See handoff/evidence_fileload_table_access_20261128.md.
+
+
+## 2026-11-28 — FileLoad table census workflow correction (IMPLEMENTED_AWAITING_CI)
+
+The first push added a separate workflow file but no Actions run was emitted for that commit. Corrected the synthetic ADRP page encoder (page delta is measured in pages, not bytes), tightened table range alignment, and moved the new regression into the already active FileLoad registration lifecycle workflow. The workflow now has explicit source/test path filters and uploads the table-access JSON separately. Follow-up parent: 30a06adf117ffc4f5657044922fcff360820d8b0. No PASS claim until the new push job log and artifact are inspected.

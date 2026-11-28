@@ -147,3 +147,8 @@ LATEST ENGINEERING SLICE — 2026-11-28 (IMPLEMENTED_AWAITING_CI)
 Parent HEAD: 9ea102fe95646d1d595ec33335aa16a563e5ef97. New source tools/portlib/native_fileload_table_access.py, test tests/test_native_fileload_table_access.py, and isolated workflow .github/workflows/verify-fileload-table-access.yml perform a SHA-pinned direct ADRP reference census for the 64-slot table [0x4371800,0x4371a00) plus RELA destination/addend inventory. It does not infer a writer through arbitrary pointer aliases or resolve BR X2.
 
 Research-first evidence note: handoff/evidence_fileload_table_access_20261128.md. CI has not yet run on this new code. Read the direct push workflow run/job raw log and artifact before promoting the status. If the direct census shows no writer outside the clear sequence, that is not proof that no indirect/dynamic writer exists. Continue from unresolved X2/table runtime values only with read-only evidence; otherwise use a source-grounded semantic consumer slice. Never install a hook or mark ABI/ownership/lifecycle/archive precedence/Uzuy verified from this census. Preserve all three release flags as false.
+
+
+WORKFLOW CORRECTION — 2026-11-28
+
+The first table-census push produced no Actions run. The follow-up reuses the active verify-fileload-registration-lifecycle workflow, adds the new source/test paths, and runs the table census as a separate step with a separate artifact. It also fixes the synthetic ADRP encoder (page delta is already in pages) and enforces 8-byte range alignment. Read the follow-up push job raw log and artifact before marking anything verified.

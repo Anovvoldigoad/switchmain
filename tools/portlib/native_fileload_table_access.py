@@ -227,7 +227,8 @@ def scan_address_page(text, page=TABLE_PAGE, target_start=TABLE_START,
         raise ValueError("AArch64 text must be bytes-like")
     if (not isinstance(page, int) or page < 0 or (page & 0xFFF)
             or not isinstance(target_start, int) or not isinstance(target_end, int)
-            or target_start < page or target_end <= target_start
+            or target_start < page or (target_start & 7) or (target_end & 7)
+            or target_end <= target_start
             or ((target_end - 1) & ~0xFFF) != page
             or not isinstance(window_bytes, int) or window_bytes < 4
             or (window_bytes & 3)):

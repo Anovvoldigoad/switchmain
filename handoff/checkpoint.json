@@ -5670,10 +5670,10 @@
   },
   "native_fileload_table_access_census_20261128": {
     "state": "IMPLEMENTED_AWAITING_CI",
-    "parent_sha": "9ea102fe95646d1d595ec33335aa16a563e5ef97",
+    "parent_sha": "30a06adf117ffc4f5657044922fcff360820d8b0",
     "source": "tools/portlib/native_fileload_table_access.py",
     "test": "tests/test_native_fileload_table_access.py",
-    "workflow": ".github/workflows/verify-fileload-table-access.yml",
+    "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
     "evidence_note": "handoff/evidence_fileload_table_access_20261128.md",
     "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
     "original_main_size_bytes": 27701509,

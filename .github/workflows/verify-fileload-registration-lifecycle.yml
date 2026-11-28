@@ -6,6 +6,8 @@ on:
     paths:
       - 'tools/portlib/native_fileload_registration_lifecycle.py'
       - 'tests/test_native_fileload_registration_lifecycle.py'
+      - 'tools/portlib/native_fileload_table_access.py'
+      - 'tests/test_native_fileload_table_access.py'
       - 'original/atmosphere/contents/0100FA10190A0000/exefs/main'
 jobs:
   verify:
@@ -20,8 +22,15 @@ jobs:
         run: python -m pip install capstone==5.0.6
       - name: Reproduce registration helper, relocation and bounded target proofs
         run: PYTHONPATH=tools python tests/test_native_fileload_registration_lifecycle.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
+      - name: Reproduce direct 64-slot table references and RELA inventory
+        run: PYTHONPATH=tools python tests/test_native_fileload_table_access.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output table-proof-work
       - uses: actions/upload-artifact@v4
         with:
           name: FILELOAD_REGISTRATION_LIFECYCLE_STATIC_EVIDENCE
           path: proof-work/native_fileload_registration_lifecycle.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FILELOAD_TABLE_ACCESS_STATIC_EVIDENCE
+          path: table-proof-work/native_fileload_table_access.json
           if-no-files-found: error

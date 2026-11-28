@@ -1,7 +1,7 @@
 # FileLoad 64-slot table direct-reference census — IMPLEMENTED_AWAITING_CI
 
 Date: 2026-11-28
-Parent branch HEAD: 9ea102fe95646d1d595ec33335aa16a563e5ef97
+Parent branch HEAD: 30a06adf117ffc4f5657044922fcff360820d8b0
 Target original main Git blob: 8af900db0d7003255b4ddb3cbd1289cd5a15458e, 27,701,509 bytes
 Required original main SHA256: 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9
 
@@ -21,7 +21,7 @@ New analyzer tools/portlib/native_fileload_table_access.py scans every aligned A
 
 The exact original-main checks require the first 64-bit slot load at 0x116b8a0 to resolve to 0x4371800, and the 16 existing STP Q0,Q0 clear writes at 0x116b8c4..0x116b900 to cover the 512-byte region in reverse 0x20-byte steps. Any direct writes outside this known clear sequence are emitted as candidates, not assigned producer semantics.
 
-Synthetic regressions cover positive direct store/load/pair-store, exact exclusive-end boundary, branch barrier, register clobber, malformed ranges, relocation destination/addend and RELA bounds/overlap. The original main is SHA256-pinned. CI is pending.
+Synthetic regressions cover positive direct store/load/pair-store, exact exclusive-end boundary, branch barrier, register clobber, malformed ranges, relocation destination/addend and RELA bounds/overlap. The original main is SHA256-pinned. The first push emitted no run for the newly introduced workflow; the table test is now attached to the already active FileLoad lifecycle workflow at .github/workflows/verify-fileload-registration-lifecycle.yml with explicit path filters. CI is pending on the follow-up code commit.
 
 ## Explicit limits
 

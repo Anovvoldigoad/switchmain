@@ -33,8 +33,6 @@ def put_word(data, offset, word):
 
 def encode_adrp(pc, register, page):
     delta = (page - (pc & ~0xFFF)) >> 12
-    if delta & 0xFFF:
-        raise ValueError("Synthetic ADRP target is not page aligned")
     if not -(1 << 20) <= delta < (1 << 20):
         raise ValueError("Synthetic ADRP page delta is out of range")
     imm21 = delta & 0x1FFFFF
