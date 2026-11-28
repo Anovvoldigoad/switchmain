@@ -393,6 +393,8 @@ def run(main, output):
     assert report["table"]["end_exclusive"] == hex(TABLE_END)
     cfg = report["branch_cfg_scan"]
     assert cfg["target_page_reference_budget_complete"] is True
+    assert cfg["target_page_state_budget_exceeded"] is True
+    assert cfg["target_page_cfg_complete"] is False
     direct_sites = {row["site"] for row in cfg["direct_accesses"]}
     assert {"0x116b8a0", "0x116b924"} <= direct_sites
     indexed_sites = {row["site"] for row in cfg["indexed_access_candidates"]}
@@ -410,6 +412,10 @@ def run(main, output):
     ) for row in loops)
     assert [row["indirect_dispatch"]["target_load_offset"] for row in loops] == [
         0x60, 0x68,
+    ]
+    assert [row["loop_bytes_sha256"] for row in loops] == [
+        "df7bdfbe579db712c6cb51a69ca69105acf2140a655759f462c2a6e896caa91b",
+        "708f2801f32244ed5149582077bf1e4cc09c5a989c102dffd4b3445082a7b16e",
     ]
     for row in loops:
         assert row["counter"]["initial_value"] == 0
