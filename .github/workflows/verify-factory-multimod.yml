@@ -2,6 +2,13 @@ name: Verify offline factory multi-mod composition
 on:
   push:
     branches: [port/full-api-v170]
+    paths:
+      - 'tools/portlib/factory_*.py'
+      - 'tools/compile_factory_profile.py'
+      - 'tools/merge_factory_profiles.py'
+      - 'tests/test_factory_*.py'
+      - 'tests/test_merge_factory_profiles.py'
+      - 'profiles/factory/**'
   workflow_dispatch:
 jobs:
   verify:

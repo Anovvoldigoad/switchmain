@@ -2,6 +2,17 @@ name: Verify offline PC MovesetPlus multi-mod composition
 on:
   push:
     branches: [port/full-api-v170]
+    paths:
+      - 'tools/portlib/pc_moveset_*.py'
+      - 'tools/merge_pc_moveset_nsc_manifests.py'
+      - 'tools/split_pc_moveset_nsc_manifests.py'
+      - 'tools/reassemble_pc_moveset_owner_directory.py'
+      - 'tools/verify_pc_moveset_nsc_sources.py'
+      - 'tools/remove_pc_moveset_nsc_mod.py'
+      - 'tools/replace_pc_moveset_nsc_mod.py'
+      - 'tools/patch_pc_moveset_nsc_mods.py'
+      - 'tools/reorder_pc_moveset_nsc_mods.py'
+      - 'tests/test_*pc_moveset*.py'
   workflow_dispatch:
 jobs:
   verify:

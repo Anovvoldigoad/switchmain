@@ -2,6 +2,14 @@ name: Offline compressed PRM candidate regression
 on:
   push:
     branches: [port/full-api-v170]
+    paths:
+      - 'tools/portlib/compressed_prm_*.py'
+      - 'tools/portlib/crilayla_*.py'
+      - 'tools/export_compressed_prm.py'
+      - 'tools/verify_compressed_prm.py'
+      - 'tools/convert_compressed_prm_same_size.py'
+      - 'tests/test_*compressed*.py'
+      - 'tests/test_convert_compressed_prm_same_size.py'
   workflow_dispatch:
 jobs:
   compressed-candidate:

@@ -3,6 +3,21 @@ on:
   workflow_dispatch:
   push:
     branches: [port/full-api-v170]
+    paths:
+      - 'original/atmosphere/contents/0100FA10190A0000/exefs/main'
+      - 'prepare_exlaunch.sh'
+      - 'tools/prepare_test_images.py'
+      - 'tools/portlib/native_*.py'
+      - 'tools/portlib/nso_profile.py'
+      - 'tools/portlib/factory_profile.py'
+      - 'tools/audit_native_*.py'
+      - 'tests/requirements.txt'
+      - 'tests/test_native_*.py'
+      - 'tests/test_bootstrap.py'
+      - 'tests/test_factory_profile.py'
+      - 'tests/test_release_flags.py'
+      - '!tools/portlib/native_fileload_registration_lifecycle.py'
+      - '!tests/test_native_fileload_registration_lifecycle.py'
 jobs:
   verify:
     runs-on: ubuntu-latest
