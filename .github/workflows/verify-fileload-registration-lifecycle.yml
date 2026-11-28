@@ -12,6 +12,7 @@ on:
       - 'tests/test_native_fileload_table_cfg.py'
       - 'handoff/evidence_fileload_pointer_retry_20261128.md'
       - 'handoff/evidence_fileload_pointer_loop_widening_20261128.md'
+      - 'handoff/evidence_fileload_pointer_page_sampling_20261128.md'
       - 'original/atmosphere/contents/0100FA10190A0000/exefs/main'
       - '.github/workflows/verify-fileload-registration-lifecycle.yml'
 jobs:
@@ -43,13 +44,13 @@ jobs:
           name: FILELOAD_TABLE_ACCESS_STATIC_EVIDENCE
           path: table-proof-work/native_fileload_table_access.json
           if-no-files-found: error
-      - name: Reproduce bounded CFG branch paths and unknown-bound loop widening
+      - name: Reproduce bounded per-page pointer sampling and unknown-bound loop widening
         run: PYTHONPATH=tools python tests/test_native_fileload_table_cfg.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output table-cfg-proof-work
       - name: Hash exact analyzer, regression, workflow and evidence inputs
         if: always()
         run: |
           mkdir -p table-cfg-proof-work
-          sha256sum tools/portlib/native_fileload_table_cfg.py tests/test_native_fileload_table_cfg.py .github/workflows/verify-fileload-registration-lifecycle.yml handoff/evidence_fileload_pointer_retry_20261128.md handoff/evidence_fileload_pointer_loop_widening_20261128.md > table-cfg-proof-work/SOURCE_SHA256SUMS.txt
+          sha256sum tools/portlib/native_fileload_table_cfg.py tests/test_native_fileload_table_cfg.py .github/workflows/verify-fileload-registration-lifecycle.yml handoff/evidence_fileload_pointer_retry_20261128.md handoff/evidence_fileload_pointer_loop_widening_20261128.md handoff/evidence_fileload_pointer_page_sampling_20261128.md > table-cfg-proof-work/SOURCE_SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

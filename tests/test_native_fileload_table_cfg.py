@@ -596,6 +596,58 @@ def synthetic_pointer_page_budget_fail_closed():
 
 
 
+def synthetic_pointer_page_sampling():
+    code = bytearray(0x80)
+    put_word(code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
+    for index, pc in enumerate((0x04, 0x08, 0x0C, 0x10, 0x14)):
+        put_word(code, pc, encode_adrp(pc, 9 + index, 0x5000))
+    for index, pc in enumerate((0x18, 0x1C, 0x20)):
+        put_word(code, pc, encode_adrp(pc, 14 + index, 0x6000))
+    put_word(code, 0x7C, 0xD65F03C0)
+
+    args = {
+        "window_bytes": 0x30,
+        "max_states": 32,
+        "max_references": 5,
+        "max_references_per_page": 2,
+    }
+    first = scan_address_pages_cfg(
+        bytes(code), {TABLE_PAGE, 0x5000, 0x6000}, {}, **args
+    )
+    second = scan_address_pages_cfg(
+        bytes(code), {TABLE_PAGE, 0x5000, 0x6000}, {}, **args
+    )
+    assert first["candidate_reference_count"] == 9
+    assert first["page_reference_count"] == 5
+    assert first["pages_skipped"] == []
+    assert [row["page"] for row in first["pages_sampled"]] == [
+        "0x5000", "0x6000",
+    ]
+    assert [row["selected_reference_count"] for row in first["pages_sampled"]] == [2, 2]
+    assert [row["omitted_reference_count"] for row in first["pages_sampled"]] == [3, 1]
+    assert [row["selected_candidate_sites_sha256"] for row in first["pages_sampled"]] == [
+        row["selected_candidate_sites_sha256"] for row in second["pages_sampled"]
+    ]
+    selected_sites = [
+        row["site"] for row in first["page_references"]
+        if row["target_page"] != hex(TABLE_PAGE)
+    ]
+    assert selected_sites == ["0x4", "0x14", "0x18", "0x20"]
+    assert first["reference_budget_exceeded"] is True
+    assert first["pointer_alias_trace_complete"] is False
+    assert first["branch_path_witnesses_exhaustive"] is False
+
+    exact_cap = scan_address_pages_cfg(
+        bytes(code), {TABLE_PAGE, 0x5000, 0x6000}, {},
+        window_bytes=0x30, max_states=32, max_references=9,
+        max_references_per_page=5,
+    )
+    assert exact_cap["page_reference_count"] == 9
+    assert exact_cap["pages_sampled"] == []
+    assert exact_cap["pages_skipped"] == []
+    assert exact_cap["reference_budget_exceeded"] is False
+
+
 def synthetic_limits():
     code = bytearray(0x40)
     put_word(code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
@@ -634,6 +686,9 @@ def synthetic_limits():
     expect_reject(lambda: scan_address_pages_cfg(bytes(code), {TABLE_PAGE}, {},
                                                  max_states=0),
                   "zero CFG state budget")
+    expect_reject(lambda: scan_address_pages_cfg(
+        bytes(code), {TABLE_PAGE}, {}, max_references_per_page=0
+    ), "zero per-page reference budget")
 
 
 def run(main, output):
@@ -648,6 +703,7 @@ def run(main, output):
     synthetic_unknown_bound_backedge_widening()
     synthetic_derived_register_widening()
     synthetic_pointer_page_budget_fail_closed()
+    synthetic_pointer_page_sampling()
     synthetic_limits()
 
     raw = main.read_bytes()
@@ -673,7 +729,22 @@ def run(main, output):
     ]
     assert cfg["dynamic_loop_widening_reference_count"] >= 27
     assert cfg["dynamic_loop_widening_count"] >= 37
-    assert len(remaining_budget) <= 20
+    assert cfg["state_budget_exceeded"] == bool(remaining_budget)
+    assert cfg["candidate_reference_count"] == 61914
+    assert cfg["page_reference_count"] == 21386
+    assert cfg["pages_skipped"] == []
+    assert cfg["reference_budget"] == 32768
+    assert cfg["per_page_reference_budget"] == 4096
+    assert cfg["reference_budget_exceeded"] is True
+    sampled_pages = {row["page"]: row for row in cfg["pages_sampled"]}
+    assert set(sampled_pages) == {"0x2143000", "0x2144000"}
+    assert sampled_pages["0x2143000"]["candidate_reference_count"] == 44208
+    assert sampled_pages["0x2143000"]["selected_reference_count"] == 4096
+    assert sampled_pages["0x2143000"]["omitted_reference_count"] == 40112
+    assert sampled_pages["0x2144000"]["candidate_reference_count"] == 4512
+    assert sampled_pages["0x2144000"]["selected_reference_count"] == 4096
+    assert sampled_pages["0x2144000"]["omitted_reference_count"] == 416
+    assert report["pointer_page_sampling"] == cfg["pages_sampled"]
     has_unknown_bound_loops = any(row["dynamic_loop_widenings"]
                                   for row in pointer_references)
     assert cfg["pointer_alias_trace_complete"] is (
@@ -768,6 +839,10 @@ def run(main, output):
 
     print(
         "PINNED_FILELOAD_TABLE_CFG_PASS",
+        "candidate_adrp_refs", cfg["candidate_reference_count"],
+        "traced_adrp_refs", cfg["page_reference_count"],
+        "sampled_pages", len(cfg["pages_sampled"]),
+        "skipped_pages", len(cfg["pages_skipped"]),
         "adrp_refs", cfg["page_reference_count"],
         "direct_accesses", len(cfg["direct_accesses"]),
         "indexed_accesses", len(cfg["indexed_access_candidates"]),

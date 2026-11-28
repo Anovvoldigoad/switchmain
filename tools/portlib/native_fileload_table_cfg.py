@@ -34,7 +34,8 @@ from .native_fileload_table_access import (
 from .native_fileopen_import import _read_image, _tags
 
 MAX_PAGES = 64
-MAX_REFERENCES = 4096
+MAX_REFERENCES = 32768
+MAX_REFERENCES_PER_PAGE = 4096
 DEFAULT_WINDOW_BYTES = 0x100
 DEFAULT_MAX_STATES = 256
 RELATIVE_RELOCATION_TYPE = 1027
@@ -767,9 +768,42 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
     }
 
 
+def _select_page_candidates(page_candidates, limit):
+    """Select a deterministic, evenly spaced subset without claiming completeness."""
+    count = len(page_candidates)
+    if count <= limit:
+        return list(page_candidates), None
+    if limit <= 0:
+        return [], None
+    if limit == 1:
+        indices = [(count - 1) // 2]
+        formula = "floor((N-1)/2)"
+    else:
+        indices = [(index * (count - 1)) // (limit - 1)
+                   for index in range(limit)]
+        formula = "floor(i*(N-1)/(K-1))"
+    selected = [page_candidates[index] for index in indices]
+    selected_digest = hashlib.sha256(b"".join(
+        struct.pack("<QB", pc, rd) for pc, rd in selected
+    )).hexdigest()
+    return selected, {
+        "selection_method": "EVENLY_SPACED_BY_PC_INDEX",
+        "selection_index_formula": formula,
+        "candidate_reference_count": count,
+        "selected_reference_count": len(selected),
+        "omitted_reference_count": count - len(selected),
+        "first_candidate_site": _hex(page_candidates[0][0]),
+        "last_candidate_site": _hex(page_candidates[-1][0]),
+        "first_selected_site": _hex(selected[0][0]),
+        "last_selected_site": _hex(selected[-1][0]),
+        "selected_candidate_sites_sha256": selected_digest,
+    }
+
+
 def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_START,
                            target_end=TABLE_END, window_bytes=DEFAULT_WINDOW_BYTES,
-                           max_states=DEFAULT_MAX_STATES, max_references=MAX_REFERENCES):
+                           max_states=DEFAULT_MAX_STATES, max_references=MAX_REFERENCES,
+                           max_references_per_page=MAX_REFERENCES_PER_PAGE):
     """Trace bounded branch paths from ADRP references to selected pages."""
     if not isinstance(text, (bytes, bytearray, memoryview)) or len(text) < 4:
         raise ValueError("AArch64 text must contain complete instructions")
@@ -788,8 +822,11 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
     if (not isinstance(window_bytes, int) or window_bytes < 8
             or (window_bytes & 3) or not isinstance(max_states, int)
             or max_states <= 0 or not isinstance(max_references, int)
-            or max_references <= 0):
-        raise ValueError("Invalid CFG window or state budget")
+            or max_references <= 0 or max_references > MAX_REFERENCES
+            or not isinstance(max_references_per_page, int)
+            or max_references_per_page <= 0
+            or max_references_per_page > MAX_REFERENCES_PER_PAGE):
+        raise ValueError("Invalid CFG window or reference/state budget")
     if pointer_cells is None:
         pointer_cells = {}
     if not isinstance(pointer_cells, dict):
@@ -847,10 +884,16 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
     )
     processed_pages = []
     skipped_pages = []
+    sampled_pages = []
+    page_candidate_counts = [
+        {"page": _hex(page), "candidate_reference_count": len(candidates.get(page, []))}
+        for page in page_order
+    ]
     for page in page_order:
         page_candidates = candidates.get(page, [])
         remaining = max_references - len(references)
-        if len(page_candidates) > remaining:
+        selection_limit = min(max_references_per_page, remaining)
+        if selection_limit <= 0:
             if page == target_page:
                 raise ValueError("Target-page ADRP reference budget exceeded")
             skipped_pages.append({
@@ -860,8 +903,20 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
                 "reason": "reference_budget_exceeded",
             })
             continue
+        selected_candidates, sampling = _select_page_candidates(
+            page_candidates, selection_limit
+        )
+        if sampling is not None:
+            if page == target_page:
+                raise ValueError("Target-page ADRP reference budget exceeded")
+            sampling.update({
+                "page": _hex(page),
+                "page_reference_budget": max_references_per_page,
+                "remaining_total_reference_budget": remaining,
+            })
+            sampled_pages.append(sampling)
         processed_pages.append(page)
-        for pc, rd in page_candidates:
+        for pc, rd in selected_candidates:
             loop_summary = None
             if (page == target_page and target_start == TABLE_START
                     and target_end == TABLE_END):
@@ -940,11 +995,14 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
     )
     pointer_alias_trace_complete = (
         not skipped_pages
+        and not sampled_pages
         and all(row["bounded_in_window_cfg_complete"] for row in pointer_references)
     )
     return {
         "pages_scanned": [_hex(page) for page in processed_pages],
         "pages_skipped": skipped_pages,
+        "pages_sampled": sampled_pages,
+        "page_candidate_counts": page_candidate_counts,
         "candidate_reference_count": sum(len(rows) for rows in candidates.values()),
         "page_reference_count": len(references),
         "target_page_scanned": target_page_scanned,
@@ -955,7 +1013,8 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         "target_page_cfg_complete": target_page_cfg_complete,
         "pointer_alias_trace_complete": pointer_alias_trace_complete,
         "reference_budget": max_references,
-        "reference_budget_exceeded": bool(skipped_pages),
+        "per_page_reference_budget": max_references_per_page,
+        "reference_budget_exceeded": bool(skipped_pages or sampled_pages),
         "page_references": references,
         "direct_accesses": direct_rows,
         "indexed_access_candidates": indexed_rows,
@@ -989,7 +1048,7 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
             row["site"] for row in references if row["loop_widening"]["applied"]
         ],
         "branch_path_witnesses_exhaustive": (
-            not skipped_pages and all(
+            not skipped_pages and not sampled_pages and all(
                 row["branch_path_witnesses_exhaustive"] for row in references
             )
         ),
@@ -1319,6 +1378,7 @@ def inspect(nso):
         "static_pointer_cells": _pointer_cell_report(pointer_cells),
         "target_page_budget_reference_disassembly": target_page_budget_disassembly,
         "pointer_page_budget_reference_disassembly": pointer_page_budget_disassembly,
+        "pointer_page_sampling": cfg["pages_sampled"],
         "target_page_counted_loop_disassembly": target_page_counted_loop_disassembly,
         "target_page_counted_slot_loops": target_page_counted_loops,
         "branch_cfg_scan": cfg,
@@ -1333,6 +1393,8 @@ def inspect(nso):
             "single_level_static_pointer_loads_traced": True,
             "exact_counted_loop_induction_widening": True,
             "unknown_bound_self_add_backedge_widening": True,
+            "pointer_page_reference_selection": "EVENLY_SPACED_BY_PC_INDEX",
+            "pointer_page_sampling_is_exhaustive": False,
             "indirect_callback_counter_preservation_assumed": False,
             "bss_or_heap_pointer_cells_without_relocations_scanned": False,
             "dynamic_pointer_values_resolved": False,
