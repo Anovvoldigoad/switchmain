@@ -117,7 +117,8 @@
     "2026-11-28 FOLLOW-UP: the new workflow file did not schedule a push run, so the caller regression is now attached to the existing FileLoad lifecycle workflow. Its two previously passing tests are skipped for caller-source-only commits; the new caller test runs independently. CI pending.",
     "2026-11-28 CI diagnosis: the first caller regression failed because it pinned a stale count of 101. Both authentic table-census artifacts were downloaded and inspected; each reports 114 direct B/BL inbound words to 0x116b390 (111 BL, 3 B). The regression expectation and checkpoint/status evidence are corrected; isolated CI retry pending.",
     "2026-11-28 CI diagnosis 2: raw count 114, branch split 111 BL / 3 B, and both table-path X0 load assertions passed; a redundant second invariant still contained literal 101. It now compares confirmed plus unconfirmed candidates against the report's raw count. CI retry pending.",
-    "2026-11-28 VERIFIED_STATIC_CI_ONLY: the isolated caller census passed on code commit f3be353e044e5b471c35565da8c357d87f07d909 (run 46094178280/job 140821654312). It reproduced 114 direct B/BL words (111 BL, 3 B), Capstone-confirmed all 114, found 86 bounded-prelude signature clusters (histogram 7:1, 5:3, 4:1, 2:7, 1:74), and grouped the two table-path calls together. This is static-only; no ABI/ownership/runtime claim."
+    "2026-11-28 VERIFIED_STATIC_CI_ONLY: the isolated caller census passed on code commit f3be353e044e5b471c35565da8c357d87f07d909 (run 46094178280/job 140821654312). It reproduced 114 direct B/BL words (111 BL, 3 B), Capstone-confirmed all 114, found 86 bounded-prelude signature clusters (histogram 7:1, 5:3, 4:1, 2:7, 1:74), and grouped the two table-path calls together. This is static-only; no ABI/ownership/runtime claim.",
+    "2026-11-28 broader foundation regression also completed successfully on code commit f3be353e044e5b471c35565da8c357d87f07d909: run 46094178264/job 140821654144, raw log inspected, 74 proof JSON files uploaded (artifact 15242338737). The prior commit 95dcd5d broad run 46094071894/job 140821324784 also completed success. This does not upgrade the caller slice beyond VERIFIED_STATIC_CI_ONLY."
   ],
   "blocking_gaps": [
     "At FileLoad, the 0x290 helper is now byte-proven to write 24-byte records (x8/x1/x2 at 0/8/16) using an atomic counter; both relocated table pointer cells target 0x2161230. Its registered code-pointer candidate 0x116b888 walks 64 pointer slots at 0x4371800, calls 0x116b390 per slot, then clears 0x200 bytes. The static guard pair is __cxa_guard_acquire/__cxa_guard_release for 0x43717d8. Alternate tail 0x116d830 resolves to nn::mem::StandardAllocator::Free(void*) via PLT 0x12f49b0; receiver cell relocates to 0x4371a00 and X1 receives the alternate-path X19 value. Index-error path passes 'BlockManager::GetBlock break\\n' to 0x12155a0. However BR X2 target, object type, callback/destructor identity and invocation, runtime table values, allocator binding, ownership/lifetime, lock/unlock, async completion, rollback/unbind and archive precedence remain unresolved. No runtime hook.",
@@ -3318,7 +3319,30 @@
       "table_path_only_last_write_in_x0_x7": "x0 <- LDR X0,[X8,#0x28]; x1-x7 have no syntactic write in the 0x40-byte window"
     },
     "report_text_sha256": "bbf6c62af46ce08c15a753c078accb2f638ad775e1f695256e452f9f197d7d21",
-    "report_text_bytes": 19881936
+    "report_text_bytes": 19881936,
+    "foundation_ci": {
+      "current_head_code_commit": "f3be353e044e5b471c35565da8c357d87f07d909",
+      "run_id": 46094178264,
+      "job_id": 140821654144,
+      "workflow": "Verify Switch port foundation (not a gameplay release)",
+      "state": "completed_success",
+      "raw_log_inspected": true,
+      "success_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF",
+      "artifact_id": 15242338737,
+      "artifact_url": "https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178264/artifacts/15242338737",
+      "artifact_zip_sha256": "3177c3357668f643b8ccfdc086cdedaf6bd6ccef75ba2c97f1041555f83c5f03",
+      "uploaded_json_files": 74,
+      "older_run_95d": {
+        "run_id": 46094071894,
+        "job_id": 140821324784,
+        "commit": "95dcd5dcb5ce8c52ee45a67be89a00c8f9afc83f",
+        "state": "completed_success",
+        "raw_log_inspected": true,
+        "success_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS",
+        "artifact_id": 15242816479,
+        "artifact_zip_sha256": "30ae8c3758ad669ed15fa6ea87057ea2ac63f170316c6e5bd121047ca96ce296"
+      }
+    }
   },
   "upstream_pin_comparison_20261128": {
     "manager": {

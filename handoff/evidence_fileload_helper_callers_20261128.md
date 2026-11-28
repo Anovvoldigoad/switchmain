@@ -93,3 +93,6 @@ A broader `verify-port-foundation` run `46094178264` on the same code commit was
 This slice is `VERIFIED_STATIC_CI_ONLY`. It does not prove function extents, actual parameter meanings, producer/table writer, BR X2 target, callback/vtable/destructor, ownership/lifetime, lock/unlock, async, rollback/unbind, archive precedence, runtime consumer, emulated ARM64, or Uzuy. No hook or game writes were added. Global release flags remain false.
 
 Next: verify whether reliable FDE/unwind/function-boundary metadata exists for the 114 callsites, starting with the two-member table-path cluster. If such metadata is absent or ambiguous, do not invent extents; continue with bounded CFG and direct-reference evidence only.
+
+
+The broad foundation workflow also completed successfully on the same code commit `f3be353e044e5b471c35565da8c357d87f07d909`: run `46094178264`, job `140821654144`, raw log inspected, marker `RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF`. It uploaded 74 JSON proof files as artifact `15242338737`, ZIP SHA256 `3177c3357668f643b8ccfdc086cdedaf6bd6ccef75ba2c97f1041555f83c5f03`. The older broad run on commit `95dcd5d...` also completed success (run `46094071894`, job `140821324784`); its raw log and artifact hash were inspected. No pending workflow runs remained at the final poll.

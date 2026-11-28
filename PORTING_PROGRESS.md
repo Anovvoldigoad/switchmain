@@ -1458,3 +1458,6 @@ Research-first pin check corrected the stale-version assumption: repository pins
 The broad foundation workflow run 46094178264 on this code commit was still in progress at last poll and is recorded separately; it is not used to claim this isolated slice. The foundation workflow path filter now excludes the new caller analyzer so future changes use the dedicated workflow instead of rerunning the broad suite.
 
 Status: `VERIFIED_STATIC_CI_ONLY`; no ABI, ownership/lifecycle, callback, lock/unlock, async, rollback/unbind, destructor, archive precedence, runtime, emulated ARM64 or Uzuy claim. All gameplay release flags remain false. Next: prove or reject reliable FDE/unwind function extents for the 114 callsites, starting with the two-member table-path cluster.
+
+
+Additional CI closure: the broad `Verify Switch port foundation (not a gameplay release)` workflow completed successfully on code commit `f3be353e044e5b471c35565da8c357d87f07d909`: run 46094178264/job 140821654144. Raw log inspected; marker `RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF`; 74 JSON proof files uploaded as artifact 15242338737 (ZIP SHA256 `3177c3357668f643b8ccfdc086cdedaf6bd6ccef75ba2c97f1041555f83c5f03`). The older 95d broad run 46094071894/job 140821324784 also completed success and its raw log was inspected. No pending CI remained at the final poll.

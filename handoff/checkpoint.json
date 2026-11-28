@@ -3843,7 +3843,14 @@
       ],
       "table_path_only_last_write_in_x0_x7": "x0 <- LDR X0,[X8,#0x28]; x1-x7 have no syntactic write in the 0x40-byte window"
     },
-    "next": "Next, verify whether the pinned original main exposes reliable FDE/unwind function extents for the two-member table-path caller cluster and the 114 direct callers. Only after proving extents from bytes, trace incoming edges and the register/memory provenance feeding BR X2 at 0x116b3d0. Do not promote bounded syntactic writes to ABI arguments or install hooks."
+    "next": "Next, verify whether the pinned original main exposes reliable FDE/unwind function extents for the two-member table-path caller cluster and the 114 direct callers. Only after proving extents from bytes, trace incoming edges and the register/memory provenance feeding BR X2 at 0x116b3d0. Do not promote bounded syntactic writes to ABI arguments or install hooks.",
+    "foundation_ci": {
+      "run_id": 46094178264,
+      "job_id": 140821654144,
+      "state": "completed_success",
+      "raw_log_inspected": true,
+      "artifact_id": 15242338737
+    }
   },
   "latest_slice": {
     "state": "VERIFIED_STATIC_CI_ONLY",
@@ -6047,12 +6054,22 @@
     "run_id": 46094178264,
     "job_id": 140821654144,
     "workflow": "Verify Switch port foundation (not a gameplay release)",
-    "state": "in_progress_at_last_poll",
-    "relevance": "broad legacy foundation workflow; the dedicated caller workflow has already completed success",
+    "state": "completed_success",
+    "raw_log_inspected": true,
+    "success_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF",
+    "artifact_id": 15242338737,
+    "artifact_url": "https://github.com/Anovvoldigoad/switchmain/actions/runs/46094178264/artifacts/15242338737",
+    "artifact_zip_sha256": "3177c3357668f643b8ccfdc086cdedaf6bd6ccef75ba2c97f1041555f83c5f03",
+    "uploaded_json_files": 74,
     "older_run_95d": {
       "run_id": 46094071894,
+      "job_id": 140821324784,
       "commit": "95dcd5dcb5ce8c52ee45a67be89a00c8f9afc83f",
-      "state": "in_progress_at_last_poll"
+      "state": "completed_success",
+      "raw_log_inspected": true,
+      "success_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS",
+      "artifact_id": 15242816479,
+      "artifact_zip_sha256": "30ae8c3758ad669ed15fa6ea87057ea2ac63f170316c6e5bd121047ca96ce296"
     }
   }
 }
