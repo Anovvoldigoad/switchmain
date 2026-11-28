@@ -26,7 +26,7 @@
   "repository": "https://github.com/Anovvoldigoad/switchmain",
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
-  "documentation_commit": "2026-11-28 reroute caller census through existing FileLoad workflow; CI pending",
+  "documentation_commit": "2026-11-28 corrected stale caller-count expectation from 101 to artifact-proven 114; isolated CI retry pending",
   "prior_storm_checkpoint_id": "80be5308-6dfa-44d8-91e9-71c92a4f00e2",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
@@ -2842,7 +2842,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Inspect the existing FileLoad lifecycle workflow's caller-only push run. The caller source/test path is changed so the workflow should run the new caller step while skipping the two previously passing FileLoad steps. Read the raw job log and artifact.",
+  "next_action": "Run the isolated caller workflow against the pinned original main. Require 114 raw candidates (111 BL, 3 B), then inspect the raw job log and JSON artifact. Keep last-syntactic-write and all ABI/lifecycle conclusions explicitly unresolved.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -2857,12 +2857,12 @@
   },
   "latest_pending_code_commit": null,
   "latest_pending_ci": {
-    "parent_sha": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
+    "parent_sha": "92fc27933d27beca0c80bd72d3b0e6dd262dd038",
     "code_commit": null,
-    "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
+    "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
     "state": "pending",
     "raw_log_inspected": false,
-    "previous_workflow_no_run": true
+    "previous_failed_run": 46093640387
   },
   "crilayla_total_output_limit": {
     "status": "pending_ci",
@@ -3820,16 +3820,20 @@
   "latest_pending_head_ci": null,
   "latest_execution": {
     "status": "IMPLEMENTED_AWAITING_CI_RETRY_FILELOAD_HELPER_CALLER_CENSUS",
-    "parent_sha": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
+    "parent_sha": "92fc27933d27beca0c80bd72d3b0e6dd262dd038",
     "source": "tools/portlib/native_fileload_helper_callers.py",
     "test": "tests/test_native_fileload_helper_callers.py",
-    "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
-    "expected_raw_inbound_candidates": 101,
-    "next": "Inspect the existing FileLoad lifecycle workflow's caller-only push run. The caller source/test path is changed so the workflow should run the new caller step while skipping the two previously passing FileLoad steps. Read the raw job log and artifact."
+    "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
+    "expected_raw_inbound_candidates": 114,
+    "expected_raw_branch_kind_counts": {
+      "BL": 111,
+      "B": 3
+    },
+    "next": "Run the isolated caller workflow against the pinned original main. Require 114 raw candidates (111 BL, 3 B), then inspect the raw job log and JSON artifact. Keep last-syntactic-write and all ABI/lifecycle conclusions explicitly unresolved."
   },
   "latest_slice": {
     "state": "IMPLEMENTED_AWAITING_CI_RETRY_FILELOAD_HELPER_CALLER_CENSUS",
-    "parent_sha": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
+    "parent_sha": "92fc27933d27beca0c80bd72d3b0e6dd262dd038",
     "source": "tools/portlib/native_fileload_helper_callers.py",
     "test": "tests/test_native_fileload_helper_callers.py",
     "consumer_abi_verified": false,
@@ -5769,7 +5773,7 @@
         "dynamic_rela_records_scanned": 288973,
         "relocation_destinations_in_table": 0,
         "relocation_addends_pointing_into_table": 0,
-        "direct_b_bl_inbound_to_helper_0x116b390": 101,
+        "direct_b_bl_inbound_to_helper_0x116b390": 114,
         "helper_calls_from_two_table_paths": [
           "0x116b8a4",
           "0x116b928"
@@ -5791,7 +5795,7 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Use the 101 direct B/BL callers of helper 0x116b390 to group callsite argument setup and dataflow. Resolve the dynamic BR X2 target and identify any indirect table writer without assuming object type, function extent or ownership. If static evidence cannot resolve the producer, keep runtime hooks blocked. Do not repeat the passing table census unless its source changes.",
+    "next": "Use the corrected 114 raw direct B/BL candidates (111 BL, 3 B) for the helper prelude/signature census. The earlier 101 value was stale; both authentic table artifacts contain 114. Do not repeat the passing table census.",
     "previous_verified_revision": {
       "code_commit": "05afa169bc47025b0ea18f3fae2b85da9601c54d",
       "run_id": 46088613491,
@@ -5824,7 +5828,7 @@
       "clear_stores_per_sequence": 16,
       "clear_bytes_per_sequence": 512,
       "q0_zero_continuity_checked": true,
-      "direct_b_bl_inbound_to_helper": 18264976
+      "direct_b_bl_inbound_to_helper": 114
     },
     "code_commit": "0bc4cb45d713325cf8e33f0385b42535791fe5ab",
     "static_limits": {
@@ -5849,13 +5853,13 @@
     "code_commit": null,
     "source": "tools/portlib/native_fileload_helper_callers.py",
     "test": "tests/test_native_fileload_helper_callers.py",
-    "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
+    "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
     "evidence_note": "handoff/evidence_fileload_helper_callers_20261128.md",
     "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
     "original_main_size_bytes": 27701509,
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
     "target": "0x116b390",
-    "expected_raw_inbound_candidates": 101,
+    "expected_raw_inbound_candidates": 114,
     "known_table_path_calls": [
       {
         "call_site": "0x116b8a4",
@@ -5890,12 +5894,47 @@
       "artifact_id": null,
       "artifact_zip_sha256": null,
       "report_sha256": null,
-      "failed_attempts": [],
+      "failed_attempts": [
+        {
+          "run_id": 46093640387,
+          "job_id": 140819988501,
+          "commit": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
+          "failure": "test expected stale raw inbound count 101; authentic table-census artifacts show 114 (111 BL, 3 B)",
+          "raw_log_inspected": true
+        }
+      ],
+      "corroborating_table_artifacts": [
+        {
+          "run_id": 46089004753,
+          "job_id": 140805260736,
+          "artifact_id": 15239987914,
+          "report_sha256": "49b68228ce6a598471d5778e9e847bdbb10c00e11bd7ae3e806618b923f7586d",
+          "observed_raw_inbound_count": 114,
+          "observed_branch_kind_counts": {
+            "BL": 111,
+            "B": 3
+          }
+        },
+        {
+          "run_id": 46093740773,
+          "job_id": 140820299581,
+          "artifact_id": 15242585556,
+          "artifact_zip_sha256": "a8396015dc0d26d12d3cb5b38cd1882aaa5ab8bac52b03071b51b3f88ce58da7",
+          "observed_raw_inbound_count": 114,
+          "observed_branch_kind_counts": {
+            "BL": 111,
+            "B": 3
+          }
+        }
+      ],
       "first_push": {
         "code_commit": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
         "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
-        "direct_push_run_found": false,
-        "note": "The new workflow file was not scheduled by GitHub; no code test result is claimed."
+        "direct_push_run_found": true,
+        "run_id": 46093640387,
+        "job_id": 140819988501,
+        "conclusion": "failure",
+        "raw_log_inspected": true
       }
     },
     "limits": {
@@ -5916,6 +5955,10 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Inspect the existing FileLoad lifecycle workflow's caller-only push run. The caller source/test path is changed so the workflow should run the new caller step while skipping the two previously passing FileLoad steps. Read the raw job log and artifact."
+    "next": "Run the isolated caller workflow against the pinned original main. Require 114 raw candidates (111 BL, 3 B), then inspect the raw job log and JSON artifact. Keep last-syntactic-write and all ABI/lifecycle conclusions explicitly unresolved.",
+    "expected_raw_branch_kind_counts": {
+      "BL": 111,
+      "B": 3
+    }
   }
 }

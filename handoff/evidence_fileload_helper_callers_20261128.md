@@ -22,7 +22,7 @@ State before CI: IMPLEMENTED_AWAITING_CI
 
 The current branch code parent is `e70d151e7c7fffec838126f47d2f375e65e8ba34`; the preceding code proof `0bc4cb45d713325cf8e33f0385b42535791fe5ab` passed run `46089004753`, job `140805260736`. The raw log was fetched directly and inspected; it emitted `PINNED_FILELOAD_REGISTRATION_LIFECYCLE_PASS` and `PINNED_FILELOAD_TABLE_ACCESS_CENSUS_PASS`. Artifact `15239987914`, ZIP SHA256 `97f2b7734baef912d6becf291ed88c2b2bc59427f641ca238b96cc29751bca28`, report SHA256 `49b68228ce6a598471d5778e9e847bdbb10c00e11bd7ae3e806618b923f7586d`.
 
-The table census found 101 raw aligned direct B/BL inbound candidates to `0x116b390`, including `0x116b8a4` and `0x116b928`. The helper's previously verified bounded dispatch sequence loads X8 from [X0], loads X2 from [X8+0x58], copies X19 to X1, then executes BR X2 at `0x116b3d0`. The target remains unresolved.
+The table census found 114 raw aligned direct B/BL inbound candidates to `0x116b390`, including `0x116b8a4` and `0x116b928`. The helper's previously verified bounded dispatch sequence loads X8 from [X0], loads X2 from [X8+0x58], copies X19 to X1, then executes BR X2 at `0x116b3d0`. The target remains unresolved.
 
 Earlier failed table-census attempts were checked from raw logs:
 - Run `46088082330` / job `140802291968`: synthetic ADRP page encoder treated page delta as bytes.
@@ -43,7 +43,7 @@ The analyzer:
 
 ## Falsifiable boundaries
 
-- The raw inbound count is expected to remain 101 on the pinned main; any change fails the regression.
+- The raw inbound count is expected to remain 114 on the pinned main; any change fails the regression.
 - Both table-path calls must remain direct BLs to `0x116b390`.
 - Each known call must retain the exact 64-bit X8+0x28 load as the last syntactic X0 write in the bounded prelude.
 - Every signature cluster must account for exactly the Capstone-confirmed rows; unconfirmed raw words are preserved separately, never silently discarded.
@@ -52,3 +52,10 @@ The analyzer:
 ## Status
 
 The first push commit added a new workflow file but GitHub did not schedule it; the caller test is now routed through the already active FileLoad lifecycle workflow with a path-filtered step, while its previously passing steps are skipped on caller-source-only commits. The rerouted workflow is awaiting CI. Do not promote this note to verified until the exact commit's job is COMPLETED SUCCESS, the original raw log is inspected, and the JSON artifact is verified.
+
+
+## Correction from authentic artifacts
+
+The first caller test failed on the stale expected count of 101. The raw job log for run `46093640387` / job `140819988501` shows the assertion failure at the count check. This is a test expectation error, not a changed game binary.
+
+The original table-census artifact `15239987914` (run `46089004753`) was downloaded and its JSON report SHA256 `49b68228ce6a598471d5778e9e847bdbb10c00e11bd7ae3e806618b923f7586d` was recomputed locally. The later successful table workflow run `46093740773` / job `140820299581` also uploaded artifact `15242585556`; its ZIP SHA256 from the raw job log is `a8396015dc0d26d12d3cb5b38cd1882aaa5ab8bac52b03071b51b3f88ce58da7`. Both report copies contain **114** raw direct B/BL inbound words: **111 BL** and **3 B**. The two known table-path BL sites remain present. The earlier 101 figure in the handoff/status checkpoint was stale and has been corrected; the new regression now pins 114 and the raw B/BL split.

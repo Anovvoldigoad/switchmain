@@ -290,6 +290,10 @@ def inspect(nso):
 
     decoder = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
     decoder.detail = True
+    raw_branch_kind_counts = {"BL": 0, "B": 0}
+    for candidate in raw_candidates:
+        raw_branch_kind_counts[candidate["kind"]] += 1
+
     callers = []
     unconfirmed = []
     for candidate in raw_candidates:
@@ -337,6 +341,7 @@ def inspect(nso):
         "text_bytes": len(text),
         "helper_target": _hex(HELPER_TARGET),
         "raw_aligned_direct_b_bl_inbound_count": len(raw_candidates),
+        "raw_branch_kind_counts": raw_branch_kind_counts,
         "prelude_bytes_per_caller": PRELUDE_BYTES,
         "capstone_confirmed_direct_branch_count": len(callers),
         "capstone_unconfirmed_raw_candidates": unconfirmed,

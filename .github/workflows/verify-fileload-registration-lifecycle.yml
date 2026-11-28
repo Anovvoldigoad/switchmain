@@ -1,4 +1,4 @@
-name: Verify pinned FileLoad registration lifecycle and caller evidence
+name: Verify pinned FileLoad registration lifecycle evidence
 on:
   workflow_dispatch:
   push:
@@ -8,9 +8,6 @@ on:
       - 'tests/test_native_fileload_registration_lifecycle.py'
       - 'tools/portlib/native_fileload_table_access.py'
       - 'tests/test_native_fileload_table_access.py'
-      - 'tools/portlib/native_fileload_helper_callers.py'
-      - 'tests/test_native_fileload_helper_callers.py'
-      - '.github/workflows/verify-fileload-registration-lifecycle.yml'
       - 'original/atmosphere/contents/0100FA10190A0000/exefs/main'
 jobs:
   verify:
@@ -24,29 +21,16 @@ jobs:
       - name: Install pinned AArch64 decoder
         run: python -m pip install capstone==5.0.6
       - name: Reproduce registration helper, relocation and bounded target proofs
-        if: github.event_name == 'workflow_dispatch' || (!contains(github.event.head_commit.added, 'tools/portlib/native_fileload_helper_callers.py') && !contains(github.event.head_commit.modified, 'tools/portlib/native_fileload_helper_callers.py'))
         run: PYTHONPATH=tools python tests/test_native_fileload_registration_lifecycle.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output proof-work
       - name: Reproduce direct 64-slot table references and RELA inventory
-        if: github.event_name == 'workflow_dispatch' || (!contains(github.event.head_commit.added, 'tools/portlib/native_fileload_helper_callers.py') && !contains(github.event.head_commit.modified, 'tools/portlib/native_fileload_helper_callers.py'))
         run: PYTHONPATH=tools python tests/test_native_fileload_table_access.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output table-proof-work
-      - name: Reproduce helper inbound caller and bounded prelude evidence
-        if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.added, 'tools/portlib/native_fileload_helper_callers.py') || contains(github.event.head_commit.modified, 'tools/portlib/native_fileload_helper_callers.py')
-        run: PYTHONPATH=tools python tests/test_native_fileload_helper_callers.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output caller-proof-work
       - uses: actions/upload-artifact@v4
-        if: github.event_name == 'workflow_dispatch' || (!contains(github.event.head_commit.added, 'tools/portlib/native_fileload_helper_callers.py') && !contains(github.event.head_commit.modified, 'tools/portlib/native_fileload_helper_callers.py'))
         with:
           name: FILELOAD_REGISTRATION_LIFECYCLE_STATIC_EVIDENCE
           path: proof-work/native_fileload_registration_lifecycle.json
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
-        if: github.event_name == 'workflow_dispatch' || (!contains(github.event.head_commit.added, 'tools/portlib/native_fileload_helper_callers.py') && !contains(github.event.head_commit.modified, 'tools/portlib/native_fileload_helper_callers.py'))
         with:
           name: FILELOAD_TABLE_ACCESS_STATIC_EVIDENCE
           path: table-proof-work/native_fileload_table_access.json
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.added, 'tools/portlib/native_fileload_helper_callers.py') || contains(github.event.head_commit.modified, 'tools/portlib/native_fileload_helper_callers.py')
-        with:
-          name: FILELOAD_HELPER_CALLER_STATIC_EVIDENCE
-          path: caller-proof-work/native_fileload_helper_callers.json
           if-no-files-found: error

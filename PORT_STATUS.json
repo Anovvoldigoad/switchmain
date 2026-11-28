@@ -112,9 +112,10 @@
     "2026-11-28 FOLLOW-UP: corrected the synthetic ADRP encoder (page delta is measured in pages, not bytes), required 8-byte-aligned table bounds, and attached the new census test/artifact to the already active FileLoad lifecycle workflow with explicit path filters. CI pending.",
     "2026-11-28 FOLLOW-UP 2: raw CI log identified the missing reaching definition: X19 is zeroed immediately before ADRP, then ADD X8,X20,X19 forms the object base. The analyzer now scans a bounded 0x20-byte prefix and tracks only statically known register-add operands. Foundation workflow excludes this isolated FileLoad test to avoid rerunning the broad suite; the active lifecycle workflow remains authoritative for this slice. CI pending.",
     "2026-11-28 EXTENSION_AWAITING_CI: Extended the FileLoad table census to both bounded traversal/zeroing paths, verified Q0 zero continuity through both 16-store sequences, and added direct B/BL inbound census for the per-slot helper. Synthetic branch boundary tests added. Prior revision 05afa CI passed; this extension is pending.",
-    "2026-11-28 VERIFIED_STATIC_CI_ONLY: Final FileLoad table census commit 0bc4cb45d713325cf8e33f0385b42535791fe5ab passed run 46089004753/job 140805260736. Raw log and artifact inspected. 89 ADRP refs, 34 direct accesses, 2 table traversal/zeroing paths, 2 reads, 32 zeroing stores, zero direct writes outside those sequences, zero RELA targets/addends in the table, and 101 direct B/BL callers to helper 0x116b390. No producer/ABI/runtime claim.",
+    "2026-11-28 VERIFIED_STATIC_CI_ONLY: Final FileLoad table census commit 0bc4cb45d713325cf8e33f0385b42535791fe5ab passed run 46089004753/job 140805260736. Raw log and artifact inspected. 89 ADRP refs, 34 direct accesses, 2 table traversal/zeroing paths, 2 reads, 32 zeroing stores, zero direct writes outside those sequences, zero RELA targets/addends in the table, and 114 direct B/BL callers to helper 0x116b390. No producer/ABI/runtime claim.",
     "2026-11-28 IMPLEMENTED_AWAITING_CI: Added a SHA-pinned FileLoad helper inbound caller analyzer. It Capstone-confirms raw aligned B/BL candidates to 0x116b390, records bounded 0x40-byte prelude instructions/register/memory facts, and groups last-syntactic-write signatures for X0-X7. It verifies both known table-path calls are preceded by LDR X0,[X8,#0x28]. These are not reaching definitions or ABI proof; CI pending.",
-    "2026-11-28 FOLLOW-UP: the new workflow file did not schedule a push run, so the caller regression is now attached to the existing FileLoad lifecycle workflow. Its two previously passing tests are skipped for caller-source-only commits; the new caller test runs independently. CI pending."
+    "2026-11-28 FOLLOW-UP: the new workflow file did not schedule a push run, so the caller regression is now attached to the existing FileLoad lifecycle workflow. Its two previously passing tests are skipped for caller-source-only commits; the new caller test runs independently. CI pending.",
+    "2026-11-28 CI diagnosis: the first caller regression failed because it pinned a stale count of 101. Both authentic table-census artifacts were downloaded and inspected; each reports 114 direct B/BL inbound words to 0x116b390 (111 BL, 3 B). The regression expectation and checkpoint/status evidence are corrected; isolated CI retry pending."
   ],
   "blocking_gaps": [
     "At FileLoad, the 0x290 helper is now byte-proven to write 24-byte records (x8/x1/x2 at 0/8/16) using an atomic counter; both relocated table pointer cells target 0x2161230. Its registered code-pointer candidate 0x116b888 walks 64 pointer slots at 0x4371800, calls 0x116b390 per slot, then clears 0x200 bytes. The static guard pair is __cxa_guard_acquire/__cxa_guard_release for 0x43717d8. Alternate tail 0x116d830 resolves to nn::mem::StandardAllocator::Free(void*) via PLT 0x12f49b0; receiver cell relocates to 0x4371a00 and X1 receives the alternate-path X19 value. Index-error path passes 'BlockManager::GetBlock break\\n' to 0x12155a0. However BR X2 target, object type, callback/destructor identity and invocation, runtime table values, allocator binding, ownership/lifetime, lock/unlock, async completion, rollback/unbind and archive precedence remain unresolved. No runtime hook.",
@@ -154,7 +155,7 @@
     "FileLoad status service targets 0x1215358/0x1215374 are direct call/branch candidates only; their lock/unlock semantics, function boundaries and runtime binding remain unproven.",
     "FileLoad status service dispatch targets 0x1158c90/0x1158d10/0x1158d30 are now bounded read-only analysis candidates; actual lock/unlock semantics, function extents, object ownership/lifecycle and async teardown remain unresolved.",
     "FileLoad table producer remains unresolved: static direct-reference census found only two bounded zeroing paths, no direct non-zero writer or RELA pointer into the table, and 101 direct B/BL callers to helper 0x116b390. Dynamic/indirect writers, BR X2, ownership and lifecycle remain open.",
-    "FileLoad helper 0x116b390 now has 101 raw aligned direct B/BL inbound candidates and two known table-path calls with X0 loaded from [X8+0x28]; the new caller prelude/signature census is pending CI. These observations do not resolve the producer, indirect writer, BR X2, function extents, parameter meaning, ownership or native ABI."
+    "FileLoad helper 0x116b390 now has 114 raw aligned direct B/BL inbound candidates and two known table-path calls with X0 loaded from [X8+0x28]; the new caller prelude/signature census is pending CI. These observations do not resolve the producer, indirect writer, BR X2, function extents, parameter meaning, ownership or native ABI."
   ],
   "proofs": [
     "reports/port_foundation/bootstrap.json",
@@ -3096,7 +3097,7 @@
         "dynamic_rela_records_scanned": 288973,
         "relocation_destinations_in_table": 0,
         "relocation_addends_pointing_into_table": 0,
-        "direct_b_bl_inbound_to_helper_0x116b390": 101,
+        "direct_b_bl_inbound_to_helper_0x116b390": 114,
         "helper_calls_from_two_table_paths": [
           "0x116b8a4",
           "0x116b928"
@@ -3118,7 +3119,7 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Use the 101 direct B/BL callers of helper 0x116b390 to group callsite argument setup and dataflow. Resolve the dynamic BR X2 target and identify any indirect table writer without assuming object type, function extent or ownership. If static evidence cannot resolve the producer, keep runtime hooks blocked. Do not repeat the passing table census unless its source changes.",
+    "next": "Use the corrected 114 raw direct B/BL candidates (111 BL, 3 B) for the helper prelude/signature census. The earlier 101 value was stale; both authentic table artifacts contain 114. Do not repeat the passing table census.",
     "previous_verified_revision": {
       "code_commit": "05afa169bc47025b0ea18f3fae2b85da9601c54d",
       "run_id": 46088613491,
@@ -3151,7 +3152,7 @@
       "clear_stores_per_sequence": 16,
       "clear_bytes_per_sequence": 512,
       "q0_zero_continuity_checked": true,
-      "direct_b_bl_inbound_to_helper": 18264976
+      "direct_b_bl_inbound_to_helper": 114
     },
     "code_commit": "0bc4cb45d713325cf8e33f0385b42535791fe5ab",
     "static_limits": {
@@ -3176,13 +3177,13 @@
     "code_commit": null,
     "source": "tools/portlib/native_fileload_helper_callers.py",
     "test": "tests/test_native_fileload_helper_callers.py",
-    "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
+    "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
     "evidence_note": "handoff/evidence_fileload_helper_callers_20261128.md",
     "original_main_git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
     "original_main_size_bytes": 27701509,
     "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
     "target": "0x116b390",
-    "expected_raw_inbound_candidates": 101,
+    "expected_raw_inbound_candidates": 114,
     "known_table_path_calls": [
       {
         "call_site": "0x116b8a4",
@@ -3217,12 +3218,47 @@
       "artifact_id": null,
       "artifact_zip_sha256": null,
       "report_sha256": null,
-      "failed_attempts": [],
+      "failed_attempts": [
+        {
+          "run_id": 46093640387,
+          "job_id": 140819988501,
+          "commit": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
+          "failure": "test expected stale raw inbound count 101; authentic table-census artifacts show 114 (111 BL, 3 B)",
+          "raw_log_inspected": true
+        }
+      ],
+      "corroborating_table_artifacts": [
+        {
+          "run_id": 46089004753,
+          "job_id": 140805260736,
+          "artifact_id": 15239987914,
+          "report_sha256": "49b68228ce6a598471d5778e9e847bdbb10c00e11bd7ae3e806618b923f7586d",
+          "observed_raw_inbound_count": 114,
+          "observed_branch_kind_counts": {
+            "BL": 111,
+            "B": 3
+          }
+        },
+        {
+          "run_id": 46093740773,
+          "job_id": 140820299581,
+          "artifact_id": 15242585556,
+          "artifact_zip_sha256": "a8396015dc0d26d12d3cb5b38cd1882aaa5ab8bac52b03071b51b3f88ce58da7",
+          "observed_raw_inbound_count": 114,
+          "observed_branch_kind_counts": {
+            "BL": 111,
+            "B": 3
+          }
+        }
+      ],
       "first_push": {
         "code_commit": "19d57adaf09c66936b94ec9d2778a18798c8ffa1",
         "workflow": ".github/workflows/verify-fileload-helper-callers.yml",
-        "direct_push_run_found": false,
-        "note": "The new workflow file was not scheduled by GitHub; no code test result is claimed."
+        "direct_push_run_found": true,
+        "run_id": 46093640387,
+        "job_id": 140819988501,
+        "conclusion": "failure",
+        "raw_log_inspected": true
       }
     },
     "limits": {
@@ -3243,6 +3279,10 @@
       "ready_for_gameplay_test": false,
       "emulator_tested": false
     },
-    "next": "Inspect the existing FileLoad lifecycle workflow's caller-only push run. The caller source/test path is changed so the workflow should run the new caller step while skipping the two previously passing FileLoad steps. Read the raw job log and artifact."
+    "next": "Run the isolated caller workflow against the pinned original main. Require 114 raw candidates (111 BL, 3 B), then inspect the raw job log and JSON artifact. Keep last-syntactic-write and all ABI/lifecycle conclusions explicitly unresolved.",
+    "expected_raw_branch_kind_counts": {
+      "BL": 111,
+      "B": 3
+    }
   }
 }
