@@ -35,3 +35,30 @@ State at code commit: PENDING_CI
 ## CI
 
 Awaiting targeted push workflow on the exact code commit. Do not promote this slice to verified until the job is COMPLETED SUCCESS and its raw log is inspected.
+
+
+## Reproduced result and CI (2026-11-28)
+
+Code commit: `e9555de6024a334b6ffcac1e7b9c091fee79d7e6`; parent: `9fafb58369cd61a3bf691a99c1b134912787fedd`.
+
+### Table scan result
+- Raw workflow log: run `46109004389`, job `140868100989`, COMPLETED SUCCESS.
+- Artifact: `FILELOAD_TABLE_ACCESS_STATIC_EVIDENCE`, ID `15248364167`, zip SHA256 `d1757312874c72ca2ef83300573a0258ff666bcc0a92069ef5e64de95c3aa77a`.
+- Report JSON: 261,617 bytes, SHA256 `538dd282ac1f7af783d54b125d31958f0092b591d7be61032b261cd6d67ab7be`.
+- Result: 89 ADRP page references, 34 direct accesses (2 reads, 32 writes), 7 symbolic indexed reads, 0 indexed writes, 0 direct writes outside the two bounded 512-byte zeroing sequences.
+- Seven indexed read sites: `0x116b844`, `0x116b9b0`, `0x116ba2c`, `0x116baf4`, `0x116bbc0`, `0x116bc88`, `0x116bd54`. Each uses `0x4371800 + UXTW(W1)*8`, loads 8 bytes, and remains unresolved for the runtime index value.
+
+### Return-provenance result
+- Raw workflow log: run `46109004391`, job `140868101178`, COMPLETED SUCCESS.
+- Artifact: `FILELOAD_RETURN_PROVENANCE_STATIC_EVIDENCE`, ID `15248891039`, zip SHA256 `e269519033e4ee250c2120357632952a25d0e1d92aea60f8459ed369ec962706`.
+- Report JSON: 17,578 bytes, SHA256 `53ebe0d7eff1ffbdcb45fc838d63148b587fe76f0b0992d6baa2475f2ffba337`.
+- Exact lookup: `CMP W1,#0x3f; B.HI` bounds the index to 0..63; `ADRP X8,0x4371000`; `ADD X8,X8,#0x7d8`; `ADD X8,X8,W1,UXTW #3`; `LDR X0,[X8,#0x28]`. Effective base is `0x4371800`.
+- The loaded value is compared to `0x3f800000`. Out-of-range or equal-sentinel paths reach `RET` at `0x116b870` with X0=0. The non-sentinel path returns the loaded 64-bit slot value at `0x116b858`.
+- Caller `0x116b3b0` then null-checks X0, dereferences `[X0]`, loads `[X8,#0x58]`, and branches via X2. No object type or vtable target is inferred.
+
+### Failure/correction history
+- Run `46108343732` failed because the first analyzer omitted the `hashlib` import; corrected in commit `386cee9adc9195dce5b2efee4c4b4703a1b9f884`.
+- Run `46108507058` failed because a test treated Capstone's reported CMP X0 write as a real GPR write. The pinned disassembly shows `CMP X0,X8` only updates NZCV. The analyzer now treats compare aliases as flag-only; final runs above pass.
+
+### Scope boundary
+All findings are static host analysis of the SHA-pinned original main plus synthetic tests. Calls are not followed; memory values are symbolic. The 89-ADRP writer scan is bounded-linear and does not prove absence of branch-path or memory-loaded pointer aliases. Native ABI, producer lifecycle, callbacks, ownership, archive precedence, ARM64 emulation, Uzuy and gameplay remain unverified.

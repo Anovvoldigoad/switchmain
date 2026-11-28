@@ -25,3 +25,10 @@ Next vertical slice:
 4. Only after dispatch identity, prove lock/unlock pairing, callbacks, async lifetime, rollback, unbind/destructor, then archive precedence.
 
 Do not install hooks or write game runtime until ABI, ownership/lifecycle, callback, lock/unlock, async, rollback, unbind/destructor and archive precedence are proven. Keep full_moddingapi=false, ready_for_gameplay_test=false, emulator_tested=false. The P32 artifact is build-only and must not be presented as gameplay-ready.
+
+## 2026-11-28 verified static FileLoad slice
+- Exact tested code commit: `e9555de6024a334b6ffcac1e7b9c091fee79d7e6`.
+- The 64-slot table `0x4371800..0x4371a00` has seven indexed 64-bit read sites using `UXTW(W1)*8`; no indexed write candidates were found in the bounded 89-ADRP linear sweep. The 0x116b82c helper checks W1<=63, loads the indexed slot, rejects value 0x3f800000 and returns zero on the error path.
+- Raw CI logs inspected: table run 46109004389/job 140868100989 SUCCESS; return provenance run 46109004391/job 140868101178 SUCCESS. Artifact JSON hashes are in checkpoint/evidence note.
+- Important limit: this does NOT prove a complete writer census, native consumer ABI, pointer type, callback, ownership, lifecycle, archive precedence or runtime behavior.
+- Next: extend the table scan through bounded CFG branch paths and memory-loaded pointer aliases to find producer/writer paths. Continue BR X2 source/lifetime analysis. Do not repeat the direct table census or install hooks.

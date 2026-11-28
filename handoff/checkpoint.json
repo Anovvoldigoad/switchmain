@@ -26,7 +26,7 @@
   "repository": "https://github.com/Anovvoldigoad/switchmain",
   "branch": "port/full-api-v170",
   "verified_runtime_commit": "a51dd1494d0c0d793a76fd5f43ce7ae991744cf5",
-  "documentation_commit": "2026-11-28 caller census retry; raw 114/111/3 proven, redundant stale invariant fixed, CI pending",
+  "documentation_commit": "2026-11-28 static-only FileLoad table indexed-read and return provenance verified by Actions on e9555de6024a334b6ffcac1e7b9c091fee79d7e6; docs sync pending.",
   "prior_storm_checkpoint_id": "80be5308-6dfa-44d8-91e9-71c92a4f00e2",
   "port_status": {
     "stage": "IMPLEMENTATION_INCOMPLETE",
@@ -2842,7 +2842,7 @@
   "full_moddingapi": false,
   "ready_for_gameplay_test": false,
   "emulator_tested": false,
-  "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags.",
+  "next_action": "Extend FileLoad table writer census from bounded linear ADRP windows to bounded CFG branch paths and memory-loaded pointer aliases. Use the seven indexed readers as anchors, identify producer/write paths for 0x4371800, and continue the X0 -> [X0] -> [X8,#0x58] -> BR X2 object-source trace. Do not repeat the direct table census or install hooks.",
   "latest_offline_pack_alias_guard": {
     "status": "PENDING_CI",
     "description": "2026-11-07: Offline native PC pack metadata-output alias protection: validate() and row_at() reject output structs overlapping caller-owned pack, including partial end overlap. Four host regression cases preserve original bytes. No game consumer ABI or Uzuy proof; pending CI. All release flags false.",
@@ -6254,5 +6254,132 @@
     "repaired_by": "fbd13b35c07e88642ba3e5afb5818e678176807a",
     "repaired_run": 46100950488
   },
-  "documentation_commit_parent_sha": "fbd13b35c07e88642ba3e5afb5818e678176807a"
+  "documentation_commit_parent_sha": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+  "native_fileload_return_provenance_20261128": {
+    "state": "VERIFIED_STATIC_CI_ONLY",
+    "parent_sha": "9fafb58369cd61a3bf691a99c1b134912787fedd",
+    "code_commit": "e9555de6024a334b6ffcac1e7b9c091fee79d7e6",
+    "source_blobs": {
+      "tools/portlib/fileload_return_provenance.py": "95747e082fa2b9dd36a8c7cbd0f22955b5799e24",
+      "tests/test_fileload_return_provenance.py": "e804bc4ca736d22def706d9ca74902cbf782fffc",
+      "tools/portlib/native_fileload_table_access.py": "c1d821eb6f280d8ae7c7a0aadd9cc8e9861279e5",
+      "tests/test_native_fileload_table_access.py": "8356fccaa702cb69b8ab05bf9fa5d7df10d1c0f7"
+    },
+    "original_main": {
+      "git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "bytes": 27701509,
+      "sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+    },
+    "ci": [
+      {
+        "workflow": "Verify pinned FileLoad registration lifecycle evidence",
+        "run_id": 46109004389,
+        "job_id": 140868100989,
+        "status": "COMPLETED_SUCCESS",
+        "raw_log_read": true,
+        "artifact_id": 15248364167,
+        "artifact_zip_sha256": "d1757312874c72ca2ef83300573a0258ff666bcc0a92069ef5e64de95c3aa77a",
+        "report_json_sha256": "538dd282ac1f7af783d54b125d31958f0092b591d7be61032b261cd6d67ab7be",
+        "report_json_bytes": 261617,
+        "log_marker": "PINNED_FILELOAD_TABLE_ACCESS_CENSUS_PASS adrp_refs 89 direct_accesses 34 indexed_accesses 7 indexed_writers 0 direct_writers_outside_two_zeroing_sequences 0"
+      },
+      {
+        "workflow": "Verify pinned FileLoad return provenance (static only)",
+        "run_id": 46109004391,
+        "job_id": 140868101178,
+        "status": "COMPLETED_SUCCESS",
+        "raw_log_read": true,
+        "artifact_id": 15248891039,
+        "artifact_zip_sha256": "e269519033e4ee250c2120357632952a25d0e1d92aea60f8459ed369ec962706",
+        "report_json_sha256": "53ebe0d7eff1ffbdcb45fc838d63148b587fe76f0b0992d6baa2475f2ffba337",
+        "report_json_bytes": 17578,
+        "log_marker": "PINNED_FILELOAD_RETURN_PROVENANCE_PASS return_sites 2 classification PATH_DEPENDENT_ORIGINS table_base 0x4371800 slots 64 call_barriers 1"
+      }
+    ],
+    "table": {
+      "base": "0x4371800",
+      "end_exclusive": "0x4371a00",
+      "slots": 64,
+      "stride_bytes": 8,
+      "adrp_page_references": 89,
+      "direct_accesses": 34,
+      "direct_reads": 2,
+      "direct_writes": 32,
+      "direct_writes_outside_two_zeroing_sequences": 0,
+      "indexed_accesses": 7,
+      "indexed_write_candidates": 0,
+      "indexed_read_sites": [
+        "0x116b844",
+        "0x116b9b0",
+        "0x116ba2c",
+        "0x116baf4",
+        "0x116bbc0",
+        "0x116bc88",
+        "0x116bd54"
+      ],
+      "indexed_expression": "0x4371800 + UXTW(W1)*8",
+      "indexed_load_width_bytes": 8,
+      "indexed_effective_values_resolved": false,
+      "scan_scope": "89 ADRP candidates, bounded linear windows, register MOV/ADD aliases and symbolic UXTW indices; not a complete indirect-pointer or branch-path writer proof"
+    },
+    "helper": {
+      "target": "0x116b82c",
+      "caller_callsite": "0x116b3b0",
+      "caller_x0_source": "x20",
+      "bounds_compare": "0x116b830 CMP W1,#0x3f",
+      "bounds_branch": "0x116b834 B.HI 0x116b868",
+      "table_adrp": "0x116b838 ADRP X8,0x4371000",
+      "table_add_immediate": "0x116b83c ADD X8,X8,#0x7d8",
+      "indexed_add": "0x116b840 ADD X8,X8,W1,UXTW #3",
+      "slot_load": "0x116b844 LDR X0,[X8,#0x28]",
+      "computed_slot_base": "0x4371800",
+      "valid_index_range": "0..63",
+      "sentinel_compare": "0x116b84c CMP X0,X8",
+      "sentinel_value": "0x3f800000",
+      "sentinel_branch": "0x116b850 B.EQ 0x116b85c",
+      "valid_non_sentinel_return_site": "0x116b858",
+      "valid_non_sentinel_return_origin": "LOAD(MEM(ADD(CONST(0x43717d8),LSL(UXTW(LOW32(ENTRY_X1)),3))+40))",
+      "error_return_site": "0x116b870",
+      "error_return_origin": "CONST(0x0)",
+      "diagnostic_call": "0x116b864 -> 0x12155a0",
+      "caller_post_return_use": "null-check X0; LDR X8,[X0]; LDR X2,[X8,#0x58]; BR X2",
+      "semantic_object_type_verified": false
+    },
+    "ci_history": [
+      {
+        "commit": "d0121d3b4931c4aa1faebe63864dad87a19a63e8",
+        "run_id": 46108343732,
+        "conclusion": "failure",
+        "cause": "missing hashlib import in new analyzer",
+        "correction_commit": "386cee9adc9195dce5b2efee4c4b4703a1b9f884"
+      },
+      {
+        "commit": "4d7c6ece35323849f6a5a74a17df7ec3d2934b04",
+        "run_id": 46108507058,
+        "conclusion": "failure",
+        "cause": "test over-constrained Capstone written-register metadata; CMP X0,X8 is flag-only but Capstone reported X0 as written",
+        "correction_commit": "e9555de6024a334b6ffcac1e7b9c091fee79d7e6",
+        "correction": "treat CMP/CMN/TST/CCMP/CCMN as flag-only for provenance; preserve raw Capstone candidate row separately"
+      }
+    ],
+    "limits": {
+      "function_extent_verified": false,
+      "function_identity_verified": false,
+      "native_consumer_abi_verified": false,
+      "callback_identity_verified": false,
+      "object_type_verified": false,
+      "ownership_lifecycle_verified": false,
+      "lock_unlock_async_rollback_unbind_destructor_verified": false,
+      "archive_precedence_verified": false,
+      "complete_indirect_pointer_writer_census": false,
+      "branch_path_writer_census_complete": false,
+      "emulated_arm64": false,
+      "uzuy": false,
+      "gameplay_verified": false,
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    },
+    "next": "Extend the 89-reference sweep to bounded CFG branch paths and memory-loaded pointer aliases; locate all producer/writer paths for 0x4371800. Then resolve the runtime value feeding BR X2 only from proven object/vtable construction and lifetime. Do not add hooks."
+  }
 }
