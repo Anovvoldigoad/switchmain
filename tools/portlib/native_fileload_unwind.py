@@ -16,6 +16,12 @@ MAX_CIE_SCAN = 1000000
 MIN_LINEAR_FDE_CLUSTER = 8
 POINTER_SIZE = 8
 TABLE_PATH_CALLS = (0x116B8A4, 0x116B928)
+ANALYSIS_ANCHORS = {
+    "fileload_helper_entry": 0x116B390,
+    "fileload_helper_br_x2": 0x116B3D0,
+    "registration_walk_candidate": 0x116B888,
+    "second_table_path_range_start": 0x116B90C,
+}
 
 
 def _u(data, offset, size):
@@ -579,6 +585,36 @@ def map_callers_to_fdes(callers, fdes, text):
     return mappings, sorted(ranges.values(), key=lambda row: int(row["start"], 16))
 
 
+
+def map_addresses_to_fdes(addresses, fdes):
+    rows = []
+    for name, address in addresses.items():
+        matches = [fde for fde in fdes
+                   if fde["start"] <= address < fde["end"]]
+        if len(matches) == 1:
+            fde = matches[0]
+            rows.append({
+                "name": name,
+                "address": hex(address),
+                "fde_start": hex(fde["start"]),
+                "fde_end_exclusive": hex(fde["end"]),
+                "fde_offset": hex(fde["fde_offset"]),
+                "cie_offset": hex(fde["cie_offset"]),
+                "fde_sha256": fde["fde_sha256"],
+                "mapping_status": "UNIQUE_FDE_COVERAGE",
+                "function_entry_identity_verified": False,
+            })
+        else:
+            rows.append({
+                "name": name,
+                "address": hex(address),
+                "matching_fde_count": len(matches),
+                "mapping_status": "UNMAPPED" if not matches else "AMBIGUOUS",
+                "function_entry_identity_verified": False,
+            })
+    return rows
+
+
 def inspect(nso):
     digest = hashlib.sha256(nso).hexdigest()
     if digest != MAIN_SHA256:
@@ -589,6 +625,9 @@ def inspect(nso):
     text_va, text, _ = rows[0]
     mappings, ranges = map_callers_to_fdes(
         caller_report["callers"], metadata["fde_records"], text
+    )
+    anchor_mappings = map_addresses_to_fdes(
+        ANALYSIS_ANCHORS, metadata["fde_records"]
     )
     counts = {
         "unique_fde_coverage": sum(
@@ -630,6 +669,7 @@ def inspect(nso):
             "unique_ranges_covering_callers": ranges,
         },
         "table_path_callers": table_paths,
+        "analysis_anchor_mappings": anchor_mappings,
         "limits": {
             "fde_range_is_exact_cfi_coverage_only": True,
             "function_entry_identity_verified": False,

@@ -15,6 +15,7 @@ from portlib.native_fileload_unwind import (
     discover_metadata,
     inspect,
     map_callers_to_fdes,
+    map_addresses_to_fdes,
 )
 
 
@@ -117,6 +118,14 @@ def synthetic_header_positive_and_boundaries():
     ]
     assert len(ranges) == 2
     assert all(row["range_is_unwind_coverage_not_function_identity"] for row in ranges)
+    anchors = map_addresses_to_fdes({
+        "entry": starts[0],
+        "inside": starts[0] + 0x2f,
+        "end": starts[0] + 0x30,
+    }, report["fdes"])
+    assert [row["mapping_status"] for row in anchors] == [
+        "UNIQUE_FDE_COVERAGE", "UNIQUE_FDE_COVERAGE", "UNMAPPED"
+    ]
 
 
 def synthetic_linear_fde_sequence():
@@ -225,6 +234,13 @@ def run(main, output):
     assert [row["call_site"] for row in report["table_path_callers"]] == [
         "0x116b8a4", "0x116b928"
     ]
+    anchors = {row["name"]: row for row in report["analysis_anchor_mappings"]}
+    assert set(anchors) == {
+        "fileload_helper_entry", "fileload_helper_br_x2",
+        "registration_walk_candidate", "second_table_path_range_start",
+    }
+    assert all(row["mapping_status"] == "UNIQUE_FDE_COVERAGE"
+               for row in anchors.values())
     for key, value in report["limits"].items():
         assert value is False or (
             key == "fde_range_is_exact_cfi_coverage_only" and value is True
