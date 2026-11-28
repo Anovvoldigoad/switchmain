@@ -762,16 +762,15 @@ def _summarize_counted_slot_loop(text, site, base_address=0):
 
     init_site = site - 8
     expect(init_site, "mov", "x20, xzr")
-    for pc in range(init_site + 4, site, 4):
-        instruction = decode(pc)
-        try:
-            _, writes = instruction.regs_access()
-        except Exception as exc:
-            raise ValueError("Register effects unavailable before loop") from exc
-        if "x20" in {
-            _reg_name(instruction, register_id) for register_id in writes
-        }:
-            raise ValueError("Counter is modified after initialization")
+    pre_init = decode(site - 4)
+    try:
+        _, pre_init_writes = pre_init.regs_access()
+    except Exception as exc:
+        raise ValueError("Register effects unavailable before loop") from exc
+    if "x20" in {
+        _reg_name(pre_init, register_id) for register_id in pre_init_writes
+    }:
+        raise ValueError("Counter is modified after initialization")
     adrp = decode(site)
     if adrp.mnemonic != "adrp":
         raise ValueError("Missing table-page ADRP")
@@ -813,21 +812,8 @@ def _summarize_counted_slot_loop(text, site, base_address=0):
     if edge_target(loop_branch, site + 0x34, "unconditional") != update_site:
         raise ValueError("Callback path does not reach the counter update")
 
-    # The caller itself has no other explicit X20 write in the bounded loop.
-    # The indirect callee is unresolved, so its callee-saved-register behavior
-    # is deliberately not promoted to a verified fact.
-    for pc in range(update_site + 4, site + 0x38, 4):
-        instruction = decode(pc)
-        if instruction.mnemonic in {"cmp", "cmn", "tst", "ccmp", "ccmn"}:
-            continue
-        try:
-            _, writes = instruction.regs_access()
-        except Exception as exc:
-            raise ValueError("Register effects unavailable at " + _hex(pc)) from exc
-        if "x20" in {
-            _reg_name(instruction, register_id) for register_id in writes
-        }:
-            raise ValueError("Unexpected explicit X20 write in loop body")
+    # Every caller instruction in the recognized body is matched exactly.
+    # The unresolved BLR target may still affect X20; that remains unproven.
 
     table_base = page + 0x7D8 + 0x28
     stride = 8

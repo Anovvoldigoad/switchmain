@@ -258,6 +258,7 @@ def synthetic_counted_slot_loop():
     data = bytearray(0x40)
     words = [
         (-8, "f4031faa"),  # mov x20, xzr
+        (-4, "1f2003d5"),  # nop; no counter write between init and ADRP
         (0, "359001d0"),   # adrp x21, #0x4371000
         (4, "b5621f91"),   # add x21, x21, #0x7d8
         (8, "04000014"),   # b site+0x18
@@ -328,6 +329,12 @@ def synthetic_counted_slot_loop():
     expect_reject(lambda: _summarize_counted_slot_loop(
         bytes(bad_init), site, base_address
     ), "unknown initial counter value")
+
+    bad_pre_init = bytearray(positive)
+    bad_pre_init[4:8] = bytes.fromhex("f40313aa")
+    expect_reject(lambda: _summarize_counted_slot_loop(
+        bytes(bad_pre_init), site, base_address
+    ), "counter overwritten after initialization")
 
 
 def synthetic_limits():
