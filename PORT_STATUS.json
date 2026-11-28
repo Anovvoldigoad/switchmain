@@ -122,7 +122,7 @@
     "2026-11-28 VERIFIED_STATIC_CI_ONLY: FileLoad helper 0x116b82c now has a reproduced bounded return-value proof and the 64-slot table scanner tracks symbolic UXTW-indexed aliases. Seven indexed reads resolve to base 0x4371800 + UXTW(W1)*8 (64 slots); no indexed writes were found in the scanned ADRP windows; 34 direct accesses include 2 reads and 32 zeroing writes, with 0 direct writers outside the two zeroing sequences. Helper returns a 64-bit memory-derived slot value on valid non-sentinel path and zero on out-of-range/sentinel path. Static evidence only; no ABI, producer lifecycle, ownership, callback, archive precedence, emulated ARM64 or Uzuy proof. Code commit e9555de6024a334b6ffcac1e7b9c091fee79d7e6; table run 46109004389/job 140868100989 and return run 46109004391/job 140868101178 completed success; raw logs and artifacts inspected.",
     "2026-11-28 PENDING_CI: Added SHA-pinned FileLoad bounded CFG branch-path and static pointer-alias census. New analyzer follows in-window conditional/unconditional edges from ADRP references and traces only unique file-backed literal / symbol-zero R_AARCH64_RELATIVE pointer loads into the 0x4371000 page. Calls remain clobber barriers; out-of-window edges and BSS/heap aliases remain unresolved. Synthetic regressions cover branch-only writes, call barriers, RELA/literal pointer cells, ambiguity, exclusive-page boundary, BSS exclusion and state-budget exhaustion. Original main SHA256 is pinned; no runtime hook. Parent HEAD 4d5acd5a52e0ae3e72415a7ee3164ffc21082769; targeted Actions CI pending.",
     "2026-11-28 VERIFIED_STATIC_CI_ONLY: FileLoad bounded CFG semantic-state dedup on code commit 63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1 (parent d1d6a77b0ae1c006b6313534a4206a2e9b055c6d). The exact pinned original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 was reproduced. The scan processed 4,055 ADRP references; equivalent-state dedup reduced references hitting the 256-state budget from 431 to 47 (89.1% reduction: target-page 10->2, pointer-page 421->45) while merging 7,510 equivalent branch histories and explicitly marking branch-path witness enumeration non-exhaustive. It now records 72 direct accesses, 7 indexed reads, 32 STP write rows, 214 candidate pointer cells, 271 loaded aliases, 1 ambiguous load, 10,581 call barriers, and 4,345 out-of-window edges; six additional bounded reads appear at 0x116bf70/0x116bfc8 for slot offsets 0x80/0x88/0x90. Target CFG and pointer alias trace remain INCOMPLETE; no complete writer census, producer identity, BR X2 target, native consumer ABI, ownership/lifecycle, callback/destructor, lock/unlock, async, rollback/unbind, archive precedence, emulated ARM64 for this analyzer, Uzuy or gameplay claim. Targeted run 46116650719/job 140891888185 and broad foundation run 46116650641/job 140891888072 COMPLETED SUCCESS; both raw logs inspected. Target artifact 15251304501, ZIP SHA256 f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b; report JSON SHA256 6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36; foundation artifact 15251649607, ZIP SHA256 7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159, 74 JSON files.",
-    "2026-11-28 PENDING_CI: Exact FileLoad counted-loop induction widening added. It canonicalizes X20 only while caller-side state remains known, exposes two symbolic indexed reads at 0x116bf70/0x116bfc8 (base 0x4371800, stride 8, bound 0x200), and keeps BLR as a full register-clobber barrier. The 45 pointer-page budget references remain unresolved. Synthetic exact-loop positive and malformed-stride negative regressions plus pinned-main SHA/loop-byte checks added. Parent HEAD c0649a2c899eb74c69bb0df177c232e413cc9846; targeted CI pending."
+    "2026-11-28 VERIFIED_STATIC_CI_ONLY: Exact FileLoad X20 loop-induction widening on code commit 2101530170402945bfa4165b1c01e06d944c2e48 (parent c0649a2c899eb74c69bb0df177c232e413cc9846). Target-page state-budget refs 2→0 and target-page bounded CFG is complete; global state-budget refs 47→45, leaving 45 pointer-page refs unresolved. Two new indexed reads at 0x116bf70/0x116bfc8 resolve symbolically to 0x4371800 + X20, width 8, stride 8, bound 0x200 (64 slots only if X20 is preserved). BLR remains a clobber barrier; callback preservation and runtime 64-slot visitation remain unverified. Targeted run 46124030962/job 140914501509 COMPLETED SUCCESS; raw log and artifact 15255315717 inspected (ZIP SHA256 f8a95dc28b93472956194ddc457326616cdb971252191841e5ddd9a743c12cc9; report SHA256 19e379f8e8595d1138fe7db417e28e2c4e320147a811116fe8302e93af1c19ba). Release guard run 46124031110/job 140914502015 COMPLETED SUCCESS; raw log inspected; all release flags remain false. Broad foundation run 46124031004/job 140914502057 was still in progress."
   ],
   "blocking_gaps": [
     "At FileLoad, the 0x290 helper is now byte-proven to write 24-byte records (x8/x1/x2 at 0/8/16) using an atomic counter; both relocated table pointer cells target 0x2161230. Its registered code-pointer candidate 0x116b888 walks 64 pointer slots at 0x4371800, calls 0x116b390 per slot, then clears 0x200 bytes. The static guard pair is __cxa_guard_acquire/__cxa_guard_release for 0x43717d8. Alternate tail 0x116d830 resolves to nn::mem::StandardAllocator::Free(void*) via PLT 0x12f49b0; receiver cell relocates to 0x4371a00 and X1 receives the alternate-path X19 value. Index-error path passes 'BlockManager::GetBlock break\\n' to 0x12155a0. However BR X2 target, object type, callback/destructor identity and invocation, runtime table values, allocator binding, ownership/lifetime, lock/unlock, async completion, rollback/unbind and archive precedence remain unresolved. No runtime hook.",
@@ -1140,8 +1140,14 @@
     "reason": "test_pc_native_pack.py negatives counter referenced before assignment",
     "new_commit_ci": "PENDING"
   },
-  "latest_pending_code_commit": null,
-  "latest_pending_ci": null,
+  "latest_pending_code_commit": "2101530170402945bfa4165b1c01e06d944c2e48",
+  "latest_pending_ci": {
+    "workflow": "Verify Switch port foundation (not a gameplay release)",
+    "run_id": 46124031004,
+    "job_id": 140914502057,
+    "status": "IN_PROGRESS",
+    "raw_log_inspected": false
+  },
   "multi_mod_pc_source_path_ownership_guard": "OFFLINE_ONLY_PENDING_CI_NO_ENGINE_ARCHIVE_PRECEDENCE",
   "crilayla_total_output_limit": {
     "status": "pending_ci",
@@ -3593,7 +3599,7 @@
     "repaired_run": 46100950488
   },
   "latest_pending_head_ci": null,
-  "next_action": "Inspect the targeted FileLoad loop-induction workflow on the implementation commit. If it passes, record exact report/CI hashes, then continue the 45 pointer-page CFG budget references and the unresolved table producer / BR X2 value path. Do not assume callback preservation or install hooks.",
+  "next_action": "Continue the 45 pointer-page state-budget references and trace the exact BSS table producer / unresolved BR X2 target. Keep callback register preservation unassumed and do not install hooks.",
   "next_execution": {
     "date": "2026-11-28",
     "branch_head_before_checkpoint_commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
@@ -4061,35 +4067,23 @@
     "next": "Investigate the remaining two target-page state-budget references at 0x116bf54/0x116bfac and 45 pointer-page references. The new report shows repeated X20 += 8 and X21 + X20, plus bounded reads at 0x116bf70/0x116bfc8; test a conservative loop-induction/widening model that preserves distinct slot offsets. Then resolve the actual memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. No runtime hooks."
   },
   "native_fileload_loop_widening_20261128": {
-    "state": "PENDING_CI",
+    "state": "VERIFIED_STATIC_CI_ONLY",
     "parent_sha": "c0649a2c899eb74c69bb0df177c232e413cc9846",
-    "code_commit": null,
+    "code_commit": "2101530170402945bfa4165b1c01e06d944c2e48",
     "source_path": "tools/portlib/native_fileload_table_cfg.py",
     "source_blob": "4fb38a1c477723b7ad0f59921d68613adbb38be1",
     "test_path": "tests/test_native_fileload_table_cfg.py",
     "test_blob": "9cf962a0bec50eae6af10e079d01ae0ee60e0c2b",
+    "evidence_note": "handoff/evidence_fileload_loop_widening_20261128.md",
     "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
     "original_main": {
       "git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
       "bytes": 27701509,
       "sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
     },
-    "expected": {
-      "target_page_budget_refs_before": 2,
-      "target_page_budget_refs_after": 0,
-      "pointer_page_budget_refs_preserved": 45,
-      "loop_read_sites": [
-        "0x116bf70",
-        "0x116bfc8"
-      ],
-      "base": "0x4371800",
-      "stride": 8,
-      "limit": 512,
-      "slots_if_counter_preserved": 64,
-      "callee_x20_preservation_assumed": false
-    },
     "research": {
       "modmanager": {
+        "release_url": "https://github.com/TheLeonX/NSC-ModManager/releases/tag/2.1.2.1",
         "tag": "2.1.2.1",
         "tag_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
         "main_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
@@ -4097,6 +4091,7 @@
         "skill_model_blob": "6a891e237d27fdf01336f806dbef8767d609a304"
       },
       "toolbox": {
+        "release_url": "https://github.com/TheLeonX/NSC-Toolbox/releases/tag/2.1.2.1",
         "tag": "2.1.2.1",
         "tag_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
         "main_commit": "6f780cb6814f07e03c16b3e78d97dde4e4368983",
@@ -4107,7 +4102,7 @@
         "commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
         "parent": "1c3460573fa70b595e6bfa70e52f83f1c3f74f12",
         "movesetplus_blob": "d7c5dbbebd60415f8d304321f083897658a86146",
-        "delta": "case 29 TakeOverEnemyProjectiles is PC Windows mutex/timing behavior, not Switch ABI"
+        "delta": "case 29 TakeOverEnemyProjectiles is PC Windows mutex/timing behavior; no Switch ABI"
       },
       "pycricodecs": {
         "commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
@@ -4118,25 +4113,101 @@
         "commit": "76e319b80fe207f05b6558053a8f66264680820d",
         "supported_targets_blob": "b4fad121e917a1a6eb148e72c4ac1daef7d95265",
         "binary_diagnostics_blob": "76da9004df7abee2831a2b1d9bc32e99d0e03f1c",
-        "role": "offline AArch64 ELF / Switch NSO-NRO metadata only"
+        "role": "offline AArch64 ELF64 and Switch NSO/NRO metadata only"
       }
     },
-    "ci": null,
-    "limits": {
-      "target_page_cfg_complete": "PENDING_CI",
+    "observed": {
+      "original_main_sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9",
+      "adrp_references": 4055,
+      "target_page_references": 89,
+      "pointer_page_references": 3966,
+      "state_budget_references_before": 47,
+      "target_page_state_budget_references_before": 2,
+      "state_budget_references_after": 45,
+      "target_page_state_budget_references_after": 0,
+      "target_page_cfg_complete": true,
       "pointer_alias_trace_complete": false,
-      "complete_writer_census": false,
+      "bounded_in_window_cfg_complete": false,
+      "loop_widening_count": 2,
+      "loop_widening_sites": [
+        "0x116bf54",
+        "0x116bfac"
+      ],
+      "newly_exposed_indexed_reads": [
+        "0x116bf70",
+        "0x116bfc8"
+      ],
+      "indexed_accesses": 9,
+      "direct_accesses": 34,
+      "branch_path_write_rows": 32,
+      "static_pointer_cells": 214,
+      "loaded_aliases": 271,
+      "ambiguous_pointer_loads": 1,
+      "equivalent_branch_histories_merged": 7478,
+      "loop_read_expression": "0x4371800 + X20",
+      "loop_read_width_bytes": 8,
+      "loop_counter": {
+        "register": "x20",
+        "initial_value": 0,
+        "stride": 8,
+        "limit": 512,
+        "slot_count_if_counter_preserved": 64
+      },
+      "loop_bytes_sha256": {
+        "0x116bf54": "df7bdfbe579db712c6cb51a69ca69105acf2140a655759f462c2a6e896caa91b",
+        "0x116bfac": "708f2801f32244ed5149582077bf1e4cc09c5a989c102dffd4b3445082a7b16e"
+      },
+      "callback_target_resolved": false,
+      "callee_preserves_x20_verified": false,
+      "runtime_iteration_count_verified": false,
+      "all_64_slots_runtime_visited": false,
+      "branch_path_witnesses_exhaustive": false
+    },
+    "ci": {
+      "targeted": {
+        "workflow": "Verify pinned FileLoad registration lifecycle evidence",
+        "run_id": 46124030962,
+        "job_id": 140914501509,
+        "status": "COMPLETED_SUCCESS",
+        "raw_log_inspected": true,
+        "success_marker": "PINNED_FILELOAD_TABLE_CFG_PASS adrp_refs 4055 direct_accesses 34 indexed_accesses 9 branch_path_writes 32 static_pointer_cells 214 loaded_aliases 271 NO_ABI_NO_OWNER_NO_ARCHIVE_PRECEDENCE_NO_UZUY_CLAIM",
+        "artifact_id": 15255315717,
+        "artifact_zip_sha256": "f8a95dc28b93472956194ddc457326616cdb971252191841e5ddd9a743c12cc9",
+        "report_json_sha256": "19e379f8e8595d1138fe7db417e28e2c4e320147a811116fe8302e93af1c19ba",
+        "report_json_bytes": 6454239
+      },
+      "release_flags": {
+        "workflow": "Verify release flags (not a gameplay release)",
+        "run_id": 46124031110,
+        "job_id": 140914502015,
+        "status": "COMPLETED_SUCCESS",
+        "raw_log_inspected": true,
+        "success_marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF"
+      },
+      "foundation": {
+        "workflow": "Verify Switch port foundation (not a gameplay release)",
+        "run_id": 46124031004,
+        "job_id": 140914502057,
+        "status": "IN_PROGRESS",
+        "raw_log_inspected": false
+      }
+    },
+    "limits": {
+      "native_consumer_abi_verified": false,
       "callback_identity_verified": false,
       "callee_x20_preservation_verified": false,
-      "native_consumer_abi_verified": false,
+      "object_type_verified": false,
       "ownership_lifecycle_verified": false,
       "lock_unlock_verified": false,
       "async_verified": false,
       "rollback_unbind_destructor_verified": false,
       "archive_precedence_verified": false,
+      "complete_writer_census": false,
+      "pointer_alias_trace_complete": false,
       "emulated_arm64_for_this_analyzer": false,
       "uzuy": false,
       "gameplay": false
-    }
+    },
+    "evidence_note_blob": "d6a4fc146f261e7d98b98bf8d966b1d4cdda4014"
   }
 }

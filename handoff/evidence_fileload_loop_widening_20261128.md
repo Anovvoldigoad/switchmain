@@ -3,7 +3,9 @@
 Date: 2026-11-28  
 Branch: `port/full-api-v170`  
 Parent HEAD: `c0649a2c899eb74c69bb0df177c232e413cc9846`  
-State at implementation commit: PENDING_CI
+State: VERIFIED_STATIC_CI_ONLY
+
+Code commit: `2101530170402945bfa4165b1c01e06d944c2e48` (parent `c0649a2c899eb74c69bb0df177c232e413cc9846`)
 
 ## Research-first primary sources rechecked
 
@@ -46,7 +48,9 @@ The exact-loop induction abstraction should remove the two target-page state-bud
 
 ## CI
 
-PENDING_CI on the implementation commit. Do not promote this slice to verified until the targeted FileLoad workflow completes successfully and its raw job log is inspected.
+Targeted FileLoad workflow run [46124030962](https://github.com/Anovvoldigoad/switchmain/actions/runs/46124030962) / job `140914501509`: COMPLETED SUCCESS; raw job log inspected. Marker: `PINNED_FILELOAD_TABLE_CFG_PASS adrp_refs 4055 direct_accesses 34 indexed_accesses 9 branch_path_writes 32 static_pointer_cells 214 loaded_aliases 271 NO_ABI_NO_OWNER_NO_ARCHIVE_PRECEDENCE_NO_UZUY_CLAIM`. Artifact `15255315717`, ZIP SHA256 `f8a95dc28b93472956194ddc457326616cdb971252191841e5ddd9a743c12cc9`; report JSON SHA256 `19e379f8e8595d1138fe7db417e28e2c4e320147a811116fe8302e93af1c19ba` (6,454,239 bytes). The authentic main hash passed. Target-page state-budget references fell 2→0; global state-budget references fell 47→45; target-page bounded CFG is complete, but pointer-page alias tracing and whole-window completeness remain false. Two new symbolic indexed reads were exposed at `0x116bf70` and `0x116bfc8`.
+
+Release-flag guard run [46124031110](https://github.com/Anovvoldigoad/switchmain/actions/runs/46124031110) / job `140914502015`: COMPLETED SUCCESS; raw log inspected; marker `RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF`. The broad foundation workflow run `46124031004` / job `140914502057` was still IN_PROGRESS at checkpoint finalization and is tracked separately.
 
 ## Scope boundary
 
