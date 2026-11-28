@@ -13,6 +13,7 @@ from portlib.native_fileload_registration_lifecycle import (
     decode_plt_thunk,
     inspect,
     read_c_string,
+    _one_relative_target,
     require_direct_branch,
     trace_bounded_window,
 )
@@ -65,6 +66,29 @@ def synthetic_regressions():
                   "PLT without BR X17")
     expect_reject(lambda: decode_plt_thunk(plt, 2),
                   "unaligned PLT")
+    expect_reject(lambda: decode_plt_thunk(plt, 4),
+                  "PLT beyond text")
+
+    assert _one_relative_target({
+        "relocations": [{
+            "type_name": "R_AARCH64_RELATIVE",
+            "symbol_index": 0,
+            "addend": 0x1234,
+        }]
+    }) == 0x1234
+    expect_reject(lambda: _one_relative_target({
+        "relocations": [{
+            "type_name": "R_AARCH64_JUMP_SLOT",
+            "symbol_index": 0,
+            "addend": 0x1234,
+        }]
+    }), "wrong relative relocation type")
+    expect_reject(lambda: _one_relative_target({
+        "relocations": [
+            {"type_name": "R_AARCH64_RELATIVE", "symbol_index": 0, "addend": 1},
+            {"type_name": "R_AARCH64_RELATIVE", "symbol_index": 0, "addend": 2},
+        ]
+    }), "ambiguous relative relocation")
 
     branch_text = bytearray(0x20)
     put_word(branch_text, 0, encode_bl(0, 0x10))
@@ -101,6 +125,13 @@ def run(main, output):
     assert helper["argument_candidates"]["field_0_code_pointer"]["target"] == "0x116b888"
     assert helper["argument_candidates"]["field_1_object_pointer"]["value"] == "0x43717e0"
     assert helper["argument_candidates"]["field_2_context_pointer"]["value"] == "0x1eb3000"
+    assert helper["record_layout"]["relocated_base_target"] == "0x2161230"
+    assert helper["record_layout"]["relocated_limit_target"] == "0x2161230"
+
+    guard = report["guard_protocol"]
+    assert guard["acquire_import"]["symbol"] == "__cxa_guard_acquire"
+    assert guard["release_import"]["symbol"] == "__cxa_guard_release"
+    assert guard["guard_runtime_state_verified"] is False
 
     cleanup = report["registered_code_pointer_target"]
     assert cleanup["address"] == "0x116b888"
@@ -112,20 +143,32 @@ def run(main, output):
     assert cleanup["cleanup_observations"]["slot_count"] == 64
     assert cleanup["cleanup_observations"]["per_slot_direct_call"] == "0x116b390"
     assert cleanup["cleanup_observations"]["clear_covered_bytes"] == 0x200
+    assert cleanup["cleanup_observations"]["clear_store_offsets"] == [
+        "0x1e0", "0x1c0", "0x1a0", "0x180",
+        "0x160", "0x140", "0x120", "0x100",
+        "0xe0", "0xc0", "0xa0", "0x80",
+        "0x60", "0x40", "0x20", "0x0",
+    ]
 
     alternate = report["alternate_tail_import"]
     assert alternate["branch_site"] == "0x116d830"
     assert alternate["plt"] == "0x12f49b0"
-    assert alternate["symbol"]["name"]
+    assert alternate["symbol"]["name"] == "_ZN2nn3mem17StandardAllocator4FreeEPv"
+    assert alternate["resolved_import_role"] == "nn::mem::StandardAllocator::Free(void*)"
     assert alternate["relocation"]["type_name"] == "R_AARCH64_JUMP_SLOT"
-    assert alternate["pointer_cell"]["address"] == "0x215d2e8"
-    assert alternate["x2_value_at_tail_branch_verified"] is False
+    assert alternate["allocator_receiver_cell"]["address"] == "0x215d2e8"
+    assert alternate["allocator_receiver_target"] == "0x4371a00"
+    assert alternate["argument_register_flow"]["alternate_path_source"] == "x19"
+    assert alternate["argument_register_flow"]["copy_site"] == "0x116d824"
+    assert alternate["argument_register_flow"]["copy_encoding"] == "mov x1, x0"
+    assert alternate["argument_register_flow"]["argument_value_type_verified"] is False
 
     error = report["index_error_path"]
     assert error["callsite"] == "0x116b864"
     assert error["target"] == "0x12155a0"
     assert error["literal_address"] == "0x1ae9d22"
     assert error["literal_bytes_hex"]
+    assert error["literal_text"] == "BlockManager::GetBlock break\n"
     assert error["target_window"]["window_bytes"] == 0x100
 
     for key, value in report["limits"].items():

@@ -277,13 +277,27 @@ def inspect(nso):
     if abort_register != 0 or abort_cell != 0x215D2E8:
         raise ValueError("Alternate tail pointer-cell materialization changed")
     abort_cell_evidence = _cell_evidence(memory, tags, abort_cell, regions)
+    allocator_receiver = _one_relative_target(abort_cell_evidence)
+    if allocator_receiver != 0x4371A00:
+        raise ValueError("Alternate tail allocator receiver relocation changed")
     plt = decode_plt_thunk(text, ABORT_PLT)
     resolved = _resolve_slot(memory, tags, plt["got_slot"])
     if (resolved["resolution"] != "DYNAMIC_SYMBOL_NAME_RESOLVED"
             or not resolved["symbol"] or not resolved["symbol"].get("name")
+            or resolved["symbol"]["name"] != "_ZN2nn3mem17StandardAllocator4FreeEPv"
             or not resolved["relocation"]
             or resolved["relocation"]["type_name"] != "R_AARCH64_JUMP_SLOT"):
-        raise ValueError("Alternate tail PLT symbol/relocation did not resolve")
+        raise ValueError("Alternate tail is not the pinned StandardAllocator::Free import")
+    if abort_rows["0x116d824"]["operands"] != "x1, x0":
+        raise ValueError("Free argument is no longer copied from the alternate-path X0")
+    alternate_source = dispatch["dispatch_flow"]["conditional_paths"]["alternate_path_x0_source"]
+    if alternate_source != "x19":
+        raise ValueError("Alternate-path Free argument no longer originates from X19")
+
+    guard_object = guard["guarded_object_candidate"]
+    if (guard_object["acquire_import"]["symbol"] != "__cxa_guard_acquire"
+            or guard_object["release_import"]["symbol"] != "__cxa_guard_release"):
+        raise ValueError("Static guard import pair changed")
 
     # The index-error path passes a bounded rodata literal to another direct target.
     require_direct_branch(text, ERROR_CALLSITE, "BL", ERROR_TARGET)
@@ -351,6 +365,13 @@ def inspect(nso):
             "destructor_identity_verified": False,
             "invocation_order_verified": False,
         },
+        "guard_protocol": {
+            "guard_address": guard_object["guard_address"],
+            "static_object_address": guard_object["static_object_address"],
+            "acquire_import": guard_object["acquire_import"],
+            "release_import": guard_object["release_import"],
+            "guard_runtime_state_verified": False,
+        },
         "alternate_tail_import": {
             "path_window": abort_path,
             "branch_site": "0x116d830",
@@ -360,10 +381,16 @@ def inspect(nso):
             "got_slot": _hex(plt["got_slot"]),
             "relocation": resolved["relocation"],
             "symbol": resolved["symbol"],
-            "pointer_cell": abort_cell_evidence,
+            "resolved_import_role": "nn::mem::StandardAllocator::Free(void*)",
+            "allocator_receiver_cell": abort_cell_evidence,
+            "allocator_receiver_target": _hex(allocator_receiver),
+            "argument_register_flow": {
+                "alternate_path_source": alternate_source,
+                "copy_site": "0x116d824",
+                "copy_encoding": "mov x1, x0",
+                "argument_value_type_verified": False,
+            },
             "x0_value_at_runtime_verified": False,
-            "x1_value_type_verified": False,
-            "x2_value_at_tail_branch_verified": False,
             "tail_call_target_implementation_verified": False,
         },
         "index_error_path": {
