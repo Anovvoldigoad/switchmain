@@ -42,10 +42,8 @@ jobs:
           path: table-proof-work/native_fileload_table_access.json
           if-no-files-found: error
       - name: Reproduce bounded CFG branch paths and static pointer aliases
-        if: github.event_name == 'workflow_dispatch' || contains(join(github.event.head_commit.modified, ','), 'native_fileload_table_cfg.py') || contains(join(github.event.head_commit.added, ','), 'native_fileload_table_cfg.py') || contains(join(github.event.head_commit.modified, ','), 'test_native_fileload_table_cfg.py') || contains(join(github.event.head_commit.added, ','), 'test_native_fileload_table_cfg.py') || contains(join(github.event.head_commit.modified, ','), 'original/atmosphere/contents/0100FA10190A0000/exefs/main') || contains(join(github.event.head_commit.modified, ','), '.github/workflows/verify-fileload-registration-lifecycle.yml')
         run: PYTHONPATH=tools python tests/test_native_fileload_table_cfg.py --main original/atmosphere/contents/0100FA10190A0000/exefs/main --output table-cfg-proof-work
       - uses: actions/upload-artifact@v4
-        if: github.event_name == 'workflow_dispatch' || contains(join(github.event.head_commit.modified, ','), 'native_fileload_table_cfg.py') || contains(join(github.event.head_commit.added, ','), 'native_fileload_table_cfg.py') || contains(join(github.event.head_commit.modified, ','), 'test_native_fileload_table_cfg.py') || contains(join(github.event.head_commit.added, ','), 'test_native_fileload_table_cfg.py') || contains(join(github.event.head_commit.modified, ','), 'original/atmosphere/contents/0100FA10190A0000/exefs/main') || contains(join(github.event.head_commit.modified, ','), '.github/workflows/verify-fileload-registration-lifecycle.yml')
         with:
           name: FILELOAD_TABLE_CFG_STATIC_EVIDENCE
           path: table-cfg-proof-work/native_fileload_table_cfg.json
