@@ -3838,5 +3838,27 @@
       "repaired_run": 46100950488
     },
     "next_action": "Trace every static and indirect writer to the 64-slot FileLoad table at 0x4371800, then prove the object/value reaching 0x116b82c and the memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. Keep CFI/FDE evidence static-only. After dispatch target identity, continue with lock/unlock pairing, callback, async lifetime, rollback/unbind/destructor and archive precedence. Do not install hooks or mark gameplay flags."
+  },
+  "latest_release_flags_ci": {
+    "commit": "e6070b8f99c550318a5af5f446f1d919bf462509",
+    "parent_sha": "fbd13b35c07e88642ba3e5afb5818e678176807a",
+    "run_id": 46101407733,
+    "job_id": 140844449951,
+    "conclusion": "success",
+    "raw_job_log_inspected": true,
+    "workflow": "Verify release flags (not a gameplay release)",
+    "artifact_id": 15245014970,
+    "artifact_name": "RELEASE_FLAGS_NOT_A_GAMEPLAY_RELEASE",
+    "artifact_zip_bytes": 388,
+    "artifact_zip_sha256": "43e96cdcdad07eb48ce49777a64478ce5a7bd1cdc166fc2f718e96da98511bce",
+    "report_json_sha256": "fc0e84147e3cd026dc61cfa795330b7fc847de2890cd99878e7b506324dd4773",
+    "marker": "RELEASE_FLAGS_FALSE_STATIC_CI_GUARD_PASS 26 NO_UZUY_PROOF",
+    "report_status": "RELEASE_FLAGS_FAIL_CLOSED_STATIC_CI_ONLY",
+    "negative_invalid_statuses_rejected": 26,
+    "flags": {
+      "full_moddingapi": false,
+      "ready_for_gameplay_test": false,
+      "emulator_tested": false
+    }
   }
 }
