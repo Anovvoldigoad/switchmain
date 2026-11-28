@@ -47,3 +47,12 @@ Do not install hooks or write game runtime until ABI, ownership/lifecycle, callb
 - Next: investigate residual references `0x116bf54` and `0x116bfac` plus 45 pointer-page references; test conservative loop-induction/widening around repeated `X20 += 8` while preserving slot offsets. Then resolve `[X8,#0x58] -> BR X2` at `0x116b3d0`, and prove lifecycle/ownership/precedence before any hook.
 
 Preserve Sakura aura107 and both Event236 variants. Keep `full_moddingapi=false`, `ready_for_gameplay_test=false`, `emulator_tested=false`.
+
+
+## Latest execution handoff — 2026-11-28 (PENDING_CI)
+
+- Parent branch HEAD: `c0649a2c899eb74c69bb0df177c232e413cc9846`.
+- Code slice: exact FileLoad X20 loop-induction widening. Source blob `4fb38a1c477723b7ad0f59921d68613adbb38be1`; test blob `9cf962a0bec50eae6af10e079d01ae0ee60e0c2b`.
+- It recognizes only the exact two SHA-pinned 64-slot loop shapes, canonicalizes X20 as a symbolic induction variable while caller state is known, exposes the two indexed reads, and retains BLR as a clobber barrier. It does not assume callback preservation.
+- Research pins and exact upstream blob hashes: `handoff/evidence_fileload_loop_widening_20261128.md`.
+- Current state: PENDING_CI. Next execution must inspect the targeted FileLoad workflow run on the new code commit and read the raw job log. If it fails, fix the actual root cause. On success, update checkpoint/status/progress/evidence with exact commit, run/job, artifact and report hashes; then investigate the 45 pointer-page state-budget references and table producer. Keep all release flags false; no hooks.

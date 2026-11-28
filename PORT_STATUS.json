@@ -121,7 +121,8 @@
     "2026-11-28 broader foundation regression also completed successfully on code commit f3be353e044e5b471c35565da8c357d87f07d909: run 46094178264/job 140821654144, raw log inspected, 74 proof JSON files uploaded (artifact 15242338737). The prior commit 95dcd5d broad run 46094071894/job 140821324784 also completed success. This does not upgrade the caller slice beyond VERIFIED_STATIC_CI_ONLY.",
     "2026-11-28 VERIFIED_STATIC_CI_ONLY: FileLoad helper 0x116b82c now has a reproduced bounded return-value proof and the 64-slot table scanner tracks symbolic UXTW-indexed aliases. Seven indexed reads resolve to base 0x4371800 + UXTW(W1)*8 (64 slots); no indexed writes were found in the scanned ADRP windows; 34 direct accesses include 2 reads and 32 zeroing writes, with 0 direct writers outside the two zeroing sequences. Helper returns a 64-bit memory-derived slot value on valid non-sentinel path and zero on out-of-range/sentinel path. Static evidence only; no ABI, producer lifecycle, ownership, callback, archive precedence, emulated ARM64 or Uzuy proof. Code commit e9555de6024a334b6ffcac1e7b9c091fee79d7e6; table run 46109004389/job 140868100989 and return run 46109004391/job 140868101178 completed success; raw logs and artifacts inspected.",
     "2026-11-28 PENDING_CI: Added SHA-pinned FileLoad bounded CFG branch-path and static pointer-alias census. New analyzer follows in-window conditional/unconditional edges from ADRP references and traces only unique file-backed literal / symbol-zero R_AARCH64_RELATIVE pointer loads into the 0x4371000 page. Calls remain clobber barriers; out-of-window edges and BSS/heap aliases remain unresolved. Synthetic regressions cover branch-only writes, call barriers, RELA/literal pointer cells, ambiguity, exclusive-page boundary, BSS exclusion and state-budget exhaustion. Original main SHA256 is pinned; no runtime hook. Parent HEAD 4d5acd5a52e0ae3e72415a7ee3164ffc21082769; targeted Actions CI pending.",
-    "2026-11-28 VERIFIED_STATIC_CI_ONLY: FileLoad bounded CFG semantic-state dedup on code commit 63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1 (parent d1d6a77b0ae1c006b6313534a4206a2e9b055c6d). The exact pinned original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 was reproduced. The scan processed 4,055 ADRP references; equivalent-state dedup reduced references hitting the 256-state budget from 431 to 47 (89.1% reduction: target-page 10->2, pointer-page 421->45) while merging 7,510 equivalent branch histories and explicitly marking branch-path witness enumeration non-exhaustive. It now records 72 direct accesses, 7 indexed reads, 32 STP write rows, 214 candidate pointer cells, 271 loaded aliases, 1 ambiguous load, 10,581 call barriers, and 4,345 out-of-window edges; six additional bounded reads appear at 0x116bf70/0x116bfc8 for slot offsets 0x80/0x88/0x90. Target CFG and pointer alias trace remain INCOMPLETE; no complete writer census, producer identity, BR X2 target, native consumer ABI, ownership/lifecycle, callback/destructor, lock/unlock, async, rollback/unbind, archive precedence, emulated ARM64 for this analyzer, Uzuy or gameplay claim. Targeted run 46116650719/job 140891888185 and broad foundation run 46116650641/job 140891888072 COMPLETED SUCCESS; both raw logs inspected. Target artifact 15251304501, ZIP SHA256 f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b; report JSON SHA256 6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36; foundation artifact 15251649607, ZIP SHA256 7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159, 74 JSON files."
+    "2026-11-28 VERIFIED_STATIC_CI_ONLY: FileLoad bounded CFG semantic-state dedup on code commit 63c4cf76fe0daf6e9fcec6cc1fe854b21e0402b1 (parent d1d6a77b0ae1c006b6313534a4206a2e9b055c6d). The exact pinned original main SHA256 2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9 was reproduced. The scan processed 4,055 ADRP references; equivalent-state dedup reduced references hitting the 256-state budget from 431 to 47 (89.1% reduction: target-page 10->2, pointer-page 421->45) while merging 7,510 equivalent branch histories and explicitly marking branch-path witness enumeration non-exhaustive. It now records 72 direct accesses, 7 indexed reads, 32 STP write rows, 214 candidate pointer cells, 271 loaded aliases, 1 ambiguous load, 10,581 call barriers, and 4,345 out-of-window edges; six additional bounded reads appear at 0x116bf70/0x116bfc8 for slot offsets 0x80/0x88/0x90. Target CFG and pointer alias trace remain INCOMPLETE; no complete writer census, producer identity, BR X2 target, native consumer ABI, ownership/lifecycle, callback/destructor, lock/unlock, async, rollback/unbind, archive precedence, emulated ARM64 for this analyzer, Uzuy or gameplay claim. Targeted run 46116650719/job 140891888185 and broad foundation run 46116650641/job 140891888072 COMPLETED SUCCESS; both raw logs inspected. Target artifact 15251304501, ZIP SHA256 f4fcd676bfe1dd434326cc6c462e29c7aa096a5b2618e1e6ba08073d65d28e2b; report JSON SHA256 6dbb3f0f3583778d5216ff01c880f3e2b6dcc9890b4f29348eccbd36705c6f36; foundation artifact 15251649607, ZIP SHA256 7de286c39c04324821d060ae85c1b5ebe960e7aafd78b7eb9d3796acb564f159, 74 JSON files.",
+    "2026-11-28 PENDING_CI: Exact FileLoad counted-loop induction widening added. It canonicalizes X20 only while caller-side state remains known, exposes two symbolic indexed reads at 0x116bf70/0x116bfc8 (base 0x4371800, stride 8, bound 0x200), and keeps BLR as a full register-clobber barrier. The 45 pointer-page budget references remain unresolved. Synthetic exact-loop positive and malformed-stride negative regressions plus pinned-main SHA/loop-byte checks added. Parent HEAD c0649a2c899eb74c69bb0df177c232e413cc9846; targeted CI pending."
   ],
   "blocking_gaps": [
     "At FileLoad, the 0x290 helper is now byte-proven to write 24-byte records (x8/x1/x2 at 0/8/16) using an atomic counter; both relocated table pointer cells target 0x2161230. Its registered code-pointer candidate 0x116b888 walks 64 pointer slots at 0x4371800, calls 0x116b390 per slot, then clears 0x200 bytes. The static guard pair is __cxa_guard_acquire/__cxa_guard_release for 0x43717d8. Alternate tail 0x116d830 resolves to nn::mem::StandardAllocator::Free(void*) via PLT 0x12f49b0; receiver cell relocates to 0x4371a00 and X1 receives the alternate-path X19 value. Index-error path passes 'BlockManager::GetBlock break\\n' to 0x12155a0. However BR X2 target, object type, callback/destructor identity and invocation, runtime table values, allocator binding, ownership/lifetime, lock/unlock, async completion, rollback/unbind and archive precedence remain unresolved. No runtime hook.",
@@ -3592,7 +3593,7 @@
     "repaired_run": 46100950488
   },
   "latest_pending_head_ci": null,
-  "next_action": "Inspect the new FileLoad table CFG workflow on the exact code commit and read its raw job log. If it fails, fix the specific regression. Then use any authentic branch-path or static alias witnesses to prioritize producer/constructor tracing; dynamic BSS/heap writers and BR X2 lifecycle remain unresolved. Do not install hooks or change gameplay flags.",
+  "next_action": "Inspect the targeted FileLoad loop-induction workflow on the implementation commit. If it passes, record exact report/CI hashes, then continue the 45 pointer-page CFG budget references and the unresolved table producer / BR X2 value path. Do not assume callback preservation or install hooks.",
   "next_execution": {
     "date": "2026-11-28",
     "branch_head_before_checkpoint_commit": "fbd13b35c07e88642ba3e5afb5818e678176807a",
@@ -4058,5 +4059,84 @@
       "emulator_tested": false
     },
     "next": "Investigate the remaining two target-page state-budget references at 0x116bf54/0x116bfac and 45 pointer-page references. The new report shows repeated X20 += 8 and X21 + X20, plus bounded reads at 0x116bf70/0x116bfc8; test a conservative loop-induction/widening model that preserves distinct slot offsets. Then resolve the actual memory source for [X8,#0x58] -> BR X2 at 0x116b3d0. No runtime hooks."
+  },
+  "native_fileload_loop_widening_20261128": {
+    "state": "PENDING_CI",
+    "parent_sha": "c0649a2c899eb74c69bb0df177c232e413cc9846",
+    "code_commit": null,
+    "source_path": "tools/portlib/native_fileload_table_cfg.py",
+    "source_blob": "4fb38a1c477723b7ad0f59921d68613adbb38be1",
+    "test_path": "tests/test_native_fileload_table_cfg.py",
+    "test_blob": "9cf962a0bec50eae6af10e079d01ae0ee60e0c2b",
+    "workflow": ".github/workflows/verify-fileload-registration-lifecycle.yml",
+    "original_main": {
+      "git_blob": "8af900db0d7003255b4ddb3cbd1289cd5a15458e",
+      "bytes": 27701509,
+      "sha256": "2579b0cb85b79d5515a2518caeb5d5721168dbc1ec3f92c46eb372d13488ecd9"
+    },
+    "expected": {
+      "target_page_budget_refs_before": 2,
+      "target_page_budget_refs_after": 0,
+      "pointer_page_budget_refs_preserved": 45,
+      "loop_read_sites": [
+        "0x116bf70",
+        "0x116bfc8"
+      ],
+      "base": "0x4371800",
+      "stride": 8,
+      "limit": 512,
+      "slots_if_counter_preserved": 64,
+      "callee_x20_preservation_assumed": false
+    },
+    "research": {
+      "modmanager": {
+        "tag": "2.1.2.1",
+        "tag_commit": "502c38d3ee832509f9ee3951b7d3339826538fec",
+        "main_commit": "276116ebf5ba398a867793cb02ee6c33c0927645",
+        "parser_blob": "faf79d588fd8beb3f5761faebedd2252853b2f2b",
+        "skill_model_blob": "6a891e237d27fdf01336f806dbef8767d609a304"
+      },
+      "toolbox": {
+        "tag": "2.1.2.1",
+        "tag_commit": "789fe96f99cdaa77f952b90b563c6e3f49b6d697",
+        "main_commit": "6f780cb6814f07e03c16b3e78d97dde4e4368983",
+        "parser_blob": "86c63708edf2698b5bc1c2a54c0480cce014b525",
+        "editor_blob": "e165471682e4a7aed91094ef07f92df271f31639"
+      },
+      "ultimate_storm_api": {
+        "commit": "a2d0f2206f5e5ca81c87eaaecc8bc6f3cbe42bdc",
+        "parent": "1c3460573fa70b595e6bfa70e52f83f1c3f74f12",
+        "movesetplus_blob": "d7c5dbbebd60415f8d304321f083897658a86146",
+        "delta": "case 29 TakeOverEnemyProjectiles is PC Windows mutex/timing behavior, not Switch ABI"
+      },
+      "pycricodecs": {
+        "commit": "755055ee7b056c9c1aefc6505a3daa3e45e2e111",
+        "cpk_blob": "2ed2cbb2c6112124013ab52755dba8a443e91306",
+        "utf_blob": "d1662d140a48cae37a6696213ee441aed4076edb"
+      },
+      "rea": {
+        "commit": "76e319b80fe207f05b6558053a8f66264680820d",
+        "supported_targets_blob": "b4fad121e917a1a6eb148e72c4ac1daef7d95265",
+        "binary_diagnostics_blob": "76da9004df7abee2831a2b1d9bc32e99d0e03f1c",
+        "role": "offline AArch64 ELF / Switch NSO-NRO metadata only"
+      }
+    },
+    "ci": null,
+    "limits": {
+      "target_page_cfg_complete": "PENDING_CI",
+      "pointer_alias_trace_complete": false,
+      "complete_writer_census": false,
+      "callback_identity_verified": false,
+      "callee_x20_preservation_verified": false,
+      "native_consumer_abi_verified": false,
+      "ownership_lifecycle_verified": false,
+      "lock_unlock_verified": false,
+      "async_verified": false,
+      "rollback_unbind_destructor_verified": false,
+      "archive_precedence_verified": false,
+      "emulated_arm64_for_this_analyzer": false,
+      "uzuy": false,
+      "gameplay": false
+    }
   }
 }

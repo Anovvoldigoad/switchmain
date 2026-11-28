@@ -10,6 +10,7 @@ on:
       - "PORTING_PROGRESS.md"
       - "handoff/CONTINUE_PROMPT.txt"
       - "handoff/evidence_fileload_return_provenance_20261128.md"
+      - "handoff/evidence_fileload_loop_widening_20261128.md"
       - "tests/test_release_flags.py"
       - ".github/workflows/verify-release-flags.yml"
 

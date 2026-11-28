@@ -77,6 +77,19 @@ def encode_b_cond(pc, target, condition=0):
     return 0x54000000 | ((immediate & 0x7FFFF) << 5) | condition
 
 
+def encode_cbz(pc, target, register=0, nonzero=False, width64=True):
+    delta = target - pc
+    if delta % 4 or not 0 <= register <= 31:
+        raise ValueError("Synthetic CBZ parameters are invalid")
+    immediate = delta // 4
+    if not -(1 << 18) <= immediate < (1 << 18):
+        raise ValueError("Synthetic CBZ target is out of range")
+    opcode = 0xB4000000 if width64 else 0x34000000
+    if nonzero:
+        opcode |= 1 << 24
+    return opcode | ((immediate & 0x7FFFF) << 5) | register
+
+
 def synthetic_branch_path_write():
     code = bytearray(0x80)
     put_word(code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
@@ -337,6 +350,65 @@ def synthetic_counted_slot_loop():
     ), "counter overwritten after initialization")
 
 
+def synthetic_loop_induction_widening():
+    site = 0x100
+    code = bytearray(0x240)
+
+    def word(value):
+        return int.from_bytes(bytes.fromhex(value), "little")
+
+    put_word(code, site - 8, word("f4031faa"))  # mov x20, xzr
+    put_word(code, site - 4, word("1f2003d5"))  # nop
+    put_word(code, site, encode_adrp(site, 21, TABLE_PAGE))
+    put_word(code, site + 4, word("b5621f91"))  # add x21, x21, #0x7d8
+    put_word(code, site + 8, encode_branch(site + 8, site + 0x18))
+    put_word(code, site + 0x0C, word("94220091"))  # add x20, x20, #8
+    put_word(code, site + 0x10, word("9f0208f1"))  # cmp x20, #0x200
+    put_word(code, site + 0x14, encode_b_cond(site + 0x14, site + 0x38))
+    put_word(code, site + 0x18, word("a802148b"))  # add x8, x21, x20
+    put_word(code, site + 0x1C, word("001540f9"))  # ldr x0, [x8, #0x28]
+    put_word(code, site + 0x20, encode_cbz(site + 0x20, site + 0x0C))
+    put_word(code, site + 0x24, word("080040f9"))  # ldr x8, [x0]
+    put_word(code, site + 0x28, word("083140f9"))  # ldr x8, [x8, #0x60]
+    put_word(code, site + 0x2C, word("00013fd6"))  # blr x8
+    put_word(code, site + 0x30, word("1300138b"))  # add x19, x0, x19
+    put_word(code, site + 0x34, encode_branch(site + 0x34, site + 0x0C))
+
+    report = scan_address_pages_cfg(
+        bytes(code), {TABLE_PAGE}, {}, window_bytes=0x100
+    )
+    assert report["target_page_cfg_complete"] is True
+    assert report["target_page_state_budget_exceeded"] is False
+    assert report["loop_widening_reference_count"] == 1
+    reference = report["page_references"][0]
+    assert reference["loop_widening"]["applied"] is True
+    assert reference["loop_widening"]["callee_preserves_counter_verified"] is False
+    assert reference["loop_widening"]["call_barrier_remains_opaque"] is True
+    assert reference["branch_path_witnesses_exhaustive"] is False
+    read = next(row for row in report["indexed_access_candidates"]
+                if row["site"] == hex(site + 0x1C))
+    assert read["direction"] == "read"
+    assert read["base_plus_displacement"] == hex(TABLE_START)
+    assert read["width_bytes"] == 8
+    assert read["dynamic_index_terms"][0]["register"] == "x20"
+    assert read["dynamic_index_terms"][0]["extension"] == "LOOP_INDUCTION"
+    assert read["dynamic_index_terms"][0]["stride"] == 8
+    assert read["dynamic_index_terms"][0]["limit"] == 0x200
+    assert any(row["site"] == hex(site + 0x2C) for row in report["call_barriers"])
+
+    bad_stride = bytearray(code)
+    put_word(bad_stride, site + 0x0C, encode_add(20, 20, 16))
+    rejected = scan_address_pages_cfg(
+        bytes(bad_stride), {TABLE_PAGE}, {}, window_bytes=0x100
+    )
+    assert rejected["loop_widening_reference_count"] == 0
+    assert not any(
+        term.get("extension") == "LOOP_INDUCTION"
+        for row in rejected["indexed_access_candidates"]
+        for term in row["dynamic_index_terms"]
+    )
+
+
 def synthetic_limits():
     code = bytearray(0x40)
     put_word(code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
@@ -384,6 +456,7 @@ def run(main, output):
     synthetic_static_pointer_cells()
     synthetic_memory_loaded_alias()
     synthetic_counted_slot_loop()
+    synthetic_loop_induction_widening()
     synthetic_limits()
 
     raw = main.read_bytes()
@@ -393,15 +466,32 @@ def run(main, output):
     assert report["table"]["end_exclusive"] == hex(TABLE_END)
     cfg = report["branch_cfg_scan"]
     assert cfg["target_page_reference_budget_complete"] is True
-    assert cfg["target_page_state_budget_exceeded"] is True
-    assert cfg["target_page_cfg_complete"] is False
+    assert cfg["target_page_state_budget_exceeded"] is False
+    assert cfg["target_page_cfg_complete"] is True
+    assert cfg["loop_widening_reference_count"] == 2
+    assert len([row for row in cfg["page_references"] if row["state_budget_exceeded"]]) == 45
+    assert cfg["pointer_alias_trace_complete"] is False
     direct_sites = {row["site"] for row in cfg["direct_accesses"]}
     assert {"0x116b8a0", "0x116b924"} <= direct_sites
     indexed_sites = {row["site"] for row in cfg["indexed_access_candidates"]}
     assert {
         "0x116b844", "0x116b9b0", "0x116ba2c", "0x116baf4",
         "0x116bbc0", "0x116bc88", "0x116bd54",
+        "0x116bf70", "0x116bfc8",
     } <= indexed_sites
+    loop_reads = {
+        row["site"]: row for row in cfg["indexed_access_candidates"]
+        if row["site"] in {"0x116bf70", "0x116bfc8"}
+    }
+    for row in loop_reads.values():
+        assert row["direction"] == "read"
+        assert row["base_plus_displacement"] == hex(TABLE_START)
+        assert row["width_bytes"] == 8
+        assert row["effective_address_resolved"] is False
+        assert row["dynamic_index_terms"][0]["register"] == "x20"
+        assert row["dynamic_index_terms"][0]["extension"] == "LOOP_INDUCTION"
+        assert row["dynamic_index_terms"][0]["stride"] == 8
+        assert row["dynamic_index_terms"][0]["limit"] == 0x200
     assert report["linear_baseline"]["all_baseline_witnesses_preserved"] is True
     loops = report["target_page_counted_slot_loops"]
     assert [row["site"] for row in loops] == [
@@ -428,7 +518,8 @@ def run(main, output):
         assert row["indirect_dispatch"]["target_resolved"] is False
         assert row["indirect_dispatch"]["callee_preserves_x20_verified"] is False
         assert all(value is False for value in row["limits"].values())
-    disassembly = report["target_page_budget_reference_disassembly"]
+    assert report["target_page_budget_reference_disassembly"] == []
+    disassembly = report["target_page_counted_loop_disassembly"]
     assert [row["site"] for row in disassembly] == [
         "0x116bf54", "0x116bfac",
     ]

@@ -195,9 +195,46 @@ def _pointer_cell_report(pointer_cells, target_start=TABLE_START):
     }
 
 
+def _loop_induction_state(summary):
+    counter = summary["counter"]
+    return {
+        "address": 0,
+        "dynamic_terms": [{
+            "register": counter["register"],
+            "extension": "LOOP_INDUCTION",
+            "scale": 1,
+            "initial_value": counter["initial_value"],
+            "stride": counter["stride"],
+            "limit": counter["limit"],
+            "slot_count_if_counter_preserved": counter["iteration_count_if_preserved"],
+        }],
+        "chain": [
+            {
+                "site": counter["initialization_site"],
+                "kind": "LOOP_INDUCTION_INIT",
+                "register": counter["register"],
+                "initial_value": counter["initial_value"],
+            },
+            {
+                "site": counter["increment_site"],
+                "kind": "LOOP_INDUCTION_STEP",
+                "register": counter["register"],
+                "stride": counter["stride"],
+            },
+            {
+                "site": counter["comparison_site"],
+                "kind": "LOOP_INDUCTION_BOUND",
+                "register": counter["register"],
+                "limit": counter["limit"],
+                "exit_condition": counter["exit_condition"],
+            },
+        ],
+    }
+
+
 def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                          target_start, target_end, window_bytes, max_states,
-                         decoder):
+                         decoder, loop_summary=None):
     prefix_start = max(0, pc - PREFIX_BYTES)
     window_end = min(len(text), pc + window_bytes)
     known = _zero_register_state()
@@ -215,6 +252,34 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
             continue
         if not _update_known(instruction, text, prefix_pc, known):
             known = _zero_register_state()
+
+    loop_widening = {"applied": False}
+    loop_update_site = None
+    if loop_summary is not None:
+        counter = loop_summary["counter"]
+        induction_register = counter["register"]
+        current = known.get(induction_register)
+        if (current is not None and current["address"] == counter["initial_value"]
+                and not current.get("dynamic_terms")):
+            known[induction_register] = _loop_induction_state(loop_summary)
+            loop_update_site = int(counter["increment_site"], 16)
+            loop_widening = {
+                "applied": True,
+                "method": "EXACT_COUNTED_LOOP_INDUCTION_CANONICALIZATION",
+                "counter_register": induction_register,
+                "initial_value": counter["initial_value"],
+                "stride": counter["stride"],
+                "limit": counter["limit"],
+                "slot_count_if_counter_preserved": counter["iteration_count_if_preserved"],
+                "table_start": _hex(TABLE_START),
+                "table_end_exclusive": _hex(TABLE_END),
+                "call_site": loop_summary["indirect_dispatch"]["call_site"],
+                "call_target_resolved": False,
+                "callee_preserves_counter_verified": False,
+                "call_barrier_remains_opaque": True,
+                "runtime_iteration_count_verified": False,
+                "all_64_slots_runtime_visited": False,
+            }
 
     adrp = _decode_one(decoder, text, pc)
     if adrp is None or adrp.mnemonic != "adrp":
@@ -406,6 +471,15 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
 
         if not _update_known(instruction, text, current_pc, next_known):
             next_known = _zero_register_state()
+        counter_state = current_known.get("x20")
+        counter_is_tracked = (
+            counter_state is not None
+            and any(term.get("extension") == "LOOP_INDUCTION"
+                    for term in counter_state.get("dynamic_terms", []))
+        )
+        if (loop_widening["applied"] and current_pc == loop_update_site
+                and counter_is_tracked):
+            next_known["x20"] = _loop_induction_state(loop_summary)
         if alias_to_apply is not None:
             destination_name, value, cell, sources, base_info = alias_to_apply
             next_known[destination_name] = {
@@ -487,7 +561,9 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
         "equivalent_branch_histories_merged": equivalent_branch_histories_merged,
         "branch_path_witnesses_exhaustive": (
             equivalent_branch_histories_merged == 0 and not budget_exceeded
+            and not loop_widening["applied"]
         ),
+        "loop_widening": loop_widening,
         "undecodable_words": [_hex(value) for value in sorted(undecodable)],
         "bounded_in_window_cfg_complete": not budget_exceeded and not undecodable,
         "calls_are_clobber_barriers": True,
@@ -598,9 +674,16 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
             continue
         processed_pages.append(page)
         for pc, rd in page_candidates:
+            loop_summary = None
+            if (page == target_page and target_start == TABLE_START
+                    and target_end == TABLE_END):
+                try:
+                    loop_summary = _summarize_counted_slot_loop(text, pc)
+                except ValueError:
+                    pass
             trace = _trace_reference_cfg(
                 text, pc, page, rd, pointer_cells, target_start, target_end,
-                window_bytes, max_states, decoder
+                window_bytes, max_states, decoder, loop_summary
             )
             reference = trace["reference"]
             references.append(reference)
@@ -705,6 +788,12 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         "equivalent_branch_histories_merged": sum(
             row["equivalent_branch_histories_merged"] for row in references
         ),
+        "loop_widening_reference_count": sum(
+            row["loop_widening"]["applied"] for row in references
+        ),
+        "loop_widening_sites": [
+            row["site"] for row in references if row["loop_widening"]["applied"]
+        ],
         "branch_path_witnesses_exhaustive": (
             not skipped_pages and all(
                 row["branch_path_witnesses_exhaustive"] for row in references
@@ -712,7 +801,8 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         ),
         "state_identity": (
             "pc+tracked-address-registers+dynamic-terms+origin-chain+"
-            "branch-reachable-class; one representative path per equivalent state"
+            "branch-reachable-class+exact-loop-induction; one representative "
+            "path per equivalent state"
         ),
         "bounded_in_window_cfg_complete": (
             target_page_cfg_complete and pointer_alias_trace_complete
@@ -963,27 +1053,28 @@ def inspect(nso):
     pages = {_target_page(TABLE_START)}
     pages.update(cell & ~0xFFF for cell in pointer_cells)
     cfg = scan_address_pages_cfg(text, pages, pointer_cells)
-    target_budget_refs = [
+    target_page_refs = [
         row for row in cfg["page_references"]
         if row["target_page"] == _hex(_target_page(TABLE_START))
-        and row["state_budget_exceeded"]
+    ]
+    target_budget_refs = [
+        row for row in target_page_refs if row["state_budget_exceeded"]
     ]
     target_page_budget_disassembly = [
         _bounded_reference_disassembly(text, int(row["site"], 16))
         for row in target_budget_refs
     ]
     target_page_counted_loops = []
-    for row in target_budget_refs:
-        try:
-            target_page_counted_loops.append(
-                _summarize_counted_slot_loop(text, int(row["site"], 16))
-            )
-        except ValueError as exc:
-            target_page_counted_loops.append({
-                "site": row["site"],
-                "state": "UNRESOLVED",
-                "reason": str(exc),
-            })
+    target_page_counted_loop_disassembly = []
+    for row in target_page_refs:
+        if not row["loop_widening"]["applied"]:
+            continue
+        target_page_counted_loops.append(
+            _summarize_counted_slot_loop(text, int(row["site"], 16))
+        )
+        target_page_counted_loop_disassembly.append(
+            _bounded_reference_disassembly(text, int(row["site"], 16))
+        )
 
     def access_key(row):
         return (
@@ -1024,6 +1115,7 @@ def inspect(nso):
         },
         "static_pointer_cells": _pointer_cell_report(pointer_cells),
         "target_page_budget_reference_disassembly": target_page_budget_disassembly,
+        "target_page_counted_loop_disassembly": target_page_counted_loop_disassembly,
         "target_page_counted_slot_loops": target_page_counted_loops,
         "branch_cfg_scan": cfg,
         "analysis_scope": {
@@ -1035,6 +1127,8 @@ def inspect(nso):
             "executable_text_segment_literal_words_scanned": False,
             "R_AARCH64_RELATIVE_pointer_addends_scanned": True,
             "single_level_static_pointer_loads_traced": True,
+            "exact_counted_loop_induction_widening": True,
+            "indirect_callback_counter_preservation_assumed": False,
             "bss_or_heap_pointer_cells_without_relocations_scanned": False,
             "dynamic_pointer_values_resolved": False,
             "complete_branch_path_writer_census": False,
