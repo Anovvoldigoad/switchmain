@@ -40,3 +40,8 @@ State: IMPLEMENTED_AWAITING_CI
 5. An FDE range proves unwind coverage only. It does not prove a C++ function's identity, entrypoint, complete CFG, callback target, ownership, lifetime, lock/unlock, async completion, rollback/unbind, destructor, archive precedence, consumer ABI, emulated ARM64 behavior, or Uzuy gameplay.
 
 No runtime hook or game write is added. Release flags remain false.
+
+
+## CI routing correction
+
+The first commit added a standalone workflow file, but the direct push-runs API returned zero runs for that commit. No CI result is claimed for it. The analyzer regression is now routed through the already-active `verify-fileload-registration-lifecycle.yml` workflow. The workflow uses a changed-path gate to skip the previously passing lifecycle/table tests on unwind-only changes, while always running the new unwind test and uploading its JSON artifact. A negative regression also verifies ambiguous overlapping FDE coverage fails closed, and a no-metadata fixture remains explicitly unmapped.

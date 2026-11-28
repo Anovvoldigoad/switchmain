@@ -175,10 +175,40 @@ def synthetic_rejections():
 MIN_FDES = 8
 
 
+def synthetic_ambiguous_mapping_and_absent_metadata():
+    overlapping = [
+        {
+            "start": 0x100, "end": 0x200, "range": 0x100,
+            "fde_offset": 0x40, "cie_offset": 0x20,
+            "fde_sha256": "a" * 64,
+        },
+        {
+            "start": 0x180, "end": 0x280, "range": 0x100,
+            "fde_offset": 0x80, "cie_offset": 0x20,
+            "fde_sha256": "b" * 64,
+        },
+    ]
+    mappings, ranges = map_callers_to_fdes(
+        [{"site": "0x190", "branch_kind": "BL"}], overlapping, bytes(0x300)
+    )
+    assert mappings[0]["mapping_status"] == "AMBIGUOUS"
+    assert mappings[0]["matching_fde_count"] == 2
+    assert ranges == []
+
+    absent = discover_metadata([
+        (0, bytes(0x300), b""),
+        (0x4000, bytes(0x200), b""),
+        (0x8000, bytes(0x100), b""),
+    ])
+    assert absent["status"] == "NO_RELIABLE_CFI_METADATA_FOUND"
+    assert absent["fde_records"] == []
+
+
 def run(main, output):
     synthetic_header_positive_and_boundaries()
     synthetic_linear_fde_sequence()
     synthetic_rejections()
+    synthetic_ambiguous_mapping_and_absent_metadata()
 
     raw = main.read_bytes()
     report = inspect(raw)
