@@ -259,11 +259,25 @@ def _unknown_loop_induction_state(summary):
     }
 
 
+def _chain_sources(chain):
+    sources = set()
+    for step in chain:
+        for key in ("source_register", "source2_register", "left_source",
+                    "right_source", "index_register", "base_register"):
+            value = step.get(key)
+            if isinstance(value, str):
+                sources.add(value)
+        nested = step.get("right_chain")
+        if isinstance(nested, list):
+            sources.update(_chain_sources(nested))
+    return sources
+
+
 def _detect_backedge_induction(header_known, backedge_known, target, branch_pc):
     """Return exact self-ADD counters observed on an in-window backward edge.
 
-    The first state at the target PC is only a comparison baseline, not a
-    proven preheader value. Every resulting term has unknown bound/lifetime.
+    Other changed registers are accepted only when their recorded provenance
+    depends on one of the widened counters; their values remain symbolic.
     """
     common = (set(header_known) & set(backedge_known)) - {"xzr"}
     changed = []
@@ -274,31 +288,24 @@ def _detect_backedge_induction(header_known, backedge_known, target, branch_pc):
                 after["address"], after.get("dynamic_terms", [])):
             changed.append(name)
 
-    for name in (set(header_known) ^ set(backedge_known)) - {"xzr"}:
-        info = header_known.get(name) or backedge_known.get(name)
-        chain = info.get("chain", [])
-        if chain:
-            last = chain[-1]
-            if (last.get("kind") == "ADD_IMMEDIATE"
-                    and last.get("source_register") == name
-                    and last.get("destination_register") == name):
-                return []
-
-    if not changed:
-        return []
-    summaries = []
+    candidates = []
+    derived = []
     for name in changed:
         before = header_known[name]
         after = backedge_known[name]
-        if before.get("dynamic_terms") or after.get("dynamic_terms"):
-            return []
         chain = after.get("chain", [])
         if not chain:
             return []
         update = chain[-1]
-        if (update.get("kind") != "ADD_IMMEDIATE"
-                or update.get("source_register") != name
-                or update.get("destination_register") != name):
+        is_self_add = (
+            update.get("kind") == "ADD_IMMEDIATE"
+            and update.get("source_register") == name
+            and update.get("destination_register") == name
+        )
+        if not is_self_add:
+            derived.append((name, after))
+            continue
+        if before.get("dynamic_terms") or after.get("dynamic_terms"):
             return []
         update_site = int(update.get("site", "-1"), 16)
         stride = update.get("immediate")
@@ -306,7 +313,7 @@ def _detect_backedge_induction(header_known, backedge_known, target, branch_pc):
                 or not target <= update_site < branch_pc
                 or after["address"] - before["address"] != stride):
             return []
-        summaries.append({
+        candidates.append({
             "backedge_target": _hex(target),
             "backedge_site": _hex(branch_pc),
             "counter_register": name,
@@ -322,7 +329,24 @@ def _detect_backedge_induction(header_known, backedge_known, target, branch_pc):
             "call_preservation_verified": False,
             "callback_identity_verified": False,
         })
-    return summaries
+    if not candidates:
+        return []
+    candidate_registers = {row["counter_register"] for row in candidates}
+    for name, info in derived:
+        if not (_chain_sources(info.get("chain", [])) & candidate_registers):
+            return []
+    for name in (set(backedge_known) - set(header_known)) - {"xzr"}:
+        info = backedge_known[name]
+        chain = info.get("chain", [])
+        if chain:
+            last = chain[-1]
+            if (last.get("kind") == "ADD_IMMEDIATE"
+                    and last.get("source_register") == name
+                    and last.get("destination_register") == name):
+                return []
+            if not (_chain_sources(chain) & candidate_registers):
+                return []
+    return candidates
 
 
 
