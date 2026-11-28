@@ -16,6 +16,7 @@ from portlib.native_fileload_unwind import (
     inspect,
     map_callers_to_fdes,
     map_addresses_to_fdes,
+    decode_cfi_state,
 )
 
 
@@ -37,9 +38,9 @@ def fixture(fde_count=2, with_header=True, bad_cie=False, bad_range=False):
         struct.pack("<I", 0)
         + b"\x01zR\x00"
         + b"\x01\x78\x1e\x01\x1b"
-        + b"\x00\x00\x00"
+        + b"\x0c\x1f\x00\x08\x13\x00\x00"
     )
-    assert len(body) == 16
+    assert len(body) == 20
     put_u32(ro, cie_offset, len(body))
     ro[cie_offset + 4:cie_offset + 4 + len(body)] = body
 
@@ -62,9 +63,10 @@ def fixture(fde_count=2, with_header=True, bad_cie=False, bad_range=False):
             struct.pack("<I", cie_pointer)
             + struct.pack("<i", initial_delta)
             + struct.pack("<i", address_range)
-            + b"\x00\x00\x00\x00"
+            + b"\x00"
+            + b"\x93\x01\x02\x08\xd3\x0e\x10"
         )
-        assert len(fde_body) == 16
+        assert len(fde_body) == 20
         put_u32(ro, fde_offset, len(fde_body))
         ro[fde_offset + 4:fde_offset + 4 + len(fde_body)] = fde_body
         next_offset = fde_offset + 4 + len(fde_body)
@@ -126,6 +128,57 @@ def synthetic_header_positive_and_boundaries():
     assert [row["mapping_status"] for row in anchors] == [
         "UNIQUE_FDE_COVERAGE", "UNIQUE_FDE_COVERAGE", "UNMAPPED"
     ]
+
+
+def synthetic_cfi_register_rules_and_rejections():
+    text, ro, text_va, ro_va, starts, fde_offsets = fixture()
+    fdes = _header(ro, ro_va, text_va, len(text), 0)["fdes"]
+    fde = fdes[0]
+
+    before_advance = decode_cfi_state(
+        ro, ro_va, text_va, len(text), fde, starts[0] + 4
+    )
+    assert before_advance["status"] == "DECODED_CFI_STATE"
+    assert before_advance["cfa"] == {
+        "kind": "register_offset", "register": 31, "offset": 0
+    }
+    assert before_advance["x19_rule"] == {
+        "kind": "offset", "cfa_offset": -8
+    }
+    assert before_advance["return_register"] == 30
+
+    after_restore = decode_cfi_state(
+        ro, ro_va, text_va, len(text), fde, starts[0] + 8
+    )
+    assert after_restore["x19_rule"] == {"kind": "same_value"}
+    assert after_restore["cfa"] == {
+        "kind": "register_offset", "register": 31, "offset": 16
+    }
+    expect_reject(
+        lambda: decode_cfi_state(
+            ro, ro_va, text_va, len(text), fde, starts[0] + 0x30
+        ),
+        "FDE end boundary query",
+    )
+
+    unsupported = bytearray(ro)
+    instruction_offset = fde_offsets[0] + 17
+    unsupported[instruction_offset] = 0x1d
+    expect_reject(
+        lambda: decode_cfi_state(
+            unsupported, ro_va, text_va, len(text), fde, starts[0] + 4
+        ),
+        "unsupported DW_CFA opcode",
+    )
+
+    truncated = bytearray(ro)
+    truncated[fde_offsets[0] + 23] = 0x80
+    expect_reject(
+        lambda: decode_cfi_state(
+            truncated, ro_va, text_va, len(text), fde, starts[0] + 4
+        ),
+        "truncated DW_CFA operand",
+    )
 
 
 def synthetic_linear_fde_sequence():
@@ -215,6 +268,7 @@ def synthetic_ambiguous_mapping_and_absent_metadata():
 
 def run(main, output):
     synthetic_header_positive_and_boundaries()
+    synthetic_cfi_register_rules_and_rejections()
     synthetic_linear_fde_sequence()
     synthetic_rejections()
     synthetic_ambiguous_mapping_and_absent_metadata()
@@ -241,6 +295,19 @@ def run(main, output):
     }
     assert all(row["mapping_status"] == "UNIQUE_FDE_COVERAGE"
                for row in anchors.values())
+    assert report["cfi_state_counts"] == {
+        "decoded": 6, "unsupported": 0, "unmapped": 0, "ambiguous": 0
+    }
+    cfi_targets = {row["name"]: row for row in report["cfi_state_at_targets"]}
+    assert set(cfi_targets) == {
+        "fileload_helper_entry", "fileload_helper_br_x2",
+        "registration_walk_candidate", "second_table_path_range_start",
+        "table_path_call_0", "table_path_call_1",
+    }
+    assert all(row["status"] == "DECODED_CFI_STATE" for row in cfi_targets.values())
+    assert all(row["cfi"]["cfi_state_is_static_unwind_metadata_not_runtime_register_capture"]
+               for row in cfi_targets.values())
+    assert all(row["cfi"]["return_register"] == 30 for row in cfi_targets.values())
     for key, value in report["limits"].items():
         assert value is False or (
             key == "fde_range_is_exact_cfi_coverage_only" and value is True
@@ -256,6 +323,7 @@ def run(main, output):
         "mapped", report["caller_mapping"]["counts"]["unique_fde_coverage"],
         "unmapped", report["caller_mapping"]["counts"]["unmapped"],
         "ambiguous", report["caller_mapping"]["counts"]["ambiguous"],
+        "cfi_decoded", report["cfi_state_counts"]["decoded"],
         "NO_FUNCTION_IDENTITY_NO_ABI_NO_OWNER_NO_UZUY",
     )
 

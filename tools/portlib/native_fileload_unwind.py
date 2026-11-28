@@ -257,6 +257,9 @@ def _cie(data, offset, segment_va, text_va):
         "fde_encoding": fde_encoding,
         "lsda_encoding": lsda_encoding,
         "has_z_augmentation": has_z_augmentation,
+        "instructions_offset": pos,
+        "instructions_end_offset": record["end"],
+        "instructions_sha256": hashlib.sha256(data[pos:record["end"]]).hexdigest(),
     }
 
 
@@ -315,6 +318,9 @@ def _fde(data, offset, segment_va, text_va, text_size,
         "fde_sha256": hashlib.sha256(data[offset:record["end"]]).hexdigest(),
         "cie_augmentation": cie["augmentation"],
         "fde_encoding": cie["fde_encoding"],
+        "instructions_offset": pos,
+        "instructions_end_offset": record["end"],
+        "instructions_sha256": hashlib.sha256(data[pos:record["end"]]).hexdigest(),
         "range_is_unwind_coverage_not_function_identity": True,
     }
 
@@ -615,6 +621,393 @@ def map_addresses_to_fdes(addresses, fdes):
     return rows
 
 
+
+
+def _clone_cfi_state(state):
+    return {
+        "cfa": None if state["cfa"] is None else dict(state["cfa"]),
+        "registers": {
+            str(register): dict(rule)
+            for register, rule in state["registers"].items()
+        },
+        "ra_state_negated": bool(state["ra_state_negated"]),
+        "args_size": state["args_size"],
+    }
+
+
+def _default_cfi_state():
+    return {
+        "cfa": None,
+        "registers": {},
+        "ra_state_negated": False,
+        "args_size": None,
+    }
+
+
+def _cfi_block(data, offset, end):
+    length, offset = _uleb(data, offset, end)
+    if offset + length > end:
+        raise ValueError("DW_CFA expression exceeds its instruction program")
+    value = bytes(data[offset:offset + length])
+    return value, offset + length
+
+
+def _cfi_record_state(rows, location, state):
+    snapshot = _clone_cfi_state(state)
+    if rows and rows[-1]["pc"] == location:
+        rows[-1] = {"pc": location, "state": snapshot}
+    else:
+        rows.append({"pc": location, "state": snapshot})
+
+
+def _cfi_restore_register(state, baseline, register):
+    key = str(register)
+    if key in baseline["registers"]:
+        state["registers"][key] = dict(baseline["registers"][key])
+    else:
+        state["registers"].pop(key, None)
+
+
+def _run_cfi_program(data, start, end, cie, initial_state=None,
+                     restore_baseline=None, start_pc=0,
+                     allow_advance=True, max_pc=None):
+    if not 0 <= start <= end <= len(data):
+        raise ValueError("DW_CFA instruction range leaves its segment")
+    state = _clone_cfi_state(
+        _default_cfi_state() if initial_state is None else initial_state
+    )
+    baseline = _clone_cfi_state(
+        state if restore_baseline is None else restore_baseline
+    )
+    location = start_pc
+    rows = [{"pc": location, "state": _clone_cfi_state(state)}]
+    saved_states = []
+    position = start
+    instruction_count = 0
+    code_alignment = cie["code_alignment"]
+    data_alignment = cie["data_alignment"]
+
+    def advance(delta):
+        nonlocal location
+        if not allow_advance and delta:
+            raise ValueError("CIE initial instructions unexpectedly advance PC")
+        location += delta * code_alignment
+        if max_pc is not None and location > max_pc:
+            raise ValueError("DW_CFA advances beyond the FDE coverage range")
+        _cfi_record_state(rows, location, state)
+
+    def changed():
+        _cfi_record_state(rows, location, state)
+
+    while position < end:
+        opcode = data[position]
+        position += 1
+        instruction_count += 1
+
+        primary = opcode & 0xc0
+        if primary == 0x40:
+            advance(opcode & 0x3f)
+            continue
+        if primary == 0x80:
+            factor, position = _uleb(data, position, end)
+            state["registers"][str(opcode & 0x3f)] = {
+                "kind": "offset",
+                "cfa_offset": factor * data_alignment,
+            }
+            changed()
+            continue
+        if primary == 0xc0:
+            _cfi_restore_register(state, baseline, opcode & 0x3f)
+            changed()
+            continue
+
+        if opcode == 0x00:  # DW_CFA_nop
+            continue
+        if opcode == 0x01:  # DW_CFA_set_loc; deliberately fail closed
+            raise ValueError("DW_CFA_set_loc is not implemented")
+        if opcode == 0x02:
+            delta = _u(data, position, 1)
+            position += 1
+            advance(delta)
+            continue
+        if opcode == 0x03:
+            delta = _u(data, position, 2)
+            position += 2
+            advance(delta)
+            continue
+        if opcode == 0x04:
+            delta = _u(data, position, 4)
+            position += 4
+            advance(delta)
+            continue
+        if opcode == 0x05:  # DW_CFA_offset_extended
+            register, position = _uleb(data, position, end)
+            factor, position = _uleb(data, position, end)
+            state["registers"][str(register)] = {
+                "kind": "offset",
+                "cfa_offset": factor * data_alignment,
+            }
+            changed()
+            continue
+        if opcode == 0x06:  # DW_CFA_restore_extended
+            register, position = _uleb(data, position, end)
+            _cfi_restore_register(state, baseline, register)
+            changed()
+            continue
+        if opcode == 0x07:  # DW_CFA_undefined
+            register, position = _uleb(data, position, end)
+            state["registers"][str(register)] = {"kind": "undefined"}
+            changed()
+            continue
+        if opcode == 0x08:  # DW_CFA_same_value
+            register, position = _uleb(data, position, end)
+            state["registers"][str(register)] = {"kind": "same_value"}
+            changed()
+            continue
+        if opcode == 0x09:  # DW_CFA_register
+            register, position = _uleb(data, position, end)
+            source_register, position = _uleb(data, position, end)
+            state["registers"][str(register)] = {
+                "kind": "register",
+                "source_register": source_register,
+            }
+            changed()
+            continue
+        if opcode == 0x0a:  # DW_CFA_remember_state
+            saved_states.append(_clone_cfi_state(state))
+            continue
+        if opcode == 0x0b:  # DW_CFA_restore_state
+            if not saved_states:
+                raise ValueError("DW_CFA_restore_state has no saved state")
+            state = saved_states.pop()
+            changed()
+            continue
+        if opcode == 0x0c:  # DW_CFA_def_cfa
+            register, position = _uleb(data, position, end)
+            offset, position = _uleb(data, position, end)
+            state["cfa"] = {
+                "kind": "register_offset",
+                "register": register,
+                "offset": offset,
+            }
+            changed()
+            continue
+        if opcode == 0x0d:  # DW_CFA_def_cfa_register
+            register, position = _uleb(data, position, end)
+            if state["cfa"] is None or state["cfa"]["kind"] != "register_offset":
+                raise ValueError("DW_CFA_def_cfa_register has no register CFA rule")
+            state["cfa"]["register"] = register
+            changed()
+            continue
+        if opcode == 0x0e:  # DW_CFA_def_cfa_offset
+            offset, position = _uleb(data, position, end)
+            if state["cfa"] is None or state["cfa"]["kind"] != "register_offset":
+                raise ValueError("DW_CFA_def_cfa_offset has no register CFA rule")
+            state["cfa"]["offset"] = offset
+            changed()
+            continue
+        if opcode == 0x0f:  # DW_CFA_def_cfa_expression
+            expression, position = _cfi_block(data, position, end)
+            state["cfa"] = {
+                "kind": "expression",
+                "expression_hex": expression.hex(),
+            }
+            changed()
+            continue
+        if opcode == 0x10:  # DW_CFA_expression
+            register, position = _uleb(data, position, end)
+            expression, position = _cfi_block(data, position, end)
+            state["registers"][str(register)] = {
+                "kind": "expression",
+                "expression_hex": expression.hex(),
+            }
+            changed()
+            continue
+        if opcode == 0x11:  # DW_CFA_offset_extended_sf
+            register, position = _uleb(data, position, end)
+            factor, position = _sleb(data, position, end)
+            state["registers"][str(register)] = {
+                "kind": "offset",
+                "cfa_offset": factor * data_alignment,
+            }
+            changed()
+            continue
+        if opcode == 0x12:  # DW_CFA_def_cfa_sf
+            register, position = _uleb(data, position, end)
+            factor, position = _sleb(data, position, end)
+            state["cfa"] = {
+                "kind": "register_offset",
+                "register": register,
+                "offset": factor * data_alignment,
+            }
+            changed()
+            continue
+        if opcode == 0x13:  # DW_CFA_def_cfa_offset_sf
+            factor, position = _sleb(data, position, end)
+            if state["cfa"] is None or state["cfa"]["kind"] != "register_offset":
+                raise ValueError("DW_CFA_def_cfa_offset_sf has no register CFA rule")
+            state["cfa"]["offset"] = factor * data_alignment
+            changed()
+            continue
+        if opcode == 0x14:  # DW_CFA_val_offset
+            register, position = _uleb(data, position, end)
+            factor, position = _uleb(data, position, end)
+            state["registers"][str(register)] = {
+                "kind": "val_offset",
+                "cfa_offset": factor * data_alignment,
+            }
+            changed()
+            continue
+        if opcode == 0x15:  # DW_CFA_val_offset_sf
+            register, position = _uleb(data, position, end)
+            factor, position = _sleb(data, position, end)
+            state["registers"][str(register)] = {
+                "kind": "val_offset",
+                "cfa_offset": factor * data_alignment,
+            }
+            changed()
+            continue
+        if opcode == 0x16:  # DW_CFA_val_expression
+            register, position = _uleb(data, position, end)
+            expression, position = _cfi_block(data, position, end)
+            state["registers"][str(register)] = {
+                "kind": "val_expression",
+                "expression_hex": expression.hex(),
+            }
+            changed()
+            continue
+        if opcode == 0x2d:  # DW_CFA_AARCH64_negate_ra_state
+            state["ra_state_negated"] = not state["ra_state_negated"]
+            changed()
+            continue
+        if opcode == 0x2e:  # DW_CFA_GNU_args_size
+            state["args_size"], position = _uleb(data, position, end)
+            changed()
+            continue
+        if opcode == 0x2f:  # DW_CFA_GNU_negative_offset_extended
+            register, position = _uleb(data, position, end)
+            factor, position = _uleb(data, position, end)
+            state["registers"][str(register)] = {
+                "kind": "offset",
+                "cfa_offset": -(factor * data_alignment),
+                "encoding": "DW_CFA_GNU_negative_offset_extended",
+            }
+            changed()
+            continue
+        raise ValueError("Unsupported DW_CFA opcode 0x%02x" % opcode)
+
+    return rows, instruction_count
+
+
+def decode_cfi_state(segment_data, segment_va, text_va, text_size,
+                     fde, query_pc):
+    if not isinstance(query_pc, int) or not fde["start"] <= query_pc < fde["end"]:
+        raise ValueError("CFI query PC is outside the FDE coverage range")
+    cie = _cie(segment_data, fde["cie_offset"], segment_va, text_va)
+    full_fde = _fde(
+        segment_data, fde["fde_offset"], segment_va, text_va, text_size,
+        expected_cie_va=cie["virtual_address"],
+        cie_cache={cie["offset"]: cie},
+    )
+    if full_fde["start"] != fde["start"] or full_fde["end"] != fde["end"]:
+        raise ValueError("Re-decoded FDE range differs from selected metadata")
+    cie_rows, cie_instruction_count = _run_cfi_program(
+        segment_data,
+        cie["instructions_offset"],
+        cie["instructions_end_offset"],
+        cie,
+        start_pc=0,
+        allow_advance=False,
+    )
+    cie_state = cie_rows[-1]["state"]
+    fde_rows, fde_instruction_count = _run_cfi_program(
+        segment_data,
+        full_fde["instructions_offset"],
+        full_fde["instructions_end_offset"],
+        cie,
+        initial_state=cie_state,
+        restore_baseline=cie_state,
+        start_pc=full_fde["start"],
+        allow_advance=True,
+        max_pc=full_fde["end"],
+    )
+    applicable = [row for row in fde_rows if row["pc"] <= query_pc]
+    if not applicable:
+        raise ValueError("No CFI row covers the requested PC")
+    state = applicable[-1]["state"]
+    return {
+        "status": "DECODED_CFI_STATE",
+        "pc": hex(query_pc),
+        "fde_start": hex(full_fde["start"]),
+        "fde_end_exclusive": hex(full_fde["end"]),
+        "fde_sha256": full_fde["fde_sha256"],
+        "cie_offset": hex(cie["offset"]),
+        "cie_augmentation": cie["augmentation"],
+        "code_alignment": cie["code_alignment"],
+        "data_alignment": cie["data_alignment"],
+        "return_register": cie["return_register"],
+        "cfa": state["cfa"],
+        "x19_rule": state["registers"].get("19", {"kind": "unspecified"}),
+        "return_register_rule": state["registers"].get(
+            str(cie["return_register"]), {"kind": "unspecified"}
+        ),
+        "register_rules": state["registers"],
+        "ra_state_negated": state["ra_state_negated"],
+        "args_size": state["args_size"],
+        "cie_program_sha256": cie["instructions_sha256"],
+        "fde_program_sha256": full_fde["instructions_sha256"],
+        "cie_instruction_count": cie_instruction_count,
+        "fde_instruction_count": fde_instruction_count,
+        "cfi_state_is_static_unwind_metadata_not_runtime_register_capture": True,
+    }
+
+
+def _map_target_cfi_states(targets, fdes, rows, selected, text_va, text_size):
+    mapped = []
+    if selected is None:
+        return [
+            {"name": name, "pc": hex(address), "status": "NO_SELECTED_CFI_METADATA"}
+            for name, address in targets.items()
+        ]
+    segment_index = selected["segment_index"]
+    segment_va, segment_data, _stored = rows[segment_index]
+    for name, address in targets.items():
+        matches = [fde for fde in fdes if fde["start"] <= address < fde["end"]]
+        if len(matches) != 1:
+            mapped.append({
+                "name": name,
+                "pc": hex(address),
+                "status": "UNMAPPED" if not matches else "AMBIGUOUS",
+                "matching_fde_count": len(matches),
+            })
+            continue
+        fde = matches[0]
+        try:
+            decoded = decode_cfi_state(
+                segment_data, segment_va, text_va, text_size, fde, address
+            )
+        except ValueError as exc:
+            mapped.append({
+                "name": name,
+                "pc": hex(address),
+                "fde_start": hex(fde["start"]),
+                "fde_end_exclusive": hex(fde["end"]),
+                "status": "UNSUPPORTED_CFI_PROGRAM",
+                "error": str(exc),
+            })
+            continue
+        mapped.append({
+            "name": name,
+            "pc": hex(address),
+            "fde_start": decoded["fde_start"],
+            "fde_end_exclusive": decoded["fde_end_exclusive"],
+            "fde_sha256": decoded["fde_sha256"],
+            "status": decoded["status"],
+            "cfi": decoded,
+        })
+    return mapped
+
+
 def inspect(nso):
     digest = hashlib.sha256(nso).hexdigest()
     if digest != MAIN_SHA256:
@@ -643,6 +1036,15 @@ def inspect(nso):
     selected = metadata["selected"]
     selected_summary = ({k: v for k, v in selected.items() if k != "fdes"}
                         if selected is not None else None)
+    cfi_targets = dict(ANALYSIS_ANCHORS)
+    cfi_targets.update({
+        "table_path_call_0": TABLE_PATH_CALLS[0],
+        "table_path_call_1": TABLE_PATH_CALLS[1],
+    })
+    cfi_states = _map_target_cfi_states(
+        cfi_targets, metadata["fde_records"], rows, selected,
+        text_va, len(text)
+    )
     return {
         "status": "PINNED_FILELOAD_UNWIND_METADATA_STATIC_ONLY",
         "original_main_sha256": digest,
@@ -670,6 +1072,13 @@ def inspect(nso):
         },
         "table_path_callers": table_paths,
         "analysis_anchor_mappings": anchor_mappings,
+        "cfi_state_at_targets": cfi_states,
+        "cfi_state_counts": {
+            "decoded": sum(row["status"] == "DECODED_CFI_STATE" for row in cfi_states),
+            "unsupported": sum(row["status"] == "UNSUPPORTED_CFI_PROGRAM" for row in cfi_states),
+            "unmapped": sum(row["status"] == "UNMAPPED" for row in cfi_states),
+            "ambiguous": sum(row["status"] == "AMBIGUOUS" for row in cfi_states),
+        },
         "limits": {
             "fde_range_is_exact_cfi_coverage_only": True,
             "function_entry_identity_verified": False,
