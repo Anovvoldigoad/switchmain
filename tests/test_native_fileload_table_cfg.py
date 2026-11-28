@@ -156,7 +156,7 @@ def synthetic_distinct_register_states_do_not_merge():
     put_word(code, 0x1C, encode_add(8, 8, 0x20))
     put_word(code, 0x20, encode_branch(0x20, 0x28))
     put_word(code, 0x28, encode_str64(0, 8, 0))
-    report = scan_address_pages_cfg(bytes(code), {TABLE_PAGE}, {}, window_bytes=0x40)
+    report = scan_address_pages_cfg(bytes(code), {TABLE_PAGE}, {}, window_bytes=0x30)
     writes = [row for row in report["direct_accesses"]
               if row["site"] == "0x28" and row["direction"] == "write"]
     assert {row["effective_address"] for row in writes} == {
@@ -165,7 +165,7 @@ def synthetic_distinct_register_states_do_not_merge():
     assert len(writes) == 2
     # Other dead-register joins in this window may be merged; the two live
     # X8 addresses above must remain distinct regardless of those joins.
-    assert report["liveness_state_merges"] >= 0
+    assert report["liveness_state_merges"] == 0
     assert report["bounded_in_window_cfg_complete"] is True
 
 
@@ -181,7 +181,7 @@ def synthetic_dead_register_states_merge():
     put_word(code, 0x28, encode_str64(0, 8, 0x10))
 
     report = scan_address_pages_cfg(
-        bytes(code), {TABLE_PAGE}, {}, window_bytes=0x40, max_states=7
+        bytes(code), {TABLE_PAGE}, {}, window_bytes=0x30, max_states=7
     )
     assert report["state_budget_exceeded"] is False
     assert report["liveness_state_merges"] >= 1
@@ -211,7 +211,7 @@ def synthetic_live_register_states_do_not_merge():
     put_word(code, 0x2C, encode_str64(0, 10, 0))
 
     report = scan_address_pages_cfg(
-        bytes(code), {TABLE_PAGE}, {}, window_bytes=0x40, max_states=32
+        bytes(code), {TABLE_PAGE}, {}, window_bytes=0x30, max_states=32
     )
     writes = [
         row for row in report["direct_accesses"]
