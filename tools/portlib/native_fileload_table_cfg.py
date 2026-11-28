@@ -638,10 +638,20 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
     pointer_references = [
         row for row in references if row["target_page"] != _hex(target_page)
     ]
-    target_page_cfg_complete = (
+    target_page_reference_budget_complete = (
         target_page_scanned
         and len(target_references) == len(candidates.get(target_page, []))
-        and all(row["bounded_in_window_cfg_complete"] for row in target_references)
+    )
+    target_page_state_budget_exceeded = any(
+        row["state_budget_exceeded"] for row in target_references
+    )
+    target_page_undecodable_words = sorted({
+        value for row in target_references for value in row["undecodable_words"]
+    }, key=lambda value: int(value, 16))
+    target_page_cfg_complete = (
+        target_page_reference_budget_complete
+        and not target_page_state_budget_exceeded
+        and not target_page_undecodable_words
     )
     pointer_alias_trace_complete = (
         not skipped_pages
@@ -654,6 +664,9 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         "page_reference_count": len(references),
         "target_page_scanned": target_page_scanned,
         "target_page_reference_count": len(target_references),
+        "target_page_reference_budget_complete": target_page_reference_budget_complete,
+        "target_page_state_budget_exceeded": target_page_state_budget_exceeded,
+        "target_page_undecodable_words": target_page_undecodable_words,
         "target_page_cfg_complete": target_page_cfg_complete,
         "pointer_alias_trace_complete": pointer_alias_trace_complete,
         "reference_budget": max_references,

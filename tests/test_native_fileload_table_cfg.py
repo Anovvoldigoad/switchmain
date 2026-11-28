@@ -259,7 +259,7 @@ def run(main, output):
     assert report["table"]["base"] == hex(TABLE_START)
     assert report["table"]["end_exclusive"] == hex(TABLE_END)
     cfg = report["branch_cfg_scan"]
-    assert cfg["target_page_cfg_complete"] is True
+    assert cfg["target_page_reference_budget_complete"] is True
     direct_sites = {row["site"] for row in cfg["direct_accesses"]}
     assert {"0x116b8a0", "0x116b924"} <= direct_sites
     indexed_sites = {row["site"] for row in cfg["indexed_access_candidates"]}
