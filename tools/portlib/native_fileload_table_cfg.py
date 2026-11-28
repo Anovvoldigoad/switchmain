@@ -725,6 +725,186 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
 
 
 
+def _decode_absolute(decoder, text, base_address, pc):
+    offset = pc - base_address
+    if offset < 0 or offset + 4 > len(text) or (offset & 3):
+        return None
+    rows = list(decoder.disasm(bytes(text[offset:offset + 4]), pc))
+    if len(rows) != 1 or rows[0].size != 4:
+        return None
+    return rows[0]
+
+
+def _summarize_counted_slot_loop(text, site, base_address=0):
+    """Recognize the exact 64-slot FileLoad loop shape; never infer its callee."""
+    decoder = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
+    decoder.detail = True
+
+    def decode(pc):
+        instruction = _decode_absolute(decoder, text, base_address, pc)
+        if instruction is None:
+            raise ValueError("Undecodable instruction at " + _hex(pc))
+        return instruction
+
+    def expect(pc, mnemonic, operands):
+        instruction = decode(pc)
+        if instruction.mnemonic != mnemonic or instruction.op_str != operands:
+            raise ValueError("Unexpected instruction at " + _hex(pc))
+        return instruction
+
+    def edge_target(instruction, pc, kind):
+        return next(
+            (target for edge_kind, target in _edges(
+                pc, instruction.mnemonic, instruction.op_str
+            ) if edge_kind == kind),
+            None,
+        )
+
+    init_site = site - 8
+    expect(init_site, "mov", "x20, xzr")
+    adrp = decode(site)
+    if adrp.mnemonic != "adrp":
+        raise ValueError("Missing table-page ADRP")
+    word_offset = site - base_address
+    if word_offset < 0 or word_offset + 4 > len(text):
+        raise ValueError("ADRP word outside supplied bytes")
+    page, register = _decode_adrp_page(
+        struct.unpack_from("<I", text, word_offset)[0], site
+    )
+    if page != TABLE_PAGE or register != 21:
+        raise ValueError("Unexpected table-page ADRP destination")
+    expect(site + 4, "add", "x21, x21, #0x7d8")
+
+    initial_branch = expect(site + 8, "b", "#0x%x" % (site + 0x18))
+    update_site = site + 0x0C
+    expect(update_site, "add", "x20, x20, #8")
+    expect(site + 0x10, "cmp", "x20, #0x200")
+    exit_branch = expect(site + 0x14, "b.eq", "#0x%x" % (site + 0x38))
+    if edge_target(initial_branch, site + 8, "unconditional") != site + 0x18:
+        raise ValueError("Initial branch does not skip the first counter update")
+    if edge_target(exit_branch, site + 0x14, "conditional") != site + 0x38:
+        raise ValueError("Counter equality does not branch to loop exit")
+
+    expect(site + 0x18, "add", "x8, x21, x20")
+    expect(site + 0x1C, "ldr", "x0, [x8, #0x28]")
+    null_branch = expect(site + 0x20, "cbz", "x0, #0x%x" % update_site)
+    expect(site + 0x24, "ldr", "x8, [x0]")
+    dispatch = decode(site + 0x28)
+    if dispatch.mnemonic != "ldr" or dispatch.op_str not in {
+        "x8, [x8, #0x60]", "x8, [x8, #0x68]"
+    }:
+        raise ValueError("Indirect target load is not one of the pinned offsets")
+    dispatch_offset = 0x60 if "#0x60]" in dispatch.op_str else 0x68
+    expect(site + 0x2C, "blr", "x8")
+    expect(site + 0x30, "add", "x19, x0, x19")
+    loop_branch = expect(site + 0x34, "b", "#0x%x" % update_site)
+    if edge_target(null_branch, site + 0x20, "conditional") != update_site:
+        raise ValueError("Null-entry path does not reach the counter update")
+    if edge_target(loop_branch, site + 0x34, "unconditional") != update_site:
+        raise ValueError("Callback path does not reach the counter update")
+
+    # The caller itself has no other explicit X20 write in the bounded loop.
+    # The indirect callee is unresolved, so its callee-saved-register behavior
+    # is deliberately not promoted to a verified fact.
+    for pc in range(update_site + 4, site + 0x38, 4):
+        instruction = decode(pc)
+        if instruction.mnemonic in {"cmp", "cmn", "tst", "ccmp", "ccmn"}:
+            continue
+        try:
+            _, writes = instruction.regs_access()
+        except Exception as exc:
+            raise ValueError("Register effects unavailable at " + _hex(pc)) from exc
+        if "x20" in {
+            _reg_name(instruction, register_id) for register_id in writes
+        }:
+            raise ValueError("Unexpected explicit X20 write in loop body")
+
+    table_base = page + 0x7D8 + 0x28
+    stride = 8
+    limit = 0x200
+    if (table_base != TABLE_START or table_base + limit != TABLE_END
+            or limit % stride):
+        raise ValueError("Loop range does not exactly cover the pinned 64-slot table")
+    loop_start = init_site
+    loop_end = site + 0x38
+    loop_offset = loop_start - base_address
+    loop_end_offset = loop_end - base_address
+    if loop_offset < 0 or loop_end_offset > len(text):
+        raise ValueError("Loop evidence bytes are outside the supplied image")
+    return {
+        "site": _hex(site),
+        "state": "PROVEN_STATIC_LOOP_STRUCTURE_CONDITIONAL_ON_X20_PRESERVATION",
+        "loop_bytes_sha256": hashlib.sha256(
+            text[loop_offset:loop_end_offset]
+        ).hexdigest(),
+        "counter": {
+            "register": "x20",
+            "initial_value": 0,
+            "initialization_site": _hex(init_site),
+            "initialization": "mov x20, xzr",
+            "stride": stride,
+            "increment_site": _hex(update_site),
+            "comparison_site": _hex(site + 0x10),
+            "limit": limit,
+            "exit_branch_site": _hex(site + 0x14),
+            "exit_condition": "b.eq",
+            "iteration_count_if_preserved": limit // stride,
+        },
+        "table_read": {
+            "site": _hex(site + 0x1C),
+            "base": _hex(table_base),
+            "first_slot": _hex(table_base),
+            "last_slot_if_counter_preserved": _hex(table_base + limit - stride),
+            "end_exclusive_if_counter_preserved": _hex(table_base + limit),
+            "slot_stride_bytes": stride,
+            "slot_count_if_counter_preserved": limit // stride,
+            "direction": "read",
+            "width_bytes": 8,
+            "operand": "ldr x0, [x8, #0x28]",
+        },
+        "control_flow": {
+            "initial_skip_update_site": _hex(site + 8),
+            "initial_skip_target": _hex(site + 0x18),
+            "null_entry_branch_site": _hex(site + 0x20),
+            "null_entry_target": _hex(update_site),
+            "callback_back_edge_site": _hex(site + 0x34),
+            "callback_back_edge_target": _hex(update_site),
+            "loop_exit_target": _hex(site + 0x38),
+            "caller_explicit_x20_writes_beyond_increment": 0,
+        },
+        "indirect_dispatch": {
+            "object_pointer_load": "ldr x8, [x0]",
+            "target_load": dispatch.op_str,
+            "target_load_offset": dispatch_offset,
+            "call_site": _hex(site + 0x2C),
+            "call": "blr x8",
+            "target_resolved": False,
+            "callback_identity_verified": False,
+            "callee_preserves_x20_verified": False,
+        },
+        "return_accumulator": {
+            "register": "x19",
+            "instruction_site": _hex(site + 0x30),
+            "instruction": "add x19, x0, x19",
+        },
+        "limits": {
+            "runtime_iteration_count_verified": False,
+            "all_64_slots_runtime_visited": False,
+            "native_consumer_abi_verified": False,
+            "object_type_verified": False,
+            "ownership_lifecycle_verified": False,
+            "lock_unlock_verified": False,
+            "async_verified": False,
+            "rollback_unbind_verified": False,
+            "destructor_identity_verified": False,
+            "archive_precedence_verified": False,
+            "native_hook_added": False,
+            "uzuy_verified": False,
+            "gameplay_verified": False,
+        },
+    }
+
+
 def _bounded_reference_disassembly(text, site, window_bytes=DEFAULT_WINDOW_BYTES):
     """Retain exact bytes and decoded control-flow edges for a pinned window."""
     decoder = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
@@ -796,6 +976,18 @@ def inspect(nso):
         _bounded_reference_disassembly(text, int(row["site"], 16))
         for row in target_budget_refs
     ]
+    target_page_counted_loops = []
+    for row in target_budget_refs:
+        try:
+            target_page_counted_loops.append(
+                _summarize_counted_slot_loop(text, int(row["site"], 16))
+            )
+        except ValueError as exc:
+            target_page_counted_loops.append({
+                "site": row["site"],
+                "state": "UNRESOLVED",
+                "reason": str(exc),
+            })
 
     def access_key(row):
         return (
@@ -836,6 +1028,7 @@ def inspect(nso):
         },
         "static_pointer_cells": _pointer_cell_report(pointer_cells),
         "target_page_budget_reference_disassembly": target_page_budget_disassembly,
+        "target_page_counted_slot_loops": target_page_counted_loops,
         "branch_cfg_scan": cfg,
         "analysis_scope": {
             "all_aligned_adrp_words_for_selected_pages_scanned": True,

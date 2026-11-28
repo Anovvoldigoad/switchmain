@@ -251,6 +251,84 @@ def synthetic_memory_loaded_alias():
     assert end_pointer["direct_accesses"] == []
 
 
+def synthetic_counted_slot_loop():
+    site = 0x116BF54
+    base_address = site - 8
+    data = bytearray(0x40)
+    words = [
+        (-8, "f4031faa"),  # mov x20, xzr
+        (0, "359001d0"),   # adrp x21, #0x4371000
+        (4, "b5621f91"),   # add x21, x21, #0x7d8
+        (8, "04000014"),   # b site+0x18
+        (12, "94220091"),  # add x20, x20, #8
+        (16, "9f0208f1"),  # cmp x20, #0x200
+        (20, "20010054"),  # b.eq site+0x38
+        (24, "a802148b"),  # add x8, x21, x20
+        (28, "001540f9"),  # ldr x0, [x8, #0x28]
+        (32, "60ffffb4"),  # cbz x0, update
+        (36, "080040f9"),  # ldr x8, [x0]
+        (40, "083140f9"),  # ldr x8, [x8, #0x60]
+        (44, "00013fd6"),  # blr x8
+        (48, "1300138b"),  # add x19, x0, x19
+        (52, "f6ffff17"),  # b update
+    ]
+
+    def build(dispatch_word="083140f9"):
+        result = bytearray(data)
+        for offset, word in words:
+            if offset == 40:
+                word = dispatch_word
+            result[offset - (base_address - site):offset - (base_address - site) + 4] = bytes.fromhex(word)
+        return result
+
+    positive = build()
+    summary = _summarize_counted_slot_loop(
+        bytes(positive), site, base_address
+    )
+    assert summary["state"] == (
+        "PROVEN_STATIC_LOOP_STRUCTURE_CONDITIONAL_ON_X20_PRESERVATION"
+    )
+    assert summary["counter"]["iteration_count_if_preserved"] == 64
+    assert summary["table_read"]["base"] == hex(TABLE_START)
+    assert summary["table_read"]["end_exclusive_if_counter_preserved"] == hex(TABLE_END)
+    assert summary["indirect_dispatch"]["callee_preserves_x20_verified"] is False
+
+    second_dispatch = build("083540f9")
+    assert _summarize_counted_slot_loop(
+        bytes(second_dispatch), site, base_address
+    )["indirect_dispatch"]["target_load_offset"] == 0x68
+
+    bad_stride = bytearray(positive)
+    bad_stride[12:16] = struct.pack("<I", encode_add(20, 20, 16))
+    expect_reject(lambda: _summarize_counted_slot_loop(
+        bytes(bad_stride), site, base_address
+    ), "non-eight-byte loop stride")
+
+    bad_limit = bytearray(positive)
+    bad_limit[16:20] = b"\\x00\\x00\\x00\\x00"
+    expect_reject(lambda: _summarize_counted_slot_loop(
+        bytes(bad_limit), site, base_address
+    ), "non-table loop bound")
+
+    bad_read = bytearray(positive)
+    bad_read[28:32] = struct.pack("<I", encode_str64(0, 8, 0x28))
+    expect_reject(lambda: _summarize_counted_slot_loop(
+        bytes(bad_read), site, base_address
+    ), "table write instead of read")
+
+    bad_dispatch = bytearray(positive)
+    bad_dispatch[40:44] = bytes.fromhex("083940f9")
+    expect_reject(lambda: _summarize_counted_slot_loop(
+        bytes(bad_dispatch), site, base_address
+    ), "unrecognized dispatch offset")
+
+    bad_init = bytearray(positive)
+    bad_init[0:4] = b"\\x00\\x00\\x00\\x00"
+    expect_reject(lambda: _summarize_counted_slot_loop(
+        bytes(bad_init), site, base_address
+    ), "unknown initial counter value")
+
+
 def synthetic_limits():
     code = bytearray(0x40)
     put_word(code, 0x00, encode_adrp(0x00, 8, TABLE_PAGE))
@@ -297,6 +375,7 @@ def run(main, output):
     synthetic_call_barrier()
     synthetic_static_pointer_cells()
     synthetic_memory_loaded_alias()
+    synthetic_counted_slot_loop()
     synthetic_limits()
 
     raw = main.read_bytes()
@@ -314,6 +393,27 @@ def run(main, output):
         "0x116bbc0", "0x116bc88", "0x116bd54",
     } <= indexed_sites
     assert report["linear_baseline"]["all_baseline_witnesses_preserved"] is True
+    loops = report["target_page_counted_slot_loops"]
+    assert [row["site"] for row in loops] == [
+        "0x116bf54", "0x116bfac",
+    ]
+    assert all(row["state"] == (
+        "PROVEN_STATIC_LOOP_STRUCTURE_CONDITIONAL_ON_X20_PRESERVATION"
+    ) for row in loops)
+    assert [row["indirect_dispatch"]["target_load_offset"] for row in loops] == [
+        0x60, 0x68,
+    ]
+    for row in loops:
+        assert row["counter"]["initial_value"] == 0
+        assert row["counter"]["stride"] == 8
+        assert row["counter"]["limit"] == 0x200
+        assert row["counter"]["iteration_count_if_preserved"] == 64
+        assert row["table_read"]["base"] == hex(TABLE_START)
+        assert row["table_read"]["last_slot_if_counter_preserved"] == hex(TABLE_END - 8)
+        assert row["table_read"]["end_exclusive_if_counter_preserved"] == hex(TABLE_END)
+        assert row["indirect_dispatch"]["target_resolved"] is False
+        assert row["indirect_dispatch"]["callee_preserves_x20_verified"] is False
+        assert all(value is False for value in row["limits"].values())
     disassembly = report["target_page_budget_reference_disassembly"]
     assert [row["site"] for row in disassembly] == [
         "0x116bf54", "0x116bfac",
