@@ -119,8 +119,6 @@ def collect_static_pointer_cells(rows, memory, tags, target_start=TABLE_START,
             if page_start <= value < page_end:
                 add(first + index * 8, value, "FILE_BACKED_LITERAL")
 
-    rela_tags = (7, 8, 9)
-    jmprel_tags = (23, 2, 20)
     if (7 in tags) != (8 in tags):
         raise ValueError("Incomplete DT_RELA tag pair")
     if (23 in tags) != (2 in tags):
@@ -379,8 +377,8 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                         "branch_sites": list(branch_sites),
                         "static_candidate_only": True,
                     }
-                    aliases[(row_key := (alias_row["site"], alias_row["cell_address"],
-                                          alias_row["loaded_value"], destination_name))] = alias_row
+                    aliases[(alias_row["site"], alias_row["cell_address"],
+                             alias_row["loaded_value"], destination_name)] = alias_row
                 else:
                     ambiguous_row = {
                         "site": _hex(current_pc),
@@ -568,6 +566,8 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
                 window_bytes, max_states, decoder
             )
             reference = trace["reference"]
+            if len(references) >= MAX_REFERENCES:
+                raise ValueError("ADRP reference budget exceeded")
             references.append(reference)
             state_budget_exceeded = state_budget_exceeded or reference["state_budget_exceeded"]
             undecodable.update(int(value, 16) for value in reference["undecodable_words"])
@@ -661,7 +661,7 @@ def inspect(nso):
 
     def access_key(row):
         return (
-            row["site"], row.get("operand_index"), row["direction"],
+            row["site"], row.get("operand_index", 1 if "base_plus_displacement" in row else None), row["direction"],
             row.get("effective_address", row.get("base_plus_displacement")),
             row.get("width_bytes"),
         )
