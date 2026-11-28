@@ -233,6 +233,83 @@ def _loop_induction_state(summary):
     }
 
 
+def _unknown_loop_induction_state(summary):
+    return {
+        "address": summary["initial_value"],
+        "dynamic_terms": [{
+            "register": summary["counter_register"],
+            "extension": "LOOP_INDUCTION_UNKNOWN_BOUND",
+            "scale": 1,
+            "initial_value": summary["initial_value"],
+            "stride": summary["stride"],
+            "bound_verified": False,
+            "call_preservation_verified": False,
+        }],
+        "chain": list(summary["origin_chain"]) + [{
+            "site": summary["update_site"],
+            "kind": "LOOP_INDUCTION_WIDENING",
+            "register": summary["counter_register"],
+            "initial_value": summary["initial_value"],
+            "stride": summary["stride"],
+            "backedge_site": summary["backedge_site"],
+            "bound_verified": False,
+            "call_preservation_verified": False,
+        }],
+    }
+
+
+def _detect_backedge_induction(header_known, backedge_known, target, branch_pc):
+    """Widen one exact self-ADD register on an observed in-window back edge.
+
+    This records an unbounded symbolic term. It does not infer a loop bound,
+    callback preservation, runtime iterations, or an effective address.
+    """
+    if set(header_known) != set(backedge_known):
+        return None
+    changed = []
+    for name in sorted(set(header_known) - {"xzr"}):
+        before = header_known[name]
+        after = backedge_known[name]
+        if (before["address"], before.get("dynamic_terms", [])) != (
+                after["address"], after.get("dynamic_terms", [])):
+            changed.append(name)
+    if len(changed) != 1:
+        return None
+    name = changed[0]
+    before = header_known[name]
+    after = backedge_known[name]
+    if before.get("dynamic_terms") or after.get("dynamic_terms"):
+        return None
+    chain = after.get("chain", [])
+    if not chain:
+        return None
+    update = chain[-1]
+    if (update.get("kind") != "ADD_IMMEDIATE"
+            or update.get("source_register") != name
+            or update.get("destination_register") != name):
+        return None
+    update_site = int(update.get("site", "-1"), 16)
+    stride = update.get("immediate")
+    if (not isinstance(stride, int) or stride == 0
+            or not target < update_site < branch_pc
+            or after["address"] - before["address"] != stride):
+        return None
+    return {
+        "backedge_target": _hex(target),
+        "backedge_site": _hex(branch_pc),
+        "counter_register": name,
+        "initial_value": before["address"],
+        "stride": stride,
+        "update_site": _hex(update_site),
+        "origin_chain": list(before.get("chain", [])),
+        "state": "STATIC_SELF_ADD_BACKEDGE_WIDENING_UNKNOWN_BOUND",
+        "bound_verified": False,
+        "iteration_count_verified": False,
+        "call_preservation_verified": False,
+        "callback_identity_verified": False,
+    }
+
+
 def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                          target_start, target_end, window_bytes, max_states,
                          decoder, loop_summary=None):
@@ -289,8 +366,11 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
         raise ValueError("Unable to seed ADRP reaching state")
 
     start = pc + 4
-    queue = deque([(start, known, ())])
+    queue = deque([(start, known, (), None)])
     visited = {}
+    loop_entry_states = {}
+    loop_induction_by_update_site = {}
+    dynamic_loop_widenings = {}
     equivalent_branch_histories_merged = 0
     decoded_sites = set()
     direct = {}
@@ -317,7 +397,7 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                 existing["branch_path_witnesses"].append(witness)
 
     while queue:
-        current_pc, current_known, branch_sites = queue.popleft()
+        current_pc, current_known, branch_sites, predecessor_pc = queue.popleft()
         if current_pc < start or current_pc >= window_end or (current_pc & 3):
             outside[(current_pc, "queued_target")] = {
                 "from": _hex(pc),
@@ -325,6 +405,8 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                 "target": _hex(current_pc),
             }
             continue
+        if predecessor_pc is None or predecessor_pc <= current_pc:
+            loop_entry_states.setdefault(current_pc, _clone_known(current_known))
         reached_branches.update(branch_sites)
         signature = _state_signature(current_known, bool(branch_sites))
         state_key = (current_pc, signature)
@@ -481,6 +563,13 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
         if (loop_widening["applied"] and current_pc == loop_update_site
                 and counter_is_tracked):
             next_known["x20"] = _loop_induction_state(loop_summary)
+        for summary in loop_induction_by_update_site.get(current_pc, []):
+            counter_register = summary["counter_register"]
+            current_counter = current_known.get(counter_register)
+            if (current_counter is not None
+                    and any(term.get("extension") == "LOOP_INDUCTION_UNKNOWN_BOUND"
+                            for term in current_counter.get("dynamic_terms", []))):
+                next_known[counter_register] = _unknown_loop_induction_state(summary)
         if alias_to_apply is not None:
             destination_name, value, cell, sources, base_info = alias_to_apply
             next_known[destination_name] = {
@@ -508,7 +597,7 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                     }
                 elif kind.startswith("fallthrough_after"):
                     if target is not None and start <= target < window_end:
-                        queue.append((target, _zero_register_state(), branch_sites))
+                        queue.append((target, _zero_register_state(), branch_sites, current_pc))
                     elif target is not None:
                         outside[(current_pc, kind, target)] = {
                             "from": _hex(current_pc),
@@ -539,7 +628,30 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
                 site = _hex(current_pc)
                 next_branches = branch_sites if site in branch_sites else branch_sites + (site,)
             if start <= target < window_end and not (target & 3):
-                queue.append((target, _clone_known(next_known), next_branches))
+                state_for_target = _clone_known(next_known)
+                if kind in {"conditional", "unconditional"} and target < current_pc:
+                    header_state = loop_entry_states.get(target)
+                    if header_state is not None:
+                        summary = _detect_backedge_induction(
+                            header_state, state_for_target, target, current_pc
+                        )
+                        if summary is not None:
+                            key = (
+                                summary["backedge_target"],
+                                summary["update_site"],
+                                summary["counter_register"],
+                            )
+                            existing = dynamic_loop_widenings.get(key)
+                            if existing is None:
+                                dynamic_loop_widenings[key] = summary
+                                loop_induction_by_update_site.setdefault(
+                                    int(summary["update_site"], 16), []
+                                ).append(summary)
+                                existing = summary
+                            state_for_target[existing["counter_register"]] = (
+                                _unknown_loop_induction_state(existing)
+                            )
+                queue.append((target, state_for_target, next_branches, current_pc))
             else:
                 outside[(current_pc, kind, target)] = {
                     "from": _hex(current_pc),
@@ -562,9 +674,15 @@ def _trace_reference_cfg(text, pc, page, destination, pointer_cells,
         "equivalent_branch_histories_merged": equivalent_branch_histories_merged,
         "branch_path_witnesses_exhaustive": (
             equivalent_branch_histories_merged == 0 and not budget_exceeded
-            and not loop_widening["applied"]
+            and not loop_widening["applied"] and not dynamic_loop_widenings
         ),
         "loop_widening": loop_widening,
+        "dynamic_loop_widenings": sorted(
+            dynamic_loop_widenings.values(),
+            key=lambda row: (int(row["backedge_target"], 16),
+                             int(row["backedge_site"], 16),
+                             row["counter_register"]),
+        ),
         "undecodable_words": [_hex(value) for value in sorted(undecodable)],
         "bounded_in_window_cfg_complete": not budget_exceeded and not undecodable,
         "calls_are_clobber_barriers": True,
@@ -844,6 +962,12 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         "loop_widening_reference_count": sum(
             row["loop_widening"]["applied"] for row in references
         ),
+        "dynamic_loop_widening_reference_count": sum(
+            bool(row["dynamic_loop_widenings"]) for row in references
+        ),
+        "dynamic_loop_widening_count": sum(
+            len(row["dynamic_loop_widenings"]) for row in references
+        ),
         "loop_widening_sites": [
             row["site"] for row in references if row["loop_widening"]["applied"]
         ],
@@ -854,8 +978,8 @@ def scan_address_pages_cfg(text, pages, pointer_cells=None, target_start=TABLE_S
         ),
         "state_identity": (
             "pc+tracked-address-registers+dynamic-terms+origin-chain+"
-            "branch-reachable-class+exact-loop-induction; one representative "
-            "path per equivalent state"
+            "branch-reachable-class+exact-and-unknown-bound-backedge-induction; "
+            "one representative path per equivalent state"
         ),
         "bounded_in_window_cfg_complete": (
             target_page_cfg_complete and pointer_alias_trace_complete
@@ -1117,6 +1241,15 @@ def inspect(nso):
         _bounded_reference_disassembly(text, int(row["site"], 16))
         for row in target_budget_refs
     ]
+    pointer_page_budget_refs = [
+        row for row in cfg["page_references"]
+        if row["target_page"] != _hex(_target_page(TABLE_START))
+        and row["state_budget_exceeded"]
+    ]
+    pointer_page_budget_disassembly = [
+        _bounded_reference_disassembly(text, int(row["site"], 16))
+        for row in pointer_page_budget_refs
+    ]
     target_page_counted_loops = []
     target_page_counted_loop_disassembly = []
     for row in target_page_refs:
@@ -1168,6 +1301,7 @@ def inspect(nso):
         },
         "static_pointer_cells": _pointer_cell_report(pointer_cells),
         "target_page_budget_reference_disassembly": target_page_budget_disassembly,
+        "pointer_page_budget_reference_disassembly": pointer_page_budget_disassembly,
         "target_page_counted_loop_disassembly": target_page_counted_loop_disassembly,
         "target_page_counted_slot_loops": target_page_counted_loops,
         "branch_cfg_scan": cfg,
@@ -1181,6 +1315,7 @@ def inspect(nso):
             "R_AARCH64_RELATIVE_pointer_addends_scanned": True,
             "single_level_static_pointer_loads_traced": True,
             "exact_counted_loop_induction_widening": True,
+            "unknown_bound_self_add_backedge_widening": True,
             "indirect_callback_counter_preservation_assumed": False,
             "bss_or_heap_pointer_cells_without_relocations_scanned": False,
             "dynamic_pointer_values_resolved": False,

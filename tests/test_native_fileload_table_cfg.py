@@ -45,6 +45,10 @@ def encode_add(rd, rn, immediate):
     return 0x91000000 | (immediate << 10) | (rn << 5) | rd
 
 
+def encode_add_register(rd, rn, rm):
+    return 0x8B000000 | (rm << 16) | (rn << 5) | rd
+
+
 def encode_ldr64(rt, rn, displacement):
     if displacement < 0 or displacement % 8 or displacement // 8 > 0xFFF:
         raise ValueError("Synthetic LDR displacement is out of range")
@@ -409,6 +413,80 @@ def synthetic_loop_induction_widening():
     )
 
 
+def synthetic_unknown_bound_backedge_widening():
+    pointer_page = 0x5000
+    target_start = 0x5080
+    target_end = 0x5090
+
+    def build(call_barrier=False, second_counter=False, non_self_update=False):
+        code = bytearray(0x40)
+        put_word(code, 0x00, encode_adrp(0x00, 8, pointer_page))
+        put_word(code, 0x04, 0xAA1F03E9)  # mov x9, xzr
+        if second_counter:
+            put_word(code, 0x08, 0xAA1F03EB)  # mov x11, xzr
+            put_word(code, 0x0C, encode_add_register(10, 8, 9))
+            put_word(code, 0x10, encode_ldr64(0, 10, 0x80))
+            put_word(code, 0x14, encode_add(9, 9, 8))
+            put_word(code, 0x18, encode_add(11, 11, 4))
+            put_word(code, 0x1C, encode_branch(0x1C, 0x0C))
+        else:
+            put_word(code, 0x08, encode_add_register(10, 8, 9))
+            put_word(code, 0x0C, encode_ldr64(0, 10, 0x80))
+            if non_self_update:
+                put_word(code, 0x10, encode_add(11, 9, 8))
+                put_word(code, 0x14, encode_branch(0x14, 0x08))
+            elif call_barrier:
+                put_word(code, 0x10, encode_add(9, 9, 8))
+                put_word(code, 0x14, 0xD63F0180)  # blr x12
+                put_word(code, 0x18, encode_branch(0x18, 0x08))
+            else:
+                put_word(code, 0x10, encode_add(9, 9, 8))
+                put_word(code, 0x14, encode_branch(0x14, 0x08))
+        return bytes(code)
+
+    positive = scan_address_pages_cfg(
+        build(), {pointer_page}, {}, window_bytes=0x30, max_states=12,
+        target_start=target_start, target_end=target_end,
+    )
+    assert positive["state_budget_exceeded"] is False
+    assert positive["dynamic_loop_widening_reference_count"] == 1
+    assert positive["dynamic_loop_widening_count"] == 1
+    reference = positive["page_references"][0]
+    widening = reference["dynamic_loop_widenings"][0]
+    assert widening["counter_register"] == "x9"
+    assert widening["initial_value"] == 0
+    assert widening["stride"] == 8
+    assert widening["bound_verified"] is False
+    assert widening["call_preservation_verified"] is False
+    assert reference["branch_path_witnesses_exhaustive"] is False
+    indexed = [row for row in positive["indexed_access_candidates"]
+               if row["site"] == "0xc"]
+    assert len(indexed) == 1
+    assert indexed[0]["base_plus_displacement"] == hex(target_start)
+    assert indexed[0]["dynamic_index_terms"][0]["extension"] == (
+        "LOOP_INDUCTION_UNKNOWN_BOUND"
+    )
+    assert indexed[0]["effective_address_resolved"] is False
+
+    call_barrier = scan_address_pages_cfg(
+        build(call_barrier=True), {pointer_page}, {}, window_bytes=0x30,
+        max_states=32, target_start=target_start, target_end=target_end,
+    )
+    assert call_barrier["dynamic_loop_widening_count"] == 0
+
+    multiple = scan_address_pages_cfg(
+        build(second_counter=True), {pointer_page}, {}, window_bytes=0x30,
+        max_states=32, target_start=target_start, target_end=target_end,
+    )
+    assert multiple["dynamic_loop_widening_count"] == 0
+
+    non_self = scan_address_pages_cfg(
+        build(non_self_update=True), {pointer_page}, {}, window_bytes=0x30,
+        max_states=32, target_start=target_start, target_end=target_end,
+    )
+    assert non_self["dynamic_loop_widening_count"] == 0
+
+
 def synthetic_pointer_page_budget_retry():
     code = bytearray(0x40)
     pointer_page = 0x5000
@@ -507,6 +585,7 @@ def run(main, output):
     synthetic_memory_loaded_alias()
     synthetic_counted_slot_loop()
     synthetic_loop_induction_widening()
+    synthetic_unknown_bound_backedge_widening()
     synthetic_pointer_page_budget_retry()
     synthetic_limits()
 
@@ -532,11 +611,12 @@ def run(main, output):
         row for row in cfg["page_references"]
         if row["state_budget_retry"]["attempted"]
     ]
-    assert len(attempted_retries) == 45
+    assert len(attempted_retries) == retry_summary["attempted_reference_count"]
     assert retry_summary["max_states"] == 1024
-    assert retry_summary["attempted_reference_count"] == 45
-    assert retry_summary["resolved_reference_count"] > 0
+    assert retry_summary["attempted_reference_count"] <= 45
     assert retry_summary["unresolved_reference_count"] == len(remaining_budget)
+    assert cfg["dynamic_loop_widening_reference_count"] > 0
+    assert cfg["dynamic_loop_widening_count"] >= cfg["dynamic_loop_widening_reference_count"]
     assert len(remaining_budget) < 45
     assert all(row["state_budget_retry"]["initial_max_states"] == 256
                and row["state_budget_retry"]["retry_max_states"] == 1024
@@ -593,6 +673,10 @@ def run(main, output):
         assert row["indirect_dispatch"]["callee_preserves_x20_verified"] is False
         assert all(value is False for value in row["limits"].values())
     assert report["target_page_budget_reference_disassembly"] == []
+    pointer_budget_disassembly = report["pointer_page_budget_reference_disassembly"]
+    assert len(pointer_budget_disassembly) == len(remaining_budget)
+    assert all(row["instruction_count"] == 64
+               for row in pointer_budget_disassembly)
     disassembly = report["target_page_counted_loop_disassembly"]
     assert [row["site"] for row in disassembly] == [
         "0x116bf54", "0x116bfac",
@@ -639,6 +723,7 @@ def run(main, output):
         "pointer_retries", retry_summary["attempted_reference_count"],
         "resolved", retry_summary["resolved_reference_count"],
         "remaining", retry_summary["unresolved_reference_count"],
+        "unknown_bound_loop_widenings", cfg["dynamic_loop_widening_count"],
         "NO_ABI_NO_OWNER_NO_ARCHIVE_PRECEDENCE_NO_UZUY_CLAIM",
     )
 

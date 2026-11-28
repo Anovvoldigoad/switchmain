@@ -11,6 +11,7 @@ on:
       - 'tools/portlib/native_fileload_table_cfg.py'
       - 'tests/test_native_fileload_table_cfg.py'
       - 'handoff/evidence_fileload_pointer_retry_20261128.md'
+      - 'handoff/evidence_fileload_pointer_loop_widening_20261128.md'
       - 'original/atmosphere/contents/0100FA10190A0000/exefs/main'
       - '.github/workflows/verify-fileload-registration-lifecycle.yml'
 jobs:
